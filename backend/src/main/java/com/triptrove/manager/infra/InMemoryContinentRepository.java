@@ -5,6 +5,7 @@ import com.triptrove.manager.domain.repo.ContinentRepo;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
+import java.util.List;
 
 @Repository
 public class InMemoryContinentRepository implements ContinentRepo {
@@ -15,5 +16,10 @@ public class InMemoryContinentRepository implements ContinentRepo {
         var id = (short) inMemoryDb.size();
         continent.setId(id);
         return inMemoryDb.put(id, continent);
+    }
+
+    @Override
+    public List<Continent> findAll() {
+        return inMemoryDb.values().stream().toList();
     }
 }

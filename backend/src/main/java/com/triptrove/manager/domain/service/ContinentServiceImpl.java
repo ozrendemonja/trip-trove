@@ -11,9 +11,9 @@ public class ContinentServiceImpl implements ContinentService {
     private final ContinentRepo continentRepo;
 
     @Override
-    public short saveContinent(Continent continent) {
+    public String saveContinent(Continent continent) {
         continentRepo.save(continent);
 
-        return continent.getId();
+        return continent.getName();
     }
 }

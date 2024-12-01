@@ -1,6 +1,6 @@
 import { INavLinkGroup } from "@fluentui/react";
 
-export const navLinkGroups: INavLinkGroup[] = [
+export const navLinkGroups = (expandLinks: boolean): INavLinkGroup[] => [
     {
         links: [
             {
@@ -66,7 +66,8 @@ export const navLinkGroups: INavLinkGroup[] = [
                         target: '_blank',
                     },
                 ],
-                isExpanded: false,
+                isExpanded: expandLinks,
+                blockCallToUrl: true
             },
             {
                 name: 'Backup',

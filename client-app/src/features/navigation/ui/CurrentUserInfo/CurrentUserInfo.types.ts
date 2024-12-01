@@ -26,4 +26,13 @@ export interface CurrentUserInfoProps {
      * @default 26
      */
     coinSize?: number;
+    /**
+     * The background color when the user's initials are displayed.
+     * @defaultvalue Derived from `text`
+     */
+    initialsColor?: string;
+    /**
+     * The text color when the user's initials are displayed
+     */
+    initialsTextColor?: string;
 }

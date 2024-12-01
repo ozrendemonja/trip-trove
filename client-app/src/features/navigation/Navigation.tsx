@@ -1,9 +1,11 @@
-import { initializeIcons, Stack, Text } from '@fluentui/react';
-import { INavLinkGroup, Nav } from '@fluentui/react/lib/Nav';
+import { initializeIcons, Stack, Text, useTheme } from '@fluentui/react';
+import { INavLink, INavLinkGroup, Nav } from '@fluentui/react/lib/Nav';
 import { navLinkGroups } from './Navigation.config';
+import { useClasses } from './Navigation.styles';
 import CurrentUserInfo from './ui/CurrentUserInfo/CurrentUserInfo';
 import { CurrentUserInfoProps } from './ui/CurrentUserInfo/CurrentUserInfo.types';
 import HomePageInfo from './ui/HomePageInfo/HomePageInfo';
+import { useState } from 'react';
 
 
 
@@ -23,16 +25,29 @@ const onRenderGroupHeader = (group: INavLinkGroup): JSX.Element => {
 }
 
 export const Navigation: React.FunctionComponent = () => {
+    const classes = useClasses();
+    const theme = useTheme();
+    const [expandLinks, setExpandLinks] = useState(false);
+
+    const onLinkClick = (ev?: React.MouseEvent<HTMLElement>, item?: INavLink) => {
+        if (!!item?.blockCallToUrl) {
+            ev?.preventDefault();
+            setExpandLinks(!expandLinks);
+        }
+    }
+
     return (
-        <Stack tokens={{ childrenGap: 15 }} style={{ width: 200, border: '1px solid #eee', padding: 10 }}>
-            <HomePageInfo />
+        <Stack tokens={{ childrenGap: 15 }} className={classes.container}>
+            <HomePageInfo className={classes.homePageInfo} />
             <Nav
                 onRenderGroupHeader={onRenderGroupHeader}
-                selectedKey="key3"
-                ariaLabel="Nav basic example"
-                groups={navLinkGroups}
+                onLinkClick={onLinkClick}
+                selectedKey="navigation-key"
+                ariaLabel="Navigation menu"
+                groups={navLinkGroups(expandLinks)}
+                className={classes.nav}
             />
-            <CurrentUserInfo {...examplePersona} />
+            <CurrentUserInfo {...{ ...examplePersona, initialsColor: theme.palette.orange, initialsTextColor: theme.palette.white }} />
         </Stack>
     );
 };

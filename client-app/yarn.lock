@@ -915,6 +915,13 @@
     "@fluentui/set-version" "^8.2.23"
     tslib "^2.1.0"
 
+"@fluentui/example-data@^8.4.25":
+  version "8.4.25"
+  resolved "https://registry.yarnpkg.com/@fluentui/example-data/-/example-data-8.4.25.tgz#efffdf28827ec99014cee9293331c3d148bdba13"
+  integrity sha512-hRPPJQ3aBpAkwGsIHWlhZTxctPi9tQez/257gqdb1VRRvZSEGO4a7FEfpKBrcJadUGDsM7wWixgr2zR31lee1Q==
+  dependencies:
+    tslib "^2.1.0"
+
 "@fluentui/font-icons-mdl2@^8.5.55":
   version "8.5.55"
   resolved "https://registry.yarnpkg.com/@fluentui/font-icons-mdl2/-/font-icons-mdl2-8.5.55.tgz#9a6c79fa607e16f34018a4c96b695608d8dababd"

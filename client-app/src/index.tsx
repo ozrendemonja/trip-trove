@@ -2,6 +2,7 @@ import { IFontStyles, IPalette, PartialTheme, ThemeProvider } from '@fluentui/re
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Navigation } from './features/navigation/Navigation';
+import { DetailsListAdvancedExample } from './features/continent/Continent';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -13,7 +14,7 @@ const appTheme: PartialTheme = {
     orange: "#fec703"
   },
   semanticColors: {
-    bodyBackground: "radial-gradient(#C3E0E7, #61A9B4)"
+    bodyBackground: "transparent"
   },
   components: {
     Nav: {
@@ -32,11 +33,12 @@ const styleOverrides = `
       background: radial-gradient(#C3E0E7, #61A9B4);; 
     }`;
 
+
 root.render(
-  <React.StrictMode>
-    <ThemeProvider theme={appTheme}>
-      <Navigation />
-      <style>{styleOverrides}</style>
-    </ThemeProvider >
-  </React.StrictMode>
+  // <React.StrictMode>
+  <ThemeProvider theme={appTheme}>
+    <DetailsListAdvancedExample />
+    <style>{styleOverrides}</style>
+  </ThemeProvider >
+  // </React.StrictMode>
 );

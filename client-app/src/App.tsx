@@ -6,7 +6,11 @@ function App() {
 
   useEffect(() => {
     async function fetchMyAPI() {
-      let response = await fetch('http://localhost:8080/test')
+      const headers = {
+        'x-api-version': '1',
+      };
+
+      let response = await fetch('http://localhost:8080/continents/Test%20abc%201241', { headers })
       response = await response.json()
       setMessage(response)
     }

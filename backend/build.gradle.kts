@@ -22,6 +22,7 @@ dependencies {
 		exclude(module = "spring-boot-starter-logging")
 	}
 	implementation("org.springframework.boot:spring-boot-starter-log4j2:3.4.0")
+	implementation("org.hibernate:hibernate-validator:8.0.1.Final")
 	testImplementation("org.springframework.boot:spring-boot-starter-test"){
 		exclude(module = "spring-boot-starter-logging")
 	}

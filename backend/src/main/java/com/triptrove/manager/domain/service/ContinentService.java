@@ -8,4 +8,5 @@ public interface ContinentService {
     String saveContinent(Continent continent);
     List<Continent> getAllContinents();
     void deleteContinent(String name);
+    Continent getContinent(String name);
 }

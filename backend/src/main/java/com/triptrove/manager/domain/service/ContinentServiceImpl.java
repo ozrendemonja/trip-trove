@@ -16,10 +16,10 @@ public class ContinentServiceImpl implements ContinentService {
 
     @Override
     public String saveContinent(Continent continent) {
-        log.atInfo().log("Processing save continent request");
+        log.atInfo().log("Processing save continent request for '{}'", continent.getName());
         continentRepo.save(continent);
 
-        log.atInfo().log("Continent successfully saved");
+        log.atInfo().log("Continent '{}' successfully saved", continent.getName());
         return continent.getName();
     }
 
@@ -33,5 +33,14 @@ public class ContinentServiceImpl implements ContinentService {
     public void deleteContinent(String name) {
         log.atInfo().log("Deleting continent {}", name);
         continentRepo.deleteById(name);
+    }
+
+    @Override
+    public Continent getContinent(String name) {
+        log.atInfo().log("Getting a continent with name {}", name);
+        var continent = continentRepo.findByName(name);
+        log.atInfo().log("Got a continent with name {}", name);
+
+        return continent;
     }
 }

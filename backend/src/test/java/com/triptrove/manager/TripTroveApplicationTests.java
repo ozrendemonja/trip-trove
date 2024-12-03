@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.domain.repo.ContinentRepo;
+import org.hamcrest.core.Is;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,11 +21,11 @@ import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -36,24 +39,55 @@ class TripTroveApplicationTests {
 	@Autowired
 	private ContinentRepo continentRepo;
 
-	@Test
+	@ParameterizedTest
+	@MethodSource("provideValidContinentNames")
 	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
-	void continentShouldBeSavedWhenRequestIsSent() throws Exception {
-		final String newContinent = "Test continent 0";
-		var request = new SaveContinentRequest(newContinent);
+	void continentShouldBeSavedWhenRequestIsSent(String continentName) throws Exception {
+		var request = new SaveContinentRequest(continentName);
 
 		mockMvc.perform(post("/continents")
 						.contentType(MediaType.APPLICATION_JSON)
 						.header("x-api-version", "1")
 						.content(mapper.writeValueAsString(request)))
 				.andExpect(status().isCreated())
-				.andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/continents/" + UriUtils.encode(newContinent, StandardCharsets.UTF_8)));
+				.andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/continents/" + UriUtils.encode(continentName, StandardCharsets.UTF_8)));
 
 		assertThat(continentRepo.findAll().size()).isEqualTo(1);
-		assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo(newContinent);
+		assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo(continentName);
+	}
+	private static Stream<String> provideValidContinentNames() {
+		return Stream.of("test", "test123", "test test", "test 12ac 02]", "a".repeat(64));
 	}
 
+
+	@ParameterizedTest
+	@MethodSource("provideTooLongContinentNames")
+	void userShouldGetClientErrorResponseWhenInvalidRequestIsSent(InvalidContinentName input) throws Exception {
+		var request = new SaveContinentRequest(input.continentName);
+
+		mockMvc.perform(post("/continents")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.continentName", Is.is(input.errorMessage)));
+	}
+	private record InvalidContinentName(String continentName, String errorMessage) {}
+	private static Stream<InvalidContinentName> provideTooLongContinentNames() {
+		return Stream.of(
+				new InvalidContinentName(null, "Continent name may not be null or empty"),
+				new InvalidContinentName("", "Continent name may not be null or empty"),
+				new InvalidContinentName("   ", "Continent name may not be null or empty"),
+				new InvalidContinentName("\t", "Continent name may not be null or empty"),
+				new InvalidContinentName("\n", "Continent name may not be null or empty"),
+				new InvalidContinentName("a".repeat(65), "Continent name may not be longer then 64"),
+				new InvalidContinentName("ab".repeat(64), "Continent name may not be longer then 64")
+		);
+	}
+
+
 	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
 	void allContinentsShouldBeReturnedWhenRequestIsSent() throws Exception {
 		var expected = new GetContinentResponse[3];
 		var request = new SaveContinentRequest("Test continent 0");
@@ -90,6 +124,22 @@ class TripTroveApplicationTests {
 	}
 
 	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void emptyListOfContinentsShouldBeReturnedWhenThereIsNoContinentSaved() throws Exception {
+		var jsonResponse = mockMvc.perform(get("/continents")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1"))
+				.andExpect(status().isOk())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		GetContinentResponse[] response = mapper.readValue(jsonResponse, GetContinentResponse[].class);
+		assertThat(response).isEmpty();
+	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
 	void continentsShouldBeDeletedWhenRequestIsSent() throws Exception {
 		var request = new SaveContinentRequest("Test continent0");
 		mockMvc.perform(post("/continents")
@@ -125,5 +175,49 @@ class TripTroveApplicationTests {
 
 
 		assertThat(continentRepo.findAll()).isEmpty();
+	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void userShouldGetClientErrorResponseWhenNonExistingContinentIsRequestedToBeDeleted() throws Exception {
+		mockMvc.perform(delete("/continents/" + "Test continent0")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void userShouldGetClientErrorResponseWhenNonExistingContinentIsRequested() throws Exception {
+		mockMvc.perform(get("/continents/" + "Test continent0")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void continentShouldBeReturnedWhenRequestIsSent() throws Exception {
+		var expected = new GetContinentResponse("Test continent 0");
+		var request = new SaveContinentRequest("Test continent 0");
+		mockMvc.perform(post("/continents")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("x-api-version", "1")
+				.content(mapper.writeValueAsString(request)));
+		request = new SaveContinentRequest("Test continent 1");
+		mockMvc.perform(post("/continents")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("x-api-version", "1")
+				.content(mapper.writeValueAsString(request)));
+
+		var jsonResponse = mockMvc.perform(get("/continents/Test continent 0")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("x-api-version", "1"))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		var actual = mapper.readValue(jsonResponse, GetContinentResponse.class);
+		assertThat(actual).isEqualTo(expected);
 	}
 }

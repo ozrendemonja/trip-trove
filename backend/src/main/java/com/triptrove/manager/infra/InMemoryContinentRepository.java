@@ -1,6 +1,7 @@
 package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -32,8 +33,17 @@ public class InMemoryContinentRepository implements ContinentRepo {
                 .filter(continent -> continent.getName().equals(name))
                 .map(Continent::getId)
                 .findAny()
-                .orElseThrow();
+                .orElseThrow(ObjectNotFoundException::new);
 
         inMemoryDb.remove(id);
+    }
+
+    @Override
+    public Continent findByName(String name) {
+        return inMemoryDb.values()
+                .stream()
+                .filter(continent -> continent.getName().equals(name))
+                .findAny()
+                .orElseThrow(ObjectNotFoundException::new);
     }
 }

@@ -8,4 +8,5 @@ public interface ContinentRepo {
     Continent save(Continent continent);
     List<Continent> findAll();
     void deleteById(String name);
+    Continent findByName(String name);
 }

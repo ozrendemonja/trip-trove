@@ -1,6 +1,8 @@
 package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.DuplicateNameException;
+import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,10 @@ public class ContinentServiceImpl implements ContinentService {
     @Override
     public String saveContinent(Continent continent) {
         log.atInfo().log("Processing save continent request for '{}'", continent.getName());
+        if (continentRepo.findByName(continent.getName()).isPresent()) {
+            log.atInfo().log("Continent already exists in the database");
+            throw new DuplicateNameException();
+        }
         continentRepo.save(continent);
 
         log.atInfo().log("Continent '{}' successfully saved", continent.getName());
@@ -31,15 +37,16 @@ public class ContinentServiceImpl implements ContinentService {
 
     @Override
     public void deleteContinent(String name) {
-        log.atInfo().log("Deleting continent {}", name);
-        continentRepo.deleteById(name);
+        log.atInfo().log("Deleting continent '{}'", name);
+        continentRepo.deleteByName(name);
     }
 
     @Override
     public Continent getContinent(String name) {
-        log.atInfo().log("Getting a continent with name {}", name);
-        var continent = continentRepo.findByName(name);
-        log.atInfo().log("Got a continent with name {}", name);
+        log.atInfo().log("Getting a continent with name '{}'", name);
+        var continent = continentRepo.findByName(name)
+                .orElseThrow(ObjectNotFoundException::new);
+        log.atInfo().log("Got a continent with name '{}'", name);
 
         return continent;
     }

@@ -3,6 +3,7 @@ package com.triptrove.manager.application.controller;
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.ContinentService;
 import jakarta.validation.Valid;
@@ -27,7 +28,7 @@ public class ContinentController {
 
     @PostMapping()
     @CrossOrigin(origins = "http://localhost:8085")
-    public ResponseEntity<Void> saveContinent(@RequestBody SaveContinentRequest saveContinentRequest) {
+    public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
         Continent continent = new Continent();
         continent.setName(saveContinentRequest.continentName());
 
@@ -63,6 +64,10 @@ public class ContinentController {
     @ResponseStatus(value=HttpStatus.NOT_FOUND)
     @ExceptionHandler(ObjectNotFoundException.class)
     public void objectNotFound() {}
+
+    @ResponseStatus(value=HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateNameException.class)
+    public void duplicateName() {}
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)

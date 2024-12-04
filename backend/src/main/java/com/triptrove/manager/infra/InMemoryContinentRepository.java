@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @AllArgsConstructor
@@ -27,7 +28,7 @@ public class InMemoryContinentRepository implements ContinentRepo {
     }
 
     @Override
-    public void deleteById(String name) {
+    public void deleteByName(String name) {
         short id = inMemoryDb.values()
                 .stream()
                 .filter(continent -> continent.getName().equals(name))
@@ -39,11 +40,10 @@ public class InMemoryContinentRepository implements ContinentRepo {
     }
 
     @Override
-    public Continent findByName(String name) {
+    public Optional<Continent> findByName(String name) {
         return inMemoryDb.values()
                 .stream()
                 .filter(continent -> continent.getName().equals(name))
-                .findAny()
-                .orElseThrow(ObjectNotFoundException::new);
+                .findAny();
     }
 }

@@ -220,4 +220,21 @@ class TripTroveApplicationTests {
 		var actual = mapper.readValue(jsonResponse, GetContinentResponse.class);
 		assertThat(actual).isEqualTo(expected);
 	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void userShouldGetConflictResponseWhenDuplicateContinentNameSend() throws Exception {
+		var request = new SaveContinentRequest("Test continent 0");
+		mockMvc.perform(post("/continents")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("x-api-version", "1")
+				.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post("/continents")
+				.contentType(MediaType.APPLICATION_JSON)
+				.header("x-api-version", "1")
+				.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isConflict());
+	}
 }

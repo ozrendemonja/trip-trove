@@ -6,6 +6,9 @@ import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.ContinentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,10 +26,16 @@ import java.util.Map;
 @AllArgsConstructor
 @RestController
 @RequestMapping(path = "/continents", headers = "x-api-version=1")
+@Tag(name = "Continent")
 public class ContinentController {
     private final ContinentService continentService;
 
+
     @PostMapping()
+    @Operation(summary = "Save new continent", responses = {
+            @ApiResponse(description = "Continent saved successfully", responseCode = "201"),
+            @ApiResponse(description = "Continent already exists", responseCode = "409")
+    })
     @CrossOrigin(origins = "http://localhost:8085")
     public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
         Continent continent = new Continent();
@@ -42,6 +51,7 @@ public class ContinentController {
     }
 
     @GetMapping()
+    @Operation(summary = "List of all saved continents")
     public List<GetContinentResponse> getAllContinents(){
         return continentService.getAllContinents()
                 .stream()
@@ -51,11 +61,17 @@ public class ContinentController {
 
     @DeleteMapping(path = "/{name}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Retrieve continent by name", responses = {
+            @ApiResponse(description = "Deleted continent by name", responseCode = "204"),
+    })
     public void deleteContinent(@PathVariable String name){
         continentService.deleteContinent(name);
     }
 
     @GetMapping("/{name}")
+    @Operation(summary = "Retrieve continent by name", responses = {
+            @ApiResponse(description = "Requested continent", responseCode = "200"),
+    })
     public GetContinentResponse getContinent(@PathVariable String name) {
         var continent = continentService.getContinent(name);
         return new GetContinentResponse(continent.getName());

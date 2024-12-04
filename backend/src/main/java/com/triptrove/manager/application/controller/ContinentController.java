@@ -27,7 +27,6 @@ public class ContinentController {
     private final ContinentService continentService;
 
     @PostMapping()
-    @CrossOrigin(origins = "http://localhost:8085")
     public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
         Continent continent = new Continent();
         continent.setName(saveContinentRequest.continentName());

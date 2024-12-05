@@ -1,4 +1,3 @@
-// Todo move to other file
 import { DefaultButton } from '@fluentui/react/lib/Button';
 import { configData } from '../../../../assets/configData';
 import { HomePageInfoProps } from './HomePageInfo.types';

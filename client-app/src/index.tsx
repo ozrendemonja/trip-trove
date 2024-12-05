@@ -1,7 +1,9 @@
 import { IFontStyles, IPalette, PartialTheme, ThemeProvider } from '@fluentui/react';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Navigation } from './features/navigation/Navigation';
+import { Navigation } from './shared/navigation/Navigation';
+import App from './pages/App';
+import { ListContinents } from './features/continent/pages/listContinents';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -35,7 +37,7 @@ const styleOverrides = `
 root.render(
   <React.StrictMode>
     <ThemeProvider theme={appTheme}>
-      <Navigation />
+      <ListContinents />
       <style>{styleOverrides}</style>
     </ThemeProvider >
   </React.StrictMode>

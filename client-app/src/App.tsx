@@ -1,29 +1,36 @@
-import "./styles.css"
-import { useEffect, useState } from "react";
+import { MouseEventHandler, useState } from "react";
+import { getAllContinents, GetAllContinentsResponse } from "./clients/manager";
+import "./styles.css";
+import managerClient from "./config/clientsApiConfig";
+
 
 function App() {
-  const [message, setMessage] = useState<any>("")
+  const [message, setMessage] = useState<GetAllContinentsResponse>();
 
-  useEffect(() => {
-    async function fetchMyAPI() {
-      const headers = {
-        'x-api-version': '1',
-      };
+  const testApiCall = async (onClick?: MouseEventHandler<HTMLButtonElement>): Promise<void> => {
+    managerClient();
 
-      let response = await fetch('http://localhost:8080/continents/Test%20abc%201241', { headers })
-      response = await response.json()
-      setMessage(response)
+    const { data, error } = await getAllContinents({
+      headers: {
+        "x-api-version": "1"
+      }
+    });
+    if (error) {
+      console.log(error);
+      return;
     }
-
-    fetchMyAPI()
-  }, [])
+    setMessage(data);
+  };
 
   return (
     <div className="App">
       <header className="App-header">
-        <p>
-          {message.message}
-        </p>
+        {
+          message?.map(continent =>
+            <p>{continent.continentName}</p>
+          )
+        }
+        <button onClick={testApiCall}>AAAAAAAAAAAAAAAAAAAAAAAAAAAA</button>
       </header>
     </div>
   );

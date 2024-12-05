@@ -36,7 +36,6 @@ public class ContinentController {
             @ApiResponse(description = "Continent saved successfully", responseCode = "201"),
             @ApiResponse(description = "Continent already exists", responseCode = "409")
     })
-    @CrossOrigin(origins = "http://localhost:8085")
     public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
         Continent continent = new Continent();
         continent.setName(saveContinentRequest.continentName());

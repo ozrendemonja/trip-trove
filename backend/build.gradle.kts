@@ -2,6 +2,7 @@ plugins {
 	java
 	id("org.springframework.boot") version "3.4.0"
 	id("io.spring.dependency-management") version "1.1.6"
+	id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
 }
 
 group = "com.triptrove"
@@ -18,8 +19,15 @@ repositories {
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-web")
-	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	implementation("org.springframework.boot:spring-boot-starter-web"){
+		exclude(module = "spring-boot-starter-logging")
+	}
+	implementation("org.springframework.boot:spring-boot-starter-log4j2:3.4.0")
+	implementation("org.hibernate:hibernate-validator:8.0.1.Final")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+	testImplementation("org.springframework.boot:spring-boot-starter-test"){
+		exclude(module = "spring-boot-starter-logging")
+	}
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	compileOnly("org.projectlombok:lombok:1.18.36")
 	annotationProcessor("org.projectlombok:lombok:1.18.36")

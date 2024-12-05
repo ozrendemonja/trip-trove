@@ -1,7 +1,6 @@
 import { MouseEventHandler, useState } from "react";
-import { getAllContinents, GetAllContinentsResponse } from "./clients/manager";
-import "./styles.css";
-import managerClient from "./config/clientsApiConfig";
+import { getAllContinents, GetAllContinentsResponse } from "../clients/manager";
+import managerClient from "../config/clientsApiConfig";
 
 
 function App() {

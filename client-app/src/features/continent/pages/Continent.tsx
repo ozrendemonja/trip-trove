@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import ListElement from "../../../shared/ListElement/ListElement";
 import { ListElementCustomizer } from "../../../shared/ListElement/ListElement.types";
 import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
+import { getContinents } from "../infra/managerApi";
+import { Continent } from "../domain/continent.types";
 
 const classNames = mergeStyleSets({
     linkField: {
@@ -60,8 +62,8 @@ const onRenderItemColumn = (item?: IExampleItem, index?: number, column?: IColum
 };
 
 
-class ContinentListCustomizer extends ListElementCustomizer {
-    constructor(items: IExampleItem[], callback: (items: IExampleItem[]) => void, callback2: (columns: IColumn[]) => void) {
+class ContinentListCustomizer extends ListElementCustomizer<Continent> {
+    constructor(items: Continent[], callback: (items: Continent[]) => void, callback2: (columns: IColumn[]) => void) {
         super(items, callback, callback2);
         this.callback(items);
     }
@@ -83,9 +85,9 @@ class ContinentListCustomizer extends ListElementCustomizer {
         result.ariaLabel = `Operations for ${column.name}`;
         result.isMultiline = false;
         result.minWidth = 100;
-        result.onRender = (item: IExampleItem) => (
-            <Link className={classNames.linkField} href={`https://www.google.com/search?q=${item.key}`} target="_blank" rel="noopener" underline>
-                {item.key}
+        result.onRender = (continent: Continent) => (
+            <Link className={classNames.linkField} href={`https://www.google.com/search?q=${continent.name}`} target="_blank" rel="noopener" underline>
+                {continent.name}
             </Link>
         );
         result.isResizable = true;
@@ -101,31 +103,42 @@ class ContinentListCustomizer extends ListElementCustomizer {
         this.columns = columns;
         this.callback2(this.columns);
     }
-
 }
 
 
 export const ContinentList: React.FunctionComponent = () => {
-    const [items, setItems] = useState(createListItems(10));
+    const [items, setItems] = useState();
     const [columns, setColumns] = useState(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const aaa = new ContinentListCustomizer(createListItems(15), setItems, setColumns);
-        aaa.createColumns();
+        getContinents()
+            .then(data => {
+                setIsLoading(false);
+                const aaa = new ContinentListCustomizer(data, setItems, setColumns);
+                aaa.createColumns();
+            })
     }, []);
 
 
-    return <ListElement
-        items={items}
-        columns={columns}
-        listHeader={listHeader}
-        onAddRow={onAddRow}
-        addRowText="Add continent"
-        onDeleteRow={onDeleteRow}
-        onDeleteRowText="Delete continent"
-        onRenderMissingItem={onRenderMissingItem}
-        onRenderItemColumn={onRenderItemColumn}
-    />
+    return (
+        <div>
+            {isLoading && <p>Loading...</p>}
+            {!isLoading &&
+                <ListElement
+                    items={items}
+                    columns={columns}
+                    listHeader={listHeader}
+                    onAddRow={onAddRow}
+                    addRowText="Add continent"
+                    onDeleteRow={onDeleteRow}
+                    onDeleteRowText="Delete continent"
+                    onRenderMissingItem={onRenderMissingItem}
+                    onRenderItemColumn={onRenderItemColumn}
+                />
+            }
+        </div>
+    );
 }
 
 export default ContinentList;

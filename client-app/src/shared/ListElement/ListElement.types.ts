@@ -18,13 +18,13 @@ export interface ListElementProps {
   listHeader: ListHeaderProps;
 }
 
-export abstract class ListElementCustomizer {
-  items: IExampleItem[];
+export abstract class ListElementCustomizer<T> {
+  items: T[];
   columns?: IColumn[] = undefined;
-  callback: (items: IExampleItem[]) => void;
+  callback: (items: T[]) => void;
   callback2: (columns: IColumn[]) => void;
 
-  constructor(items: IExampleItem[], callback: (items: IExampleItem[]) => void, callback2: (columns: IColumn[]) => void) {
+  constructor(items: T[], callback: (items: T[]) => void, callback2: (columns: IColumn[]) => void) {
     this.items = items;
     this.callback = callback;
     this.callback2 = callback2;
@@ -44,7 +44,7 @@ export abstract class ListElementCustomizer {
     }
 
     // // Sort the items.
-    this.items = this.copyAndSort(column.fieldName!, isSortedDescending) as IExampleItem[];
+    this.items = this.copyAndSort(column.fieldName!, isSortedDescending) as T[];
 
     // // Reset the items and columns to match the state.
     this.columns = this.columns.map(col => {

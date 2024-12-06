@@ -4,7 +4,7 @@ import { Continent } from "../domain/continent.types";
 
 managerClient();
 
-const getContinents = async (): Promise<Continent[]> => {
+export const getContinents = async (): Promise<Continent[]> => {
     const { data, error } = await getAllContinents({
         headers: {
             "x-api-version": "1"
@@ -14,7 +14,7 @@ const getContinents = async (): Promise<Continent[]> => {
     if (error) {
         throw new Error("Error while getting data", error);
     }
-    if (!data || data?.find(continent => continent.continentName)) {
+    if (!data || data?.find(continent => !continent.continentName)) {
         throw new Error("Invalid continent name");
     }
 

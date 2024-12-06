@@ -1,9 +1,9 @@
 import { createListItems, IExampleItem } from "@fluentui/example-data";
-import { buildColumns, ColumnActionsMode, IColumn, Link, mergeStyleSets, Selection } from "@fluentui/react";
+import { buildColumns, IColumn, Link, mergeStyleSets, Selection } from "@fluentui/react";
 import { useEffect, useState } from "react";
 import ListElement from "../../../shared/ListElement/ListElement";
-import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
 import { ListElementCustomizer } from "../../../shared/ListElement/ListElement.types";
+import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
 
 const classNames = mergeStyleSets({
     linkField: {
@@ -18,13 +18,13 @@ const onAddRow = (): void => {
     alert("Add continent 222");
 };
 const onDeleteRow = (selection: Selection): void => {
-    console.log(JSON.stringify(selection))
+    alert("Deleted continent(s) " + selection.getKey());
     if (selection.getSelectedCount() > 0) {
-        alert("Deleted continent(s) " + selection.getSelectedCount());
+        // alert("Deleted continent(s) " + selection.getSelectedCount());
     }
 };
 
-// Load new data
+// OK => Load new data
 const onRenderMissingItem = (index?: number, rowProps?: IDetailsRowProps) => {
     return null;
 }
@@ -76,6 +76,7 @@ class ContinentListCustomizer extends ListElementCustomizer {
         }
         return result;
     }
+
     private setGoogleLinkOnName = (column: IColumn): IColumn => {
         const result = Object.assign({}, column);
 
@@ -92,70 +93,27 @@ class ContinentListCustomizer extends ListElementCustomizer {
         return result;
     }
 
-    setThumbnail = (columns: IColumn[]) => {
-        const thumbnailColumn = columns.filter(column => column.name === 'thumbnail')[0];
-
-        // Special case one column's definition.
-        thumbnailColumn.name = '';
-        thumbnailColumn.maxWidth = 50;
-        thumbnailColumn.ariaLabel = 'Thumbnail';
-        thumbnailColumn.onColumnClick = undefined;
-    }
-    setSortIconWhenUnsorted = (columns: IColumn[]): void => {
-        // Indicate that all columns except thumbnail column can be sorted,
-        // and only the description colum should disappear at small screen sizes
-        columns.forEach((column: IColumn) => {
-            if (column.name) {
-                column.showSortIconWhenUnsorted = true;
-                column.isCollapsible = column.name === 'description';
-                column.isMultiline = true;
-                column.minWidth = 200;
-            }
-        });
-    }
-    setProperData = (columns: IColumn[]) => {
-        columns.forEach(column => {
-            column.ariaLabel = `Operations for ${column.name}`;
-            if (column.key === 'description') {
-                column.isMultiline = true;
-                column.minWidth = 300;
-            } else if (column.key === 'key') {
-                column.columnActionsMode = ColumnActionsMode.disabled;
-                column.onRender = (item: IExampleItem) => (
-                    <Link className={classNames.linkField} href="https://microsoft.com" target="_blank" rel="noopener" underline>
-                        {item.key}
-                    </Link>
-                );
-                column.minWidth = 90;
-                // column.maxWidth = 90;
-                column.isResizable = true;
-            }
-        });
-    }
     public createColumns = (): void => {
-        // const columns = buildColumns(this.items, true, this.onColumnClick)
-        //     .map(column => this.setSetupForSortIcon(column))
-        //     .map(column => this.setGoogleLinkOnName(column));
-
         const columns = buildColumns(this.items, true, this.onColumnClick)
-        this.setThumbnail(columns);
-        this.setSortIconWhenUnsorted(columns);
-        this.setProperData(columns);
+            .map(column => this.setSetupForSortIcon(column))
+            .map(column => this.setGoogleLinkOnName(column));
 
         this.columns = columns;
         this.callback2(this.columns);
     }
+
 }
 
 
 export const ContinentList: React.FunctionComponent = () => {
-    const [items, setItems] = useState({} as IExampleItem[]);
+    const [items, setItems] = useState(createListItems(10));
     const [columns, setColumns] = useState(undefined);
 
     useEffect(() => {
         const aaa = new ContinentListCustomizer(createListItems(15), setItems, setColumns);
         aaa.createColumns();
     }, []);
+
 
     return <ListElement
         items={items}

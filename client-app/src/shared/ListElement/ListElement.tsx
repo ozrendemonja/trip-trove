@@ -15,7 +15,6 @@ import * as React from 'react';
 import { useClasses } from './ListElement.styles';
 import { ListElementProps } from './ListElement.types';
 import ListHeader from './ui/ListHeader/ListHeader';
-import { createListItems } from '@fluentui/example-data';
 
 
 
@@ -42,12 +41,16 @@ const getCommandItems = (selection: Selection, onAddRow: any, addRowText: string
 
 export const ListElement: React.FunctionComponent<ListElementProps> = props => {
     const classNames = useClasses();
-    const items = createListItems(10);
-    const sortedItems = items;
-    console.log(JSON.stringify(props.columns));
+    const sortedItems = props.items;
     const columns = props.columns;
-    const selection = new Selection();
-    selection.setItems(sortedItems, false);
+    const selection = React.useMemo(
+        () => {
+            const selection = new Selection();
+            selection.setItems(sortedItems, false);
+            return selection;
+        },
+        []
+    );
 
     return (
         <div className={classNames.root}>
@@ -55,7 +58,7 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
             <CommandBar items={getCommandItems(selection, props.onAddRow, props.addRowText, props.onDeleteRow, props.onDeleteRowText)} />
             <DetailsList
                 className={classNames.listBody}
-                setKey="${props.listHeader.text}-DetailsList"
+                setKey={`${props.listHeader.text}-DetailsList`}
                 items={sortedItems ?? []}
                 selection={selection}
                 selectionPreservedOnEmptyClick={true}

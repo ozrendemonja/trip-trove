@@ -26,6 +26,7 @@ import ListHeader from '../../shared/ListElement/ui/ListHeader/ListHeader';
 import { ListHeaderProps } from '../../shared/ListElement/ui/ListHeader/ListHeader.types';
 import EditProperty from '../../shared/ListElement/ui/EditProperty/EditProperty';
 import CheckboxButton from '../../shared/ListElement/ui/CheckboxButton/CheckboxButton';
+import ListElement from '../../shared/ListElement/ListElement';
 
 const theme = getTheme();
 const headerDividerClass = 'DetailsListAdvancedExample-divider';
@@ -116,6 +117,7 @@ const onAddRow = (): void => {
     alert("Add continent");
 };
 const onDeleteRow = (selection: Selection): void => {
+    alert("Deleted continent(s) " + selection.getSelectedCount());
     if (selection.getSelectedCount() > 0) {
         alert("Deleted continent(s) " + selection.getSelectedCount());
     }
@@ -281,7 +283,7 @@ const DetailsListAdvancedExampleAAA: React.FunctionComponent = () => {
     const sortedItems = items;
     const columns = buildColumnsMy(items);
     const selection = new Selection();
-    // selection.setItems(items, false);
+    selection.setItems(items, false);
 
     // TODO Move constant
     const listHeader: ListHeaderProps = {
@@ -289,37 +291,17 @@ const DetailsListAdvancedExampleAAA: React.FunctionComponent = () => {
         onSearchTyped: onFilter
     };
 
-    return (
-        <div className={classNames.root}>
-            <ListHeader {...listHeader} />
-            <CommandBar items={getCommandItems(selection)} />
-            <DetailsList
-                className={classNames.listBody}
-                setKey="${props.listHeader.text}-DetailsList"
-                items={sortedItems ?? []}
-                selection={selection}
-                selectionPreservedOnEmptyClick={true}
-                enterModalSelectionOnTouch={true}
-                columns={columns}
-                checkboxVisibility={CheckboxVisibility.onHover}
-                layoutMode={DetailsListLayoutMode.justified}
-                isHeaderVisible={true}
-                selectionMode={SelectionMode.multiple}
-                constrainMode={ConstrainMode.horizontalConstrained}
-                selectionZoneProps={{
-                    selection: selection,
-                    disableAutoSelectOnInputElements: true,
-                    selectionMode: SelectionMode.multiple,
-                }}
-                ariaLabelForListHeader="Column headers. Click to sort."
-                ariaLabelForSelectionColumn="Toggle selection TEST"
-                checkButtonAriaLabel="select row"
-                onRenderMissingItem={onRenderMissingItem}
-                onRenderItemColumn={onRenderItemColumn}
-                ariaLabelForGrid="Item details"
-            />
-        </div >
-    );
+    return <ListElement
+        items={items}
+        columns={columns}
+        listHeader={listHeader}
+        onAddRow={onAddRow}
+        addRowText="Add continent"
+        onDeleteRow={onDeleteRow}
+        onDeleteRowText="Delete continent"
+        onRenderMissingItem={onRenderMissingItem}
+        onRenderItemColumn={onRenderItemColumn}
+    />
 }
 
 export default DetailsListAdvancedExampleAAA;

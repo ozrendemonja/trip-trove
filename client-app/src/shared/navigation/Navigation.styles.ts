@@ -1,32 +1,36 @@
-import { mergeStyleSets } from "@fluentui/react";
+import { mergeStyleSets, useTheme } from "@fluentui/react";
 
-const useClasses = () => mergeStyleSets({
-    container: { width: 200, border: '1px solid #eee', padding: 10 },
-    homePageInfo: {
-        border: "none",
-        background: "none",
-        selectors: {
-            ':hover, :focus': {
-                backgroundColor: "transparent"
-            },
-        }
-    },
-    nav: {
-        width: 180,
-        maxHeight: 400,
-        boxSizing: 'border-box',
-        overflowY: 'auto',
-        selectors: {
-            '& .navigationHeaders': {
-                marginLeft: "5px",
-                fontWeight: 600
-            },
-        }
-    },
-    chevronButton: {
-        right: 0,
-        left: 'none',
-    },
-});
+export const useClasses = () => {
+    const theme = useTheme();
 
-export default useClasses;
+    return mergeStyleSets({
+        container: {
+            width: "200px",
+            border: '1px solid ' + theme.palette.white,
+            padding: "10px",
+            backgroundColor: theme.palette.white
+        },
+        homePageInfo: {
+            border: "none",
+            background: "none",
+            selectors: {
+                ':hover, :active': {
+                    backgroundColor: 'transparent',
+                }
+            },
+        },
+        nav: {
+            width: "185px",
+            maxHeight: "80vh",
+            boxSizing: 'border-box',
+            overflowY: 'auto',
+            backgroundColor: theme.palette.white,
+            selectors: {
+                '& .navigationHeaders': {
+                    marginLeft: "5px",
+                    fontWeight: "bold",
+                },
+            },
+        },
+    });
+};

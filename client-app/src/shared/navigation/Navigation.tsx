@@ -1,12 +1,11 @@
 import { initializeIcons, mergeStyleSets, Stack, Text, useTheme } from '@fluentui/react';
 import { INavLink, INavLinkGroup, Nav } from '@fluentui/react/lib/Nav';
 import { navLinkGroups } from './Navigation.config';
-// import { useClasses } from './Navigation.styles';
+import { useClasses } from './Navigation.styles';
 import CurrentUserInfo from './ui/CurrentUserInfo/CurrentUserInfo';
 import { CurrentUserInfoProps } from './ui/CurrentUserInfo/CurrentUserInfo.types';
 import HomePageInfo from './ui/HomePageInfo/HomePageInfo';
 import { useState } from 'react';
-import useClasses from './Navigation.styles';
 
 
 
@@ -38,7 +37,7 @@ export const Navigation: React.FunctionComponent = () => {
     }
 
     return (
-        <Stack tokens={{ childrenGap: 15 }} className={classes.container} style={{ "backgroundColor": "white" }}>
+        <Stack tokens={{ childrenGap: 15 }} className={classes.container}>
             <HomePageInfo className={classes.homePageInfo} />
             <Nav
                 onRenderGroupHeader={onRenderGroupHeader}

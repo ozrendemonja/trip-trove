@@ -21,11 +21,11 @@ import { Link } from '@fluentui/react/lib/Link';
 import { getTheme, mergeStyleSets } from '@fluentui/react/lib/Styling';
 import { Text } from '@fluentui/react/lib/Text';
 import * as React from 'react';
-import DatePickerMy from './ui/DatePickerMy/DatePickerMy';
-import ListHeader from './ui/ListHeader/ListHeader';
-import { ListHeaderProps } from './ui/ListHeader/ListHeader.types';
-import EditProperty from './ui/EditProperty/EditProperty';
-import CheckboxButton from './ui/CheckboxButton/CheckboxButton';
+import DatePickerMy from '../../shared/ListElement/ui/DatePickerMy/DatePickerMy';
+import ListHeader from '../../shared/ListElement/ui/ListHeader/ListHeader';
+import { ListHeaderProps } from '../../shared/ListElement/ui/ListHeader/ListHeader.types';
+import EditProperty from '../../shared/ListElement/ui/EditProperty/EditProperty';
+import CheckboxButton from '../../shared/ListElement/ui/CheckboxButton/CheckboxButton';
 
 const theme = getTheme();
 const headerDividerClass = 'DetailsListAdvancedExample-divider';
@@ -275,12 +275,13 @@ const onRenderMissingItem = (index?: number, rowProps?: IDetailsRowProps) => {
 }
 
 
-export const DetailsListAdvancedExample: React.FunctionComponent = () => {
+// Moved export
+const DetailsListAdvancedExampleAAA: React.FunctionComponent = () => {
     const items = createListItems(10);
     const sortedItems = items;
     const columns = buildColumnsMy(items);
     const selection = new Selection();
-    selection.setItems(items, false);
+    // selection.setItems(items, false);
 
     // TODO Move constant
     const listHeader: ListHeaderProps = {
@@ -292,9 +293,9 @@ export const DetailsListAdvancedExample: React.FunctionComponent = () => {
         <div className={classNames.root}>
             <ListHeader {...listHeader} />
             <CommandBar items={getCommandItems(selection)} />
-            <ShimmeredDetailsList
-                className={classNames.rootAAA}
-                setKey="shimmeredDetailsList"
+            <DetailsList
+                className={classNames.listBody}
+                setKey="${props.listHeader.text}-DetailsList"
                 items={sortedItems ?? []}
                 selection={selection}
                 selectionPreservedOnEmptyClick={true}
@@ -305,7 +306,6 @@ export const DetailsListAdvancedExample: React.FunctionComponent = () => {
                 isHeaderVisible={true}
                 selectionMode={SelectionMode.multiple}
                 constrainMode={ConstrainMode.horizontalConstrained}
-                enterModalSelectionOnTouch={true}
                 selectionZoneProps={{
                     selection: selection,
                     disableAutoSelectOnInputElements: true,
@@ -316,68 +316,10 @@ export const DetailsListAdvancedExample: React.FunctionComponent = () => {
                 checkButtonAriaLabel="select row"
                 onRenderMissingItem={onRenderMissingItem}
                 onRenderItemColumn={onRenderItemColumn}
-                enableShimmer={!sortedItems}
-                ariaLabelForShimmer="Content is being fetched"
                 ariaLabelForGrid="Item details"
-                listProps={shimmeredDetailsListProps}
             />
         </div >
     );
 }
 
-
-//--------------------------- WORKING
-// import * as React from 'react';
-// import { DetailsList, DetailsListLayoutMode, Selection, IColumn } from '@fluentui/react/lib/DetailsList';
-// import { MarqueeSelection } from '@fluentui/react/lib/MarqueeSelection';
-
-
-// export interface IDetailsListBasicExampleItem {
-//     key: number;
-//     name: string;
-//     value: number;
-// }
-
-// export interface IDetailsListBasicExampleState {
-//     items: IDetailsListBasicExampleItem[];
-// }
-
-// export const DetailsListAdvancedExample: React.FunctionComponent<ListHeaderProps> = props => {
-//     const _selection = new Selection();
-
-//     // Populate with items for demos.
-//     const _allItems = [];
-//     for (let i = 0; i < 200; i++) {
-//         _allItems.push({
-//             key: i,
-//             name: 'Item ' + i,
-//             value: i,
-//         });
-//     }
-
-//     const _columns = [
-//         { key: 'column1', name: 'Name', fieldName: 'name', minWidth: 100, maxWidth: 200, isResizable: true },
-//         { key: 'column2', name: 'Value', fieldName: 'value', minWidth: 100, maxWidth: 200, isResizable: true },
-//     ];
-
-//     return (
-//         <div>
-//             <MarqueeSelection selection={_selection}>
-//                 <DetailsList
-//                     items={_allItems}
-//                     columns={_columns}
-//                     setKey="set"
-//                     layoutMode={DetailsListLayoutMode.justified}
-//                     selection={_selection}
-//                     selectionPreservedOnEmptyClick={true}
-//                     ariaLabelForSelectionColumn="Toggle selection"
-//                     ariaLabelForSelectAllCheckbox="Toggle selection for all items"
-//                     checkButtonAriaLabel="select row"
-//                 />
-//             </MarqueeSelection>
-//         </div>
-//     );
-// }
-
-
-// export default DetailsListAdvancedExample;
+export default DetailsListAdvancedExampleAAA;

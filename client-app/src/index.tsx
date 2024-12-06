@@ -1,8 +1,8 @@
-import { IFontStyles, IPalette, PartialTheme, ThemeProvider } from '@fluentui/react';
-import React from 'react';
+import { PartialTheme, ThemeProvider } from '@fluentui/react';
 import ReactDOM from 'react-dom/client';
-import { Navigation } from './features/navigation/Navigation';
-import { DetailsListAdvancedExample } from './features/continent/Continent';
+import ListElement from './shared/ListElement/ListElement';
+import DetailsListAdvancedExampleAAA from './features/continent/Continent';
+import ContinentList from './features/continent/pages/Continent';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -29,15 +29,15 @@ const appTheme: PartialTheme = {
 };
 
 const styleOverrides = `
-    body { 
-      background: radial-gradient(#C3E0E7, #61A9B4);; 
+    body {
+      background: radial-gradient(#C3E0E7, #61A9B4);;
     }`;
 
 
 root.render(
   // <React.StrictMode>
   <ThemeProvider theme={appTheme}>
-    <DetailsListAdvancedExample />
+    <ContinentList />
     <style>{styleOverrides}</style>
   </ThemeProvider >
   // </React.StrictMode>

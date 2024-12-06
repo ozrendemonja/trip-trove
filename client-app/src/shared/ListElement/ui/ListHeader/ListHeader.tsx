@@ -1,5 +1,5 @@
 import { Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets, SearchBox, Text } from "@fluentui/react";
-import { ListHeaderProps } from "./ListHeader.types";
+import { ListHeaderProps } from "../../features/continent/ui/ListHeader/ListHeader.types";
 
 const classNames = mergeStyleSets({
     root: {

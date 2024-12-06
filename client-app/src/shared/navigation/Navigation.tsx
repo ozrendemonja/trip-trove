@@ -1,4 +1,4 @@
-import { initializeIcons, Stack, Text, useTheme } from '@fluentui/react';
+import { initializeIcons, mergeStyleSets, Stack, Text, useTheme } from '@fluentui/react';
 import { INavLink, INavLinkGroup, Nav } from '@fluentui/react/lib/Nav';
 import { navLinkGroups } from './Navigation.config';
 import { useClasses } from './Navigation.styles';

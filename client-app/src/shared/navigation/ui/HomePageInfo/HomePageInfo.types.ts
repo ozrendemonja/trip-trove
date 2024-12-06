@@ -1,7 +1,6 @@
-
 export interface HomePageInfoProps {
     /**
-     * Additional CSS class(es) to apply to the HomePageInfo
+     * If provided, additional class name to provide on the root element.
      */
     className?: string;
 }

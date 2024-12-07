@@ -1,3 +1,4 @@
+import React from 'react';
 import { Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets, SearchBox, Text } from "@fluentui/react";
 import { ListHeaderProps } from "../../features/continent/ui/ListHeader/ListHeader.types";
 

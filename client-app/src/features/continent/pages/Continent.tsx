@@ -1,4 +1,5 @@
-import { createListItems, IExampleItem } from "@fluentui/example-data";
+import React from 'react';
+import { IExampleItem } from "@fluentui/example-data";
 import { buildColumns, IColumn, Link, mergeStyleSets, Selection } from "@fluentui/react";
 import { useEffect, useState } from "react";
 import ListElement from "../../../shared/ListElement/ListElement";
@@ -107,18 +108,18 @@ class ContinentListCustomizer extends ListElementCustomizer<Continent> {
 
 
 export const ContinentList: React.FunctionComponent = () => {
-    const [items, setItems] = useState();
+    const [items, setItems] = useState(Array.of({ name: "aaa" }, { name: "bbb" }));
     const [columns, setColumns] = useState(undefined);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        getContinents()
-            .then(data => {
-                setIsLoading(false);
-                const aaa = new ContinentListCustomizer(data, setItems, setColumns);
-                aaa.createColumns();
-            })
-    }, []);
+    // useEffect(() => {
+    //     getContinents()
+    //         .then(data => {
+    //             setIsLoading(false);
+    //             const aaa = new ContinentListCustomizer(data, setItems, setColumns);
+    //             aaa.createColumns();
+    //         })
+    // }, []);
 
 
     return (

@@ -1,3 +1,4 @@
+import React from 'react';
 import { initializeIcons } from '@fluentui/react';
 import { CommandBar } from '@fluentui/react/lib/CommandBar';
 import {
@@ -11,7 +12,6 @@ import {
     Selection,
     SelectionMode
 } from '@fluentui/react/lib/DetailsList';
-import * as React from 'react';
 import { useClasses } from './ListElement.styles';
 import { ListElementProps } from './ListElement.types';
 import ListHeader from './ui/ListHeader/ListHeader';

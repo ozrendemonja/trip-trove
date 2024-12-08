@@ -11,9 +11,3 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {};
-
-// Select all
-// Select one
-// Select one by clickin on the row
-// Sort row decs
-// Sort row acs

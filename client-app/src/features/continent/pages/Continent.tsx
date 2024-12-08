@@ -108,19 +108,18 @@ class ContinentListCustomizer extends ListElementCustomizer<Continent> {
 
 
 export const ContinentList: React.FunctionComponent = () => {
-    const [items, setItems] = useState(Array.of({ name: "aaa" }, { name: "bbb" }));
+    const [items, setItems] = useState(undefined);
     const [columns, setColumns] = useState(undefined);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // useEffect(() => {
-    //     getContinents()
-    //         .then(data => {
-    //             setIsLoading(false);
-    //             const aaa = new ContinentListCustomizer(data, setItems, setColumns);
-    //             aaa.createColumns();
-    //         })
-    // }, []);
-
+    useEffect(() => {
+        getContinents()
+            .then(data => {
+                setIsLoading(false);
+                const aaa = new ContinentListCustomizer(data, setItems, setColumns);
+                aaa.createColumns();
+            })
+    }, []);
 
     return (
         <div>

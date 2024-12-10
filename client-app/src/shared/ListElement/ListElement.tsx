@@ -75,6 +75,7 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
                     selectionMode: SelectionMode.multiple,
                 }}
                 ariaLabelForListHeader="Column headers. Click to sort."
+                ariaLabelForSelectAllCheckbox='Select all rows'
                 ariaLabelForSelectionColumn="Toggle selection TEST"
                 checkButtonAriaLabel="select row"
                 onRenderMissingItem={props.onRenderMissingItem}

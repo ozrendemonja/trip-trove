@@ -115,9 +115,9 @@ export const ContinentList: React.FunctionComponent = () => {
     useEffect(() => {
         getContinents()
             .then(data => {
-                setIsLoading(false);
                 const aaa = new ContinentListCustomizer(data, setItems, setColumns);
                 aaa.createColumns();
+                setIsLoading(false);
             })
     }, []);
 

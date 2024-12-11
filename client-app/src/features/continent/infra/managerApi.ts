@@ -1,4 +1,4 @@
-import { getAllContinents } from "../../../clients/manager";
+import { deleteContinent, getAllContinents } from "../../../clients/manager";
 import managerClient from "../../../config/clientsApiConfig";
 import { Continent } from "../domain/continent.types";
 
@@ -20,3 +20,19 @@ export const getContinents = async (): Promise<Continent[]> => {
 
     return data.map(continent => { return { name: continent.continentName! } });
 }
+
+export const deleteContinentWithName = async (name: string): Promise<void> => {
+    const { data, error } = await deleteContinent({
+        path: {
+            name: name
+        },
+        headers: {
+            "x-api-version": "1"
+        }
+    });
+
+    if (error) {
+        throw new Error("Error while deleting continent", error);
+    }
+}
+

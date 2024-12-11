@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import ListElement from "../../../shared/ListElement/ListElement";
 import { ListElementCustomizer } from "../../../shared/ListElement/ListElement.types";
 import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
-import { getContinents } from "../infra/managerApi";
+import { deleteContinentWithName, getContinents } from "../infra/managerApi";
 import { Continent } from "../domain/continent.types";
 
 const classNames = mergeStyleSets({
@@ -15,17 +15,6 @@ const classNames = mergeStyleSets({
         maxWidth: '100%',
     }
 });
-
-// Button behaviour
-const onAddRow = (): void => {
-    alert("Add continent 222");
-};
-const onDeleteRow = (selection: Selection): void => {
-    alert("Deleted continent(s) " + selection.getKey());
-    if (selection.getSelectedCount() > 0) {
-        // alert("Deleted continent(s) " + selection.getSelectedCount());
-    }
-};
 
 // OK => Load new data
 const onRenderMissingItem = (index?: number, rowProps?: IDetailsRowProps) => {
@@ -62,6 +51,19 @@ const onRenderItemColumn = (item?: IExampleItem, index?: number, column?: IColum
     return item[column.key as keyof IExampleItem];
 };
 
+// Continent commands handling
+const onAddRow = (): void => {
+    alert("Add continent 222");
+};
+const delay = t => new Promise(resolve => setTimeout(resolve, t));
+const onDeleteRow = async (selection: Selection<Continent>): Promise<void> => {
+    if (selection.getSelectedCount() > 0) {
+        selection.getSelection()
+            .forEach(value => {
+                deleteContinentWithName(value.name)
+            });
+    }
+};
 
 class ContinentListCustomizer extends ListElementCustomizer<Continent> {
     constructor(items: Continent[], callback: (items: Continent[]) => void, callback2: (columns: IColumn[]) => void) {
@@ -111,12 +113,13 @@ export const ContinentList: React.FunctionComponent = () => {
     const [items, setItems] = useState(undefined);
     const [columns, setColumns] = useState(undefined);
     const [isLoading, setIsLoading] = useState(true);
+    let dataAAA: ContinentListCustomizer;
 
     useEffect(() => {
         getContinents()
             .then(data => {
-                const aaa = new ContinentListCustomizer(data, setItems, setColumns);
-                aaa.createColumns();
+                dataAAA = new ContinentListCustomizer(data, setItems, setColumns);
+                dataAAA.createColumns();
                 setIsLoading(false);
             })
     }, []);
@@ -130,8 +133,15 @@ export const ContinentList: React.FunctionComponent = () => {
                     columns={columns}
                     listHeader={listHeader}
                     onAddRow={onAddRow}
-                    addRowText="Add continent"
-                    onDeleteRow={onDeleteRow}
+                    addRowText="Add new continent"
+                    onDeleteRow={async (selection: Selection<Continent>) => {
+                        await onDeleteRow(selection)
+                        await getContinents()
+                            .then(data => {
+                                dataAAA = new ContinentListCustomizer(data, setItems, setColumns);
+                                dataAAA.createColumns();
+                            });
+                    }}
                     onDeleteRowText="Delete continent"
                     onRenderMissingItem={onRenderMissingItem}
                     onRenderItemColumn={onRenderItemColumn}

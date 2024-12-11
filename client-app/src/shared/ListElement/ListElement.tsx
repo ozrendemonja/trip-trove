@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { initializeIcons } from '@fluentui/react';
 import { CommandBar } from '@fluentui/react/lib/CommandBar';
 import {
@@ -15,6 +15,7 @@ import {
 import { useClasses } from './ListElement.styles';
 import { ListElementProps } from './ListElement.types';
 import ListHeader from './ui/ListHeader/ListHeader';
+import DeleteDialog from './ui/DeleteDialog/DeleteDialog';
 
 
 
@@ -43,9 +44,15 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
     const classNames = useClasses();
     const sortedItems = props.items;
     const columns = props.columns;
+    const [haveSelectedItem, setHaveSelectedItem] = useState(true);
+    const test123 = () => {
+        const indices = selection.getSelectedIndices();
+        setHaveSelectedItem(indices.length == 0);
+    }
+
     const selection = React.useMemo(
         () => {
-            const selection = new Selection();
+            const selection = new Selection({ onSelectionChanged: test123 });
             selection.setItems(sortedItems, false);
             return selection;
         },
@@ -55,7 +62,7 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
     return (
         <div className={classNames.root}>
             <ListHeader {...props.listHeader} />
-            <CommandBar items={getCommandItems(selection, props.onAddRow, props.addRowText, props.onDeleteRow, props.onDeleteRowText)} />
+            <DeleteDialog addRowText={props.addRowText} onDeleteRowText={props.onDeleteRowText} haveSelectedItem={haveSelectedItem} onDeleteRow={() => props.onDeleteRow(selection)} />
             <DetailsList
                 className={classNames.listBody}
                 setKey={`${props.listHeader.text}-DetailsList`}
@@ -67,12 +74,12 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
                 checkboxVisibility={CheckboxVisibility.onHover}
                 layoutMode={DetailsListLayoutMode.justified}
                 isHeaderVisible={true}
-                selectionMode={SelectionMode.multiple}
+                selectionMode={SelectionMode.single}
                 constrainMode={ConstrainMode.horizontalConstrained}
                 selectionZoneProps={{
                     selection: selection,
                     disableAutoSelectOnInputElements: true,
-                    selectionMode: SelectionMode.multiple,
+                    selectionMode: SelectionMode.single,
                 }}
                 ariaLabelForListHeader="Column headers. Click to sort."
                 ariaLabelForSelectAllCheckbox='Select all rows'

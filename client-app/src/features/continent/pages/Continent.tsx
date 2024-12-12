@@ -58,10 +58,9 @@ const onAddRow = (): void => {
 const delay = t => new Promise(resolve => setTimeout(resolve, t));
 const onDeleteRow = async (selection: Selection<Continent>): Promise<void> => {
     if (selection.getSelectedCount() > 0) {
-        selection.getSelection()
-            .forEach(value => {
-                deleteContinentWithName(value.name)
-            });
+        for (const continent of selection.getSelection()) {
+            await deleteContinentWithName(continent.name);
+        }
     }
 };
 

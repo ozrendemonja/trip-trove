@@ -25,7 +25,7 @@ export default function makeServer() {
         const element = schema.db.continents.findBy(data => data.continentName === name);
         schema.db.continents.remove(element);
       },
-        { timing: 400 }
+        { timing: 800 }
       )
     },
   })

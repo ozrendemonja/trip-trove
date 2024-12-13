@@ -1,6 +1,7 @@
 import { CommandBar, ContextualMenu, DefaultButton, Dialog, DialogFooter, DialogType, IContextualMenuItem, PrimaryButton } from "@fluentui/react";
 import { useBoolean } from '@fluentui/react-hooks';
 import { AddRowOptionsProps, DeleteDialogProps, DeleteRowOptionsProps } from "./DeleteDialog.types";
+import { useNavigate } from "react-router";
 
 const getCommandItems = (haveSelectedItem: boolean, addRowOptions: AddRowOptionsProps, deleteRowOptions: DeleteRowOptionsProps): IContextualMenuItem[] => {
     return [
@@ -43,9 +44,10 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
         onDeleteRow: toggleHideDialog
     }
 
+    const navigate = useNavigate();
     return (
         <>
-            <CommandBar items={getCommandItems(props.selectedItem.haveSelectedItem, addRowOptions, deleteRowOptions)} />
+            <CommandBar items={getCommandItems(props.selectedItem.haveSelectedItem, { onAddRow: () => navigate("/add-continent"), text: "AAAAAAAAAAA" }, deleteRowOptions)} />
             <Dialog
                 hidden={hideDialog}
                 onDismiss={() => {

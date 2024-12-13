@@ -1,8 +1,8 @@
 import { PartialTheme, ThemeProvider } from '@fluentui/react';
 import ReactDOM from 'react-dom/client';
-import ListElement from './shared/ListElement/ListElement';
-import DetailsListAdvancedExampleAAA from './features/continent/Continent';
-import ContinentList from './features/continent/pages/Continent';
+import { BrowserRouter, Route, Routes } from 'react-router';
+import ContinentList from './features/continent/pages/ListContinent';
+import AddContinent from './features/continent/pages/AddContinent';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -35,10 +35,13 @@ const styleOverrides = `
 
 
 root.render(
-  // <React.StrictMode>
   <ThemeProvider theme={appTheme}>
-    <ContinentList />
+    <BrowserRouter >
+      <Routes>
+        <Route path="/" element={<ContinentList />} />
+        <Route path="/add-continent" element={<AddContinent />} />
+      </Routes>
+    </ BrowserRouter >
     <style>{styleOverrides}</style>
   </ThemeProvider >
-  // </React.StrictMode>
 );

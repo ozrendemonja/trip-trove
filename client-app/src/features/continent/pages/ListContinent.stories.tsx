@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 import makeServer from "../../../server";
-import ContinentList from "./Continent";
+import ContinentList from "./ListContinent";
 
 const styleOverrides = `
     body {

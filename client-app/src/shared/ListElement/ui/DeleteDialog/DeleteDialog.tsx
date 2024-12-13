@@ -1,20 +1,20 @@
 import { CommandBar, ContextualMenu, DefaultButton, Dialog, DialogFooter, DialogType, IContextualMenuItem, PrimaryButton } from "@fluentui/react";
 import { useBoolean } from '@fluentui/react-hooks';
-import { DeleteDialogProps } from "./DeleteDialog.types";
+import { AddRowOptionsProps, DeleteDialogProps, DeleteRowOptionsProps } from "./DeleteDialog.types";
 
-const getCommandItems = (haveSelectedItem: boolean, onAddRow: any, addRowText: string, onDeleteRow: any, onDeleteRowText: string): IContextualMenuItem[] => {
+const getCommandItems = (haveSelectedItem: boolean, addRowOptions: AddRowOptionsProps, deleteRowOptions: DeleteRowOptionsProps): IContextualMenuItem[] => {
     return [
         {
-            key: 'addRow',
-            text: addRowText,
+            key: `addRow-${addRowOptions.text}`,
+            text: addRowOptions.text,
             iconProps: { iconName: 'Add' },
-            onClick: onAddRow,
+            onClick: addRowOptions.onAddRow,
         },
         {
-            key: 'deleteRow',
-            text: onDeleteRowText,
+            key: `deleteRow-${deleteRowOptions.text}`,
+            text: deleteRowOptions.text,
             iconProps: { iconName: 'Delete' },
-            onClick: onDeleteRow,
+            onClick: deleteRowOptions.onDeleteRow,
             disabled: haveSelectedItem,
         },
     ];
@@ -26,39 +26,42 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
         closeMenuItemText: 'Close',
         menu: ContextualMenu,
     };
-    const modalPropsStyles = { main: { maxWidth: 450 } };
-
     const dialogContentProps = {
         type: DialogType.normal,
-        title: 'Delete Continent',
-        subText: 'Are you sure you want to delete Europe?',
-    };
-
-    const modalProps = {
-        isBlocking: true,
-        styles: modalPropsStyles,
-        dragOptions: dragOptions,
+        title: `Delete ${props.selectedItem.name}`,
+        subText: `Are you sure you want to delete ${props.selectedItem.name}?`,
     };
 
     const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
     const [blockButton, { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }] = useBoolean(false);
+    const addRowOptions: AddRowOptionsProps = {
+        text: props.addRowOptions.text,
+        onAddRow: toggleHideDialog
+    };
+    const deleteRowOptions: DeleteRowOptionsProps = {
+        text: props.deleteRowOptions.text,
+        onDeleteRow: toggleHideDialog
+    }
 
     return (
         <>
-            <CommandBar items={getCommandItems(props.haveSelectedItem, toggleHideDialog, props.addRowText, toggleHideDialog, props.onDeleteRowText)} />
+            <CommandBar items={getCommandItems(props.selectedItem.haveSelectedItem, addRowOptions, deleteRowOptions)} />
             <Dialog
                 hidden={hideDialog}
                 onDismiss={() => {
-                    toggleHideDialog();
                     enableDiaglogButtons();
+                    toggleHideDialog();
                 }}
                 dialogContentProps={dialogContentProps}
-                modalProps={modalProps}
+                modalProps={{
+                    isBlocking: true,
+                    dragOptions: dragOptions,
+                }}
             >
                 <DialogFooter>
                     <PrimaryButton onClick={async () => {
                         disableDiaglogButtons();
-                        await props.onDeleteRow();
+                        await props.deleteRowOptions.onDeleteRow();
                         toggleHideDialog();
                         enableDiaglogButtons();
                     }

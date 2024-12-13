@@ -1,12 +1,11 @@
-import { IExampleItem } from "@fluentui/example-data";
 import { IColumn } from "@fluentui/react";
 import { ListHeaderProps } from "./ui/ListHeader/ListHeader.types";
 
-export interface ListElementProps {
+export interface ListElementProps<T> {
   /**
 * Items to be displayed
 */
-  items: IExampleItem[];
+  items: T[];
 
   columns: IColumn[];
   onAddRow: () => void;
@@ -14,8 +13,9 @@ export interface ListElementProps {
   onDeleteRow: (selection: Selection) => void;
   onDeleteRowText: string;
   onRenderMissingItem: (index?: number) => null;
-  onRenderItemColumn: (item?: IExampleItem, index?: number, column?: IColumn) => JSX.Element | string | number;
+  onRenderItemColumn: (item?: T, index?: number, column?: IColumn) => JSX.Element | string | number;
   listHeader: ListHeaderProps;
+  selectedItemName: (selection: Selection) => string;
 }
 
 export abstract class ListElementCustomizer<T> {

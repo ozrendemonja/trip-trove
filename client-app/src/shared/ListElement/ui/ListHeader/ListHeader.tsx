@@ -1,42 +1,7 @@
 import React from 'react';
 import { Dropdown, IDropdownOption, IDropdownStyles, mergeStyleSets, SearchBox, Text } from "@fluentui/react";
-import { ListHeaderProps } from "../../features/continent/ui/ListHeader/ListHeader.types";
-
-const classNames = mergeStyleSets({
-    root: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-    },
-    header: {
-        fontSize: "30px",
-        marginLeft: "25px",
-        marginTop: "5px",
-        fontWeight: "600"
-    },
-    searchBox: {
-        marginTop: "25px",
-        backgroundColor: "#F9FBFF",
-        borderRadius: "10px",
-        borderColor: "transparent",
-        width: "300px"
-    },
-    dropdown: {
-        marginTop: "25px",
-        borderColor: "transparent",
-        width: "200px",
-        selectors: {
-            ".ms-Dropdown-title": {
-                backgroundColor: "#F9FBFF",
-                borderRadius: "10px",
-                borderColor: 'transparent',
-            }
-        }
-    },
-    dropdownSelectedOption: {
-        fontWeight: "600"
-    }
-});
+import { ListHeaderProps } from './ListHeader.types';
+import useClasses from './ListHeader.styles';
 
 const sortOptions: IDropdownOption[] = [
     { key: 'newest', text: 'Newest', selected: true },
@@ -44,10 +9,11 @@ const sortOptions: IDropdownOption[] = [
 ];
 
 const ListHeader: React.FunctionComponent<ListHeaderProps> = props => {
+    const classes = useClasses();
     const onRenderTitle = (options?: IDropdownOption[]): JSX.Element => {
         const selectedOption = options;
         return (
-            <Text as={"span"} className={classNames.dropdownSelectedOption}>
+            <Text as={"span"} className={classes.dropdownSelectedOption}>
                 <Text as={"span"}>Sort by: </Text>
                 {selectedOption ? selectedOption[0].text : ""}
             </Text>
@@ -55,11 +21,11 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = props => {
     };
 
     return (
-        <div className={classNames.root}>
-            <Text as="h1" className={classNames.header}>{props.text}</Text>
-            <SearchBox className={classNames.searchBox} placeholder="Search" onChange={props.onSearchTyped} />
+        <div className={classes.root}>
+            <Text as="h1" className={classes.header}>{props.text}</Text>
+            <SearchBox className={classes.searchBox} placeholder="Search" onChange={props.onSearchTyped} />
             <Dropdown
-                className={classNames.dropdown}
+                className={classes.dropdown}
                 placeholder="Sort by:"
                 options={sortOptions}
                 onRenderTitle={(options) => onRenderTitle(options)}

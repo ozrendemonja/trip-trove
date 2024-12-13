@@ -7,6 +7,7 @@ import { ListElementCustomizer } from "../../../shared/ListElement/ListElement.t
 import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
 import { deleteContinentWithName, getContinents } from "../infra/managerApi";
 import { Continent } from "../domain/continent.types";
+import { useBoolean } from '@fluentui/react-hooks';
 
 const classNames = mergeStyleSets({
     linkField: {
@@ -55,12 +56,9 @@ const onRenderItemColumn = (item?: IExampleItem, index?: number, column?: IColum
 const onAddRow = (): void => {
     alert("Add continent 222");
 };
-const delay = t => new Promise(resolve => setTimeout(resolve, t));
-const onDeleteRow = async (selection: Selection<Continent>): Promise<void> => {
-    if (selection.getSelectedCount() > 0) {
-        for (const continent of selection.getSelection()) {
-            await deleteContinentWithName(continent.name);
-        }
+const onDeleteRow = async (continents: Continent[]): Promise<void> => {
+    for (const continent of continents) {
+        await deleteContinentWithName(continent.name);
     }
 };
 
@@ -112,16 +110,18 @@ export const ContinentList: React.FunctionComponent = () => {
     const [items, setItems] = useState(undefined);
     const [columns, setColumns] = useState(undefined);
     const [isLoading, setIsLoading] = useState(true);
+    const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
     let dataAAA: ContinentListCustomizer;
 
     useEffect(() => {
         getContinents()
             .then(data => {
+                setIsLoading(true);
                 dataAAA = new ContinentListCustomizer(data, setItems, setColumns);
                 dataAAA.createColumns();
                 setIsLoading(false);
             })
-    }, []);
+    }, [reloadData]);
 
     return (
         <div>
@@ -134,16 +134,16 @@ export const ContinentList: React.FunctionComponent = () => {
                     onAddRow={onAddRow}
                     addRowText="Add new continent"
                     onDeleteRow={async (selection: Selection<Continent>) => {
-                        await onDeleteRow(selection)
-                        await getContinents()
-                            .then(data => {
-                                dataAAA = new ContinentListCustomizer(data, setItems, setColumns);
-                                dataAAA.createColumns();
-                            });
+                        const continents = selection.getSelection();
+                        await onDeleteRow(continents);
+                        toggleReloadData();
                     }}
                     onDeleteRowText="Delete continent"
                     onRenderMissingItem={onRenderMissingItem}
                     onRenderItemColumn={onRenderItemColumn}
+                    selectedItemName={(selection: Selection<Continent>) => {
+                        return selection.getSelection()[0].name;
+                    }}
                 />
             }
         </div>

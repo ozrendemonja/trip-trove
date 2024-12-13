@@ -1,9 +1,4 @@
-import React from 'react';
 import { initializeIcons } from '@fluentui/react';
-import { CommandBar } from '@fluentui/react/lib/CommandBar';
-import {
-    IContextualMenuItem
-} from '@fluentui/react/lib/ContextualMenu';
 import {
     CheckboxVisibility,
     ConstrainMode,
@@ -12,40 +7,29 @@ import {
     Selection,
     SelectionMode
 } from '@fluentui/react/lib/DetailsList';
+import React, { useState } from 'react';
 import { useClasses } from './ListElement.styles';
 import { ListElementProps } from './ListElement.types';
+import DeleteDialog from './ui/DeleteDialog/DeleteDialog';
 import ListHeader from './ui/ListHeader/ListHeader';
-
 
 
 initializeIcons();
 
-
-const getCommandItems = (selection: Selection, onAddRow: any, addRowText: string, onDeleteRow: any, onDeleteRowText: string): IContextualMenuItem[] => {
-    return [
-        {
-            key: 'addRow',
-            text: addRowText,
-            iconProps: { iconName: 'Add' },
-            onClick: onAddRow,
-        },
-        {
-            key: 'deleteRow',
-            text: onDeleteRowText,
-            iconProps: { iconName: 'Delete' },
-            onClick: () => onDeleteRow(selection),
-            // disabled: selection.getSelectedCount() < 1
-        },
-    ];
-};
-
-export const ListElement: React.FunctionComponent<ListElementProps> = props => {
-    const classNames = useClasses();
+export const ListElement: React.FunctionComponent<ListElementProps<T>> = props => {
+    const classes = useClasses();
     const sortedItems = props.items;
     const columns = props.columns;
+
+    const [haveSelectedItem, setHaveSelectedItem] = useState(true);
+    const [selectedItemName, setSelectedItemName] = useState("");
+    const onSelectedItemChange = () => {
+        setHaveSelectedItem(selection.getSelectedCount() == 0);
+        setSelectedItemName(props.selectedItemName(selection));
+    }
     const selection = React.useMemo(
         () => {
-            const selection = new Selection();
+            const selection = new Selection({ onSelectionChanged: onSelectedItemChange });
             selection.setItems(sortedItems, false);
             return selection;
         },
@@ -53,11 +37,11 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
     );
 
     return (
-        <div className={classNames.root}>
+        <div className={classes.root}>
             <ListHeader {...props.listHeader} />
-            <CommandBar items={getCommandItems(selection, props.onAddRow, props.addRowText, props.onDeleteRow, props.onDeleteRowText)} />
+            <DeleteDialog selectedItem={{ haveSelectedItem: haveSelectedItem, name: selectedItemName }} addRowOptions={{ text: props.addRowText, onAddRow: () => { } }} deleteRowOptions={{ text: props.onDeleteRowText, onDeleteRow: () => props.onDeleteRow(selection) }} />
             <DetailsList
-                className={classNames.listBody}
+                className={classes.listBody}
                 setKey={`${props.listHeader.text}-DetailsList`}
                 items={sortedItems ?? []}
                 selection={selection}
@@ -67,12 +51,12 @@ export const ListElement: React.FunctionComponent<ListElementProps> = props => {
                 checkboxVisibility={CheckboxVisibility.onHover}
                 layoutMode={DetailsListLayoutMode.justified}
                 isHeaderVisible={true}
-                selectionMode={SelectionMode.multiple}
+                selectionMode={SelectionMode.single}
                 constrainMode={ConstrainMode.horizontalConstrained}
                 selectionZoneProps={{
                     selection: selection,
                     disableAutoSelectOnInputElements: true,
-                    selectionMode: SelectionMode.multiple,
+                    selectionMode: SelectionMode.single,
                 }}
                 ariaLabelForListHeader="Column headers. Click to sort."
                 ariaLabelForSelectAllCheckbox='Select all rows'

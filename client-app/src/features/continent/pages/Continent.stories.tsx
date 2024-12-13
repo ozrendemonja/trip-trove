@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { GetContinentResponse } from "../../../clients/manager";
+import makeServer from "../../../server";
 import ContinentList from "./Continent";
 
 const styleOverrides = `
@@ -10,25 +10,16 @@ const styleOverrides = `
 const meta: Meta<typeof ContinentList> = {
   component: ContinentList,
   decorators: [
-    (Story) => (
-      <>
-        <Story />
-        <style>{styleOverrides}</style>
-      </>
-    ),
+    (Story) => {
+      makeServer();
+      return (
+        <>
+          <Story />
+          <style>{styleOverrides}</style>
+        </>
+      )
+    },
   ],
-  parameters: {
-    mockData: [
-      {
-        url: 'http://localhost:8080/continents',
-        method: 'GET',
-        status: 200,
-        response: [
-          { continentName: "Australia" }, { continentName: "Europe" }, { continentName: "Asia" }
-        ] as GetContinentResponse[],
-      },
-    ],
-  },
 };
 
 export default meta;

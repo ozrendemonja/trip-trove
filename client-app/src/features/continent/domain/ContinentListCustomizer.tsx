@@ -45,9 +45,9 @@ export class ContinentListCustomizer extends ListElementCustomizer<Continent> {
     }
 
     public createColumns = (): void => {
-        const columns = buildColumns(this.items, true, this.onColumnClick)
-            .map(column => this.setSetupForSortIcon(column))
-            .map(column => this.setGoogleLinkOnName(column));
+        const columns = buildColumns(this.items, true, () => { })
+            .map(column => this.setSetupForSortIcon(column));
+        // .map(column => this.setGoogleLinkOnName(column));
 
         this.columns = columns;
         this.callback2(this.columns);

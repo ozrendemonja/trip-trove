@@ -11,7 +11,7 @@ import { getContinents } from "../infra/managerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
 import { useClasses } from "./ListContinent.styles";
 
-const onRenderItemColumn = (continent?: Continent, index?: number, column?: IColumn): JSX.Element | string | number => {
+const onRenderItemColumn = (onUpdateClick: () => void, continent?: Continent, index?: number, column?: IColumn): JSX.Element | string | number => {
     const classes = useClasses();
     if (column?.key === 'name') {
         return (
@@ -19,7 +19,7 @@ const onRenderItemColumn = (continent?: Continent, index?: number, column?: ICol
                 <Link className={classes.linkField} href={`https://www.google.com/search?q=${continent.name}`} target="_blank" rel="noopener" underline>
                     {continent?.name}
                 </Link>
-                <EditProperty text={continent?.name} />
+                <EditProperty text={continent?.name} onUpdateClick={onUpdateClick} />
             </ Stack>
         );
     }
@@ -62,7 +62,7 @@ export const ContinentList: React.FunctionComponent = () => {
                         }
                     }}
                     onRenderMissingItem={onRenderWhenNoMoreItems}
-                    onRenderItemColumn={onRenderItemColumn}
+                    onRenderItemColumn={(item?: Continent, index?: number, column?: IColumn) => onRenderItemColumn(toggleReloadData, item, index, column)}
                     selectedItemName={(selection: Selection<Continent>) => selection.getSelection()[0].name}
                 />
             }

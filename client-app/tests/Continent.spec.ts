@@ -90,10 +90,27 @@ test('Update button is disabled and error message is shown when added name is in
   await expect(page).toHaveScreenshot();
 });
 
-test('List is shown unchanged when edit dialog is closed without action', async ({ page }) => {
+test('List is shown unchanged when update menu is closed without action', async ({ page }) => {
   await page.getByRole('button', { name: "Change value for Australia" }).click();
   await page.getByLabel("Continent name").fill("Test");
   await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test('All buttons in the update menu are disabled when the update is taking place', async ({ page }) => {
+  await page.getByRole('button', { name: "Change value for Australia" }).click();
+  await page.getByLabel("Continent name").fill("Australia update test");
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test('List should contain updated values when update menu closes', async ({ page }) => {
+  await page.getByRole('button', { name: "Change value for Australia" }).click();
+  await page.getByLabel("Continent name").fill("Australia update test");
+  await page.getByRole("button", { name: "Update" }).click();
+  await expect(page.getByRole("gridcell", { name: "Australia update test" })).toHaveCount(1);
 
   await expect(page).toHaveScreenshot();
 });

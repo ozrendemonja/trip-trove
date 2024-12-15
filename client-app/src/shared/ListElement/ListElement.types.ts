@@ -10,14 +10,20 @@ export interface ListElementProps<T> {
   items: T[];
 
   columns: IColumn[];
+
+  listHeader: ListHeaderProps;
+
   addRowOptions: AddRowOptionsProps;
+
   deleteRowOptions: {
     text: string,
     onDeleteRow: (selection: Selection<Continent>) => void;
   };
+
   onRenderMissingItem: (index?: number) => null;
+
   onRenderItemColumn: (item?: T, index?: number, column?: IColumn) => JSX.Element | string | number;
-  listHeader: ListHeaderProps;
+
   selectedItemName: (selection: Selection) => string;
 }
 

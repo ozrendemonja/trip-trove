@@ -1,41 +1,31 @@
-import { ContextualMenu, DefaultButton, Dialog, DialogFooter, DialogType, IconButton, PrimaryButton, Stack, Text, TextField } from "@fluentui/react";
-import { EditPropertyProps } from "./EditProperty.types";
-import { changeContinentName } from "../../../../features/continent/infra/managerApi";
+import { DefaultButton, Dialog, DialogFooter, IconButton, PrimaryButton, Stack, TextField } from "@fluentui/react";
 import { useBoolean } from '@fluentui/react-hooks';
+import { changeContinentName } from "../../../../features/continent/infra/managerApi";
 import { useContinentFormField } from "../../../../features/continent/pages/AddContinent.config";
-import { useClasses } from "../../../../features/continent/pages/AddContinent.styles";
+import { useDialogContentProps, useDragOptions } from "./EditProperty.config";
+import { useClasses } from "./EditProperty.styles";
+import { EditPropertyProps } from "./EditProperty.types";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = props => {
     const classes = useClasses();
     const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
     const [blockButton, { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }] = useBoolean(false);
-    const dialogContentProps = {
-        type: DialogType.normal,
-        title: `Modifying ${props.text}`,
-    };
-    const dragOptions = {
-        moveMenuItemText: 'Move',
-        closeMenuItemText: 'Close',
-        menu: ContextualMenu,
-    };
     const { formFields, isFormValid } = useContinentFormField();
     formFields.continentName.placeholder = props.text;
 
     return (
-        <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-            <Text>{props.text}</Text>
-            <IconButton iconProps={{ iconName: "Edit", styles: { root: { color: "#fec703" } } }} onClick={toggleHideDialog} />
-            {props.isOptional && <IconButton iconProps={{ iconName: "Delete", styles: { root: { color: "red" } } }} />}
+        <>
+            <IconButton iconProps={{ iconName: "Edit" }} ariaLabel={`Change value for ${props.text}`} className={classes.editIcon} onClick={toggleHideDialog} />
             <Dialog
                 hidden={hideDialog}
                 onDismiss={() => {
                     enableDiaglogButtons();
                     toggleHideDialog();
                 }}
-                dialogContentProps={dialogContentProps}
+                dialogContentProps={useDialogContentProps(props.text)}
                 modalProps={{
                     isBlocking: true,
-                    dragOptions: dragOptions,
+                    dragOptions: useDragOptions(),
                 }}
             >
                 <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
@@ -46,7 +36,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = props => {
                 <DialogFooter>
                     <PrimaryButton onClick={async () => {
                         disableDiaglogButtons();
-                        await changeContinentName(props.text!, formFields.continentName.value!);
+                        await changeContinentName(props.text, formFields.continentName.value!);
                         toggleHideDialog();
                         enableDiaglogButtons();
                     }
@@ -54,10 +44,10 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = props => {
                     <DefaultButton onClick={() => {
                         toggleHideDialog();
                         enableDiaglogButtons();
-                    }} text="Cancel" disabled={blockButton} />
+                    }} text="Cancel" />
                 </DialogFooter>
             </Dialog>
-        </Stack>
+        </>
     );
 }
 

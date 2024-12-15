@@ -39,7 +39,11 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = props =
     return (
         <div className={classes.root}>
             <ListHeader {...props.listHeader} />
-            <DeleteDialog selectedItem={{ haveSelectedItem: haveSelectedItem, name: selectedItemName }} addRowOptions={{ text: props.addRowText, onAddRow: () => { } }} deleteRowOptions={{ text: props.onDeleteRowText, onDeleteRow: () => props.onDeleteRow(selection) }} />
+            <DeleteDialog
+                selectedItem={{ haveSelectedItem: haveSelectedItem, name: selectedItemName }}
+                addRowOptions={props.addRowOptions}
+                deleteRowOptions={{ text: props.deleteRowOptions.text, onDeleteRow: () => props.deleteRowOptions.onDeleteRow(selection) }}
+            />
             <DetailsList
                 className={classes.listBody}
                 setKey={`${props.listHeader.text}-DetailsList`}

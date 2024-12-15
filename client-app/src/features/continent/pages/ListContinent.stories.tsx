@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import makeServer from "../../../server";
-import ContinentList from "./Continent";
+import ContinentList from "./ListContinent";
+import { MemoryRouter } from "react-router";
 
 const styleOverrides = `
     body {
@@ -14,7 +15,9 @@ const meta: Meta<typeof ContinentList> = {
       makeServer();
       return (
         <>
-          <Story />
+          <MemoryRouter initialEntries={['/']}>
+            <Story />
+          </ MemoryRouter >
           <style>{styleOverrides}</style>
         </>
       )

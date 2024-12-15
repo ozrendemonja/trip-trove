@@ -1,5 +1,7 @@
-import { IColumn } from "@fluentui/react";
+import { IColumn, Selection } from "@fluentui/react";
 import { ListHeaderProps } from "./ui/ListHeader/ListHeader.types";
+import { AddRowOptionsProps, DeleteRowOptionsProps } from "./ui/DeleteDialog/DeleteDialog.types";
+import { Continent } from "../../features/continent/domain/continent.types";
 
 export interface ListElementProps<T> {
   /**
@@ -8,10 +10,11 @@ export interface ListElementProps<T> {
   items: T[];
 
   columns: IColumn[];
-  onAddRow: () => void;
-  addRowText: string;
-  onDeleteRow: (selection: Selection) => void;
-  onDeleteRowText: string;
+  addRowOptions: AddRowOptionsProps;
+  deleteRowOptions: {
+    text: string,
+    onDeleteRow: (selection: Selection<Continent>) => void;
+  };
   onRenderMissingItem: (index?: number) => null;
   onRenderItemColumn: (item?: T, index?: number, column?: IColumn) => JSX.Element | string | number;
   listHeader: ListHeaderProps;

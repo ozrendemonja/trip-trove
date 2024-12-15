@@ -34,10 +34,6 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
 
     const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
     const [blockButton, { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }] = useBoolean(false);
-    const addRowOptions: AddRowOptionsProps = {
-        text: props.addRowOptions.text,
-        onAddRow: toggleHideDialog
-    };
     const deleteRowOptions: DeleteRowOptionsProps = {
         text: props.deleteRowOptions.text,
         onDeleteRow: toggleHideDialog
@@ -45,7 +41,7 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
 
     return (
         <>
-            <CommandBar items={getCommandItems(props.selectedItem.haveSelectedItem, addRowOptions, deleteRowOptions)} />
+            <CommandBar items={getCommandItems(props.selectedItem.haveSelectedItem, props.addRowOptions, deleteRowOptions)} />
             <Dialog
                 hidden={hideDialog}
                 onDismiss={() => {

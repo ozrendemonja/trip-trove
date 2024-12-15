@@ -1,4 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
+import { MemoryRouter, Routes } from "react-router";
 import AddContinent from "./AddContinent";
 
 const styleOverrides = `
@@ -12,8 +13,10 @@ const meta: Meta<typeof AddContinent> = {
         (Story) => {
             return (
                 <>
-                    <Story />
-                    < style > {styleOverrides} </style>
+                    <MemoryRouter initialEntries={['/']}>
+                        <Story />
+                    </ MemoryRouter >
+                    <style>{styleOverrides}</style>
                 </>
             )
         },

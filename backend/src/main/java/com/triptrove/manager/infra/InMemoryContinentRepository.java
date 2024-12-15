@@ -14,12 +14,12 @@ import java.util.Optional;
 @AllArgsConstructor
 public class InMemoryContinentRepository implements ContinentRepo {
     private final HashMap<Short, Continent> inMemoryDb;
+    private static short rowNumber = 0;
 
     @Override
     public Continent save(Continent continent) {
-        var id = (short) inMemoryDb.size();
-        continent.setId(id);
-        return inMemoryDb.put(id, continent);
+        continent.setId(rowNumber);
+        return inMemoryDb.put(rowNumber++, continent);
     }
 
     @Override

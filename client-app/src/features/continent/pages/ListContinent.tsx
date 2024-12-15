@@ -1,21 +1,13 @@
-import React from 'react';
-import { IExampleItem } from "@fluentui/example-data";
-import { buildColumns, IColumn, Link, mergeStyleSets, Selection } from "@fluentui/react";
-import { useEffect, useState } from "react";
-import ListElement from "../../../shared/ListElement/ListElement";
-import { ListElementCustomizer } from "../../../shared/ListElement/ListElement.types";
-import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
-import { deleteContinentWithName, getContinents } from "../infra/managerApi";
-import { Continent } from "../domain/continent.types";
+import { IColumn, IDetailsRowProps, Selection } from "@fluentui/react";
 import { useBoolean } from '@fluentui/react-hooks';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+import ListElement from "../../../shared/ListElement/ListElement";
+import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListHeader.types";
+import { Continent } from "../domain/continent.types";
+import { ContinentListCustomizer } from '../domain/ContinentListCustomizer';
+import { deleteContinentWithName, getContinents } from "../infra/managerApi";
 
-const classNames = mergeStyleSets({
-    linkField: {
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        maxWidth: '100%',
-    }
-});
 
 // OK => Load new data
 const onRenderMissingItem = (index?: number, rowProps?: IDetailsRowProps) => {
@@ -36,7 +28,7 @@ const listHeader: ListHeaderProps = {
 };
 
 // Adding elements beside the text in the column ?????
-const onRenderItemColumn = (item?: IExampleItem, index?: number, column?: IColumn): JSX.Element | string | number => {
+const onRenderItemColumn = (item?: Continent, index?: number, column?: IColumn): JSX.Element | string | number => {
     // if (column?.key === 'thumbnail') {
     //     return <img src={item?.thumbnail} />;
     //     // return <Link data-selection-invoke={true}>{"Edit"}</Link>;
@@ -49,76 +41,30 @@ const onRenderItemColumn = (item?: IExampleItem, index?: number, column?: IColum
     // } else if (column?.key === 'location') {
     //     return <DatePickerMy />
     // }
-    return item[column.key as keyof IExampleItem];
+    return item[column.key as keyof Continent];
 };
 
 // Continent commands handling
-const onAddRow = (): void => {
-    alert("Add continent 222");
-};
 const onDeleteRow = async (continents: Continent[]): Promise<void> => {
     for (const continent of continents) {
         await deleteContinentWithName(continent.name);
     }
 };
 
-class ContinentListCustomizer extends ListElementCustomizer<Continent> {
-    constructor(items: Continent[], callback: (items: Continent[]) => void, callback2: (columns: IColumn[]) => void) {
-        super(items, callback, callback2);
-        this.callback(items);
-    }
-
-    private setSetupForSortIcon = (column: IColumn): IColumn => {
-        const result = Object.assign({}, column);
-        if (result.name) {
-            result.showSortIconWhenUnsorted = true;
-            result.isCollapsible = true; //?
-            result.isMultiline = true;
-            result.minWidth = 100;
-        }
-        return result;
-    }
-
-    private setGoogleLinkOnName = (column: IColumn): IColumn => {
-        const result = Object.assign({}, column);
-
-        result.ariaLabel = `Operations for ${column.name}`;
-        result.isMultiline = false;
-        result.minWidth = 100;
-        result.onRender = (continent: Continent) => (
-            <Link className={classNames.linkField} href={`https://www.google.com/search?q=${continent.name}`} target="_blank" rel="noopener" underline>
-                {continent.name}
-            </Link>
-        );
-        result.isResizable = true;
-
-        return result;
-    }
-
-    public createColumns = (): void => {
-        const columns = buildColumns(this.items, true, this.onColumnClick)
-            .map(column => this.setSetupForSortIcon(column))
-            .map(column => this.setGoogleLinkOnName(column));
-
-        this.columns = columns;
-        this.callback2(this.columns);
-    }
-}
-
-
-export const ContinentList: React.FunctionComponent = () => {
+export const ContinentList: React.FunctionComponent = props => {
     const [items, setItems] = useState(undefined);
     const [columns, setColumns] = useState(undefined);
     const [isLoading, setIsLoading] = useState(true);
     const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
-    let dataAAA: ContinentListCustomizer;
+    let continentListData: ContinentListCustomizer;
+    const navigate = useNavigate();
 
     useEffect(() => {
         getContinents()
             .then(data => {
                 setIsLoading(true);
-                dataAAA = new ContinentListCustomizer(data, setItems, setColumns);
-                dataAAA.createColumns();
+                continentListData = new ContinentListCustomizer(data, setItems, setColumns);
+                continentListData.createColumns();
                 setIsLoading(false);
             })
     }, [reloadData]);
@@ -131,14 +77,19 @@ export const ContinentList: React.FunctionComponent = () => {
                     items={items}
                     columns={columns}
                     listHeader={listHeader}
-                    onAddRow={onAddRow}
-                    addRowText="Add new continent"
-                    onDeleteRow={async (selection: Selection<Continent>) => {
-                        const continents = selection.getSelection();
-                        await onDeleteRow(continents);
-                        toggleReloadData();
+                    onAddRow={props.onAddRow}
+                    addRowOptions={{
+                        text: "Add new continent",
+                        onAddRow: () => navigate("/add-continent"),
                     }}
-                    onDeleteRowText="Delete continent"
+                    deleteRowOptions={{
+                        text: "Delete continent",
+                        onDeleteRow: async (selection: Selection<Continent>) => {
+                            const continents = selection.getSelection();
+                            await onDeleteRow(continents);
+                            toggleReloadData();
+                        }
+                    }}
                     onRenderMissingItem={onRenderMissingItem}
                     onRenderItemColumn={onRenderItemColumn}
                     selectedItemName={(selection: Selection<Continent>) => {

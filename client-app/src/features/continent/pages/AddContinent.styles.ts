@@ -22,8 +22,15 @@ export const useClasses = () => {
             marginTop: "5px",
             fontWeight: "600"
         },
+        form: {
+            maxWidth: "600px",
+            marginLeft: "25px",
+        },
         footer: {
-            display: "flex"
+            display: "flex",
+            height: "40px",
+            width: "100%",
+            marginTop: "auto",
         }
     });
 };

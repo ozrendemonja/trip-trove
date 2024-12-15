@@ -2,6 +2,7 @@ package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
+import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
@@ -74,6 +75,15 @@ public class ContinentController {
     public GetContinentResponse getContinent(@PathVariable String name) {
         var continent = continentService.getContinent(name);
         return new GetContinentResponse(continent.getName());
+    }
+
+    @PutMapping("/{name}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Retrieve continent by name", responses = {
+            @ApiResponse(description = "Requested continent", responseCode = "200"),
+    })
+    public void updateContinent(@PathVariable String name, @RequestBody @Valid UpdateContinentRequest request) {
+        continentService.updateContinent(name, request.continentName());
     }
 
     @ResponseStatus(value=HttpStatus.NOT_FOUND)

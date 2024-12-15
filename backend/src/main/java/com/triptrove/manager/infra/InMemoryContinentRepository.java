@@ -18,8 +18,11 @@ public class InMemoryContinentRepository implements ContinentRepo {
 
     @Override
     public Continent save(Continent continent) {
-        continent.setId(rowNumber);
-        return inMemoryDb.put(rowNumber++, continent);
+        if(continent.getId() == null) {
+            continent.setId(rowNumber);
+            return inMemoryDb.put(rowNumber++, continent);
+        }
+        return inMemoryDb.put(continent.getId(), continent);
     }
 
     @Override

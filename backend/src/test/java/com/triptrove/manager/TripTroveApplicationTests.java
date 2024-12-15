@@ -3,6 +3,7 @@ package com.triptrove.manager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
+import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import org.hamcrest.core.Is;
 import org.junit.jupiter.api.Test;
@@ -84,7 +85,6 @@ class TripTroveApplicationTests {
 				new InvalidContinentName("ab".repeat(64), "Continent name may not be longer then 64")
 		);
 	}
-
 
 	@Test
 	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
@@ -237,4 +237,57 @@ class TripTroveApplicationTests {
 				.content(mapper.writeValueAsString(request)))
 				.andExpect(status().isConflict());
 	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void continentNameShouldBeUpdatedWhenNewNameIsSend() throws Exception {
+		var initialRequest = new SaveContinentRequest("Test continent 0");
+		mockMvc.perform(post("/continents")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(initialRequest)))
+				.andExpect(status().isCreated());
+
+		var request = new UpdateContinentRequest("Updated test continent 0");
+		mockMvc.perform(put("/continents/" + "Test continent 0")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isNoContent());
+
+		assertThat(continentRepo.findAll().size()).isEqualTo(1);
+		assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo("Updated test continent 0");
+	}
+
+	@Test
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void userShouldGetNotFoundErrorWhenOldNameDoestExist() throws Exception {
+		var request = new UpdateContinentRequest("Updated test continent 0");
+		mockMvc.perform(put("/continents/" + "Test continent 0")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isNotFound());
+	}
+
+	@ParameterizedTest
+	@MethodSource("provideTooLongContinentNames")
+	@DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD) // TMP solution for non existing clear of database
+	void userShouldGetClientErrorResponseWhenNewContinentNameIsInvalid(InvalidContinentName input) throws Exception {
+		var initialRequest = new SaveContinentRequest("Test continent 0");
+		mockMvc.perform(post("/continents")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(initialRequest)))
+				.andExpect(status().isCreated());
+
+		var request = new UpdateContinentRequest(input.continentName);
+		mockMvc.perform(put("/continents/Test continent 0")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("x-api-version", "1")
+						.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.continentName", Is.is(input.errorMessage)));
+	}
+
 }

@@ -50,4 +50,13 @@ public class ContinentServiceImpl implements ContinentService {
 
         return continent;
     }
+
+    @Override
+    public void updateContinent(String oldName, String newName) {
+        log.atInfo().log("Updating a continent with name '{}'", oldName);
+        Continent continent = continentRepo.findByName(oldName).orElseThrow(ObjectNotFoundException::new);
+        continent.setName(newName);
+        continentRepo.save(continent);
+        log.atInfo().log("Continent name updated to '{}'", newName);
+    }
 }

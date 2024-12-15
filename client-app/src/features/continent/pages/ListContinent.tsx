@@ -7,6 +7,7 @@ import { ListHeaderProps } from "../../../shared/ListElement/ui/ListHeader/ListH
 import { Continent } from "../domain/continent.types";
 import { ContinentListCustomizer } from '../domain/ContinentListCustomizer';
 import { deleteContinentWithName, getContinents } from "../infra/managerApi";
+import EditProperty from "../../../shared/ListElement/ui/EditProperty/EditProperty";
 
 
 // OK => Load new data
@@ -29,6 +30,11 @@ const listHeader: ListHeaderProps = {
 
 // Adding elements beside the text in the column ?????
 const onRenderItemColumn = (item?: Continent, index?: number, column?: IColumn): JSX.Element | string | number => {
+    console.log("------------------------------");
+    console.log(JSON.stringify(column));
+    if (column?.key === 'name') {
+        return <EditProperty text={item?.name} />;
+    }
     // if (column?.key === 'thumbnail') {
     //     return <img src={item?.thumbnail} />;
     //     // return <Link data-selection-invoke={true}>{"Edit"}</Link>;

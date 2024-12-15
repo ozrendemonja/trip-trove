@@ -79,8 +79,8 @@ public class ContinentController {
 
     @PutMapping("/{name}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Retrieve continent by name", responses = {
-            @ApiResponse(description = "Requested continent", responseCode = "200"),
+    @Operation(summary = "Update continent name", responses = {
+            @ApiResponse(description = "Continent name is updated", responseCode = "204"),
     })
     public void updateContinent(@PathVariable String name, @RequestBody @Valid UpdateContinentRequest request) {
         continentService.updateContinent(name, request.continentName());

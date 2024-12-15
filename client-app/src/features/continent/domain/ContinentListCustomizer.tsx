@@ -31,7 +31,7 @@ export class ContinentListCustomizer extends ListElementCustomizer<Continent> {
     }
 
     public createColumns = (): void => {
-        const columns = buildColumns(this.items, true, () => { })
+        const columns = buildColumns(this.items, true, this.onColumnClick)
             .map(column => this.setSetupForSortIcon(column))
             .map(column => this.setDefaultLayout(column));
 

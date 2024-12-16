@@ -1,5 +1,5 @@
 import { createServer, Model } from "miragejs";
-import { GetContinentResponse } from "./clients/manager";
+import { GetContinentResponse, UpdateContinentRequest } from "./clients/manager";
 
 export default function makeServer() {
   return createServer({
@@ -25,7 +25,17 @@ export default function makeServer() {
         const element = schema.db.continents.findBy(data => data.continentName === name);
         schema.db.continents.remove(element);
       },
-        { timing: 800 }
+        { timing: 400 }
+      )
+
+      this.put("/continents/:name", (schema, request) => {
+        const oldName = request.params.name;
+        const newName = (JSON.parse(request.requestBody) as UpdateContinentRequest).continentName;
+
+        const element = schema.db.continents.findBy(data => data.continentName === oldName);
+        schema.db.continents.update(element.id, { continentName: newName });
+      },
+        { timing: 400 }
       )
     },
   })

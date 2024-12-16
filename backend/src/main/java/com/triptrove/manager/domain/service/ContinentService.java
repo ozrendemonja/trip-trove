@@ -9,4 +9,5 @@ public interface ContinentService {
     List<Continent> getAllContinents();
     void deleteContinent(String name);
     Continent getContinent(String name);
+    void updateContinent(String oldName, String newName);
 }

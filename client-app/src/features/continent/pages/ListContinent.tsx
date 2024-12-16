@@ -10,6 +10,7 @@ import { ContinentListCustomizer } from '../domain/ContinentListCustomizer';
 import { getContinents } from "../infra/managerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
 import { useClasses } from "./ListContinent.styles";
+import { LoadingSpinner } from "../../../shared/LoadingSpinner/LoadingSpinner";
 
 const onRenderItemColumn = (onUpdateClick: () => void, continent?: Continent, index?: number, column?: IColumn): JSX.Element | string | number => {
     const classes = useClasses();
@@ -44,7 +45,7 @@ export const ContinentList: React.FunctionComponent = () => {
 
     return (
         <>
-            {isLoading && <p>Loading...</p>}
+            {isLoading && <LoadingSpinner text="Updating list of continents" />}
             {!isLoading &&
                 <ListElement
                     items={items}

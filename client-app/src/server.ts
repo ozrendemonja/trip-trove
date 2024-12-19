@@ -1,13 +1,10 @@
 import { createServer, Model } from "miragejs";
-import {
-  GetContinentResponse,
-  UpdateContinentRequest
-} from "./clients/manager";
+import { GetContinentResponse, UpdateContinentRequest } from "./clients/manager";
 
 export default function makeServer() {
   return createServer({
     models: {
-      continent: Model.extend<Partial<GetContinentResponse>>({})
+      continent: Model.extend<Partial<GetContinentResponse>>({}),
     },
 
     seeds(server) {
@@ -17,31 +14,23 @@ export default function makeServer() {
     },
 
     routes() {
-      this.urlPrefix = "http://localhost:8080";
+      this.urlPrefix = "http://localhost:8080"
       this.get("/continents", (schema) => {
         return schema.db.continents;
-      });
+      })
 
-      this.delete(
-        "/continents/:name",
-        (schema, request) => {
-          const name = request.params.name;
+      this.delete("/continents/:name", (schema, request) => {
+        const name = request.params.name;
 
-          const element = schema.db.continents.findBy(
-            (data) => data.continentName === name
-          );
-          schema.db.continents.remove(element);
-        },
+        const element = schema.db.continents.findBy(data => data.continentName === name);
+        schema.db.continents.remove(element);
+      },
         { timing: 400 }
-      );
+      )
 
-      this.put(
-        "/continents/:name",
-        (schema, request) => {
-          const oldName = request.params.name;
-          const newName = (
-            JSON.parse(request.requestBody) as UpdateContinentRequest
-          ).continentName;
+      this.put("/continents/:name", (schema, request) => {
+        const oldName = request.params.name;
+        const newName = (JSON.parse(request.requestBody) as UpdateContinentRequest).continentName;
 
           const element = schema.db.continents.findBy(
             (data) => data.continentName === oldName

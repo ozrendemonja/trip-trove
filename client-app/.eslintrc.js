@@ -9,9 +9,7 @@ module.exports = {
     ecmaFeatures: { jsx: true },
     sourceType: "module"
   },
-  ignorePatterns: [
-    'node_modules/*',
-  ],
+  ignorePatterns: ["node_modules/*", "src/clients/manager/*"],
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
@@ -21,15 +19,15 @@ module.exports = {
   settings: {
     react: {
       version: "detect",
-      'import/resolver': {
-        typescript: {},
-      },
+      "import/resolver": {
+        typescript: {}
+      }
     }
   },
   overrides: [
     {
-      files: ["**/*.js", '**/*.ts', '**/*.tsx'],
-      parser: '@typescript-eslint/parser',
+      files: ["**/*.js", "**/*.ts", "**/*.tsx"],
+      parser: "@typescript-eslint/parser",
       env: { browser: true, es6: true, node: true },
       extends: [
         "eslint:recommended",
@@ -41,7 +39,7 @@ module.exports = {
         "plugin:react-hooks/recommended",
         "plugin:jsx-a11y/recommended",
         "plugin:jest-dom/recommended",
-        "plugin:testing-library/react",
+        "plugin:testing-library/react"
       ],
       rules: {
         "import/no-restricted-paths": [
@@ -51,19 +49,24 @@ module.exports = {
               // disables cross-feature imports:
               // eg. src/features/continent should not import from src/features/countries, etc.
               {
-                target: './src/features/continent',
-                from: './src/features',
-                except: ['./continent'],
-              },
-            ],
-          },
+                target: "./src/features/continent",
+                from: "./src/features",
+                except: ["./continent"]
+              }
+            ]
+          }
         ],
         "import/no-cycle": "error",
-        "linebreak-style": ["error", "unix"],
+        "linebreak-style": ["error", "windows"],
         "react/prop-types": "off",
+        "react/react-in-jsx-scope": "off",
         "@typescript-eslint/no-unused-vars": [
           "warn",
-          { ignoreRestSiblings: true, argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
+          {
+            ignoreRestSiblings: true,
+            argsIgnorePattern: "^_",
+            varsIgnorePattern: "^_"
+          }
         ],
         "@typescript-eslint/explicit-function-return-type": [
           "warn",
@@ -76,13 +79,13 @@ module.exports = {
         "check-file/filename-naming-convention": [
           "error",
           {
-            "**/*.{ts,tsx}": "CAMEL_CASE",
+            "**/*.{ts,tsx}": "PASCAL_CASE"
           },
           {
-            ignoreMiddleExtensions: true,
-          },
-        ],
-      },
+            ignoreMiddleExtensions: true
+          }
+        ]
+      }
     },
     {
       plugins: ["check-file"],
@@ -91,10 +94,10 @@ module.exports = {
         "check-file/folder-naming-convention": [
           "error",
           {
-            "**/*": "CAMEL_CASE",
-          },
-        ],
-      },
-    },
+            "**/*": "KEBAB_CASE"
+          }
+        ]
+      }
+    }
   ]
 };

@@ -1,11 +1,4 @@
-import { CurrentUserInfoProps } from "./ui/current-user-info/CurrentUserInfo.types";
-
-export interface NavigationProps {
-  /**
-   * Information about the currently logged-in user.
-   */
-  persona: CurrentUserInfoProps;
-
+export interface CurrentUserInfoProps {
   /**
    * Primary text to display, usually the name of the person.
    */
@@ -33,4 +26,13 @@ export interface NavigationProps {
    * @default 26
    */
   coinSize?: number;
+  /**
+   * The background color when the user's initials are displayed.
+   * @defaultvalue Derived from `text`
+   */
+  initialsColor?: string;
+  /**
+   * The text color when the user's initials are displayed
+   */
+  initialsTextColor?: string;
 }

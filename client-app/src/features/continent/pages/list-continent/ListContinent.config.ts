@@ -8,16 +8,7 @@ export const onRenderWhenNoMoreItems = (
   return null;
 };
 
-const onSearchKeyStroke = (
-  _event?: React.ChangeEvent<HTMLInputElement>,
-  _text?: string
-): void => {
-  // this.setState({
-  //     sortedItems: text ? this._allItems.filter(i => i.color.toLowerCase().indexOf(text) > -1) : this._allItems,
-  // });
-};
-
 export const listHeader: ListHeaderProps = {
   text: "All continents",
-  onSearchTyped: onSearchKeyStroke
+  showSearchBar: false
 };

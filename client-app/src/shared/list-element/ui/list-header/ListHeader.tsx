@@ -25,11 +25,13 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
       <Text as="h1" className={classes.header}>
         {props.text}
       </Text>
-      <SearchBox
-        className={classes.searchBox}
-        placeholder="Search"
-        onChange={props.onSearchTyped}
-      />
+      {props.showSearchBar && (
+        <SearchBox
+          className={classes.searchBox}
+          placeholder="Search"
+          onChange={props.onSearchTyped}
+        />
+      )}
       <Dropdown
         className={classes.dropdown}
         placeholder="Sort by:"

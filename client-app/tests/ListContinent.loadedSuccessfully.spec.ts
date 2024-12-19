@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.goto(
-    "http://localhost:6006/iframe.html?id=features-continent-pages-listcontinent--primary"
+    "http://localhost:6006/iframe.html?id=features-continent-pages-list-continent-listcontinent--primary"
   );
 
   await page.waitForSelector('div[data-automationid="DetailsList"]');

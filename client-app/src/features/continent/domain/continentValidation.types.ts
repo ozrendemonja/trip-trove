@@ -1,8 +1,8 @@
 export interface ContinentFields {
-    readonly continentName: string;
+  readonly continentName: string;
 }
 
 export interface ValidationResponse {
-    readonly isValid: boolean;
-    readonly errorMessage?: string;
+  readonly isValid: boolean;
+  readonly errorMessage?: string;
 }

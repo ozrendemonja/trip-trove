@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import makeServer from "../../../../Server";
+import makeServer from "../../../../ServerSetup";
 import ContinentList from "./ListContinent";
 import { MemoryRouter } from "react-router";
 

@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { MemoryRouter } from "react-router";
 import Home from "./Home";
-import makeServer from "../../Server";
+import makeServer from "../../ServerSetup";
 
 const styleOverrides = `
     body {

@@ -7,7 +7,14 @@ import java.util.Optional;
 
 public interface ContinentRepo {
     Continent save(Continent continent);
+
     List<Continent> findAll();
+
+    List<Continent> findAllOrderByUpdatedOnOrCreatedOnAsc();
+
+    List<Continent> findAllOrderByUpdatedOnOrCreatedOnDesc();
+
     void deleteByName(String name);
+
     Optional<Continent> findByName(String name);
 }

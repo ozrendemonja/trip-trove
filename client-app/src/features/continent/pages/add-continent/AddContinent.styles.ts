@@ -6,10 +6,8 @@ export const useClasses = () => {
   return mergeStyleSets({
     // TODO Repeating
     root: {
-      marginLeft: "100px",
       padding: "12px",
-      height: "90vh",
-      maxHeight: "1200px",
+      maxHeight: "90vh",
       maxWidth: "1200px",
       borderRadius: "30px",
       background: theme.palette.white,
@@ -27,10 +25,9 @@ export const useClasses = () => {
       marginLeft: "25px"
     },
     footer: {
-      display: "flex",
       height: "40px",
       width: "100%",
-      marginTop: "auto"
+      marginTop: "48px"
     }
   });
 };

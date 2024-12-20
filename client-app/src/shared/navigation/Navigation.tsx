@@ -6,6 +6,8 @@ import { useClasses } from "./Navigation.styles";
 import CurrentUserInfo from "./ui/current-user-info/CurrentUserInfo";
 import { CurrentUserInfoProps } from "./ui/current-user-info/CurrentUserInfo.types";
 import HomePageInfo from "./ui/home-page-info/HomePageInfo";
+import { useNavigate } from "react-router";
+import { useBoolean } from "@fluentui/react-hooks";
 
 initializeIcons();
 
@@ -29,15 +31,19 @@ const onRenderGroupHeader = (group: INavLinkGroup): JSX.Element => {
 export const Navigation: React.FunctionComponent = () => {
   const classes = useClasses();
   const theme = useTheme();
-  const [expandLinks, setExpandLinks] = useState(false);
+  const [expandLinks, { toggle: toogleExpandLinks }] = useBoolean(false);
+  const navigate = useNavigate();
 
   const onLinkClick = (
     ev?: React.MouseEvent<HTMLElement>,
     item?: INavLink
   ): void => {
-    if ((!!item)?.blockCallToUrl) {
-      ev?.preventDefault();
-      setExpandLinks(!expandLinks);
+    ev?.preventDefault();
+
+    if (item?.blockCallToUrl) {
+      toogleExpandLinks();
+    } else {
+      navigate(item?.url!);
     }
   };
 

@@ -61,7 +61,7 @@ export const navLinkGroups = (expandLinks: boolean): INavLinkGroup[] => [
           },
           {
             name: "Continent",
-            url: "#",
+            url: "/continents",
             key: "country-key",
             target: "_blank"
           }

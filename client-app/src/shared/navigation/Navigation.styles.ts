@@ -5,10 +5,14 @@ export const useClasses = () => {
 
   return mergeStyleSets({
     container: {
-      width: "200px",
+      marginRight: "48px",
+      maxWidth: "200px",
       border: "1px solid " + theme.palette.white,
       padding: "10px",
-      backgroundColor: theme.palette.white
+      backgroundColor: theme.palette.white,
+      float: "left",
+      position: "sticky",
+      top: 0
     },
     homePageInfo: {
       border: "none",

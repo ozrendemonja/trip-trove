@@ -77,6 +77,9 @@ test("List should not contain previously deleted element when delete menu closes
   await page.getByRole("menuitem", { name: "Delete continent" }).click();
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
+  await expect(page.getByRole("gridcell", { name: "Australia" })).toHaveCount(
+    0
+  );
 
   await expect(page).toHaveScreenshot();
 });
@@ -151,6 +154,20 @@ test("List should contain updated values when update menu closes", async ({
   await expect(
     page.getByRole("gridcell", { name: "Australia update test" })
   ).toHaveCount(1);
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should be ordered ascending when sorted by oldest", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", { name: "Change value for Australia" })
+    .click();
+  await page.getByLabel("Continent name").fill("Australia update test");
+  await page.getByRole("button", { name: "Update" }).click();
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Oldest" }).click();
 
   await expect(page).toHaveScreenshot();
 });

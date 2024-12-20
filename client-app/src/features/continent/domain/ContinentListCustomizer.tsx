@@ -16,7 +16,7 @@ export class ContinentListCustomizer extends ListElementCustomizer<Continent> {
     const result = { ...column };
     if (result.name) {
       result.showSortIconWhenUnsorted = true;
-      result.isCollapsible = true; //?
+      result.isCollapsible = true;
       result.isMultiline = true;
       result.minWidth = 100;
     }

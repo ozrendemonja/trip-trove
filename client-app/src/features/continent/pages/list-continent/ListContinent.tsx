@@ -17,6 +17,7 @@ import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
 import { useClasses } from "./ListContinent.styles";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import ListElement from "../../../../shared/list-element/ListElement";
+import Navigation from "../../../../shared/navigation/Navigation";
 
 const onRenderItemColumn = (
   className: string,
@@ -68,6 +69,7 @@ export const ContinentList: React.FunctionComponent = () => {
 
   return (
     <>
+      <Navigation />
       {isLoading && <LoadingSpinner text="Updating list of continents" />}
       {!isLoading && (
         <ListElement

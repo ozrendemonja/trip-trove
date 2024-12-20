@@ -2,6 +2,7 @@ package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
+import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.DuplicateNameException;
@@ -51,9 +52,10 @@ public class ContinentController {
     }
 
     @GetMapping()
-    @Operation(summary = "List of all saved continents")
-    public List<GetContinentResponse> getAllContinents(){
-        return continentService.getAllContinents()
+    @Operation(summary = "List all saved continents, sorted by the time they were last updated. If the continent was never updated, sort by the creation time. " +
+            "Order by the given sort direction, or ascending if none is provided.")
+    public List<GetContinentResponse> getAllContinents(@RequestParam(defaultValue = "ASC", name = "sd") SortDirectionParameter sortDirection) {
+        return continentService.getAllContinents(sortDirection.toSortDirection())
                 .stream()
                 .map(continent -> new GetContinentResponse(continent.getName()))
                 .toList();
@@ -64,7 +66,7 @@ public class ContinentController {
     @Operation(summary = "Retrieve continent by name", responses = {
             @ApiResponse(description = "Deleted continent by name", responseCode = "204"),
     })
-    public void deleteContinent(@PathVariable String name){
+    public void deleteContinent(@PathVariable String name) {
         continentService.deleteContinent(name);
     }
 
@@ -86,13 +88,15 @@ public class ContinentController {
         continentService.updateContinent(name, request.continentName());
     }
 
-    @ResponseStatus(value=HttpStatus.NOT_FOUND)
+    @ResponseStatus(value = HttpStatus.NOT_FOUND)
     @ExceptionHandler(ObjectNotFoundException.class)
-    public void objectNotFound() {}
+    public void objectNotFound() {
+    }
 
-    @ResponseStatus(value=HttpStatus.CONFLICT)
+    @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)
-    public void duplicateName() {}
+    public void duplicateName() {
+    }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)

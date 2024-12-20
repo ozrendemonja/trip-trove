@@ -3,11 +3,6 @@ import React from "react";
 import useClasses from "./ListHeader.styles";
 import { ListHeaderProps } from "./ListHeader.types";
 
-const sortOptions: IDropdownOption[] = [
-  { key: "newest", text: "Newest", selected: true },
-  { key: "oldest", text: "Oldest" }
-];
-
 const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
   const classes = useClasses();
   const onRenderTitle = (options?: IDropdownOption[]): JSX.Element => {
@@ -33,9 +28,10 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
         />
       )}
       <Dropdown
+        onChange={props.onSortOptionChange}
         className={classes.dropdown}
         placeholder="Sort by:"
-        options={sortOptions}
+        options={props.sortOptions}
         onRenderTitle={(options) => onRenderTitle(options)}
       />
     </div>

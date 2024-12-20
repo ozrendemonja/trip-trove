@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,7 @@ public class InMemoryContinentRepository implements ContinentRepo {
 
     @Override
     public Continent save(Continent continent) {
-        if(continent.getId() == null) {
+        if (continent.getId() == null) {
             continent.setId(rowNumber);
             return inMemoryDb.put(rowNumber++, continent);
         }
@@ -28,6 +29,22 @@ public class InMemoryContinentRepository implements ContinentRepo {
     @Override
     public List<Continent> findAll() {
         return inMemoryDb.values().stream().toList();
+    }
+
+    @Override
+    public List<Continent> findAllOrderByUpdatedOnOrCreatedOnAsc() {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(continent -> continent.getUpdatedOn().orElse(continent.getCreatedOn())))
+                .toList();
+    }
+
+    @Override
+    public List<Continent> findAllOrderByUpdatedOnOrCreatedOnDesc() {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(continent -> continent.getUpdatedOn().orElse(continent.getCreatedOn()), Comparator.reverseOrder()))
+                .toList();
     }
 
     @Override

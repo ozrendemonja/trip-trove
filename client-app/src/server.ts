@@ -18,8 +18,13 @@ export default function makeServer(): ReturnType<typeof createServer> {
 
     routes() {
       this.urlPrefix = "http://localhost:8080";
-      this.get("/continents", (schema) => {
-        return schema.db.continents;
+      this.get("/continents", (schema, request) => {
+        const sortDirection = request.queryParams.sd;
+        const result = schema.db.continents.sort();
+        if (sortDirection == "ASC") {
+          return result;
+        }
+        return result.reverse();
       });
 
       this.delete(

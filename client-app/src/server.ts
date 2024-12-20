@@ -18,9 +18,13 @@ export default function makeServer(): ReturnType<typeof createServer> {
 
     routes() {
       this.urlPrefix = "http://localhost:8080";
-      this.get("/continents", (schema) => {
-        return schema.db.continents;
-      });
+      this.get(
+        "/continents",
+        (schema) => {
+          return schema.db.continents;
+        },
+        { timing: 600 }
+      );
 
       this.delete(
         "/continents/:name",
@@ -32,7 +36,7 @@ export default function makeServer(): ReturnType<typeof createServer> {
           );
           schema.db.continents.remove(element);
         },
-        { timing: 400 }
+        { timing: 600 }
       );
 
       this.put(
@@ -48,7 +52,7 @@ export default function makeServer(): ReturnType<typeof createServer> {
           );
           schema.db.continents.update(element.id, { continentName: newName });
         },
-        { timing: 400 }
+        { timing: 600 }
       );
     }
   });

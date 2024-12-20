@@ -5,16 +5,14 @@ export const useClasses = () => {
 
   return mergeStyleSets({
     root: {
-      marginLeft: "100px",
       padding: "12px",
-      maxHeight: "1200px",
-      maxWidth: "1200px",
+      paddingBottom: "24px",
+      maxHeight: "90%",
+      maxWidth: "85%",
       borderRadius: "30px",
       background: theme.palette.white
     },
     listBody: {
-      maxHeight: "600px",
-      maxWidth: "1200px",
       selectors: {
         "& .ms-Check-circle": {
           borderRadius: "50%"

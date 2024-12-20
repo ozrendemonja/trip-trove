@@ -1,4 +1,4 @@
-import { initializeIcons } from "@fluentui/react";
+import { initializeIcons, Stack } from "@fluentui/react";
 import {
   CheckboxVisibility,
   ConstrainMode,
@@ -37,7 +37,7 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
   }, []);
 
   return (
-    <div className={classes.root}>
+    <Stack className={classes.root}>
       <ListHeader {...props.listHeader} />
       <DeleteDialog
         selectedItem={{
@@ -76,7 +76,7 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
         onRenderItemColumn={props.onRenderItemColumn}
         ariaLabelForGrid="Item details"
       />
-    </div>
+    </Stack>
   );
 };
 

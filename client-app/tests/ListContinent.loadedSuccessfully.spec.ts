@@ -77,6 +77,9 @@ test("List should not contain previously deleted element when delete menu closes
   await page.getByRole("menuitem", { name: "Delete continent" }).click();
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
+  await expect(page.getByRole("gridcell", { name: "Australia" })).toHaveCount(
+    0
+  );
 
   await expect(page).toHaveScreenshot();
 });

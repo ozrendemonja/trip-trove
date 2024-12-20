@@ -9,7 +9,7 @@ const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 
-export const appTheme: PartialTheme = {
+const appTheme: PartialTheme = {
   palette: {
     orange: "#fec703"
   },

@@ -5,14 +5,19 @@ import {
   updateContinent
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import { Continent } from "../domain/Continent.types";
+import { Continent, OrderOptions } from "../domain/Continent.types";
 
 managerClient();
 
-export const getContinents = async (): Promise<Continent[]> => {
+export const getContinents = async (
+  orderBy: OrderOptions
+): Promise<Continent[]> => {
   const { data, error } = await getAllContinents({
     headers: {
       "x-api-version": "1"
+    },
+    query: {
+      sd: orderBy
     }
   });
 

@@ -1,3 +1,5 @@
+import { IDropdownOption } from "@fluentui/react";
+
 export interface ListHeaderProps {
   /**
    * Text to display as the header
@@ -12,4 +14,18 @@ export interface ListHeaderProps {
     event?: React.ChangeEvent<HTMLInputElement>,
     newValue?: string
   ) => void;
+
+  /**
+   * Callback issued when the selected option changes.
+   */
+  onSortOptionChange: (
+    event: React.FormEvent<HTMLDivElement>,
+    option?: IDropdownOption,
+    index?: number
+  ) => void;
+
+  /**
+   * Options for the order dropdown.
+   */
+  sortOptions: IDropdownOption[];
 }

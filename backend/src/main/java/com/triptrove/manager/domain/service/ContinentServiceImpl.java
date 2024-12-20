@@ -3,11 +3,13 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
+import com.triptrove.manager.domain.model.SortDirection;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -30,9 +32,12 @@ public class ContinentServiceImpl implements ContinentService {
     }
 
     @Override
-    public List<Continent> getAllContinents() {
-        log.atInfo().log("Getting a list of all continents");
-        return continentRepo.findAll();
+    public List<Continent> getAllContinents(SortDirection sortDirection) {
+        log.atInfo().log("Getting a list of all continents ordered {}", sortDirection);
+        if (sortDirection == SortDirection.ASCENDING) {
+            return continentRepo.findAllOrderByUpdatedOnOrCreatedOnAsc();
+        }
+        return continentRepo.findAllOrderByUpdatedOnOrCreatedOnDesc();
     }
 
     @Override
@@ -56,6 +61,7 @@ public class ContinentServiceImpl implements ContinentService {
         log.atInfo().log("Updating a continent with name '{}'", oldName);
         Continent continent = continentRepo.findByName(oldName).orElseThrow(ObjectNotFoundException::new);
         continent.setName(newName);
+        continent.setUpdatedOn(LocalDateTime.now());
         continentRepo.save(continent);
         log.atInfo().log("Continent name updated to '{}'", newName);
     }

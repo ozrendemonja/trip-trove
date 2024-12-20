@@ -7,7 +7,6 @@ public enum SortDirectionParameter {
     DESC;
 
     public SortDirection toSortDirection() {
-        System.out.println(this);
         return switch (this) {
             case ASC -> SortDirection.ASCENDING;
             case DESC -> SortDirection.DESCENDING;

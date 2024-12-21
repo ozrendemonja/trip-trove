@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-class TripTroveApplicationTests {
+class ContinentTests {
     private final static ObjectMapper mapper = new ObjectMapper();
 
     @Autowired

@@ -65,12 +65,12 @@ public class CountryTests {
     void countrySaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
         var request = new SaveCountryRequest(input.continentName);
 
-        mockMvc.perform(post("/continents")
+        mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.continentName", Is.is(input.errorMessage)));
+                .andExpect(jsonPath("$.countryName", Is.is(input.errorMessage)));
     }
 
     private record InvalidCountryName(String continentName, String errorMessage) {
@@ -83,8 +83,8 @@ public class CountryTests {
                 new InvalidCountryName("   ", "Country name may not be null or empty"),
                 new InvalidCountryName("\t", "Country name may not be null or empty"),
                 new InvalidCountryName("\n", "Country name may not be null or empty"),
-                new InvalidCountryName("a".repeat(65), "Country name may not be longer then 64"),
-                new InvalidCountryName("ab".repeat(64), "Country name may not be longer then 64")
+                new InvalidCountryName("a".repeat(257), "Country name may not be longer then 256"),
+                new InvalidCountryName("ab".repeat(256), "Country name may not be longer then 256")
         );
     }
 

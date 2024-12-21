@@ -1,8 +1,9 @@
 import * as yup from "yup";
 import {
-  ContinentFields,
+  ErrorMessagesFormFields,
+  FormFields,
   ValidationResponse
-} from "../domain/ContinentValidation.types";
+} from "../domain/Validation.types";
 
 const createContinentNameValidation = () => {
   return yup.object({
@@ -14,6 +15,15 @@ const createContinentNameValidation = () => {
       .max(
         64,
         ({ max }) => `Continent name may not be longer then ${max} characters`
+      ),
+    countryName: yup
+      .string()
+      .trim()
+      .ensure()
+      .required("Country name may not be null or empty")
+      .max(
+        256,
+        ({ max }) => `Country name may not be longer then ${max} characters`
       )
   });
 };
@@ -21,19 +31,32 @@ const createContinentNameValidation = () => {
 export class Validator {
   private readonly validator = createContinentNameValidation();
 
-  public validate(input: ContinentFields): ValidationResponse {
+  public validate(input: FormFields): ValidationResponse {
     try {
       this.validator.validateSync(input, { abortEarly: false });
     } catch (error: unknown) {
-      const typedError = error as Error;
+      const typedError = error as yup.ValidationError;
       if (typedError.name === "ValidationError") {
+        const fieldNames = Object.getOwnPropertyNames(input);
+        let validationErrors: ErrorMessagesFormFields = {};
+        typedError.inner.forEach((error: any) => {
+          if (error.path !== undefined) {
+            if (fieldNames.includes(error.path)) {
+              validationErrors = {
+                ...validationErrors,
+                [`${error.path}Error`]: error.errors[0]
+              };
+            }
+          }
+        });
+
         return {
-          isValid: false,
-          errorMessage: (typedError as yup.ValidationError).errors[0]
+          isValid: Object.keys(validationErrors).length === 0,
+          errorMessage: validationErrors
         };
       }
       throw error;
     }
-    return { isValid: true };
+    return { isValid: true, errorMessage: {} };
   }
 }

@@ -11,5 +11,5 @@ export type ErrorMessagesFormFields = ErrorMessages<FormFields>;
 
 export interface ValidationResponse {
   readonly isValid: boolean;
-  readonly errorMessage: ErrorMessagesFormFields;
+  readonly errorMessage?: ErrorMessagesFormFields;
 }

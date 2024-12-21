@@ -40,7 +40,7 @@ export const useCountryFormField = (): CountryFormFieldProps => {
     required: true
   };
 
-  const countinentDropdown: Partial<IDropdownProps> = {
+  const continentDropdown = {
     placeholder: "Select a continent",
     ariaLabel: "Select a continent",
     required: true,
@@ -57,7 +57,7 @@ export const useCountryFormField = (): CountryFormFieldProps => {
   return {
     formFields: {
       countryName: countryNameField,
-      continentName: countinentDropdown
+      continentName: continentDropdown
     },
     isFormValid: isValid
   };

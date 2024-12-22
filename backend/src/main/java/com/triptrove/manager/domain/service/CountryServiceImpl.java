@@ -3,11 +3,14 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
+import com.triptrove.manager.domain.model.SortDirection;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -37,5 +40,14 @@ public class CountryServiceImpl implements CountryService {
         log.atInfo().log("Country '{}' successfully saved", result.getName());
 
         return result.getName();
+    }
+
+    @Override
+    public List<Country> getAllCountries(SortDirection sortDirection) {
+        log.atInfo().log("Getting a list of all countries ordered {}", sortDirection);
+        if (sortDirection == SortDirection.ASCENDING) {
+            return countryRepo.findAllOrderByUpdatedOnOrCreatedOnAsc();
+        }
+        return countryRepo.findAllOrderByUpdatedOnOrCreatedOnDesc();
     }
 }

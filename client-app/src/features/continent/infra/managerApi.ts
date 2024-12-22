@@ -1,12 +1,14 @@
 import {
   deleteContinent,
   getAllContinents,
+  getAllCountries,
   saveContinent,
   saveCountry,
   updateContinent
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import { Continent, OrderOptions } from "../domain/Continent.types";
+import { Country } from "../domain/Country.types.";
 
 managerClient();
 
@@ -102,4 +104,31 @@ export const saveNewCountry = async (
   if (error) {
     throw new Error("Error while saving country", error);
   }
+};
+
+export const getCountries = async (
+  orderBy?: OrderOptions
+): Promise<Country[]> => {
+  const { data, error } = await getAllCountries({
+    headers: {
+      "x-api-version": "1"
+    },
+    query: {
+      sd: orderBy
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find((country) => !country.continentName || !country.countryName)
+  ) {
+    throw new Error("Invalid country data");
+  }
+
+  return data.map((country) => {
+    return { name: country.countryName!, inContinent: country.continentName! };
+  });
 };

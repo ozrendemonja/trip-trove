@@ -12,12 +12,12 @@ import ListElement from "../../../../shared/list-element/ListElement";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { Continent, OrderOptions } from "../../domain/Continent.types";
-import { ContinentListCustomizer } from "../../domain/ContinentListCustomizer";
+import { OrderOptions } from "../../domain/Continent.types";
 import { Country } from "../../domain/Country.types.";
-import { getContinents } from "../../infra/ManagerApi";
-import { useClasses } from "./ListCountry.styles";
+import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
+import { getCountries } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
+import { useClasses } from "./ListCountry.styles";
 
 const onRenderItemColumn = (
   className: string,
@@ -41,7 +41,7 @@ const onRenderItemColumn = (
       </Stack>
     );
   }
-  return item[column.key as keyof Country];
+  return country[column.fieldName as keyof Country] as string;
 };
 
 const sortOptions: IDropdownOption[] = [
@@ -60,9 +60,9 @@ export const CountryList: React.FunctionComponent = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getContinents(order).then((data) => {
+    getCountries(order).then((data) => {
       setIsLoading(true);
-      new ContinentListCustomizer(data, setItems, setColumns).createColumns();
+      new CountryListCustomizer(data, setItems, setColumns).createColumns();
       setIsLoading(false);
     });
   }, [reloadData]);
@@ -100,7 +100,7 @@ export const CountryList: React.FunctionComponent = () => {
           }}
           onRenderMissingItem={onRenderWhenNoMoreItems}
           onRenderItemColumn={(
-            item?: Continent,
+            item?: Country,
             _index?: number,
             column?: IColumn
           ) =>

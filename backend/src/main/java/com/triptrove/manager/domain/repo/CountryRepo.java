@@ -11,4 +11,8 @@ public interface CountryRepo {
     List<Country> findAll();
 
     Optional<Country> findByName(String name);
+
+    List<Country> findAllOrderByUpdatedOnOrCreatedOnAsc();
+
+    List<Country> findAllOrderByUpdatedOnOrCreatedOnDesc();
 }

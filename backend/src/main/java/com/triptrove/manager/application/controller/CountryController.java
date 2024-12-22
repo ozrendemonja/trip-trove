@@ -1,6 +1,8 @@
 package com.triptrove.manager.application.controller;
 
+import com.triptrove.manager.application.dto.GetCountryRequest;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
+import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.CountryService;
@@ -18,6 +20,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -42,6 +45,16 @@ public class CountryController {
         return ResponseEntity.created(location).build();
     }
 
+    @GetMapping()
+    @Operation(summary = "List all saved countries, sorted by the time they were last updated. If the country was never updated, sort by the creation time. " +
+            "Order by the given sort direction, or ascending if none is provided.")
+    public List<GetCountryRequest> getAllCountries(@RequestParam(defaultValue = "ASC", name = "sd") SortDirectionParameter sortDirection) {
+        return countryService.getAllCountries(sortDirection.toSortDirection())
+                .stream()
+                .map(country -> new GetCountryRequest(country.getContinent().getName(), country.getName()))
+                .toList();
+    }
+
     @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)
     public void duplicateName() {
@@ -51,7 +64,7 @@ public class CountryController {
     @ExceptionHandler(ObjectNotFoundException.class)
     public void objectNotFound() {
     }
-    
+
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Map<String, String> handleValidationExceptions(

@@ -5,6 +5,7 @@ import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,5 +36,21 @@ public class InMemoryCountryRepository implements CountryRepo {
                 .stream()
                 .filter(country -> country.getName().equals(name))
                 .findAny();
+    }
+
+    @Override
+    public List<Country> findAllOrderByUpdatedOnOrCreatedOnAsc() {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
+                .toList();
+    }
+
+    @Override
+    public List<Country> findAllOrderByUpdatedOnOrCreatedOnDesc() {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
+                .toList();
     }
 }

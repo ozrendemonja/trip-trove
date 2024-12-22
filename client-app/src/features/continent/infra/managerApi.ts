@@ -2,6 +2,7 @@ import {
   deleteContinent,
   getAllContinents,
   saveContinent,
+  saveCountry,
   updateContinent
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
@@ -10,7 +11,7 @@ import { Continent, OrderOptions } from "../domain/Continent.types";
 managerClient();
 
 export const getContinents = async (
-  orderBy: OrderOptions
+  orderBy?: OrderOptions
 ): Promise<Continent[]> => {
   const { data, error } = await getAllContinents({
     headers: {
@@ -81,5 +82,24 @@ export const changeContinentName = async (
 
   if (error) {
     throw new Error("Error while updating continent", error);
+  }
+};
+
+export const saveNewCountry = async (
+  name: string,
+  continentName: string
+): Promise<void> => {
+  const { error } = await saveCountry({
+    body: {
+      countryName: name,
+      continentName: continentName
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while saving country", error);
   }
 };

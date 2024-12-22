@@ -27,7 +27,7 @@ export const useContinentFormField = (): ContinentFormFieldProps => {
       setValues({ ...values, continentName: value || "" });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.continentName ? errorMessage : undefined,
+      touched.continentName ? errorMessage.continentNameError : undefined,
     validateOnLoad: false,
     validateOnFocusOut: true,
     required: true

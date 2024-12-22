@@ -4,6 +4,8 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import ContinentList from "./features/continent/pages/list-continent/ListContinent";
 import AddContinent from "./features/continent/pages/add-continent/AddContinent";
 import Home from "./features/home/Home";
+import CountryList from "./features/continent/pages/list-country/ListCountry";
+import AddCountry from "./features/continent/pages/add-country/AddCountry";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -40,6 +42,8 @@ root.render(
         <Route path="/" element={<Home />} />
         <Route path="/continents" element={<ContinentList />} />
         <Route path="/add-continent" element={<AddContinent />} />
+        <Route path="/countries" element={<CountryList />} />
+        <Route path="/add-country" element={<AddCountry />} />
       </Routes>
     </BrowserRouter>
     <style>{styleOverrides}</style>

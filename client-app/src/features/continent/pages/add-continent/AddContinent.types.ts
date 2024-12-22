@@ -1,6 +1,6 @@
 import { ITextFieldProps } from "@fluentui/react";
 
-export interface AddContinentFormElements {
+export type AddContinentFormElements {
   continentName: string;
 }
 

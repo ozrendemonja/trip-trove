@@ -13,6 +13,7 @@ public class Country {
     private LocalDateTime createdOn = LocalDateTime.now();
     private LocalDateTime updatedOn;
     private String name;
+    private Continent continent;
 
     public Optional<LocalDateTime> getUpdatedOn() {
         return Optional.ofNullable(updatedOn);

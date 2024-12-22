@@ -2,8 +2,11 @@ package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
+import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import org.hamcrest.core.Is;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class CountryTests {
     private final static ObjectMapper mapper = new ObjectMapper();
+    public static final String CONTINENT_NAME = "Test continent";
 
     @Autowired
     private MockMvc mockMvc;
@@ -37,12 +41,22 @@ public class CountryTests {
     @Autowired
     private CountryRepo countryRepo;
 
+    @Autowired
+    private ContinentRepo continentRepo;
+
+    @BeforeEach
+    void setupContinent() {
+        var continent = new Continent();
+        continent.setName(CONTINENT_NAME);
+        continentRepo.save(continent);
+    }
+
     @ParameterizedTest
     @MethodSource("provideValidCountryNames")
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
     void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
-        var request = new SaveCountryRequest(countryName);
+        var request = new SaveCountryRequest(CONTINENT_NAME, countryName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +77,7 @@ public class CountryTests {
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
     void countrySaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
-        var request = new SaveCountryRequest(input.continentName);
+        var request = new SaveCountryRequest(CONTINENT_NAME, input.continentName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,7 +106,7 @@ public class CountryTests {
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
     void userShouldGetConflictResponseWhenDuplicateCountryNameSend() throws Exception {
-        var request = new SaveCountryRequest("Test country 0");
+        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -104,5 +118,19 @@ public class CountryTests {
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetNotFoundExceptionWhenNonExistingContinentNameIsSend() throws Exception {
+        var request = new SaveCountryRequest("Invalid continent", "Test country");
+
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+
     }
 }

@@ -6,7 +6,7 @@ export type AddCountryFormElements {
 }
 
 type FormFields = {
-  continentName: Omit<IDropdownProps, "options">;
+  continentName: Omit<IDropdownProps, "options"> & {value: string};
   countryName: ITextFieldProps;
 };
 

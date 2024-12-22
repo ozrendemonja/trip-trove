@@ -44,6 +44,7 @@ export const useCountryFormField = (): CountryFormFieldProps => {
     placeholder: "Select a continent",
     ariaLabel: "Select a continent",
     required: true,
+    value: values.continentName,
     onChange: (
       _event: React.FormEvent<HTMLDivElement>,
       option?: IDropdownOption,

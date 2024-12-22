@@ -62,7 +62,10 @@ export const AddCountry: React.FunctionComponent = () => {
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
             onClick={() => {
-              saveNewCountry(formFields.countryName.value!);
+              saveNewCountry(
+                formFields.countryName.value!,
+                formFields.continentName.value
+              );
               navigate(-1);
             }}
             disabled={!isFormValid}

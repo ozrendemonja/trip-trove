@@ -85,10 +85,14 @@ export const changeContinentName = async (
   }
 };
 
-export const saveNewCountry = async (name: string): Promise<void> => {
+export const saveNewCountry = async (
+  name: string,
+  continentName: string
+): Promise<void> => {
   const { error } = await saveCountry({
     body: {
-      countryName: name
+      countryName: name,
+      continentName: continentName
     },
     headers: {
       "x-api-version": "1"

@@ -1,8 +1,8 @@
 package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.SaveCountryRequest;
-import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.DuplicateNameException;
+import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.CountryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,10 +33,7 @@ public class CountryController {
             @ApiResponse(description = "Country already exists", responseCode = "409")
     })
     public ResponseEntity<Void> saveCountry(@RequestBody @Valid SaveCountryRequest countryRequest) {
-        var country = new Country();
-        country.setName(countryRequest.countryName());
-
-        var result = countryService.saveCountry(country);
+        var result = countryService.saveCountry(countryRequest.continentName(), countryRequest.countryName());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{country}")
@@ -50,6 +47,11 @@ public class CountryController {
     public void duplicateName() {
     }
 
+    @ResponseStatus(value = HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ObjectNotFoundException.class)
+    public void objectNotFound() {
+    }
+    
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Map<String, String> handleValidationExceptions(

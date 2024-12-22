@@ -34,7 +34,7 @@ export const useCountryFormField = (): CountryFormFieldProps => {
       setValues({ ...values, countryName: value ?? "" });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.countryName ? errorMessage.countryNameError : undefined,
+      touched.countryName ? errorMessage?.countryNameError : undefined,
     validateOnLoad: false,
     validateOnFocusOut: true,
     required: true

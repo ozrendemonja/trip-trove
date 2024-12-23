@@ -1,7 +1,8 @@
 package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.triptrove.manager.application.dto.GetCountryRequest;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.triptrove.manager.application.dto.GetCountryResponse;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.repo.ContinentRepo;
@@ -35,7 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class CountryTests {
     private final static ObjectMapper mapper = new ObjectMapper();
-    public static final String CONTINENT_NAME = "Test continent";
+    public static final String CONTINENT_NAME_0 = "Test continent";
+    public static final String CONTINENT_NAME_1 = "Test continent new";
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -48,9 +51,13 @@ public class CountryTests {
 
     @BeforeEach
     void setupContinent() {
-        var continent = new Continent();
-        continent.setName(CONTINENT_NAME);
-        continentRepo.save(continent);
+        var continent0 = new Continent();
+        continent0.setName(CONTINENT_NAME_0);
+        continentRepo.save(continent0);
+
+        var continent2 = new Continent();
+        continent2.setName(CONTINENT_NAME_1);
+        continentRepo.save(continent2);
     }
 
     @ParameterizedTest
@@ -58,7 +65,7 @@ public class CountryTests {
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
     void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, countryName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +86,7 @@ public class CountryTests {
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
     void countrySaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, input.continentName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.continentName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -107,8 +114,8 @@ public class CountryTests {
     @Test
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void userShouldGetConflictResponseWhenDuplicateCountryNameSend() throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
+    void userShouldGetConflictResponseWhenCountryNameUnderGivenContinentAlreadyExists() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -120,6 +127,26 @@ public class CountryTests {
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeSavedWhenGivenCountryNameAlreadyExistsUnderDifferentContinent() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode("Test country 0", StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -148,31 +175,28 @@ public class CountryTests {
                 .getResponse()
                 .getContentAsString();
 
-        GetCountryRequest[] response = mapper.readValue(jsonResponse, GetCountryRequest[].class);
+        GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
         assertThat(response).isEmpty();
     }
 
     @Test
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void countriesShouldBeReturnedInAscendingOrderWhenNoOrderIsSent() throws Exception {
-        var expected = new GetCountryRequest[3];
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
-        expected[0] = new GetCountryRequest(CONTINENT_NAME, "Test country 0");
+    void countriesShouldBeReturnedInTwoPagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
+        mapper.registerModule(new JavaTimeModule());
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
 
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 1");
-        expected[1] = new GetCountryRequest(CONTINENT_NAME, "Test country 1");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 1");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
 
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 2");
-        expected[2] = new GetCountryRequest(CONTINENT_NAME, "Test country 2");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 2");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
@@ -186,31 +210,43 @@ public class CountryTests {
                 .getResponse()
                 .getContentAsString();
 
-        GetCountryRequest[] response = mapper.readValue(jsonResponse, GetCountryRequest[].class);
-        assertThat(response).usingRecursiveFieldByFieldElementComparator().isEqualTo(expected);
+        GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].countryName()).isEqualTo("Test country 2");
+        assertThat(response[1].countryName()).isEqualTo("Test country 1");
+
+
+        jsonResponse = mockMvc.perform(get("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("countryId", response[1].countryId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].countryName()).isEqualTo("Test country 0");
     }
 
     @Test
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void countriesShouldBeReturnedInDescendingOrderWhenDescOrderIsSent() throws Exception {
-        var expected = new GetCountryRequest[3];
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
-        expected[2] = new GetCountryRequest(CONTINENT_NAME, "Test country 0");
+    void countriesShouldBeReturnedInTwoPagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
+        mapper.registerModule(new JavaTimeModule());
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
-
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 1");
-        expected[1] = new GetCountryRequest(CONTINENT_NAME, "Test country 1");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 1");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
-
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 2");
-        expected[0] = new GetCountryRequest(CONTINENT_NAME, "Test country 2");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 2");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
@@ -218,15 +254,35 @@ public class CountryTests {
 
         var jsonResponse = mockMvc.perform(get("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("sd", "DESC")
+                        .param("sd", "ASC")
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        GetCountryRequest[] response = mapper.readValue(jsonResponse, GetCountryRequest[].class);
-        assertThat(response).usingRecursiveFieldByFieldElementComparator().isEqualTo(expected);
+        GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].countryName()).isEqualTo("Test country 0");
+        assertThat(response[0].countryId()).isEqualTo(0);
+        assertThat(response[1].countryName()).isEqualTo("Test country 1");
+        assertThat(response[1].countryId()).isEqualTo(1);
+
+        jsonResponse = mockMvc.perform(get("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .param("countryId", response[1].countryId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].countryName()).isEqualTo("Test country 2");
+        assertThat(response[0].countryId()).isEqualTo(2);
     }
 
 }

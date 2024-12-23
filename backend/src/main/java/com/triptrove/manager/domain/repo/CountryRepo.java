@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.CountryScrollPosition;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,7 +13,13 @@ public interface CountryRepo {
 
     Optional<Country> findByName(String name);
 
-    List<Country> findAllOrderByUpdatedOnOrCreatedOnAsc();
+    List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry);
 
-    List<Country> findAllOrderByUpdatedOnOrCreatedOnDesc();
+    List<Country> findNextNewest(int pageSize, CountryScrollPosition afterCountry);
+
+    List<Country> findTopNewest(int pageSize);
+
+    List<Country> findTopOldest(int pageSize);
+
+    Optional<Country> findByNameAndContinentName(String countryName, String continentName);
 }

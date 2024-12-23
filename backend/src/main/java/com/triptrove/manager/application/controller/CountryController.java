@@ -1,12 +1,14 @@
 package com.triptrove.manager.application.controller;
 
-import com.triptrove.manager.application.dto.GetCountryRequest;
+import com.triptrove.manager.application.dto.CountryParameter;
+import com.triptrove.manager.application.dto.GetCountryResponse;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
 import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.CountryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -46,12 +48,31 @@ public class CountryController {
     }
 
     @GetMapping()
-    @Operation(summary = "List all saved countries, sorted by the time they were last updated. If the country was never updated, sort by the creation time. " +
-            "Order by the given sort direction, or ascending if none is provided.")
-    public List<GetCountryRequest> getAllCountries(@RequestParam(defaultValue = "ASC", name = "sd") SortDirectionParameter sortDirection) {
-        return countryService.getAllCountries(sortDirection.toSortDirection())
+    @Operation(summary = "List paginable countries, sorted by their last updated time. If the country was never updated, sort by the creation time. " +
+            "Order by the given sort direction, or ascending if none is provided.", parameters = {
+            @Parameter(name = "sd", description = "Direction of ordering countries using last updated time, or by creation time if not updated."),
+            @Parameter(name = "after", description = "Last country retrieved on the previous page. Leave empty if this is the first page.")
+    })
+    public List<GetCountryResponse> getAllCountries(
+            @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
+            CountryParameter after) {
+        // Add in config
+        // spring:
+        //  data:
+        //    web:
+        //      pageable:
+        //        default-page-size: 10
+
+        boolean isFirstPage = after == null || after.countryId() == null;
+        if (isFirstPage) {
+            return countryService.getCountries(sortDirection.toSortDirection())
+                    .stream()
+                    .map(GetCountryResponse::from)
+                    .toList();
+        }
+        return countryService.getCountries(after.toCountryScrollPosition(), sortDirection.toSortDirection())
                 .stream()
-                .map(country -> new GetCountryRequest(country.getContinent().getName(), country.getName()))
+                .map(GetCountryResponse::from)
                 .toList();
     }
 

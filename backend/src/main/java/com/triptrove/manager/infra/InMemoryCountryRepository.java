@@ -1,6 +1,7 @@
 package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.CountryScrollPosition;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -38,19 +39,40 @@ public class InMemoryCountryRepository implements CountryRepo {
                 .findAny();
     }
 
+
     @Override
-    public List<Country> findAllOrderByUpdatedOnOrCreatedOnAsc() {
+    public List<Country> findTopNewest(int pageSize) {
         return inMemoryDb.values()
                 .stream()
-                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
+                .limit(pageSize)
                 .toList();
     }
 
     @Override
-    public List<Country> findAllOrderByUpdatedOnOrCreatedOnDesc() {
+    public List<Country> findTopOldest(int pageSize) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
+                .limit(pageSize)
+                .toList();
+    }
+
+    @Override
+    public List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
+                .dropWhile(country -> country.getId() <= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isBefore(afterCountry.updatedOn()))
+                .toList();
+    }
+
+    @Override
+    public List<Country> findNextNewest(int pageSize, CountryScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()
                 .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
+                .dropWhile(country -> country.getId() >= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isAfter(afterCountry.updatedOn()))
                 .toList();
     }
 }

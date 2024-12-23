@@ -1,9 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.model.DuplicateNameException;
-import com.triptrove.manager.domain.model.ObjectNotFoundException;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
@@ -43,11 +40,22 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public List<Country> getAllCountries(SortDirection sortDirection) {
-        log.atInfo().log("Getting a list of all countries ordered {}", sortDirection);
+    public List<Country> getCountries(CountryScrollPosition afterCountry, SortDirection sortDirection) {
+        log.atInfo().log("Getting a list of countries ordered in {} order, updated before {}", sortDirection, afterCountry.updatedOn());
+
         if (sortDirection == SortDirection.ASCENDING) {
-            return countryRepo.findAllOrderByUpdatedOnOrCreatedOnAsc();
+            return countryRepo.findNextOldest(2, afterCountry);
         }
-        return countryRepo.findAllOrderByUpdatedOnOrCreatedOnDesc();
+        return countryRepo.findNextNewest(2, afterCountry);
+    }
+
+    @Override
+    public List<Country> getCountries(SortDirection sortDirection) {
+        log.atInfo().log("Getting the first page of countries, ordered in {} order", sortDirection);
+
+        if (sortDirection == SortDirection.ASCENDING) {
+            return countryRepo.findTopOldest(2);
+        }
+        return countryRepo.findTopNewest(2);
     }
 }

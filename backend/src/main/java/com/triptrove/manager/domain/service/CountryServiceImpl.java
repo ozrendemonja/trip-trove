@@ -19,8 +19,8 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public String saveCountry(String continentName, String countryName) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
-        if (countryRepo.findByName(countryName).isPresent()) {
-            log.atInfo().log("Country already exists in the database");
+        if (countryRepo.findByNameAndContinentName(countryName, continentName).isPresent()) {
+            log.atInfo().log("Country '{}' in '{}' already exists in the database.", countryName, continentName);
             throw new DuplicateNameException();
         }
         var continent = continentRepo.findByName(continentName);

@@ -36,7 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class CountryTests {
     private final static ObjectMapper mapper = new ObjectMapper();
-    public static final String CONTINENT_NAME = "Test continent";
+    public static final String CONTINENT_NAME_0 = "Test continent";
+    public static final String CONTINENT_NAME_1 = "Test continent new";
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -49,9 +51,13 @@ public class CountryTests {
 
     @BeforeEach
     void setupContinent() {
-        var continent = new Continent();
-        continent.setName(CONTINENT_NAME);
-        continentRepo.save(continent);
+        var continent0 = new Continent();
+        continent0.setName(CONTINENT_NAME_0);
+        continentRepo.save(continent0);
+
+        var continent2 = new Continent();
+        continent2.setName(CONTINENT_NAME_1);
+        continentRepo.save(continent2);
     }
 
     @ParameterizedTest
@@ -59,7 +65,7 @@ public class CountryTests {
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
     void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, countryName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,7 +86,7 @@ public class CountryTests {
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
     void countrySaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, input.continentName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.continentName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -108,8 +114,8 @@ public class CountryTests {
     @Test
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void userShouldGetConflictResponseWhenDuplicateCountryNameSend() throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
+    void userShouldGetConflictResponseWhenCountryNameUnderGivenContinentAlreadyExists() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -121,6 +127,26 @@ public class CountryTests {
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeSavedWhenGivenCountryNameAlreadyExistsUnderDifferentContinent() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode("Test country 0", StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -158,19 +184,19 @@ public class CountryTests {
         // TMP solution for non existing clear of database
     void countriesShouldBeReturnedInTwoPagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
         mapper.registerModule(new JavaTimeModule());
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
 
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 1");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 1");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
 
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 2");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 2");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
@@ -210,17 +236,17 @@ public class CountryTests {
         // TMP solution for non existing clear of database
     void countriesShouldBeReturnedInTwoPagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
         mapper.registerModule(new JavaTimeModule());
-        var request = new SaveCountryRequest(CONTINENT_NAME, "Test country 0");
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 1");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 1");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")
                 .content(mapper.writeValueAsString(request)));
-        request = new SaveCountryRequest(CONTINENT_NAME, "Test country 2");
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 2");
         mockMvc.perform(post("/countries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-api-version", "1")

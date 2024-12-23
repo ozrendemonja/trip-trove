@@ -59,6 +59,11 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
+    public Optional<Country> findByNameAndContinentName(String countryName, String continentName) {
+        return findByName(countryName).filter(country -> country.getContinent().getName().equals(continentName));
+    }
+
+    @Override
     public List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()

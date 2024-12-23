@@ -12,17 +12,6 @@ export class CountryListCustomizer extends ListElementCustomizer<Country> {
     this.callback(items);
   }
 
-  private setSetupForSortIcon = (column: IColumn): IColumn => {
-    const result = { ...column };
-    if (result.name === "name") {
-      result.showSortIconWhenUnsorted = true;
-      result.isCollapsible = true;
-      result.isMultiline = true;
-      result.minWidth = 100;
-    }
-    return result;
-  };
-
   private setDefaultLayout = (column: IColumn): IColumn => {
     const result = { ...column };
 
@@ -30,14 +19,15 @@ export class CountryListCustomizer extends ListElementCustomizer<Country> {
     result.isMultiline = false;
     result.minWidth = 100;
     result.isResizable = true;
+    result.isCollapsible = true;
 
     return result;
   };
 
   public createColumns = (): void => {
-    const columns = buildColumns(this.items, true, this.onColumnClick)
-      .map((column) => this.setSetupForSortIcon(column))
-      .map((column) => this.setDefaultLayout(column));
+    const columns = buildColumns(this.items, true, this.onColumnClick).map(
+      (column) => this.setDefaultLayout(column)
+    );
 
     this.columns = columns;
     this.callback2(this.columns);

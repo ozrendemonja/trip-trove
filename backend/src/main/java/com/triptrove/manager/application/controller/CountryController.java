@@ -56,13 +56,6 @@ public class CountryController {
     public List<GetCountryResponse> getAllCountries(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             CountryParameter after) {
-        // Add in config
-        // spring:
-        //  data:
-        //    web:
-        //      pageable:
-        //        default-page-size: 10
-
         boolean isFirstPage = after == null || after.countryId() == null;
         if (isFirstPage) {
             return countryService.getCountries(sortDirection.toSortDirection())
@@ -79,11 +72,13 @@ public class CountryController {
     @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)
     public void duplicateName() {
+        // Nothing needed because of transition to global exception handler
     }
 
     @ResponseStatus(value = HttpStatus.NOT_FOUND)
     @ExceptionHandler(ObjectNotFoundException.class)
     public void objectNotFound() {
+        // Nothing needed because of transition to global exception handler
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -91,7 +86,7 @@ public class CountryController {
     public Map<String, String> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);

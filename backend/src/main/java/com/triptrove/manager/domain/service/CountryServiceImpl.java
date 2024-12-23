@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
+import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.List;
 public class CountryServiceImpl implements CountryService {
     private final CountryRepo countryRepo;
     private final ContinentRepo continentRepo;
+    private final ManagerProperties managerProperties;
 
     @Override
     public String saveCountry(String continentName, String countryName) {
@@ -44,9 +46,9 @@ public class CountryServiceImpl implements CountryService {
         log.atInfo().log("Getting a list of countries ordered in {} order, updated before {}", sortDirection, afterCountry.updatedOn());
 
         if (sortDirection == SortDirection.ASCENDING) {
-            return countryRepo.findNextOldest(2, afterCountry);
+            return countryRepo.findNextOldest(managerProperties.pageSize(), afterCountry);
         }
-        return countryRepo.findNextNewest(2, afterCountry);
+        return countryRepo.findNextNewest(managerProperties.pageSize(), afterCountry);
     }
 
     @Override
@@ -54,8 +56,8 @@ public class CountryServiceImpl implements CountryService {
         log.atInfo().log("Getting the first page of countries, ordered in {} order", sortDirection);
 
         if (sortDirection == SortDirection.ASCENDING) {
-            return countryRepo.findTopOldest(2);
+            return countryRepo.findTopOldest(managerProperties.pageSize());
         }
-        return countryRepo.findTopNewest(2);
+        return countryRepo.findTopNewest(managerProperties.pageSize());
     }
 }

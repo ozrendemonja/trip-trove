@@ -1,10 +1,9 @@
-import { IDetailsRowProps } from "@fluentui/react";
 import { ListHeaderProps } from "../../../../shared/list-element/ui/list-header/ListHeader.types";
 
 export const onRenderWhenNoMoreItems = (
-  _index?: number,
-  _rowProps?: IDetailsRowProps
+  triggerDataFetching: () => void
 ): React.ReactNode => {
+  triggerDataFetching();
   return null;
 };
 

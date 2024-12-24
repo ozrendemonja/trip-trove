@@ -1,11 +1,11 @@
 import { buildColumns, IColumn } from "@fluentui/react";
 import { ListElementCustomizer } from "../../../shared/list-element/ListElement.types";
-import { Country } from "./Country.types.";
+import { CountryRow } from "../pages/list-country/ListCountry.types";
 
-export class CountryListCustomizer extends ListElementCustomizer<Country> {
+export class CountryListCustomizer extends ListElementCustomizer<CountryRow> {
   constructor(
-    items: Country[],
-    callback: (items: Country[]) => void,
+    items: CountryRow[],
+    callback: (items: CountryRow[]) => void,
     callback2: (columns: IColumn[]) => void
   ) {
     super(items, callback, callback2);

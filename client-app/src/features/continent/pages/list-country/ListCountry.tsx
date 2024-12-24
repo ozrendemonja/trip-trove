@@ -136,7 +136,11 @@ export const CountryList: React.FunctionComponent = () => {
             )
           }
           selectedItemName={(selection: Selection<Country>) => {
-            if (selection.getSelection()) {
+            if (
+              selection &&
+              selection.getSelection() &&
+              selection.getSelection().length > 0
+            ) {
               return selection.getSelection()[0].name;
             }
           }}

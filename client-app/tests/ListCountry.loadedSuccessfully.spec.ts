@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("Show list of continents with disabled delete button when no element is selected ", async ({
+test("Show list of countries with disabled delete button when no element is selected ", async ({
   page
 }) => {
   await expect(page).toHaveScreenshot();

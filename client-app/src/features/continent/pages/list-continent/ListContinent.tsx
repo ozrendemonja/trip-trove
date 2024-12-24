@@ -112,14 +112,7 @@ export const ContinentList: React.FunctionComponent = () => {
             )
           }
           selectedItemName={(selection: Selection<Continent>) => {
-            if (
-              selection &&
-              selection.getSelection() &&
-              selection.getSelection().length > 0
-            ) {
-              selection.getSelection()[0].name;
-            }
-            return "";
+            return selection.getSelection()[0].name;
           }}
         />
       )}

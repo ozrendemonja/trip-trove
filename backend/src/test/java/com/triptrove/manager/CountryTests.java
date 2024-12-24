@@ -285,4 +285,81 @@ public class CountryTests {
         assertThat(response[0].countryId()).isEqualTo(2);
     }
 
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countriesShouldBeReturnedInThreePagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
+        mapper.registerModule(new JavaTimeModule());
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        mockMvc.perform(post("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-version", "1")
+                .content(mapper.writeValueAsString(request)));
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 1");
+        mockMvc.perform(post("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-version", "1")
+                .content(mapper.writeValueAsString(request)));
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 2");
+        mockMvc.perform(post("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-version", "1")
+                .content(mapper.writeValueAsString(request)));
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 3");
+        mockMvc.perform(post("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-version", "1")
+                .content(mapper.writeValueAsString(request)));
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 4");
+        mockMvc.perform(post("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("x-api-version", "1")
+                .content(mapper.writeValueAsString(request)));
+
+        var jsonResponse = mockMvc.perform(get("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].countryName()).isEqualTo("Test country 0");
+        assertThat(response[1].countryName()).isEqualTo("Test country 1");
+
+        jsonResponse = mockMvc.perform(get("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .param("countryId", response[1].countryId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].countryName()).isEqualTo("Test country 2");
+        assertThat(response[1].countryName()).isEqualTo("Test country 3");
+
+        jsonResponse = mockMvc.perform(get("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .param("countryId", response[1].countryId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].countryName()).isEqualTo("Test country 4");
+    }
+
 }

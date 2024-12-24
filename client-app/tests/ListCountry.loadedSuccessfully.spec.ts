@@ -42,3 +42,49 @@ test("List should be ordered ascending when sorted by oldest", async ({
 
   await expect(page).toHaveScreenshot();
 });
+
+test("All delete menu buttons are enabled when open it", async ({ page }) => {
+  await page.getByRole("gridcell", { name: "San Marino" }).click();
+  await page.getByRole("menuitem", { name: "Delete country" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("All elements should be present when canceling delete menu", async ({
+  page
+}) => {
+  await page.getByRole("gridcell", { name: "San Marino" }).click();
+  await page.getByRole("menuitem", { name: "Delete country" }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("All buttons on delete menu are disabled when delete request is sent", async ({
+  page
+}) => {
+  await page.getByRole("gridcell", { name: "San Marino" }).click();
+  await page.getByRole("menuitem", { name: "Delete country" }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should not contain previously deleted element when delete menu closes", async ({
+  page
+}) => {
+  await page.getByRole("gridcell", { name: "San Marino" }).click();
+  await page.getByRole("menuitem", { name: "Delete country" }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
+  await expect(page.getByRole("gridcell", { name: "San Marino" })).toHaveCount(
+    0
+  );
+  await expect(
+    page
+      .locator('div[data-selection-index="1"]')
+      .getByRole("gridcell", { name: "Monaco" })
+  ).toHaveCount(1);
+
+  await expect(page).toHaveScreenshot();
+});

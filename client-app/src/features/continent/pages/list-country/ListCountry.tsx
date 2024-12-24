@@ -28,6 +28,9 @@ const onRenderItemColumn = (
   country?: Country,
   column?: IColumn
 ): JSX.Element | string | number => {
+  if (column?.key === "skipElement") {
+    return null;
+  }
   if (column?.key === "name") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>

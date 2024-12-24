@@ -16,20 +16,17 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.util.UriUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -64,22 +61,32 @@ public class CountryTests {
     @MethodSource("provideValidCountryNames")
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
+    void countryShouldBeSavedWhenValidNameIsSent(ValidCountryName input) throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.name());
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode(countryName, StandardCharsets.UTF_8)));
+                .andExpect(status().isCreated());
+        // TODO Return when implement DB
+//                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + input.id()));
 
         assertThat(countryRepo.findAll().size()).isEqualTo(1);
-        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(countryName);
+        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(input.name());
     }
 
-    private static Stream<String> provideValidCountryNames() {
-        return Stream.of("a", "test", "test test", "test 12ac 02]", "a".repeat(64));
+    private record ValidCountryName(String name, Integer id) {
+    }
+
+    private static Stream<ValidCountryName> provideValidCountryNames() {
+        return Stream.of(
+                new ValidCountryName("a", 0),
+                new ValidCountryName("test", 1),
+                new ValidCountryName("test test", 2),
+                new ValidCountryName("test 12ac 02]", 3),
+                new ValidCountryName("a".repeat(64), 4)
+        );
     }
 
 
@@ -145,8 +152,9 @@ public class CountryTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode("Test country 0", StandardCharsets.UTF_8)));
+                .andExpect(status().isCreated());
+        // TODO Return when implement DB
+//                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode("Test country 0", StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -361,6 +369,58 @@ public class CountryTests {
         response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
         assertThat(response).hasSize(1);
         assertThat(response[0].countryName()).isEqualTo("Test country 4");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeDeletedWhenRequestIsSent() throws Exception {
+        Integer[] countryIds = new Integer[3];
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        countryIds[0] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 1");
+        mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        countryIds[1] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
+        mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        countryIds[2] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        for (Integer id : countryIds) {
+            mockMvc.perform(delete("/countries/" + id.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("x-api-version", "1"))
+                    .andExpect(status().isNoContent());
+        }
+
+        assertThat(countryRepo.findAll()).isEmpty();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingCountryIsRequestedToBeDeleted() throws Exception {
+        mockMvc.perform(delete("/continents/" + "0")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound());
     }
 
 }

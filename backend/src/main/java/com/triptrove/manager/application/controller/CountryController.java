@@ -41,8 +41,8 @@ public class CountryController {
         var result = countryService.saveCountry(countryRequest.continentName(), countryRequest.countryName());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{country}")
-                .buildAndExpand(result)
+                .path("/{id}")
+                .buildAndExpand(result.getId())
                 .toUri();
         return ResponseEntity.created(location).build();
     }
@@ -68,6 +68,16 @@ public class CountryController {
                 .map(GetCountryResponse::from)
                 .toList();
     }
+
+    @DeleteMapping(path = "/{id}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete country by name", responses = {
+            @ApiResponse(description = "Deleted country by name", responseCode = "204"),
+    })
+    public void deleteCountry(@PathVariable Integer id) {
+        countryService.deleteCountry(id);
+    }
+
 
     @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)

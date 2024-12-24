@@ -20,6 +20,7 @@ import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
 import { toLastReadCountry } from "./ListCountry.utils";
+import { deleteRows } from "../../domain/Country";
 
 const onRenderItemColumn = (
   className: string,
@@ -27,6 +28,9 @@ const onRenderItemColumn = (
   country?: Country,
   column?: IColumn
 ): JSX.Element | string | number => {
+  if (column?.key === "skipElement") {
+    return null;
+  }
   if (column?.key === "name") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
@@ -108,8 +112,11 @@ export const CountryList: React.FunctionComponent = () => {
           }}
           deleteRowOptions={{
             text: "Delete country",
-            onDeleteRow: async (selection: Selection<Country>) => {
-              //   await deleteRows(selection.getSelection());
+            onDeleteRow: async (selection: Selection<CountryRow>) => {
+              await deleteRows(selection.getSelection());
+              setCountryCustomizer(
+                new CountryListCustomizer(setItems, setColumns)
+              );
               toggleReloadData();
             }
           }}
@@ -128,9 +135,15 @@ export const CountryList: React.FunctionComponent = () => {
               column
             )
           }
-          selectedItemName={(selection: Selection<Country>) =>
-            selection.getSelection()[0].name
-          }
+          selectedItemName={(selection: Selection<Country>) => {
+            if (
+              selection &&
+              selection.getSelection() &&
+              selection.getSelection().length > 0
+            ) {
+              return selection.getSelection()[0].name;
+            }
+          }}
         />
       )}
     </>

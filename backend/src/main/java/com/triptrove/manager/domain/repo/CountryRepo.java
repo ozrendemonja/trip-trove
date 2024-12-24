@@ -22,4 +22,6 @@ public interface CountryRepo {
     List<Country> findTopOldest(int pageSize);
 
     Optional<Country> findByNameAndContinentName(String countryName, String continentName);
+
+    void deleteById(Integer id);
 }

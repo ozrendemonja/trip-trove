@@ -111,9 +111,9 @@ export const ContinentList: React.FunctionComponent = () => {
               column
             )
           }
-          selectedItemName={(selection: Selection<Continent>) =>
-            selection.getSelection()[0].name
-          }
+          selectedItemName={(selection: Selection<Continent>) => {
+            return selection.getSelection()[0].name;
+          }}
         />
       )}
     </>

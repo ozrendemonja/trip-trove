@@ -23,10 +23,25 @@ export class CountryListCustomizer extends ListElementCustomizer<CountryRow> {
     return result;
   };
 
+  private hideIdHeader(column: IColumn): any {
+    const result = { ...column };
+
+    if (result.key == "id") {
+      result.maxWidth = 1;
+      result.isResizable = true;
+      result.key = "skipElement";
+      result.onRenderHeader = () => {
+        return null;
+      };
+    }
+
+    return result;
+  }
+
   public createColumns = (): void => {
-    const columns = buildColumns(this.items, true).map((column) =>
-      this.setDefaultLayout(column)
-    );
+    const columns = buildColumns(this.items, true)
+      .map((column) => this.hideIdHeader(column))
+      .map((column) => this.setDefaultLayout(column));
 
     this.columns = columns;
     this.notifyListColumnChanged(this.columns);

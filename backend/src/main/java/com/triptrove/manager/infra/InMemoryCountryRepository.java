@@ -64,6 +64,11 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
+    public void deleteById(Integer id) {
+        inMemoryDb.remove(id);
+    }
+
+    @Override
     public List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()

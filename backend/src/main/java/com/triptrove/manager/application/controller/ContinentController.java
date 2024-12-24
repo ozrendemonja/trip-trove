@@ -63,7 +63,7 @@ public class ContinentController {
 
     @DeleteMapping(path = "/{name}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Retrieve continent by name", responses = {
+    @Operation(summary = "Delete continent by name", responses = {
             @ApiResponse(description = "Deleted continent by name", responseCode = "204"),
     })
     public void deleteContinent(@PathVariable String name) {
@@ -91,11 +91,13 @@ public class ContinentController {
     @ResponseStatus(value = HttpStatus.NOT_FOUND)
     @ExceptionHandler(ObjectNotFoundException.class)
     public void objectNotFound() {
+        // Nothing needed because of transition to global exception handler
     }
 
     @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)
     public void duplicateName() {
+        // Nothing needed because of transition to global exception handler
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -103,7 +105,7 @@ public class ContinentController {
     public Map<String, String> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);

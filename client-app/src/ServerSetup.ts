@@ -103,6 +103,20 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 600 }
       );
+
+      this.delete(
+        "/countries/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          const element = schema.db.countries.findBy(
+            (data) => data.countryId == id
+          );
+
+          schema.db.countries.remove(element);
+        },
+        { timing: 600 }
+      );
     }
   });
 }

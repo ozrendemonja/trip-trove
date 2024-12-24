@@ -1,5 +1,4 @@
 import { IColumn, Selection } from "@fluentui/react";
-import { Continent } from "../../features/continent/domain/Continent.types";
 import { AddRowOptionsProps } from "./ui/delete-dialog/DeleteDialog.types";
 import { ListHeaderProps } from "./ui/list-header/ListHeader.types";
 
@@ -17,7 +16,7 @@ export interface ListElementProps<T> {
 
   deleteRowOptions: {
     text: string;
-    onDeleteRow: (selection: Selection<Continent>) => void;
+    onDeleteRow: (selection: Selection<T>) => void;
   };
 
   onRenderMissingItem: (index?: number) => null;

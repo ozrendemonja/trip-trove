@@ -9,6 +9,8 @@
     "openapi-ts": "openapi-ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "test-unit": "jest",
+    "test-storybook": "playwright test",
     "lint:ts": "eslint --ext \".js,.ts,.tsx\" \"src/\""
   },
   "dependencies": {

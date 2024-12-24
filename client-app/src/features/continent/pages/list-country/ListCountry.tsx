@@ -19,6 +19,7 @@ import { getCountries } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
+import { toLastReadCountry } from "./ListCountry.utils";
 
 const onRenderItemColumn = (
   className: string,
@@ -53,46 +54,28 @@ const sortOptions: IDropdownOption[] = [
 export const CountryList: React.FunctionComponent = () => {
   const classes = useClasses();
 
-  const [items, setItems] = useState<CountryRow[] | undefined>(undefined);
-  const [columns, setColumns] = useState(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<CountryRow[]>([]);
+  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
+    useBoolean(true);
   const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
-  const [order, setOrder] = useState<OrderOptions>("ASC");
+  const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadCountry | undefined>(
     undefined
   );
   const navigate = useNavigate();
+  const [countryCustomizer, setCountryCustomizer] = useState(
+    new CountryListCustomizer(setItems, setColumns)
+  );
 
   useEffect(() => {
     getCountries(lastElement, order).then((data) => {
-      setIsLoading(true);
-      setLastElement(
-        data.length > 0
-          ? {
-              id: data.at(-1)!.id,
-              updatedOn: data.at(-1)!.updatedOn
-            }
-          : undefined
-      );
-      const result: CountryRow[] = data.map((country) => {
-        return {
-          name: country.name,
-          continent: country.inContinent
-        } as CountryRow;
-      });
-
-      let tmpItems = items ?? [];
-      if (data) {
-        tmpItems = items
-          ? items.slice(0, items.length - 1).concat(result)
-          : result;
-      }
-      if (result.length > 0) {
-        tmpItems.push(null);
-      }
-
-      new CountryListCustomizer(tmpItems, setItems, setColumns).createColumns();
-      setIsLoading(false);
+      setLoading();
+      setLastElement(toLastReadCountry(data));
+      const countryRows = data.map(CountryRow.from);
+      setCountryCustomizer(countryCustomizer.withRows(countryRows));
+      countryCustomizer.createColumns();
+      setNotLoading();
     });
   }, [reloadData]);
 
@@ -112,6 +95,9 @@ export const CountryList: React.FunctionComponent = () => {
               _index?: number
             ) => {
               setOrder(option!.key as OrderOptions);
+              setCountryCustomizer(
+                new CountryListCustomizer(setItems, setColumns)
+              );
               toggleReloadData();
             },
             sortOptions: sortOptions

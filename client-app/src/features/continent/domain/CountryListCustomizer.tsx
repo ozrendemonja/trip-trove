@@ -4,12 +4,11 @@ import { CountryRow } from "../pages/list-country/ListCountry.types";
 
 export class CountryListCustomizer extends ListElementCustomizer<CountryRow> {
   constructor(
-    items: CountryRow[],
-    callback: (items: CountryRow[]) => void,
-    callback2: (columns: IColumn[]) => void
+    notifyCountryChanged: (items: CountryRow[]) => void,
+    notifyListColumnChanged: (columns: IColumn[]) => void,
+    items: CountryRow[] = []
   ) {
-    super(items, callback, callback2);
-    this.callback(items);
+    super(items, notifyCountryChanged, notifyListColumnChanged);
   }
 
   private setDefaultLayout = (column: IColumn): IColumn => {
@@ -25,11 +24,34 @@ export class CountryListCustomizer extends ListElementCustomizer<CountryRow> {
   };
 
   public createColumns = (): void => {
-    const columns = buildColumns(this.items, true, this.onColumnClick).map(
-      (column) => this.setDefaultLayout(column)
+    const columns = buildColumns(this.items, true).map((column) =>
+      this.setDefaultLayout(column)
     );
 
     this.columns = columns;
-    this.callback2(this.columns);
+    this.notifyListColumnChanged(this.columns);
   };
+
+  public withRows(newRows: CountryRow[]): CountryListCustomizer {
+    let result = this.removeInfiniteScrollFlag(this.items);
+    result = result.concat(newRows);
+    if (newRows.length > 0) {
+      result = this.addInfiniteScrollFlag(result);
+    }
+
+    this.notifyItemsChanged(result);
+    return new CountryListCustomizer(
+      this.notifyItemsChanged,
+      this.notifyListColumnChanged,
+      result
+    );
+  }
+
+  private addInfiniteScrollFlag(result: CountryRow[]): CountryRow[] {
+    return [...result, null];
+  }
+
+  private removeInfiniteScrollFlag(items: CountryRow[]): CountryRow[] {
+    return items.length > 0 ? items.slice(0, items.length - 1) : items.slice();
+  }
 }

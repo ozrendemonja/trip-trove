@@ -34,17 +34,17 @@ export interface ListElementProps<T> {
 export abstract class ListElementCustomizer<T> {
   items: T[];
   columns?: IColumn[] = undefined;
-  callback: (items: T[]) => void;
-  callback2: (columns: IColumn[]) => void;
+  notifyItemsChanged: (items: T[]) => void;
+  notifyListColumnChanged: (columns: IColumn[]) => void;
 
   constructor(
     items: T[],
-    callback: (items: T[]) => void,
-    callback2: (columns: IColumn[]) => void
+    notifyItemsChanged: (items: T[]) => void,
+    notifyListColumnChanged: (columns: IColumn[]) => void
   ) {
     this.items = items;
-    this.callback = callback;
-    this.callback2 = callback2;
+    this.notifyItemsChanged = notifyItemsChanged;
+    this.notifyListColumnChanged = notifyListColumnChanged;
   }
 
   private copyAndSort<T>(columnKey: string, isSortedDescending?: boolean): T[] {
@@ -57,7 +57,7 @@ export abstract class ListElementCustomizer<T> {
   }
 
   onColumnClick = (
-    event: React.MouseEvent<HTMLElement>,
+    _event: React.MouseEvent<HTMLElement>,
     column: IColumn
   ): void => {
     let isSortedDescending = column.isSortedDescending;
@@ -81,8 +81,8 @@ export abstract class ListElementCustomizer<T> {
       return col;
     });
 
-    this.callback(this.items);
-    this.callback2(this.columns);
+    this.notifyItemsChanged(this.items);
+    this.notifyListColumnChanged(this.columns);
   };
 
   abstract createColumns(): void;

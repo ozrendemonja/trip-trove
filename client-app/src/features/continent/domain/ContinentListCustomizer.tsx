@@ -9,7 +9,7 @@ export class ContinentListCustomizer extends ListElementCustomizer<Continent> {
     callback2: (columns: IColumn[]) => void
   ) {
     super(items, callback, callback2);
-    this.callback(items);
+    this.notifyItemsChanged(items);
   }
 
   private setSetupForSortIcon = (column: IColumn): IColumn => {
@@ -40,6 +40,6 @@ export class ContinentListCustomizer extends ListElementCustomizer<Continent> {
       .map((column) => this.setDefaultLayout(column));
 
     this.columns = columns;
-    this.callback2(this.columns);
+    this.notifyListColumnChanged(this.columns);
   };
 }

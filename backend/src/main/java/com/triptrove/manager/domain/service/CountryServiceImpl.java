@@ -19,7 +19,7 @@ public class CountryServiceImpl implements CountryService {
     private final ManagerProperties managerProperties;
 
     @Override
-    public String saveCountry(String continentName, String countryName) {
+    public Country saveCountry(String continentName, String countryName) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
         if (countryRepo.findByNameAndContinentName(countryName, continentName).isPresent()) {
             log.atInfo().log("Country '{}' in '{}' already exists in the database.", countryName, continentName);
@@ -38,7 +38,7 @@ public class CountryServiceImpl implements CountryService {
 
         log.atInfo().log("Country '{}' successfully saved", result.getName());
 
-        return result.getName();
+        return result;
     }
 
     @Override
@@ -59,5 +59,12 @@ public class CountryServiceImpl implements CountryService {
             return countryRepo.findTopOldest(managerProperties.pageSize());
         }
         return countryRepo.findTopNewest(managerProperties.pageSize());
+    }
+
+    @Override
+    public void deleteCountry(Integer id) {
+        log.atInfo().log("Deleting country");
+        countryRepo.deleteById(id);
+        log.atInfo().log("Country deleted");
     }
 }

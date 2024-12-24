@@ -1,5 +1,6 @@
 import {
   deleteContinent,
+  deleteCountry,
   getAllContinents,
   getAllCountries,
   saveContinent,
@@ -143,4 +144,19 @@ export const getCountries = async (
       updatedOn: country.changedOn
     };
   });
+};
+
+export const deleteCountryWithId = async (id: number): Promise<void> => {
+  const { error } = await deleteCountry({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while deleting country", error);
+  }
 };

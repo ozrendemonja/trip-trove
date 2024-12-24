@@ -7,9 +7,11 @@ import com.triptrove.manager.domain.model.SortDirection;
 import java.util.List;
 
 public interface CountryService {
-    String saveCountry(String continentName, String countryName);
+    Country saveCountry(String continentName, String countryName);
 
     List<Country> getCountries(CountryScrollPosition afterCountry, SortDirection sortDirection);
 
     List<Country> getCountries(SortDirection sortDirection);
+
+    void deleteCountry(Integer id);
 }

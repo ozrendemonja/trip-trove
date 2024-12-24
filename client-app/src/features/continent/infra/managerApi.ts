@@ -7,7 +7,11 @@ import {
   updateContinent
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import { Continent, OrderOptions } from "../domain/Continent.types";
+import {
+  Continent,
+  LastReadCountry,
+  OrderOptions
+} from "../domain/Continent.types";
 import { Country } from "../domain/Country.types.";
 
 managerClient();
@@ -107,6 +111,7 @@ export const saveNewCountry = async (
 };
 
 export const getCountries = async (
+  lastReadCountry?: LastReadCountry,
   orderBy?: OrderOptions
 ): Promise<Country[]> => {
   const { data, error } = await getAllCountries({
@@ -114,7 +119,9 @@ export const getCountries = async (
       "x-api-version": "1"
     },
     query: {
-      sd: orderBy
+      sd: orderBy,
+      countryId: lastReadCountry?.id,
+      updatedOn: lastReadCountry?.updatedOn
     }
   });
 
@@ -129,6 +136,11 @@ export const getCountries = async (
   }
 
   return data.map((country) => {
-    return { name: country.countryName!, inContinent: country.continentName! };
+    return {
+      id: country.countryId,
+      name: country.countryName!,
+      inContinent: country.continentName!,
+      updatedOn: country.changedOn
+    };
   });
 };

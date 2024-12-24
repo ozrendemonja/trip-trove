@@ -69,6 +69,7 @@ public class InMemoryCountryRepository implements CountryRepo {
                 .stream()
                 .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
                 .dropWhile(country -> country.getId() <= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isBefore(afterCountry.updatedOn()))
+                .limit(pageSize)
                 .toList();
     }
 
@@ -78,6 +79,7 @@ public class InMemoryCountryRepository implements CountryRepo {
                 .stream()
                 .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
                 .dropWhile(country -> country.getId() >= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isAfter(afterCountry.updatedOn()))
+                .limit(pageSize)
                 .toList();
     }
 }

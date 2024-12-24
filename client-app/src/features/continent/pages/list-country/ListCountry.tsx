@@ -13,11 +13,13 @@ import EditProperty from "../../../../shared/list-element/ui/edit-property/EditP
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
-import { Country } from "../../domain/Country.types.";
+import { Country, LastReadCountry } from "../../domain/Country.types.";
 import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
 import { getCountries } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
+import { CountryRow } from "./ListCountry.types";
+import { toLastReadCountry } from "./ListCountry.utils";
 
 const onRenderItemColumn = (
   className: string,
@@ -52,18 +54,28 @@ const sortOptions: IDropdownOption[] = [
 export const CountryList: React.FunctionComponent = () => {
   const classes = useClasses();
 
-  const [items, setItems] = useState(undefined);
-  const [columns, setColumns] = useState(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<CountryRow[]>([]);
+  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
+    useBoolean(true);
   const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
-  const [order, setOrder] = useState<OrderOptions>("ASC");
+  const [order, setOrder] = useState<OrderOptions>("DESC");
+  const [lastElement, setLastElement] = useState<LastReadCountry | undefined>(
+    undefined
+  );
   const navigate = useNavigate();
+  const [countryCustomizer, setCountryCustomizer] = useState(
+    new CountryListCustomizer(setItems, setColumns)
+  );
 
   useEffect(() => {
-    getCountries(order).then((data) => {
-      setIsLoading(true);
-      new CountryListCustomizer(data, setItems, setColumns).createColumns();
-      setIsLoading(false);
+    getCountries(lastElement, order).then((data) => {
+      setLoading();
+      setLastElement(toLastReadCountry(data));
+      const countryRows = data.map(CountryRow.from);
+      setCountryCustomizer(countryCustomizer.withRows(countryRows));
+      countryCustomizer.createColumns();
+      setNotLoading();
     });
   }, [reloadData]);
 
@@ -83,6 +95,9 @@ export const CountryList: React.FunctionComponent = () => {
               _index?: number
             ) => {
               setOrder(option!.key as OrderOptions);
+              setCountryCustomizer(
+                new CountryListCustomizer(setItems, setColumns)
+              );
               toggleReloadData();
             },
             sortOptions: sortOptions
@@ -98,7 +113,9 @@ export const CountryList: React.FunctionComponent = () => {
               toggleReloadData();
             }
           }}
-          onRenderMissingItem={onRenderWhenNoMoreItems}
+          onRenderMissingItem={(_index: number) =>
+            onRenderWhenNoMoreItems(toggleReloadData)
+          }
           onRenderItemColumn={(
             item?: Country,
             _index?: number,

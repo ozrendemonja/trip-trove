@@ -2,7 +2,6 @@ import {
   DefaultButton,
   Dropdown,
   IDropdownOption,
-  IDropdownProps,
   PrimaryButton,
   Separator,
   Stack,
@@ -12,10 +11,10 @@ import {
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { useClasses } from "./AddCountry.styles";
-import { useCountryFormField } from "./AddCountry.config";
-import { getContinents, saveNewCountry } from "../../infra/ManagerApi";
 import { Continent } from "../../domain/Continent.types";
+import { getContinents, saveNewCountry } from "../../infra/ManagerApi";
+import { useCountryFormField } from "./AddCountry.config";
+import { useClasses } from "./AddCountry.styles";
 
 const createOptions = (continents: Continent[]): IDropdownOption[] => {
   return continents.map((continent) => {

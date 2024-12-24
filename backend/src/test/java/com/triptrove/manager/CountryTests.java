@@ -273,6 +273,7 @@ public class CountryTests {
                         .param("sd", "ASC")
                         .param("countryId", response[1].countryId().toString())
                         .param("updatedOn", response[1].changedOn().toString())
+                        .param("sd", "ASC")
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andReturn()

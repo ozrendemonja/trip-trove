@@ -11,7 +11,7 @@ public interface CountryRepo {
 
     List<Country> findAll();
 
-    Optional<Country> findByName(String name);
+    List<Country> findByName(String name);
 
     List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry);
 
@@ -24,4 +24,6 @@ public interface CountryRepo {
     Optional<Country> findByNameAndContinentName(String countryName, String continentName);
 
     void deleteById(Integer id);
+
+    Optional<Country> findById(Integer id);
 }

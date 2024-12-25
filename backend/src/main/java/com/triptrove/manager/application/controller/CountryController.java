@@ -1,9 +1,6 @@
 package com.triptrove.manager.application.controller;
 
-import com.triptrove.manager.application.dto.CountryParameter;
-import com.triptrove.manager.application.dto.GetCountryResponse;
-import com.triptrove.manager.application.dto.SaveCountryRequest;
-import com.triptrove.manager.application.dto.SortDirectionParameter;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.domain.model.DuplicateNameException;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.CountryService;
@@ -71,13 +68,30 @@ public class CountryController {
 
     @DeleteMapping(path = "/{id}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete country by name", responses = {
-            @ApiResponse(description = "Deleted country by name", responseCode = "204"),
+    @Operation(summary = "Delete country by its id", responses = {
+            @ApiResponse(description = "Deleted country by its id", responseCode = "204"),
     })
     public void deleteCountry(@PathVariable Integer id) {
         countryService.deleteCountry(id);
     }
 
+    @PutMapping("/{id:\\d+}/details")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update country details", responses = {
+            @ApiResponse(description = "Country details are updated", responseCode = "204"),
+    })
+    public void updateCountryDetail(@PathVariable String id, @RequestBody UpdateCountryDetailsRequest countryDetailsRequest) {
+        countryService.updateCountryDetails(Integer.valueOf(id), countryDetailsRequest.countryName());
+    }
+
+    @PutMapping("/{id:\\d+}/continent")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update the continent name of the country", responses = {
+            @ApiResponse(description = "Country details are updated", responseCode = "204"),
+    })
+    public void updateCountryContinent(@PathVariable String id, @RequestBody UpdateCountryContinentRequest countryContinentRequest) {
+        countryService.updateCountryContinentDetails(Integer.valueOf(id), countryContinentRequest.continentName());
+    }
 
     @ResponseStatus(value = HttpStatus.CONFLICT)
     @ExceptionHandler(DuplicateNameException.class)

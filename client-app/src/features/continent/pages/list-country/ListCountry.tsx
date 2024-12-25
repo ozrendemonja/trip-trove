@@ -3,7 +3,8 @@ import {
   IDropdownOption,
   Link,
   Selection,
-  Stack
+  Stack,
+  Text
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
@@ -21,11 +22,13 @@ import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
 import { toLastReadCountry } from "./ListCountry.utils";
 import { deleteRows } from "../../domain/Country";
+import EditPropertyCountryDetails from "../../../../shared/list-element/ui/edit-property/EditPropertyCountryDetails";
+import EditPropertyCountryContinentDetails from "../../../../shared/list-element/ui/edit-property/EditPropertyCountryContinentDetails";
 
 const onRenderItemColumn = (
   className: string,
   onUpdateClick: () => void,
-  country?: Country,
+  country?: CountryRow,
   column?: IColumn
 ): JSX.Element | string | number => {
   if (column?.key === "skipElement") {
@@ -43,7 +46,22 @@ const onRenderItemColumn = (
         >
           {country?.name}
         </Link>
-        <EditProperty text={country?.name} onUpdateClick={onUpdateClick} />
+        <EditPropertyCountryDetails
+          countryId={country!.id}
+          text={country!.name}
+          onUpdateClick={onUpdateClick}
+        />
+      </Stack>
+    );
+  } else if (column?.key === "continent") {
+    return (
+      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+        <Text>{country?.continent}</Text>
+        <EditPropertyCountryContinentDetails
+          countryId={country!.id}
+          text={country!.name}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   }
@@ -130,7 +148,12 @@ export const CountryList: React.FunctionComponent = () => {
           ) =>
             onRenderItemColumn(
               classes.linkField,
-              toggleReloadData,
+              () => {
+                setCountryCustomizer(
+                  new CountryListCustomizer(setItems, setColumns)
+                );
+                toggleReloadData();
+              },
               item,
               column
             )

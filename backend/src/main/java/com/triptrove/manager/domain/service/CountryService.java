@@ -14,4 +14,8 @@ public interface CountryService {
     List<Country> getCountries(SortDirection sortDirection);
 
     void deleteCountry(Integer id);
+
+    void updateCountryDetails(Integer id, String name);
+
+    void updateCountryContinentDetails(Integer countryId, String continentName);
 }

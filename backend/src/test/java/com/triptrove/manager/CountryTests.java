@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.triptrove.manager.application.dto.GetCountryResponse;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
+import com.triptrove.manager.application.dto.UpdateCountryContinentRequest;
+import com.triptrove.manager.application.dto.UpdateCountryDetailsRequest;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
@@ -61,8 +63,8 @@ public class CountryTests {
     @MethodSource("provideValidCountryNames")
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
-    void countryShouldBeSavedWhenValidNameIsSent(ValidCountryName input) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.name());
+    void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,22 +75,12 @@ public class CountryTests {
 //                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + input.id()));
 
         assertThat(countryRepo.findAll().size()).isEqualTo(1);
-        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(input.name());
+        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(countryName);
     }
 
-    private record ValidCountryName(String name, Integer id) {
+    private static Stream<String> provideValidCountryNames() {
+        return Stream.of("a", "test", "test test", "test 12ac 02]", "a".repeat(64));
     }
-
-    private static Stream<ValidCountryName> provideValidCountryNames() {
-        return Stream.of(
-                new ValidCountryName("a", 0),
-                new ValidCountryName("test", 1),
-                new ValidCountryName("test test", 2),
-                new ValidCountryName("test 12ac 02]", 3),
-                new ValidCountryName("a".repeat(64), 4)
-        );
-    }
-
 
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
@@ -272,9 +264,7 @@ public class CountryTests {
         GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
         assertThat(response).hasSize(2);
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
-        assertThat(response[0].countryId()).isEqualTo(0);
         assertThat(response[1].countryName()).isEqualTo("Test country 1");
-        assertThat(response[1].countryId()).isEqualTo(1);
 
         jsonResponse = mockMvc.perform(get("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -291,7 +281,6 @@ public class CountryTests {
         response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
         assertThat(response).hasSize(1);
         assertThat(response[0].countryName()).isEqualTo("Test country 2");
-        assertThat(response[0].countryId()).isEqualTo(2);
     }
 
     @Test
@@ -423,4 +412,178 @@ public class CountryTests {
                 .andExpect(status().isNotFound());
     }
 
+    @ParameterizedTest
+    @MethodSource("provideValidCountryNames")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateCountryNameWhenNewNameIsValid(String newCountryName) throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Old country name");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateCountryDetailsRequest(newCountryName);
+        mockMvc.perform(put("/countries/" + id + "/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(newCountryName);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingCountryIsRequestedToBeUpdated() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Old country name");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        var update = new UpdateCountryDetailsRequest("New country name");
+        mockMvc.perform(put("/countries/123/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo("Old country name");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateCountryContinentNameWhileLeavingOriginalContinentNamesWhenNewContinentNameIsValid() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
+        mockMvc.perform(put("/countries/" + id + "/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_1);
+        assertThat(continentRepo.findAll().stream().map(Continent::getName).toList()).containsOnly(CONTINENT_NAME_0, CONTINENT_NAME_1);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenWhenCurrentCountryNameAlreadyExistsUnderNewContinentName() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateCountryContinentRequest(CONTINENT_NAME_0);
+        mockMvc.perform(put("/countries/" + id + "/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isConflict());
+
+        assertThat(countryRepo.findAll()).hasSize(2);
+        assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_0);
+        assertThat(countryRepo.findAll().get(1).getContinent().getName()).isEqualTo(CONTINENT_NAME_1);
+        assertThat(continentRepo.findAll().stream().map(Continent::getName).toList()).containsOnly(CONTINENT_NAME_0, CONTINENT_NAME_1);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateCountryContinentNameWhenNewNameIsValid() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
+        mockMvc.perform(put("/countries/" + id + "/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_1);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingContinentIsSentToBeUpdated() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateCountryContinentRequest("Bad continent name");
+        mockMvc.perform(put("/countries/" + id + "/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_0);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingCountryIdIsSent() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        var update = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
+        mockMvc.perform(put("/countries/123/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound());
+
+        assertThat(countryRepo.findAll()).hasSize(1);
+        assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_0);
+    }
 }

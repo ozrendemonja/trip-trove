@@ -32,11 +32,11 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
-    public Optional<Country> findByName(String name) {
+    public List<Country> findByName(String name) {
         return inMemoryDb.values()
                 .stream()
                 .filter(country -> country.getName().equals(name))
-                .findAny();
+                .toList();
     }
 
 
@@ -60,12 +60,22 @@ public class InMemoryCountryRepository implements CountryRepo {
 
     @Override
     public Optional<Country> findByNameAndContinentName(String countryName, String continentName) {
-        return findByName(countryName).filter(country -> country.getContinent().getName().equals(continentName));
+        return findByName(countryName).stream()
+                .filter(country -> country.getContinent().getName().equals(continentName))
+                .findAny();
     }
 
     @Override
     public void deleteById(Integer id) {
         inMemoryDb.remove(id);
+    }
+
+    @Override
+    public Optional<Country> findById(Integer id) {
+        return inMemoryDb.values()
+                .stream()
+                .filter(country -> country.getId().equals(id))
+                .findAny();
     }
 
     @Override

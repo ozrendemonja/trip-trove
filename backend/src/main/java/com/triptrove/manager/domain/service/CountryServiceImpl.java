@@ -67,4 +67,26 @@ public class CountryServiceImpl implements CountryService {
         countryRepo.deleteById(id);
         log.atInfo().log("Country deleted");
     }
+
+    @Override
+    public void updateCountryDetails(Integer id, String name) {
+        log.atInfo().log("Updating the country name to '{}'", name);
+        var country = countryRepo.findById(id).orElseThrow(ObjectNotFoundException::new);
+        country.setName(name);
+        countryRepo.save(country);
+        log.atInfo().log("Country name has been updated to '{}'", name);
+    }
+
+    @Override
+    public void updateCountryContinentDetails(Integer countryId, String continentName) {
+        log.atInfo().log("Updating the country to belong to the '{}' continent", continentName);
+        Continent newContinent = continentRepo.findByName(continentName).orElseThrow(ObjectNotFoundException::new);
+        Country country = countryRepo.findById(countryId).orElseThrow(ObjectNotFoundException::new);
+        if (countryRepo.findByNameAndContinentName(country.getName(), continentName).isPresent()) {
+            throw new DuplicateNameException();
+        }
+        country.setContinent(newContinent);
+        countryRepo.save(country);
+        log.atInfo().log("Updated the country to belong to the '{}' continent", continentName);
+    }
 }

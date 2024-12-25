@@ -5,7 +5,9 @@ import {
   getAllCountries,
   saveContinent,
   saveCountry,
-  updateContinent
+  updateContinent,
+  updateCountryContinent,
+  updateCountryDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import {
@@ -158,5 +160,47 @@ export const deleteCountryWithId = async (id: number): Promise<void> => {
 
   if (error) {
     throw new Error("Error while deleting country", error);
+  }
+};
+
+export const changeCountryDetails = async (
+  id: string,
+  newName: string
+): Promise<void> => {
+  const { error } = await updateCountryDetail({
+    body: {
+      countryName: newName
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating country details", error);
+  }
+};
+
+export const changeCountryContinent = async (
+  id: string,
+  newContinentName: string
+): Promise<void> => {
+  const { error } = await updateCountryContinent({
+    body: {
+      continentName: newContinentName
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating country countinent", error);
   }
 };

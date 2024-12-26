@@ -10,20 +10,19 @@ import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
-import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
+import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
+import { deleteRows } from "../../domain/Country";
 import { Country, LastReadCountry } from "../../domain/Country.types.";
 import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
 import { getCountries } from "../../infra/ManagerApi";
+import EditContinentDetails from "./EditContinentDetails";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
 import { toLastReadCountry } from "./ListCountry.utils";
-import { deleteRows } from "../../domain/Country";
-import EditPropertyCountryDetails from "../../../../shared/list-element/ui/edit-property/EditPropertyCountryDetails";
-import EditPropertyCountryContinentDetails from "../../../../shared/list-element/ui/edit-property/EditPropertyCountryContinentDetails";
 
 const onRenderItemColumn = (
   className: string,
@@ -32,7 +31,7 @@ const onRenderItemColumn = (
   column?: IColumn
 ): JSX.Element | string | number => {
   if (column?.key === "skipElement") {
-    return null;
+    return <></>;
   }
   if (column?.key === "name") {
     return (
@@ -57,7 +56,7 @@ const onRenderItemColumn = (
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
         <Text>{country?.continent}</Text>
-        <EditPropertyCountryContinentDetails
+        <EditContinentDetails
           countryId={country!.id}
           text={country!.name}
           onUpdateClick={onUpdateClick}

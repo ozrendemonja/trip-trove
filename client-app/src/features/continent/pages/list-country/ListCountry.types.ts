@@ -15,3 +15,14 @@ export class CountryRow {
     return new CountryRow(country.id, country.name, country.inContinent);
   }
 }
+
+export interface EditCountryDetailsProps {
+  /**
+   * Text to display as the header
+   */
+  text: string;
+
+  countryId: number;
+
+  onUpdateClick: () => void;
+}

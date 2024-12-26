@@ -1,21 +1,14 @@
-import { number } from "yup";
-
 export interface EditPropertyProps {
   /**
    * Text to display as the header
    */
   text: string;
 
-  onUpdateClick: () => void;
-}
+  editIconAriaLabel: string;
 
-export interface EditPropertyCountryDetailsProps {
-  /**
-   * Text to display as the header
-   */
-  text: string;
+  isFormValid: boolean;
 
-  countryId: number;
+  children: React.ReactNode;
 
-  onUpdateClick: () => void;
+  onUpdateClick: () => Promise<void>;
 }

@@ -8,16 +8,16 @@ import {
 import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import ListElement from "../../../../shared/list-element/ListElement";
+import EditContinentDetails from "./EditContinentDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
+import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Continent";
 import { Continent, OrderOptions } from "../../domain/Continent.types";
 import { ContinentListCustomizer } from "../../domain/ContinentListCustomizer";
 import { getContinents } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
 import { useClasses } from "./ListContinent.styles";
-import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
-import ListElement from "../../../../shared/list-element/ListElement";
-import Navigation from "../../../../shared/navigation/Navigation";
 
 const onRenderItemColumn = (
   className: string,
@@ -37,7 +37,10 @@ const onRenderItemColumn = (
         >
           {continent?.name}
         </Link>
-        <EditProperty text={continent?.name} onUpdateClick={onUpdateClick} />
+        <EditContinentDetails
+          text={continent!.name}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   }

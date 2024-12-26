@@ -4,12 +4,9 @@ import {
   Modal,
   PrimaryButton,
   Stack,
-  Text,
-  TextField
+  Text
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import { changeContinentName } from "../../../../features/continent/infra/ManagerApi";
-import { useContinentFormField } from "../../../../features/continent/pages/add-continent/AddContinent.config";
 import { useDragOptions } from "./EditProperty.config";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
@@ -21,14 +18,12 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     blockButton,
     { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }
   ] = useBoolean(false);
-  const { formFields, isFormValid } = useContinentFormField();
-  formFields.continentName.placeholder = props.text;
 
   return (
     <>
       <IconButton
         iconProps={{ iconName: "Edit" }}
-        ariaLabel={`Change value for ${props.text}`}
+        ariaLabel={props.editIconAriaLabel}
         className={classes.editIcon}
         onClick={toggleHideDialog}
       />
@@ -51,9 +46,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
           />
         </Stack>
         <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
-          <Stack.Item grow={1}>
-            <TextField {...formFields.continentName} />
-          </Stack.Item>
+          <Stack.Item grow={1}>{props.children}</Stack.Item>
         </Stack>
         <Stack
           tokens={{ childrenGap: 12 }}
@@ -65,16 +58,12 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
           <PrimaryButton
             onClick={async () => {
               disableDiaglogButtons();
-              await changeContinentName(
-                props.text,
-                formFields.continentName.value!
-              );
               props.onUpdateClick();
               toggleHideDialog();
               enableDiaglogButtons();
             }}
             text="Update"
-            disabled={blockButton || !isFormValid}
+            disabled={blockButton || !props.isFormValid}
           />
           <DefaultButton
             onClick={() => {

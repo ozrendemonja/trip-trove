@@ -58,7 +58,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
           <PrimaryButton
             onClick={async () => {
               disableDiaglogButtons();
-              props.onUpdateClick();
+              await props.onUpdateClick();
               toggleHideDialog();
               enableDiaglogButtons();
             }}

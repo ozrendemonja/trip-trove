@@ -10,5 +10,5 @@ export interface EditPropertyProps {
 
   children: React.ReactNode;
 
-  onUpdateClick: () => void;
+  onUpdateClick: () => Promise<void>;
 }

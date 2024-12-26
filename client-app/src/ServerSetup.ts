@@ -2,7 +2,9 @@ import { createServer, Model } from "miragejs";
 import {
   GetContinentResponse,
   GetCountryResponse,
-  UpdateContinentRequest
+  UpdateContinentRequest,
+  UpdateCountryContinentRequest,
+  UpdateCountryDetailsRequest
 } from "./clients/manager";
 
 export default function makeServer(): ReturnType<typeof createServer> {
@@ -114,6 +116,38 @@ export default function makeServer(): ReturnType<typeof createServer> {
           );
 
           schema.db.countries.remove(element);
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/countries/:id/details",
+        (schema, request) => {
+          const id = request.params.id;
+          const newName = (
+            JSON.parse(request.requestBody) as UpdateCountryDetailsRequest
+          ).countryName;
+
+          const element = schema.db.countries.findBy((data) => {
+            return data.countryId == id;
+          });
+          schema.db.countries.update(element.id, { countryName: newName });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/countries/:id/continent",
+        (schema, request) => {
+          const id = request.params.id;
+          const newName = (
+            JSON.parse(request.requestBody) as UpdateCountryContinentRequest
+          ).continentName;
+
+          const element = schema.db.countries.findBy((data) => {
+            return data.countryId == id;
+          });
+          schema.db.countries.update(element.id, { continentName: newName });
         },
         { timing: 600 }
       );

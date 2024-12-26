@@ -30,7 +30,7 @@ const EditPropertyCountryDetails: React.FunctionComponent<
     <>
       <IconButton
         iconProps={{ iconName: "Edit" }}
-        ariaLabel={`Change value for ${props.text}`}
+        ariaLabel={`Change country name for ${props.text}`}
         className={classes.editIcon}
         onClick={toggleHideDialog}
       />

@@ -6,21 +6,19 @@ import {
   Modal,
   PrimaryButton,
   Stack,
-  Text,
-  TextField
+  Text
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
+import { useEffect, useState } from "react";
+import { Continent } from "../../../../features/continent/domain/Continent.types";
 import {
   changeCountryContinent,
-  changeCountryDetails,
   getContinents
 } from "../../../../features/continent/infra/ManagerApi";
 import { useCountryContinentFormField } from "../../../../features/continent/pages/add-country/AddCountry.config";
 import { useDragOptions } from "./EditProperty.config";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyCountryDetailsProps } from "./EditProperty.types";
-import { Continent } from "../../../../features/continent/domain/Continent.types";
-import { useEffect, useState } from "react";
 
 const createOptions = (continents: Continent[]): IDropdownOption[] => {
   return continents.map((continent) => {
@@ -48,7 +46,7 @@ const EditPropertyCountryContinentDetails: React.FunctionComponent<
     <>
       <IconButton
         iconProps={{ iconName: "Edit" }}
-        ariaLabel={`Change value for ${props.text}`}
+        ariaLabel={`Change continent name from ${props.text}`}
         className={classes.editIcon}
         onClick={toggleHideDialog}
       />

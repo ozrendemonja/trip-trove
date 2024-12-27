@@ -79,6 +79,15 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
+    public List<String> search(String query) {
+        return inMemoryDb.values()
+                .stream()
+                .map(Country::getName)
+                .filter(name -> name.contains(query))
+                .toList();
+    }
+
+    @Override
     public List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()

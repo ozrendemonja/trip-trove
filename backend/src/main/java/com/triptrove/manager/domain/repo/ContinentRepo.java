@@ -17,4 +17,6 @@ public interface ContinentRepo {
     void deleteByName(String name);
 
     Optional<Continent> findByName(String name);
+
+    List<String> search(String query);
 }

@@ -66,4 +66,13 @@ public class InMemoryContinentRepository implements ContinentRepo {
                 .filter(continent -> continent.getName().equals(name))
                 .findAny();
     }
+
+    @Override
+    public List<String> search(String query) {
+        return inMemoryDb.values()
+                .stream()
+                .map(Continent::getName)
+                .filter(name -> name.contains(query))
+                .toList();
+    }
 }

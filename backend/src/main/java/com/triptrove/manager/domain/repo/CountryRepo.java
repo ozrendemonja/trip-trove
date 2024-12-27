@@ -26,4 +26,6 @@ public interface CountryRepo {
     void deleteById(Integer id);
 
     Optional<Country> findById(Integer id);
+
+    List<String> search(String query);
 }

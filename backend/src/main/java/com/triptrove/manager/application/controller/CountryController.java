@@ -66,6 +66,15 @@ public class CountryController {
                 .toList();
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Retrieve country by name", responses = {
+            @ApiResponse(description = "Requested country", responseCode = "204"),
+    })
+    public GetCountryResponse getCountry(@PathVariable Integer id) {
+        var country = countryService.getCountry(id);
+        return GetCountryResponse.from(country);
+    }
+    
     @DeleteMapping(path = "/{id}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete country by its id", responses = {

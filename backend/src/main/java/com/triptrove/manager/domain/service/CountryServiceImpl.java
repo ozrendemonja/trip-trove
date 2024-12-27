@@ -89,4 +89,10 @@ public class CountryServiceImpl implements CountryService {
         countryRepo.save(country);
         log.atInfo().log("Updated the country to belong to the '{}' continent", continentName);
     }
+
+    @Override
+    public Country getCountry(Integer id) {
+        log.atInfo().log("Getting country with id '{}'", id);
+        return countryRepo.findById(id).orElseThrow(ObjectNotFoundException::new);
+    }
 }

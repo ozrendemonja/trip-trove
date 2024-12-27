@@ -18,4 +18,6 @@ public interface CountryService {
     void updateCountryDetails(Integer id, String name);
 
     void updateCountryContinentDetails(Integer countryId, String continentName);
+
+    Country getCountry(Integer id);
 }

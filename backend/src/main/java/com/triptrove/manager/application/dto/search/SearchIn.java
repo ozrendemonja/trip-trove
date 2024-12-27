@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.triptrove.manager.domain.model.SearchInElement;
 
 public enum SearchIn {
-    COUNTRY("country");
+    COUNTRY("country"),
+    CONTINENT("continent");
     private final String value;
 
     SearchIn(String in) {
@@ -25,6 +26,7 @@ public enum SearchIn {
     public SearchInElement toSearchInElement() {
         return switch (this) {
             case COUNTRY -> SearchInElement.COUNTRY;
+            case CONTINENT -> SearchInElement.CONTINENT;
         };
     }
 }

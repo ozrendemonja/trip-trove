@@ -10,15 +10,16 @@ import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
-import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
 import { deleteRows } from "../../domain/Country";
 import { Country, LastReadCountry } from "../../domain/Country.types.";
 import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
-import { getCountries } from "../../infra/ManagerApi";
+import { Suggestion } from "../../domain/Suggestion.types.";
+import { getCountries, searchCountry } from "../../infra/ManagerApi";
 import EditContinentDetails from "./EditContinentDetails";
+import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
@@ -100,6 +101,17 @@ export const CountryList: React.FunctionComponent = () => {
     });
   }, [reloadData]);
 
+  //---------------------------------------------------------------
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  useEffect(() => {
+    if (query.trim().length >= 3) {
+      searchCountry(query).then((data) => {
+        setSuggestions(data);
+      });
+    }
+  }, [query]);
+
   return (
     <>
       <Navigation />
@@ -110,6 +122,7 @@ export const CountryList: React.FunctionComponent = () => {
           columns={columns}
           listHeader={{
             ...listHeader,
+            showSearchBar: true,
             onSortOptionChange: (
               _event: React.FormEvent<HTMLDivElement>,
               option?: IDropdownOption,
@@ -121,7 +134,17 @@ export const CountryList: React.FunctionComponent = () => {
               );
               toggleReloadData();
             },
-            sortOptions: sortOptions
+            sortOptions: sortOptions,
+            items: suggestions,
+            onSearchTyped: (
+              _event?: React.ChangeEvent<HTMLInputElement>,
+              newValue?: string
+            ) => {
+              setQuery(newValue ?? "");
+            },
+            onFindItem: (id: number) => {
+              console.log("ASDADSASDASD " + id);
+            }
           }}
           addRowOptions={{
             text: "Add new country",

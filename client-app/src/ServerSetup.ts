@@ -37,6 +37,12 @@ export default function makeServer(): ReturnType<typeof createServer> {
         countryName: "Liechtenstein",
         changedOn: "2024-12-21T08:01:02.0000000"
       });
+      server.create("country", {
+        countryId: 3,
+        continentName: "Europe",
+        countryName: "Lithuania",
+        changedOn: "2024-12-26T08:01:02.0000000"
+      });
     },
 
     routes() {
@@ -151,6 +157,26 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 600 }
       );
+
+      this.get("/search", (schema, request) => {
+        const query = request.queryParams.q;
+        const inElement = request.queryParams.i;
+
+        if (inElement == "country") {
+          let result = schema.db.countries
+            .sort()
+            .filter((data) => data.countryName.includes(query))
+            .map((country) => {
+              return {
+                value: country.countryName,
+                id: country.countryId,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
+        }
+      });
     }
   });
 }

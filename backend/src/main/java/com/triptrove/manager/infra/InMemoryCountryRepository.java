@@ -2,6 +2,7 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.CountryScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -79,11 +80,13 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
-    public List<String> search(String query) {
+    public List<Suggestion> search(String query, int limit) {
         return inMemoryDb.values()
                 .stream()
-                .map(Country::getName)
-                .filter(name -> name.contains(query))
+                .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
+                .filter(country -> country.getName().contains(query))
+                .limit(limit)
+                .map(country -> new Suggestion(country.getName(), country.getId()))
                 .toList();
     }
 

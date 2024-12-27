@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,5 +19,5 @@ public interface ContinentRepo {
 
     Optional<Continent> findByName(String name);
 
-    List<String> search(String query);
+    List<Suggestion> search(String query, int limit);
 }

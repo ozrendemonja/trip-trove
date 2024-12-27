@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "manager.request")
 public record ManagerProperties(
         @Size(max = 100)
-        int pageSize
+        int pageSize,
+        @Size(max = 20)
+        int suggestionLimit
 ) {
 }

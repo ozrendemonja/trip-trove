@@ -125,6 +125,7 @@ export const CountryList: React.FunctionComponent = () => {
           columns={columns}
           listHeader={{
             ...listHeader,
+            setItems: (suggestions) => setSuggestions(suggestions),
             showSearchBar: true,
             onSortOptionChange: (
               _event: React.FormEvent<HTMLDivElement>,

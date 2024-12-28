@@ -26,6 +26,7 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
           onSearchTyped={props.onSearchTyped}
           onFindItem={props.onFindItem}
           items={props.items}
+          setItems={props.setItems}
         />
       )}
       <Dropdown

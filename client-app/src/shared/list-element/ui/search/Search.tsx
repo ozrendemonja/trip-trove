@@ -28,6 +28,10 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
       <SearchBox
         placeholder="Search"
         ref={getBottomPosition}
+        onClear={() => {
+          props.setItems([]);
+          setValue("");
+        }}
         onChange={(event, newValue) => {
           setValue(newValue ?? "");
           props.onSearchTyped(event, newValue);
@@ -46,6 +50,7 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
             key={`${item.value}-${item.id}`}
             role="menuitem"
             className={classes.button}
+            ariaLabel={item.value}
             onClick={(_event) => {
               props.onFindItem(item.id);
               setValue("");

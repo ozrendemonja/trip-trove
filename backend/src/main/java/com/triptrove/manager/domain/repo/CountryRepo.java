@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.CountryScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,4 +27,6 @@ public interface CountryRepo {
     void deleteById(Integer id);
 
     Optional<Country> findById(Integer id);
+
+    List<Suggestion> search(String query, int limit);
 }

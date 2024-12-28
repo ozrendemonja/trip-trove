@@ -1,7 +1,8 @@
-import { Dropdown, IDropdownOption, SearchBox, Text } from "@fluentui/react";
+import { Dropdown, IDropdownOption, Text } from "@fluentui/react";
 import React from "react";
 import useClasses from "./ListHeader.styles";
 import { ListHeaderProps } from "./ListHeader.types";
+import { Search } from "../../../search/Search";
 
 const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
   const classes = useClasses();
@@ -21,10 +22,11 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
         {props.text}
       </Text>
       {props.showSearchBar && (
-        <SearchBox
-          className={classes.searchBox}
-          placeholder="Search"
-          onChange={props.onSearchTyped}
+        <Search
+          onSearchTyped={props.onSearchTyped}
+          onFindItem={props.onFindItem}
+          items={props.items}
+          setItems={props.setItems}
         />
       )}
       <Dropdown

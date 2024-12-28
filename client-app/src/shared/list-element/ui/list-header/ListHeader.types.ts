@@ -1,4 +1,5 @@
 import { IDropdownOption } from "@fluentui/react";
+import { Suggestion } from "../../../../features/continent/domain/Suggestion.types.";
 
 export interface ListHeaderProps {
   /**
@@ -28,4 +29,10 @@ export interface ListHeaderProps {
    * Options for the order dropdown.
    */
   sortOptions: IDropdownOption[];
+
+  items: Suggestion[];
+
+  onFindItem: (id: number) => void;
+
+  setItems: (suggestions: Suggestion[]) => void;
 }

@@ -586,4 +586,40 @@ public class CountryTests {
         assertThat(countryRepo.findAll()).hasSize(1);
         assertThat(countryRepo.findAll().getFirst().getContinent().getName()).isEqualTo(CONTINENT_NAME_0);
     }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeReturnedWhenValidIdIsSent() throws Exception {
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var mvcResult = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var jsonResponse = mockMvc.perform(get("/countries/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetCountryResponse response = mapper.readValue(jsonResponse, GetCountryResponse.class);
+        assertThat(response.countryName()).isEqualTo("Test country 0");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetErrorResponseWhenNonExistingIdIsSent() throws Exception {
+        mockMvc.perform(get("/countries/" + 100)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound());
+    }
+
 }

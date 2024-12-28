@@ -65,6 +65,9 @@ test("All elements should be present when canceling delete menu", async ({
     .click();
   await page.getByRole("menuitem", { name: "Delete country" }).click();
   await page.getByRole("button", { name: "Cancel" }).click();
+  await page
+    .getByRole("gridcell", { name: "Change country name for San Marino" })
+    .focus();
 
   await expect(page).toHaveScreenshot();
 });
@@ -95,7 +98,7 @@ test("List should not contain previously deleted element when delete menu closes
   ).toHaveCount(0);
   await expect(
     page
-      .locator('div[data-selection-index="1"]')
+      .locator('div[data-selection-index="2"]')
       .getByRole("gridcell", { name: "Change country name for Monaco" })
   ).toHaveCount(1);
 
@@ -186,7 +189,7 @@ test("Display the edit continent name dialog prepopulated with existing data whe
   page
 }) => {
   page
-    .locator('div[data-selection-index="0"]')
+    .locator('div[data-selection-index="1"]')
     .getByRole("button", {
       name: "Change continent name from Liechtenstein"
     })
@@ -199,7 +202,7 @@ test("List is shown unchanged when edit continent name is closed without action"
   page
 }) => {
   page
-    .locator('div[data-selection-index="0"]')
+    .locator('div[data-selection-index="1"]')
     .getByRole("button", {
       name: "Change continent name from Liechtenstein"
     })
@@ -215,7 +218,7 @@ test("All buttons on the the edit continent name dialog are disabled when the up
   page
 }) => {
   page
-    .locator('div[data-selection-index="0"]')
+    .locator('div[data-selection-index="1"]')
     .getByRole("button", {
       name: "Change continent name from Liechtenstein"
     })
@@ -231,7 +234,7 @@ test("List should contain updated values when edit continent name dialog closes"
   page
 }) => {
   page
-    .locator('div[data-selection-index="0"]')
+    .locator('div[data-selection-index="1"]')
     .getByRole("button", {
       name: "Change continent name from Liechtenstein"
     })

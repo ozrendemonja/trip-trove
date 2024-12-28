@@ -2,6 +2,7 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.ObjectNotFoundException;
+import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -65,5 +66,16 @@ public class InMemoryContinentRepository implements ContinentRepo {
                 .stream()
                 .filter(continent -> continent.getName().equals(name))
                 .findAny();
+    }
+
+    @Override
+    public List<Suggestion> search(String query, int limit) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(continent -> continent.getUpdatedOn().orElse(continent.getCreatedOn()), Comparator.reverseOrder()))
+                .filter(continent -> continent.getName().contains(query))
+                .limit(limit)
+                .map(continent -> new Suggestion(continent.getName(), Integer.valueOf(continent.getId())))
+                .toList();
     }
 }

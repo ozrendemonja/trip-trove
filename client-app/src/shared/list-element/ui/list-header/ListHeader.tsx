@@ -1,8 +1,8 @@
 import { Dropdown, IDropdownOption, Text } from "@fluentui/react";
 import React from "react";
-import { Search } from "../search/Search";
 import useClasses from "./ListHeader.styles";
 import { ListHeaderProps } from "./ListHeader.types";
+import { Search } from "../../../search/Search";
 
 const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
   const classes = useClasses();

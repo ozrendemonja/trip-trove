@@ -1,4 +1,4 @@
-import { Suggestion } from "../../../../features/continent/domain/Suggestion.types.";
+import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
 
 export interface SearchProps {
   /**

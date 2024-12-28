@@ -70,7 +70,7 @@ test("Country row list should include a flag that triggers infinite scroll when 
   const countryRows = [expected[0]];
 
   const customizer = new CountryListCustomizer(listColumnChanged, () => {});
-  customizer.withRows(countryRows);
+  customizer.withPagedRows(countryRows);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -82,10 +82,10 @@ test("Country row list should not include a flag that triggers infinite scroll w
   const expected = [...input0, ...input1];
 
   let customizer = new CountryListCustomizer(listColumnChanged, () => {});
-  customizer = customizer.withRows(input0);
-  customizer = customizer.withRows(input1);
+  customizer = customizer.withPagedRows(input0);
+  customizer = customizer.withPagedRows(input1);
   listColumnChanged.mockClear();
-  customizer.withRows([]);
+  customizer.withPagedRows([]);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -98,7 +98,7 @@ test("Country row list should include newly added countries when it previously h
   const expected = [...input, null];
   const listColumnChanged = jest.fn((items: CountryRow[]) => {});
 
-  new CountryListCustomizer(listColumnChanged, () => {}).withRows(input);
+  new CountryListCustomizer(listColumnChanged, () => {}).withPagedRows(input);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -118,8 +118,8 @@ test("Country row list should preserve previous data and include newly added cou
   const customizer = new CountryListCustomizer(
     listColumnChanged,
     () => {}
-  ).withRows(input0);
-  customizer.withRows(input1);
+  ).withPagedRows(input0);
+  customizer.withPagedRows(input1);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -135,8 +135,8 @@ test("Country row list should preserve previous data when the newly added countr
   const customizer = new CountryListCustomizer(
     listColumnChanged,
     () => {}
-  ).withRows(input);
-  customizer.withRows([]);
+  ).withPagedRows(input);
+  customizer.withPagedRows([]);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -148,8 +148,8 @@ test("Country row list should be empty when the newly added country list is empt
   const customizer = new CountryListCustomizer(
     listColumnChanged,
     () => {}
-  ).withRows([]);
-  customizer.withRows([]);
+  ).withPagedRows([]);
+  customizer.withPagedRows([]);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });

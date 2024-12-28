@@ -3,6 +3,8 @@ import {
   deleteCountry,
   getAllContinents,
   getAllCountries,
+  getCountry,
+  getSearchedElements,
   saveContinent,
   saveCountry,
   updateContinent,
@@ -16,6 +18,7 @@ import {
   OrderOptions
 } from "../domain/Continent.types";
 import { Country } from "../domain/Country.types.";
+import { Suggestion } from "../domain/Suggestion.types.";
 
 managerClient();
 
@@ -135,7 +138,7 @@ export const getCountries = async (
     !data ||
     data?.find((country) => !country.continentName || !country.countryName)
   ) {
-    throw new Error("Invalid country data");
+    throw new Error("Invalid countries data");
   }
 
   return data.map((country) => {
@@ -146,6 +149,38 @@ export const getCountries = async (
       updatedOn: country.changedOn
     };
   });
+};
+
+export const getCountryById = async (id: number): Promise<Country> => {
+  const { data, error } = await getCountry({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting country", error);
+  }
+
+  if (
+    !data ||
+    !data.countryId ||
+    !data.continentName ||
+    !data.countryName ||
+    !data.changedOn
+  ) {
+    throw new Error("Invalid country data");
+  }
+
+  return {
+    id: data.countryId,
+    name: data.countryName!,
+    inContinent: data.continentName!,
+    updatedOn: data.changedOn
+  };
 };
 
 export const deleteCountryWithId = async (id: number): Promise<void> => {
@@ -203,4 +238,26 @@ export const changeCountryContinent = async (
   if (error) {
     throw new Error("Error while updating country countinent", error);
   }
+};
+
+export const searchCountry = async (query: string): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "country"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for country", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
 };

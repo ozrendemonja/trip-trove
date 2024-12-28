@@ -112,6 +112,16 @@ export default function makeServer(): ReturnType<typeof createServer> {
         { timing: 600 }
       );
 
+      this.get(
+        "/countries/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          return schema.db.countries.findBy((data) => data.countryId == id);
+        },
+        { timing: 400 }
+      );
+
       this.delete(
         "/countries/:id",
         (schema, request) => {

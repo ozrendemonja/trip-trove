@@ -47,12 +47,24 @@ export class CountryListCustomizer extends ListElementCustomizer<CountryRow> {
     this.notifyListColumnChanged(this.columns);
   };
 
-  public withRows(newRows: CountryRow[]): CountryListCustomizer {
+  public withPagedRows(newRows: CountryRow[]): CountryListCustomizer {
     let result = this.removeInfiniteScrollFlag(this.items);
     result = result.concat(newRows);
     if (newRows.length > 0) {
       result = this.addInfiniteScrollFlag(result);
     }
+
+    this.notifyItemsChanged(result);
+    return new CountryListCustomizer(
+      this.notifyItemsChanged,
+      this.notifyListColumnChanged,
+      result
+    );
+  }
+
+  public withFixedRows(newRows: CountryRow[]): CountryListCustomizer {
+    let result = this.removeInfiniteScrollFlag(this.items);
+    result = result.concat(newRows);
 
     this.notifyItemsChanged(result);
     return new CountryListCustomizer(

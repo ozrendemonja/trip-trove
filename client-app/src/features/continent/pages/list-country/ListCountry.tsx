@@ -17,7 +17,11 @@ import { deleteRows } from "../../domain/Country";
 import { Country, LastReadCountry } from "../../domain/Country.types.";
 import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
 import { Suggestion } from "../../domain/Suggestion.types.";
-import { getCountries, searchCountry } from "../../infra/ManagerApi";
+import {
+  getCountries,
+  getCountryById,
+  searchCountry
+} from "../../infra/ManagerApi";
 import EditContinentDetails from "./EditContinentDetails";
 import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
@@ -95,13 +99,12 @@ export const CountryList: React.FunctionComponent = () => {
       setLoading();
       setLastElement(toLastReadCountry(data));
       const countryRows = data.map(CountryRow.from);
-      setCountryCustomizer(countryCustomizer.withRows(countryRows));
+      setCountryCustomizer(countryCustomizer.withPagedRows(countryRows));
       countryCustomizer.createColumns();
       setNotLoading();
     });
   }, [reloadData]);
 
-  //---------------------------------------------------------------
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   useEffect(() => {
@@ -143,7 +146,15 @@ export const CountryList: React.FunctionComponent = () => {
               setQuery(newValue ?? "");
             },
             onFindItem: (id: number) => {
-              console.log("ASDADSASDASD " + id);
+              getCountryById(id).then((data) => {
+                setCountryCustomizer(() => {
+                  return new CountryListCustomizer(
+                    setItems,
+                    setColumns
+                  ).withFixedRows([CountryRow.from(data)]);
+                });
+                setSuggestions([]);
+              });
             }
           }}
           addRowOptions={{

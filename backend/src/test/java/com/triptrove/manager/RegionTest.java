@@ -10,6 +10,7 @@ import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
+import com.triptrove.manager.domain.repo.RegionRepo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,8 +29,7 @@ import java.time.LocalDateTime;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -52,6 +52,9 @@ public class RegionTest {
 
     @Autowired
     private ContinentRepo continentRepo;
+
+    @Autowired
+    private RegionRepo regionRepo;
 
     @BeforeAll
     static void setupAll() {
@@ -354,6 +357,94 @@ public class RegionTest {
 
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).isEmpty();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeDeletedWhenRequestIsSent() throws Exception {
+        Integer[] regionIds = new Integer[3];
+        var request = new SaveRegionRequest("Test region 0", 1);
+        var mvcResult = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        regionIds[0] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        request = new SaveRegionRequest("Test region 1", 0);
+        mvcResult = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        regionIds[1] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        request = new SaveRegionRequest("Test region 2", 0);
+        mvcResult = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        regionIds[2] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        for (Integer id : regionIds) {
+            mockMvc.perform(delete("/regions/" + id.toString())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("x-api-version", "1"))
+                    .andExpect(status().isNoContent());
+        }
+
+        assertThat(regionRepo.findAll()).isEmpty();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingRegionIsRequestedToBeDeleted() throws Exception {
+        mockMvc.perform(delete("/regions/" + "100")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void countryShouldBeReturnedWhenValidIdIsSent() throws Exception {
+        var request = new SaveRegionRequest("Test region 0", 1);
+        var mvcResult = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var jsonResponse = mockMvc.perform(get("/regions/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetRegionResponse response = mapper.readValue(jsonResponse, GetRegionResponse.class);
+        assertThat(response.regionName()).isEqualTo("Test region 0");
+        assertThat(response.countryName()).isEqualTo(COUNTRY_NAME_1);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetErrorResponseWhenNonExistingIdIsSent() throws Exception {
+        mockMvc.perform(get("/countries/" + 100)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound());
     }
 
 

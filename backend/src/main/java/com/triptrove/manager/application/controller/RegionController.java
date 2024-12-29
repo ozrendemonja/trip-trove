@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -51,7 +52,7 @@ public class RegionController {
             @Parameter(name = "sd", description = "Direction of ordering regions using last updated time, or by creation time if not updated."),
             @Parameter(name = "after", description = "Last regions retrieved on the previous page. Leave empty if this is the first page.")
     })
-    public List<GetRegionResponse> getAllCountries(
+    public List<GetRegionResponse> getAllRegions(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             RegionParameter after) {
         boolean isFirstPage = after == null || after.regionId() == null;
@@ -67,4 +68,21 @@ public class RegionController {
                 .toList();
     }
 
+    @DeleteMapping(path = "/{id}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete region by its id", responses = {
+            @ApiResponse(description = "Deleted region by its id", responseCode = "204"),
+    })
+    public void deleteCountry(@PathVariable Integer id) {
+        regionService.deleteRegion(id);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Retrieve region by id", responses = {
+            @ApiResponse(description = "Requested region", responseCode = "204"),
+    })
+    public GetRegionResponse getRegion(@PathVariable Integer id) {
+        var region = regionService.getRegion(id);
+        return GetRegionResponse.from(region);
+    }
 }

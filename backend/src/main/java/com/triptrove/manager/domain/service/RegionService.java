@@ -12,4 +12,8 @@ public interface RegionService {
     List<Region> getRegions(SortDirection sortDirection);
 
     List<Region> getRegions(ScrollPosition afterRegion, SortDirection sortDirection);
+
+    void deleteRegion(int id);
+
+    Region getRegion(int id);
 }

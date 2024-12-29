@@ -78,4 +78,23 @@ public class InMemoryRegionRepository implements RegionRepo {
                 .limit(pageSize)
                 .toList();
     }
+
+    @Override
+    public void deleteById(int id) {
+        inMemoryDb.remove(id);
+    }
+
+    @Override
+    public List<Region> findAll() {
+        return inMemoryDb.values().stream().toList();
+    }
+
+    @Override
+    public Optional<Region> findById(int id) {
+        return inMemoryDb.values()
+                .stream()
+                .filter(country -> country.getId().equals(id))
+                .findAny();
+    }
+
 }

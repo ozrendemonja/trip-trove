@@ -58,4 +58,19 @@ public class RegionServiceImpl implements RegionService {
         }
         return regionRepo.findNextNewest(managerProperties.pageSize(), afterRegion);
     }
+
+    @Override
+    public void deleteRegion(int id) {
+        log.atInfo().log("Deleting region");
+        regionRepo.findById(id).orElseThrow(() -> new BaseApiException("Region not found", ErrorCode.OBJECT_NOT_FOUND));
+        regionRepo.deleteById(id);
+        log.atInfo().log("Region deleted");
+    }
+
+    @Override
+    public Region getRegion(int id) {
+        log.atInfo().log("Getting region with id '{}'", id);
+        return regionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+    }
 }

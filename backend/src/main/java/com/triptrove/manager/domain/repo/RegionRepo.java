@@ -20,4 +20,10 @@ public interface RegionRepo {
     List<Region> findNextOldest(int pageSize, ScrollPosition afterRegion);
 
     List<Region> findNextNewest(int pageSize, ScrollPosition afterRegion);
+
+    void deleteById(int id);
+
+    List<Region> findAll();
+
+    Optional<Region> findById(int id);
 }

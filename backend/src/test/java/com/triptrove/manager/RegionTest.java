@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.triptrove.manager.application.dto.GetRegionResponse;
 import com.triptrove.manager.application.dto.SaveRegionRequest;
+import com.triptrove.manager.application.dto.UpdateRegionDetailsRequest;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Continent;
@@ -447,5 +448,51 @@ public class RegionTest {
                 .andExpect(status().isNotFound());
     }
 
+    @ParameterizedTest
+    @MethodSource("provideValidRegionNames")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateRegionNameWhenNewNameIsValid(String newRegionName) throws Exception {
+        var request = new SaveRegionRequest("Old region name", 0);
+        var mvcResult = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var update = new UpdateRegionDetailsRequest(newRegionName);
+        mockMvc.perform(put("/regions/" + id + "/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(regionRepo.findAll()).hasSize(1);
+        assertThat(regionRepo.findAll().getFirst().getName()).isEqualTo(newRegionName);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetClientErrorResponseWhenNonExistingRegionIsRequestedToBeUpdated() throws Exception {
+        var request = new SaveRegionRequest("Old region name", 0);
+        mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        var update = new UpdateRegionDetailsRequest("New region name");
+        mockMvc.perform(put("/countries/123/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound());
+
+        assertThat(regionRepo.findAll()).hasSize(1);
+        assertThat(regionRepo.findAll().getFirst().getName()).isEqualTo("Old region name");
+    }
 
 }

@@ -73,7 +73,7 @@ public class CountryServiceImpl implements CountryService {
     public void updateCountryDetails(Integer id, String name) {
         log.atInfo().log("Updating the country name to '{}'", name);
         var country = countryRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Country name '%s' not found in the database".formatted(name), ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
         country.setName(name);
         countryRepo.save(country);
         log.atInfo().log("Country name has been updated to '{}'", name);

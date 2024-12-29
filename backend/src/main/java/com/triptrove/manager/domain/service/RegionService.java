@@ -16,4 +16,6 @@ public interface RegionService {
     void deleteRegion(int id);
 
     Region getRegion(int id);
+
+    void updateRegionDetails(int id, String newName);
 }

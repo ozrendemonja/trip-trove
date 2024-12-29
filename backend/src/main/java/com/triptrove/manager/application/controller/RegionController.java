@@ -1,9 +1,6 @@
 package com.triptrove.manager.application.controller;
 
-import com.triptrove.manager.application.dto.GetRegionResponse;
-import com.triptrove.manager.application.dto.RegionParameter;
-import com.triptrove.manager.application.dto.SaveRegionRequest;
-import com.triptrove.manager.application.dto.SortDirectionParameter;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.RegionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -84,5 +81,14 @@ public class RegionController {
     public GetRegionResponse getRegion(@PathVariable Integer id) {
         var region = regionService.getRegion(id);
         return GetRegionResponse.from(region);
+    }
+
+    @PutMapping("/{id:\\d+}/details")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update region details", responses = {
+            @ApiResponse(description = "Region details are updated", responseCode = "204"),
+    })
+    public void updateCountryDetail(@PathVariable String id, @RequestBody UpdateRegionDetailsRequest regionDetailsRequest) {
+        regionService.updateRegionDetails(Integer.parseInt(id), regionDetailsRequest.regionName());
     }
 }

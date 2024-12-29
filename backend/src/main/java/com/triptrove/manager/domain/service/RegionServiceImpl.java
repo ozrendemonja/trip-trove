@@ -73,4 +73,14 @@ public class RegionServiceImpl implements RegionService {
         return regionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
     }
+
+    @Override
+    public void updateRegionDetails(int id, String newName) {
+        log.atInfo().log("Updating the region name to '{}'", newName);
+        var region = regionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        region.setName(newName);
+        regionRepo.save(region);
+        log.atInfo().log("Region name has been updated to '{}'", newName);
+    }
 }

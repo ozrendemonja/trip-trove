@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
+
 @Service
 @AllArgsConstructor
 @Log4j2
@@ -22,13 +24,12 @@ public class CountryServiceImpl implements CountryService {
     public Country saveCountry(String continentName, String countryName) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
         if (countryRepo.findByNameAndContinentName(countryName, continentName).isPresent()) {
-            log.atInfo().log("Country '{}' in '{}' already exists in the database.", countryName, continentName);
-            throw new DuplicateNameException();
+            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName, continentName), ErrorCode.DUPLICATE_NAME);
         }
+
         var continent = continentRepo.findByName(continentName);
         if (continent.isEmpty()) {
-            log.atInfo().log("Continent name '{}' not found in the database", continentName);
-            throw new ObjectNotFoundException();
+            throw new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND);
         }
         var country = new Country();
         country.setName(countryName);
@@ -71,7 +72,8 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public void updateCountryDetails(Integer id, String name) {
         log.atInfo().log("Updating the country name to '{}'", name);
-        var country = countryRepo.findById(id).orElseThrow(ObjectNotFoundException::new);
+        var country = countryRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Country name '%s' not found in the database".formatted(name), ErrorCode.OBJECT_NOT_FOUND));
         country.setName(name);
         countryRepo.save(country);
         log.atInfo().log("Country name has been updated to '{}'", name);
@@ -80,10 +82,12 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public void updateCountryContinentDetails(Integer countryId, String continentName) {
         log.atInfo().log("Updating the country to belong to the '{}' continent", continentName);
-        Continent newContinent = continentRepo.findByName(continentName).orElseThrow(ObjectNotFoundException::new);
-        Country country = countryRepo.findById(countryId).orElseThrow(ObjectNotFoundException::new);
+        Continent newContinent = continentRepo.findByName(continentName)
+                .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND));
+        Country country = countryRepo.findById(countryId)
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
         if (countryRepo.findByNameAndContinentName(country.getName(), continentName).isPresent()) {
-            throw new DuplicateNameException();
+            throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continentName), ErrorCode.DUPLICATE_NAME);
         }
         country.setContinent(newContinent);
         countryRepo.save(country);
@@ -93,6 +97,7 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public Country getCountry(Integer id) {
         log.atInfo().log("Getting country with id '{}'", id);
-        return countryRepo.findById(id).orElseThrow(ObjectNotFoundException::new);
+        return countryRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
     }
 }

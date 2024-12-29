@@ -6,10 +6,11 @@ import com.triptrove.manager.application.dto.GetCountryResponse;
 import com.triptrove.manager.application.dto.SaveCountryRequest;
 import com.triptrove.manager.application.dto.UpdateCountryContinentRequest;
 import com.triptrove.manager.application.dto.UpdateCountryDetailsRequest;
+import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
+import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
-import org.hamcrest.core.Is;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +28,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -37,7 +37,6 @@ public class CountryTests {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String CONTINENT_NAME_0 = "Test continent";
     public static final String CONTINENT_NAME_1 = "Test continent new";
-
 
     @Autowired
     private MockMvc mockMvc;
@@ -74,7 +73,7 @@ public class CountryTests {
         // TODO Return when implement DB
 //                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + input.id()));
 
-        assertThat(countryRepo.findAll().size()).isEqualTo(1);
+        assertThat(countryRepo.findAll()).hasSize(1);
         assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(countryName);
     }
 
@@ -87,12 +86,18 @@ public class CountryTests {
     void countrySaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_0, input.continentName);
 
-        mockMvc.perform(post("/countries")
+        var jsonResponse = mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.countryName", Is.is(input.errorMessage)));
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
     }
 
     private record InvalidCountryName(String continentName, String errorMessage) {
@@ -100,13 +105,13 @@ public class CountryTests {
 
     private static Stream<InvalidCountryName> provideTooLongCountryNames() {
         return Stream.of(
-                new InvalidCountryName(null, "Country name may not be null or empty"),
-                new InvalidCountryName("", "Country name may not be null or empty"),
-                new InvalidCountryName("   ", "Country name may not be null or empty"),
-                new InvalidCountryName("\t", "Country name may not be null or empty"),
-                new InvalidCountryName("\n", "Country name may not be null or empty"),
-                new InvalidCountryName("a".repeat(257), "Country name may not be longer then 256"),
-                new InvalidCountryName("ab".repeat(256), "Country name may not be longer then 256")
+                new InvalidCountryName(null, "{countryName = Country name may not be null or empty}"),
+                new InvalidCountryName("", "{countryName = Country name may not be null or empty}"),
+                new InvalidCountryName("   ", "{countryName = Country name may not be null or empty}"),
+                new InvalidCountryName("\t", "{countryName = Country name may not be null or empty}"),
+                new InvalidCountryName("\n", "{countryName = Country name may not be null or empty}"),
+                new InvalidCountryName("a".repeat(257), "{countryName = Country name may not be longer then 256}"),
+                new InvalidCountryName("ab".repeat(256), "{countryName = Country name may not be longer then 256}")
         );
     }
 

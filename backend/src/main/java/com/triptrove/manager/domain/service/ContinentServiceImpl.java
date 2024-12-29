@@ -1,8 +1,7 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.Continent;
-import com.triptrove.manager.domain.model.DuplicateNameException;
-import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.model.SortDirection;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
 
 @Service
 @Slf4j
@@ -22,8 +23,7 @@ public class ContinentServiceImpl implements ContinentService {
     public String saveContinent(Continent continent) {
         log.atInfo().log("Processing save continent request for '{}'", continent.getName());
         if (continentRepo.findByName(continent.getName()).isPresent()) {
-            log.atInfo().log("Continent already exists in the database");
-            throw new DuplicateNameException();
+            throw new BaseApiException("Continent already exists in the database", ErrorCode.DUPLICATE_NAME);
         }
         continentRepo.save(continent);
 
@@ -50,7 +50,7 @@ public class ContinentServiceImpl implements ContinentService {
     public Continent getContinent(String name) {
         log.atInfo().log("Getting a continent with name '{}'", name);
         var continent = continentRepo.findByName(name)
-                .orElseThrow(ObjectNotFoundException::new);
+                .orElseThrow(() -> new BaseApiException("Continent '%s' does not exist in the database".formatted(name), ErrorCode.OBJECT_NOT_FOUND));
         log.atInfo().log("Got a continent with name '{}'", name);
 
         return continent;
@@ -59,7 +59,8 @@ public class ContinentServiceImpl implements ContinentService {
     @Override
     public void updateContinent(String oldName, String newName) {
         log.atInfo().log("Updating a continent with name '{}'", oldName);
-        Continent continent = continentRepo.findByName(oldName).orElseThrow(ObjectNotFoundException::new);
+        Continent continent = continentRepo.findByName(oldName)
+                .orElseThrow(() -> new BaseApiException("Continent '%s' does not exist in the database".formatted(oldName), ErrorCode.OBJECT_NOT_FOUND));
         continent.setName(newName);
         continent.setUpdatedOn(LocalDateTime.now());
         continentRepo.save(continent);

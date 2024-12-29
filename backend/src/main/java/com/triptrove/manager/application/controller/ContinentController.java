@@ -5,8 +5,6 @@ import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.domain.model.Continent;
-import com.triptrove.manager.domain.model.DuplicateNameException;
-import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.service.ContinentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,15 +13,11 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @AllArgsConstructor
 @RestController
@@ -86,30 +80,5 @@ public class ContinentController {
     })
     public void updateContinent(@PathVariable String name, @RequestBody @Valid UpdateContinentRequest request) {
         continentService.updateContinent(name, request.continentName());
-    }
-
-    @ResponseStatus(value = HttpStatus.NOT_FOUND)
-    @ExceptionHandler(ObjectNotFoundException.class)
-    public void objectNotFound() {
-        // Nothing needed because of transition to global exception handler
-    }
-
-    @ResponseStatus(value = HttpStatus.CONFLICT)
-    @ExceptionHandler(DuplicateNameException.class)
-    public void duplicateName() {
-        // Nothing needed because of transition to global exception handler
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationExceptions(
-            MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return errors;
     }
 }

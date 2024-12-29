@@ -1,0 +1,35 @@
+package com.triptrove.manager.domain.service;
+
+import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.Region;
+import com.triptrove.manager.domain.repo.CountryRepo;
+import com.triptrove.manager.domain.repo.RegionRepo;
+import lombok.AllArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.stereotype.Service;
+
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
+
+@Service
+@Log4j2
+@AllArgsConstructor
+public class RegionServiceImpl implements RegionService {
+    private final RegionRepo regionRepo;
+    private final CountryRepo countryRepo;
+
+    @Override
+    public Region saveRegion(String name, int countryId) {
+        log.atInfo().log("Processing save region request for region '{}'", name);
+        var country = countryRepo.findById(countryId).orElseThrow(() -> new BaseApiException("Country not found in database", ErrorCode.OBJECT_NOT_FOUND));
+        if (regionRepo.findByNameAndCountryId(name, countryId).isPresent()) {
+            throw new BaseApiException("Region '%s' in '%s' country already exists in the database.".formatted(name, country.getName()), ErrorCode.DUPLICATE_NAME);
+        }
+        var region = new Region();
+        region.setName(name);
+        region.setCountry(country);
+        var result = regionRepo.save(region);
+        log.atInfo().log("Region '{}' successfully saved", result.getName());
+
+        return result;
+    }
+}

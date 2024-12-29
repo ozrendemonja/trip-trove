@@ -78,7 +78,7 @@ public class CountryTests {
     }
 
     private static Stream<String> provideValidCountryNames() {
-        return Stream.of("a", "test", "test test", "test 12ac 02]", "a".repeat(64));
+        return Stream.of("a", "test", "test test", "test 12ac 02]", "a".repeat(256));
     }
 
     @ParameterizedTest

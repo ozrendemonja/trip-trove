@@ -43,7 +43,7 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public List<Country> getCountries(CountryScrollPosition afterCountry, SortDirection sortDirection) {
+    public List<Country> getCountries(ScrollPosition afterCountry, SortDirection sortDirection) {
         log.atInfo().log("Getting a list of countries ordered in {} order, updated before {}", sortDirection, afterCountry.updatedOn());
 
         if (sortDirection == SortDirection.ASCENDING) {

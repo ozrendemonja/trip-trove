@@ -1,7 +1,7 @@
 package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.model.CountryScrollPosition;
+import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import lombok.AllArgsConstructor;
@@ -91,21 +91,21 @@ public class InMemoryCountryRepository implements CountryRepo {
     }
 
     @Override
-    public List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry) {
+    public List<Country> findNextOldest(int pageSize, ScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()
                 .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn())))
-                .dropWhile(country -> country.getId() <= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isBefore(afterCountry.updatedOn()))
+                .dropWhile(country -> country.getId() <= afterCountry.elementId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isBefore(afterCountry.updatedOn()))
                 .limit(pageSize)
                 .toList();
     }
 
     @Override
-    public List<Country> findNextNewest(int pageSize, CountryScrollPosition afterCountry) {
+    public List<Country> findNextNewest(int pageSize, ScrollPosition afterCountry) {
         return inMemoryDb.values()
                 .stream()
                 .sorted(Comparator.comparing(country -> country.getUpdatedOn().orElse(country.getCreatedOn()), Comparator.reverseOrder()))
-                .dropWhile(country -> country.getId() >= afterCountry.countryId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isAfter(afterCountry.updatedOn()))
+                .dropWhile(country -> country.getId() >= afterCountry.elementId() || country.getUpdatedOn().orElse(country.getCreatedOn()).isAfter(afterCountry.updatedOn()))
                 .limit(pageSize)
                 .toList();
     }

@@ -1,7 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.model.CountryScrollPosition;
+import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
@@ -14,9 +14,9 @@ public interface CountryRepo {
 
     List<Country> findByName(String name);
 
-    List<Country> findNextOldest(int pageSize, CountryScrollPosition afterCountry);
+    List<Country> findNextOldest(int pageSize, ScrollPosition afterCountry);
 
-    List<Country> findNextNewest(int pageSize, CountryScrollPosition afterCountry);
+    List<Country> findNextNewest(int pageSize, ScrollPosition afterCountry);
 
     List<Country> findTopNewest(int pageSize);
 

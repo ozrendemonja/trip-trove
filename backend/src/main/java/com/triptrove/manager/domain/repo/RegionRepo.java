@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Region;
+import com.triptrove.manager.domain.model.ScrollPosition;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,4 +13,11 @@ public interface RegionRepo {
 
     List<Region> findByName(String name);
 
+    List<Region> findTopOldest(int pageSize);
+
+    List<Region> findTopNewest(int pageSize);
+
+    List<Region> findNextOldest(int pageSize, ScrollPosition afterRegion);
+
+    List<Region> findNextNewest(int pageSize, ScrollPosition afterRegion);
 }

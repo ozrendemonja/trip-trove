@@ -1,7 +1,7 @@
 package com.triptrove.manager.infra;
 
+import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.Continent;
-import com.triptrove.manager.domain.model.ObjectNotFoundException;
 import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import lombok.AllArgsConstructor;
@@ -11,6 +11,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
 
 @Repository
 @AllArgsConstructor
@@ -55,7 +57,7 @@ public class InMemoryContinentRepository implements ContinentRepo {
                 .filter(continent -> continent.getName().equals(name))
                 .map(Continent::getId)
                 .findAny()
-                .orElseThrow(ObjectNotFoundException::new);
+                .orElseThrow(() -> new BaseApiException("Continent not found", ErrorCode.OBJECT_NOT_FOUND));
 
         inMemoryDb.remove(id);
     }

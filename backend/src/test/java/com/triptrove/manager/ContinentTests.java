@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.application.dto.UpdateContinentRequest;
+import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
+import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.repo.ContinentRepo;
-import org.hamcrest.core.Is;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,7 +29,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -56,7 +58,7 @@ class ContinentTests {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/continents/" + UriUtils.encode(continentName, StandardCharsets.UTF_8)));
 
-        assertThat(continentRepo.findAll().size()).isEqualTo(1);
+        assertThat(continentRepo.findAll()).hasSize(1);
         assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo(continentName);
     }
 
@@ -69,12 +71,18 @@ class ContinentTests {
     void continentSaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidContinentName input) throws Exception {
         var request = new SaveContinentRequest(input.continentName);
 
-        mockMvc.perform(post("/continents")
+        var jsonResponse = mockMvc.perform(post("/continents")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.continentName", Is.is(input.errorMessage)));
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
     }
 
     private record InvalidContinentName(String continentName, String errorMessage) {
@@ -82,13 +90,13 @@ class ContinentTests {
 
     private static Stream<InvalidContinentName> provideTooLongContinentNames() {
         return Stream.of(
-                new InvalidContinentName(null, "Continent name may not be null or empty"),
-                new InvalidContinentName("", "Continent name may not be null or empty"),
-                new InvalidContinentName("   ", "Continent name may not be null or empty"),
-                new InvalidContinentName("\t", "Continent name may not be null or empty"),
-                new InvalidContinentName("\n", "Continent name may not be null or empty"),
-                new InvalidContinentName("a".repeat(65), "Continent name may not be longer then 64"),
-                new InvalidContinentName("ab".repeat(64), "Continent name may not be longer then 64")
+                new InvalidContinentName(null, "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("   ", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("\t", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("\n", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("a".repeat(65), "{continentName = Continent name may not be longer then 64}"),
+                new InvalidContinentName("ab".repeat(64), "{continentName = Continent name may not be longer then 64}")
         );
     }
 
@@ -355,7 +363,7 @@ class ContinentTests {
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
 
-        assertThat(continentRepo.findAll().size()).isEqualTo(1);
+        assertThat(continentRepo.findAll()).hasSize(1);
         assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo("Updated test continent 0");
         assertThat(continentRepo.findAll().getFirst().getUpdatedOn().orElseThrow()).isCloseTo(LocalDateTime.now(), within(1, ChronoUnit.HOURS));
     }
@@ -385,12 +393,18 @@ class ContinentTests {
                 .andExpect(status().isCreated());
 
         var request = new UpdateContinentRequest(input.continentName);
-        mockMvc.perform(put("/continents/Test continent 0")
+        var jsonResponse = mockMvc.perform(put("/continents/Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.continentName", Is.is(input.errorMessage)));
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
     }
 
 }

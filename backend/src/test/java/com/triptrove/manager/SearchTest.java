@@ -1,6 +1,8 @@
 package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
+import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
 import com.triptrove.manager.domain.model.Continent;
@@ -211,13 +213,18 @@ public class SearchTest {
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
         // TMP solution for non existing clear of database
     void userShouldGetConflictResponseWhenCountryQueryNameIsTooShort(String input) throws Exception {
-        mockMvc.perform(get("/search")
+        var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("q", input)
                         .param("i", "COUNTRY")
                         .header("x-api-version", "1"))
-                .andExpect(status().isBadRequest());
-//                .andExpect(jsonPath("$.countryName", Is.is("Test"))); // TODO Add after global exception handler is added
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
     private static Stream<String> provideInValidQueries() {

@@ -70,7 +70,7 @@ public class RegionController {
     @Operation(summary = "Delete region by its id", responses = {
             @ApiResponse(description = "Deleted region by its id", responseCode = "204"),
     })
-    public void deleteCountry(@PathVariable Integer id) {
+    public void deleteRegion(@PathVariable Integer id) {
         regionService.deleteRegion(id);
     }
 

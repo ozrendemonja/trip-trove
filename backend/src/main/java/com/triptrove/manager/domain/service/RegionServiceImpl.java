@@ -83,4 +83,19 @@ public class RegionServiceImpl implements RegionService {
         regionRepo.save(region);
         log.atInfo().log("Region name has been updated to '{}'", newName);
     }
+
+    @Override
+    public void updateRegionCountryDetails(int id, int countryId) {
+        log.atInfo().log("Updating the region to belong to the different country");
+        var region = regionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        var newCountry = countryRepo.findById(countryId)
+                .orElseThrow(() -> new BaseApiException("Country is not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        if (regionRepo.findByNameAndCountryId(region.getName(), countryId).isPresent()) {
+            throw new BaseApiException("Cannot change the region to '%s' as it already exists in the database".formatted(newCountry.getName()), ErrorCode.DUPLICATE_NAME);
+        }
+        region.setCountry(newCountry);
+        regionRepo.save(region);
+        log.atInfo().log("Updated the region to belong to the '{}' country", newCountry.getName());
+    }
 }

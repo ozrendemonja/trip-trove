@@ -88,7 +88,16 @@ public class RegionController {
     @Operation(summary = "Update region details", responses = {
             @ApiResponse(description = "Region details are updated", responseCode = "204"),
     })
-    public void updateCountryDetail(@PathVariable String id, @RequestBody UpdateRegionDetailsRequest regionDetailsRequest) {
+    public void updateRegionDetail(@PathVariable String id, @RequestBody UpdateRegionDetailsRequest regionDetailsRequest) {
         regionService.updateRegionDetails(Integer.parseInt(id), regionDetailsRequest.regionName());
+    }
+
+    @PutMapping("/{id:\\d+}/country")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update the country name of the region", responses = {
+            @ApiResponse(description = "Region details are updated", responseCode = "204"),
+    })
+    public void updateRegionCountry(@PathVariable String id, @RequestBody UpdateRegionCountryRequest countryContinentRequest) {
+        regionService.updateRegionCountryDetails(Integer.parseInt(id), countryContinentRequest.countryId());
     }
 }

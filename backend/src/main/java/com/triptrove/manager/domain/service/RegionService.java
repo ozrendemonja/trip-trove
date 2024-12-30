@@ -18,4 +18,6 @@ public interface RegionService {
     Region getRegion(int id);
 
     void updateRegionDetails(int id, String newName);
+
+    void updateRegionCountryDetails(int id, int countryId);
 }

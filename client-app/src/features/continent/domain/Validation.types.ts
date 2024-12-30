@@ -1,7 +1,11 @@
 import { AddContinentFormElements } from "../pages/add-continent/AddContinent.types";
 import { AddCountryFormElements } from "../pages/add-country/AddCountry.types";
+import { AddRegionFormElements } from "../pages/add-region/AddRegion.types";
 
-export type FormFields = AddContinentFormElements | AddCountryFormElements;
+export type FormFields =
+  | AddContinentFormElements
+  | AddCountryFormElements
+  | AddRegionFormElements;
 
 type ErrorMessages<T> = {
   [K in keyof T as `${K & string}Error`]?: string;

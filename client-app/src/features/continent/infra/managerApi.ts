@@ -1,15 +1,21 @@
 import {
   deleteContinent,
   deleteCountry,
+  deleteRegion,
   getAllContinents,
   getAllCountries,
+  getAllRegions,
   getCountry,
+  getRegion,
   getSearchedElements,
   saveContinent,
   saveCountry,
+  saveRegion,
   updateContinent,
   updateCountryContinent,
-  updateCountryDetail
+  updateCountryDetail,
+  updateRegionCountry,
+  updateRegionDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import {
@@ -18,6 +24,7 @@ import {
   OrderOptions
 } from "../domain/Continent.types";
 import { Country } from "../domain/Country.types.";
+import { LastReadRegion, Region } from "../domain/Region.types";
 import { Suggestion } from "../domain/Suggestion.types.";
 
 managerClient();
@@ -244,7 +251,7 @@ export const searchCountry = async (query: string): Promise<Suggestion[]> => {
   const { data, error } = await getSearchedElements({
     query: {
       q: query,
-      i: "country"
+      i: "COUNTRY"
     },
     headers: {
       "x-api-version": "1"
@@ -260,4 +267,169 @@ export const searchCountry = async (query: string): Promise<Suggestion[]> => {
       return { value: suggestion.value, id: suggestion.id } as Suggestion;
     }) ?? []
   );
+};
+
+export const getRegions = async (
+  lastReadRegion?: LastReadRegion,
+  orderBy?: OrderOptions
+): Promise<Region[]> => {
+  const { data, error } = await getAllRegions({
+    headers: {
+      "x-api-version": "1"
+    },
+    query: {
+      sd: orderBy,
+      regionId: lastReadRegion?.id,
+      updatedOn: lastReadRegion?.updatedOn
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find((region) => !region.regionName || !region.countryName)
+  ) {
+    throw new Error("Invalid regions data");
+  }
+
+  return data.map((region) => {
+    return {
+      id: region.regionId!,
+      name: region.regionName!,
+      inCountry: region.countryName!,
+      updatedOn: region.changedOn!
+    };
+  });
+};
+
+export const deleteRegionWithId = async (id: number): Promise<void> => {
+  const { error } = await deleteRegion({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while deleting region", error);
+  }
+};
+
+export const saveNewRegion = async (
+  name: string,
+  countryId: number
+): Promise<void> => {
+  const { error } = await saveRegion({
+    body: {
+      countryId: countryId,
+      regionName: name
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while saving region", error);
+  }
+};
+
+export const changeRegionDetails = async (
+  id: string,
+  newName: string
+): Promise<void> => {
+  const { error } = await updateRegionDetail({
+    body: {
+      regionName: newName
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating region details", error);
+  }
+};
+
+export const changeRegionCountry = async (
+  id: string,
+  countryId: number
+): Promise<void> => {
+  const { error } = await updateRegionCountry({
+    body: {
+      countryId: countryId
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating region country", error);
+  }
+};
+
+export const searchRegion = async (query: string): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "REGION"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for region", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
+};
+
+export const getRegionById = async (id: number): Promise<Region> => {
+  const { data, error } = await getRegion({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting region", error);
+  }
+
+  if (
+    !data ||
+    data.regionId == undefined ||
+    !data.regionName ||
+    !data.countryName ||
+    !data.changedOn
+  ) {
+    throw new Error("Invalid region data");
+  }
+
+  return {
+    id: data.regionId,
+    name: data.regionName!,
+    inCountry: data.countryName!,
+    updatedOn: data.changedOn
+  };
 };

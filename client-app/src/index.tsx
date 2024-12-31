@@ -6,6 +6,8 @@ import AddContinent from "./features/continent/pages/add-continent/AddContinent"
 import Home from "./features/home/Home";
 import CountryList from "./features/continent/pages/list-country/ListCountry";
 import AddCountry from "./features/continent/pages/add-country/AddCountry";
+import AddRegion from "./features/continent/pages/add-region/AddRegion";
+import RegionList from "./features/continent/pages/list-region/ListRegion";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -44,6 +46,8 @@ root.render(
         <Route path="/add-continent" element={<AddContinent />} />
         <Route path="/countries" element={<CountryList />} />
         <Route path="/add-country" element={<AddCountry />} />
+        <Route path="/regions" element={<RegionList />} />
+        <Route path="/add-region" element={<AddRegion />} />
       </Routes>
     </BrowserRouter>
     <style>{styleOverrides}</style>

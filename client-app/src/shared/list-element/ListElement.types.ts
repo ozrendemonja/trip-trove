@@ -85,4 +85,6 @@ export abstract class ListElementCustomizer<T> {
   };
 
   abstract createColumns(): void;
+
+  abstract withPagedRows(newRows: T[]): ListElementCustomizer<T>;
 }

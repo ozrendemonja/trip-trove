@@ -13,26 +13,26 @@ import ListElement from "../../../../shared/list-element/ListElement";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
-import { deleteRows } from "../../domain/Country";
-import { Country, LastReadCountry } from "../../domain/Country.types.";
-import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
-import { Suggestion } from "../../domain/Suggestion.types.";
+import { deleteRows } from "../../domain/Region";
+import { LastReadRegion, Region } from "../../domain/Region.types";
+import { RegionListCustomizer } from "../../domain/RegionListCustomizer";
 import {
-  getCountries,
-  getCountryById,
-  searchCountry
+  getRegionById,
+  getRegions,
+  searchRegion
 } from "../../infra/ManagerApi";
-import EditContinentDetails from "./EditContinentDetails";
-import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
-import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
-import { useClasses } from "./ListCountry.styles";
-import { CountryRow } from "./ListCountry.types";
-import { toLastReadCountry } from "./ListCountry.utils";
+import EditPropertyRegionDetails from "./EditPropertyRegionDetails";
+import EditRegionCountryDetails from "./EditRegionCountryDetails";
+import { listHeader, onRenderWhenNoMoreItems } from "./ListRegion.config";
+import { useClasses } from "./ListRegion.styles";
+import { RegionRow } from "./ListRegion.types";
+import { toLastReadRegion } from "./ListRegion.utils";
+import { Suggestion } from "../../domain/Suggestion.types.";
 
 const onRenderItemColumn = (
   className: string,
   onUpdateClick: () => void,
-  country?: CountryRow,
+  region?: RegionRow,
   column?: IColumn
 ): JSX.Element | string | number => {
   if (column?.key === "skipElement") {
@@ -43,33 +43,33 @@ const onRenderItemColumn = (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
         <Link
           className={className}
-          href={`https://www.google.com/search?q=${country.name}`}
+          href={`https://www.google.com/search?q=${region?.name}`}
           target="_blank"
           rel="noopener"
           underline
         >
-          {country?.name}
+          {region?.name}
         </Link>
-        <EditPropertyCountryDetails
-          countryId={country!.id}
-          text={country!.name}
+        <EditPropertyRegionDetails
+          regionId={region!.id}
+          text={region!.name}
           onUpdateClick={onUpdateClick}
         />
       </Stack>
     );
-  } else if (column?.key === "continent") {
+  } else if (column?.key === "country") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        <Text>{country?.continent}</Text>
-        <EditContinentDetails
-          countryId={country!.id}
-          text={country!.name}
+        <Text>{region?.country}</Text>
+        <EditRegionCountryDetails
+          regionId={region!.id}
+          text={region!.country}
           onUpdateClick={onUpdateClick}
         />
       </Stack>
     );
   }
-  return country[column.fieldName as keyof Country] as string;
+  return region[column.fieldName as keyof Region] as string;
 };
 
 const sortOptions: IDropdownOption[] = [
@@ -77,30 +77,30 @@ const sortOptions: IDropdownOption[] = [
   { key: "ASC" as OrderOptions, text: "Oldest" }
 ];
 
-export const CountryList: React.FunctionComponent = () => {
+export const RegionList: React.FunctionComponent = () => {
   const classes = useClasses();
 
-  const [items, setItems] = useState<CountryRow[]>([]);
+  const [items, setItems] = useState<RegionRow[]>([]);
   const [columns, setColumns] = useState<IColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBoolean(true);
   const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
-  const [lastElement, setLastElement] = useState<LastReadCountry | undefined>(
+  const [lastElement, setLastElement] = useState<LastReadRegion | undefined>(
     undefined
   );
   const navigate = useNavigate();
-  const [countryCustomizer, setCountryCustomizer] = useState(
-    new CountryListCustomizer(setItems, setColumns)
+  const [regionCustomizer, setRegionCustomizer] = useState(
+    new RegionListCustomizer(setItems, setColumns)
   );
 
   useEffect(() => {
-    getCountries(lastElement, order).then((data) => {
+    getRegions(lastElement, order).then((data) => {
       setLoading();
-      setLastElement(toLastReadCountry(data));
-      const countryRows = data.map(CountryRow.from);
-      setCountryCustomizer(countryCustomizer.withPagedRows(countryRows));
-      countryCustomizer.createColumns();
+      setLastElement(toLastReadRegion(data));
+      const regionRows = data.map(RegionRow.from);
+      setRegionCustomizer(regionCustomizer.withPagedRows(regionRows));
+      regionCustomizer.createColumns();
       setNotLoading();
     });
   }, [reloadData]);
@@ -109,16 +109,14 @@ export const CountryList: React.FunctionComponent = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   useEffect(() => {
     if (query.trim().length >= 3) {
-      searchCountry(query).then((data) => {
-        setSuggestions(data);
-      });
+      searchRegion(query).then(setSuggestions);
     }
   }, [query]);
 
   return (
     <>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of contries" />}
+      {isLoading && <LoadingSpinner text="Updating list of regions" />}
       {!isLoading && (
         <ListElement
           items={items}
@@ -126,15 +124,14 @@ export const CountryList: React.FunctionComponent = () => {
           listHeader={{
             ...listHeader,
             setItems: setSuggestions,
-            showSearchBar: true,
             onSortOptionChange: (
               _event: React.FormEvent<HTMLDivElement>,
               option?: IDropdownOption,
               _index?: number
             ) => {
               setOrder(option!.key as OrderOptions);
-              setCountryCustomizer(
-                new CountryListCustomizer(setItems, setColumns)
+              setRegionCustomizer(
+                new RegionListCustomizer(setItems, setColumns)
               );
               toggleReloadData();
             },
@@ -147,27 +144,27 @@ export const CountryList: React.FunctionComponent = () => {
               setQuery(newValue ?? "");
             },
             onFindItem: (id: number) => {
-              getCountryById(id).then((data) => {
-                setCountryCustomizer(() => {
-                  return new CountryListCustomizer(
+              getRegionById(id).then((data) => {
+                setRegionCustomizer(() => {
+                  return new RegionListCustomizer(
                     setItems,
                     setColumns
-                  ).withFixedRows([CountryRow.from(data)]);
+                  ).withFixedRows([RegionRow.from(data)]);
                 });
                 setSuggestions([]);
               });
             }
           }}
           addRowOptions={{
-            text: "Add new country",
-            onAddRow: () => navigate("/add-country")
+            text: "Add new region",
+            onAddRow: () => navigate("/add-region")
           }}
           deleteRowOptions={{
-            text: "Delete country",
-            onDeleteRow: async (selection: Selection<CountryRow>) => {
+            text: "Delete region",
+            onDeleteRow: async (selection: Selection<RegionRow>) => {
               await deleteRows(selection.getSelection());
-              setCountryCustomizer(
-                new CountryListCustomizer(setItems, setColumns)
+              setRegionCustomizer(
+                new RegionListCustomizer(setItems, setColumns)
               );
               toggleReloadData();
             }
@@ -176,15 +173,15 @@ export const CountryList: React.FunctionComponent = () => {
             onRenderWhenNoMoreItems(toggleReloadData)
           }
           onRenderItemColumn={(
-            item?: Country,
+            item?: RegionRow,
             _index?: number,
             column?: IColumn
           ) =>
             onRenderItemColumn(
               classes.linkField,
               () => {
-                setCountryCustomizer(
-                  new CountryListCustomizer(setItems, setColumns)
+                setRegionCustomizer(
+                  new RegionListCustomizer(setItems, setColumns)
                 );
                 toggleReloadData();
               },
@@ -192,7 +189,7 @@ export const CountryList: React.FunctionComponent = () => {
               column
             )
           }
-          selectedItemName={(selection: Selection<Country>) => {
+          selectedItemName={(selection: Selection<Region>) => {
             if (
               selection &&
               selection.getSelection() &&
@@ -207,4 +204,4 @@ export const CountryList: React.FunctionComponent = () => {
   );
 };
 
-export default CountryList;
+export default RegionList;

@@ -34,7 +34,17 @@ const createContinentNameValidation = () => {
         256,
         ({ max }) => `Region name may not be longer then ${max} characters`
       ),
-    countryId: yup.string().required("Country must be selected")
+    cityName: yup
+      .string()
+      .trim()
+      .ensure()
+      .required("City name may not be null or empty")
+      .max(
+        256,
+        ({ max }) => `City name may not be longer then ${max} characters`
+      ),
+    countryId: yup.string().required("Country must be selected"),
+    regionId: yup.string().required("Country must be selected")
   });
 };
 

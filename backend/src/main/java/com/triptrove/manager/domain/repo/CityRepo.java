@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,4 +27,6 @@ public interface CityRepo {
     void delete(City city);
 
     List<City> findAll();
+
+    List<Suggestion> search(String query, int limit);
 }

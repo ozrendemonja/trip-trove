@@ -7,7 +7,8 @@ import com.triptrove.manager.domain.model.SearchInElement;
 public enum SearchIn {
     COUNTRY("country"),
     CONTINENT("continent"),
-    REGION("region");
+    REGION("region"),
+    CITY("city");
     private final String value;
 
     SearchIn(String in) {
@@ -29,6 +30,7 @@ public enum SearchIn {
             case COUNTRY -> SearchInElement.COUNTRY;
             case CONTINENT -> SearchInElement.CONTINENT;
             case REGION -> SearchInElement.REGION;
+            case CITY -> SearchInElement.CITY;
         };
     }
 }

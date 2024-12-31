@@ -51,8 +51,8 @@ public class CityController {
     })
     public List<GetCityResponse> getAllCities(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
-            RegionParameter after) {
-        boolean isFirstPage = after == null || after.regionId() == null;
+            CityParameter after) {
+        boolean isFirstPage = after == null || after.cityId() == null;
         if (isFirstPage) {
             return cityService.getCities(sortDirection.toSortDirection())
                     .stream()

@@ -299,7 +299,7 @@ public class CityTest {
 
         jsonResponse = mockMvc.perform(get("/cities")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("regionId", response[1].cityId().toString())
+                        .param("cityId", response[1].cityId().toString())
                         .param("updatedOn", response[1].changedOn().toString())
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
@@ -360,7 +360,7 @@ public class CityTest {
         jsonResponse = mockMvc.perform(get("/cities")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("sd", "ASC")
-                        .param("regionId", response[1].cityId().toString())
+                        .param("cityId", response[1].cityId().toString())
                         .param("updatedOn", response[1].changedOn().toString())
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())

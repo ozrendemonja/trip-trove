@@ -1,16 +1,22 @@
 import {
+  deleteCity,
   deleteContinent,
   deleteCountry,
   deleteRegion,
+  getAllCities,
   getAllContinents,
   getAllCountries,
   getAllRegions,
+  getCity,
   getCountry,
   getRegion,
   getSearchedElements,
+  saveCity,
   saveContinent,
   saveCountry,
   saveRegion,
+  updateCityDetail,
+  updateCityRegion,
   updateContinent,
   updateCountryContinent,
   updateCountryDetail,
@@ -18,6 +24,7 @@ import {
   updateRegionDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
+import { City, LastReadCity } from "../domain/City.types";
 import {
   Continent,
   LastReadCountry,
@@ -432,4 +439,174 @@ export const getRegionById = async (id: number): Promise<Region> => {
     inCountry: data.countryName!,
     updatedOn: data.changedOn
   };
+};
+
+export const getCities = async (
+  lastReadCity?: LastReadCity,
+  orderBy?: OrderOptions
+): Promise<City[]> => {
+  const { data, error } = await getAllCities({
+    headers: {
+      "x-api-version": "1"
+    },
+    query: {
+      sd: orderBy,
+      cityId: lastReadCity?.id,
+      updatedOn: lastReadCity?.updatedOn
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (city) => !city.cityName || !city.regionName || !city.countryName
+    )
+  ) {
+    throw new Error("Invalid city data");
+  }
+
+  return data.map((city) => {
+    return {
+      id: city.cityId!,
+      name: city.cityName,
+      inRegion: city.regionName,
+      inCountry: city.countryName,
+      updatedOn: city.changedOn!
+    };
+  });
+};
+
+export const deleteCityWithId = async (id: number): Promise<void> => {
+  const { error } = await deleteCity({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while deleting city", error);
+  }
+};
+
+export const saveNewCity = async (
+  name: string,
+  regionId: number
+): Promise<void> => {
+  const { error } = await saveCity({
+    body: {
+      regionId: regionId,
+      cityName: name
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while saving city", error);
+  }
+};
+
+export const getCityById = async (id: number): Promise<City> => {
+  const { data, error } = await getCity({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting city", error);
+  }
+
+  if (
+    !data ||
+    data.cityId == undefined ||
+    !data.cityName ||
+    !data.regionName ||
+    !data.countryName ||
+    !data.changedOn
+  ) {
+    throw new Error("Invalid city data");
+  }
+
+  return {
+    id: data.cityId,
+    name: data.cityName,
+    inRegion: data.regionName,
+    inCountry: data.countryName,
+    updatedOn: data.changedOn
+  };
+};
+
+export const searchCity = async (query: string): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "CITY"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for city", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
+};
+
+export const changeCityDetails = async (
+  id: string,
+  newName: string
+): Promise<void> => {
+  const { error } = await updateCityDetail({
+    body: {
+      cityName: newName
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating city details", error);
+  }
+};
+
+export const changeCityRegion = async (
+  id: string,
+  regionId: number
+): Promise<void> => {
+  const { error } = await updateCityRegion({
+    body: {
+      regionId: regionId
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating city region", error);
+  }
 };

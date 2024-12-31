@@ -5,10 +5,14 @@ import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
+import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.Region;
+import com.triptrove.manager.domain.repo.CityRepo;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
+import com.triptrove.manager.domain.repo.RegionRepo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +46,12 @@ public class SearchTest {
     public static final String COUNTRY_NAME_0 = "Test country 0";
     public static final String COUNTRY_NAME_1 = "Test country 1";
     public static final String COUNTRY_NAME_2 = "New ctest 2";
+    public static final String REGION_NAME_0 = "Test region 0";
+    public static final String REGION_NAME_1 = "Test region 1";
+    public static final String REGION_NAME_2 = "New rtest 2";
+    public static final String CITY_NAME_0 = "Test city 0";
+    public static final String CITY_NAME_1 = "Test city 1";
+    public static final String CITY_NAME_2 = "New ctest 2";
 
     @Autowired
     private MockMvc mockMvc;
@@ -51,6 +61,12 @@ public class SearchTest {
 
     @Autowired
     private ContinentRepo continentRepo;
+
+    @Autowired
+    private RegionRepo regionRepo;
+
+    @Autowired
+    private CityRepo cityRepo;
 
     @BeforeEach
     void setupContinent() {
@@ -100,6 +116,56 @@ public class SearchTest {
         country4.setId(4);
         country4.setCreatedOn(LocalDateTime.now().minusDays(1));
         countryRepo.save(country4);
+
+        var region0 = new Region();
+        region0.setName(REGION_NAME_0);
+        region0.setCountry(country0);
+        region0.setId(0);
+        region0.setCreatedOn(LocalDateTime.now().minusDays(4));
+        regionRepo.save(region0);
+        var region1 = new Region();
+        region1.setName(REGION_NAME_1);
+        region1.setCountry(country1);
+        region1.setId(1);
+        region1.setCreatedOn(LocalDateTime.now().minusDays(3));
+        regionRepo.save(region1);
+        var region2 = new Region();
+        region2.setName(REGION_NAME_2);
+        region2.setCountry(country2);
+        region2.setId(2);
+        region2.setCreatedOn(LocalDateTime.now().minusDays(2));
+        regionRepo.save(region2);
+        var region3 = new Region();
+        region3.setName(REGION_NAME_0);
+        region3.setCountry(country3);
+        region3.setId(3);
+        region3.setCreatedOn(LocalDateTime.now().minusDays(1));
+        regionRepo.save(region3);
+
+        var city0 = new City();
+        city0.setName(CITY_NAME_0);
+        city0.setRegion(region0);
+        city0.setId(0);
+        city0.setCreatedOn(LocalDateTime.now().minusDays(4));
+        cityRepo.save(city0);
+        var city1 = new City();
+        city1.setName(CITY_NAME_1);
+        city1.setRegion(region1);
+        city1.setId(1);
+        city1.setCreatedOn(LocalDateTime.now().minusDays(3));
+        cityRepo.save(city1);
+        var city2 = new City();
+        city2.setName(CITY_NAME_2);
+        city2.setRegion(region0);
+        city2.setId(2);
+        city2.setCreatedOn(LocalDateTime.now().minusDays(2));
+        cityRepo.save(city2);
+        var city3 = new City();
+        city3.setName(CITY_NAME_2);
+        city3.setRegion(region3);
+        city3.setId(3);
+        city3.setCreatedOn(LocalDateTime.now().minusDays(1));
+        cityRepo.save(city3);
     }
 
     @ParameterizedTest
@@ -229,6 +295,146 @@ public class SearchTest {
 
     private static Stream<String> provideInValidQueries() {
         return Stream.of("", " ", "       ", "T", "Te");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyRegionName() throws Exception {
+        String input = "Not valid";
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input);
+        assertThat(response.suggestions()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInValidQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetConflictResponseWhenRegionQueryNameIsTooShort(String input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidRegionQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void limitNumberOfSortedRegionNamesWhichGivenSearchStringIsSubstringOfWhenSearchByRegionName(QueryAndSuggestions input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input.query())
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input.query());
+        assertThat(response.suggestions()).hasSize(input.suggestedNames().size());
+        assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
+    }
+
+    private static Stream<QueryAndSuggestions> provideValidRegionQueries() {
+        return Stream.of(
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
+                new QueryAndSuggestions("Test r", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
+                new QueryAndSuggestions("New", List.of(createSuggestionDto(REGION_NAME_2, 2)))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidCityQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void limitNumberOfSortedCityNamesWhichGivenSearchStringIsSubstringOfWhenSearchByCityName(QueryAndSuggestions input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input.query())
+                        .param("i", "CITY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input.query());
+        assertThat(response.suggestions()).hasSize(input.suggestedNames().size());
+        assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
+    }
+
+    private static Stream<QueryAndSuggestions> provideValidCityQueries() {
+        return Stream.of(
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
+                new QueryAndSuggestions("Test c", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
+                new QueryAndSuggestions("New", List.of(createSuggestionDto(CITY_NAME_2, 3), createSuggestionDto(CITY_NAME_2, 2)))
+        );
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyCityName() throws Exception {
+        String input = "Not valid";
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "CITY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input);
+        assertThat(response.suggestions()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInValidQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetConflictResponseWhenCityQueryNameIsTooShort(String input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "CITY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
 }

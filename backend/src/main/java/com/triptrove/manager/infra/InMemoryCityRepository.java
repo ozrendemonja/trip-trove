@@ -2,6 +2,7 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.CityRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -95,6 +96,17 @@ public class InMemoryCityRepository implements CityRepo {
     @Override
     public List<City> findAll() {
         return inMemoryDb.values().stream().toList();
+    }
+
+    @Override
+    public List<Suggestion> search(String query, int limit) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(city -> city.getUpdatedOn().orElse(city.getCreatedOn()), Comparator.reverseOrder()))
+                .filter(city -> city.getName().contains(query))
+                .limit(limit)
+                .map(city -> new Suggestion(city.getName(), city.getId()))
+                .toList();
     }
 
 }

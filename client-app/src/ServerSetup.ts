@@ -1,11 +1,13 @@
 import { createServer, Model } from "miragejs";
 import {
+  GetCityResponse,
   GetContinentResponse,
   GetCountryResponse,
   GetRegionResponse,
+  UpdateCityDetailsRequest,
+  UpdateCityRegionRequest,
   UpdateContinentRequest,
   UpdateCountryContinentRequest,
-  UpdateCountryDetailsRequest,
   UpdateRegionCountryRequest,
   UpdateRegionDetailResponse,
   UpdateRegionDetailsRequest
@@ -16,7 +18,8 @@ export default function makeServer(): ReturnType<typeof createServer> {
     models: {
       continent: Model.extend<GetContinentResponse>({}),
       country: Model.extend<GetCountryResponse>({}),
-      region: Model.extend<GetRegionResponse>({})
+      region: Model.extend<GetRegionResponse>({}),
+      city: Model.extend<GetCityResponse>({})
     },
 
     seeds(server) {
@@ -69,6 +72,35 @@ export default function makeServer(): ReturnType<typeof createServer> {
       });
       server.create("region", {
         regionId: 3,
+        regionName: "Dzūkija",
+        countryName: "Lithuania",
+        changedOn: "2024-12-26T08:01:02.0000000"
+      });
+
+      server.create("city", {
+        cityId: 0,
+        cityName: "Monaco",
+        regionName: "Monaco",
+        countryName: "Monaco",
+        changedOn: "2024-12-23T08:01:02.0000000"
+      });
+      server.create("city", {
+        cityId: 1,
+        cityName: "Šiauliai",
+        regionName: "Samogitia",
+        countryName: "Lithuanian",
+        changedOn: "2024-12-23T08:01:02.0000000"
+      });
+      server.create("city", {
+        cityId: 2,
+        cityName: "Kaunas",
+        regionName: "Aukštaitija",
+        countryName: "Lithuania",
+        changedOn: "2024-12-21T08:01:02.0000000"
+      });
+      server.create("city", {
+        cityId: 3,
+        cityName: "Vilnius ",
         regionName: "Dzūkija",
         countryName: "Lithuania",
         changedOn: "2024-12-26T08:01:02.0000000"
@@ -228,6 +260,24 @@ export default function makeServer(): ReturnType<typeof createServer> {
             });
 
           return { prefix: query, suggestions: result };
+        } else if (inElement == "CITY") {
+          let result = schema.db.cities
+            .sort()
+            .filter((city) => city.cityName.includes(query))
+            .map((city) => {
+              return {
+                value:
+                  city.cityName +
+                  ", " +
+                  city.regionName +
+                  ", " +
+                  city.countryName,
+                id: city.cityId,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
         }
       });
 
@@ -310,6 +360,82 @@ export default function makeServer(): ReturnType<typeof createServer> {
           return schema.db.regions.findBy((data) => data.regionId == id);
         },
         { timing: 400 }
+      );
+
+      this.get(
+        "/cities",
+        (schema, request) => {
+          const sortDirection = request.queryParams.sd;
+          const cityId = request.queryParams.cityId;
+          let result = schema.db.cities.sort() as GetCityResponse[];
+          if (sortDirection != "ASC") {
+            result = result.toReversed();
+          }
+
+          if (cityId) {
+            result = result.slice(
+              result.findIndex(
+                (city) => city.cityId == (cityId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.slice(0, 2);
+        },
+        { timing: 600 }
+      );
+
+      this.delete(
+        "/cities/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          const element = schema.db.cities.findBy((data) => data.cityId == id);
+          schema.db.cities.remove(element);
+        },
+        { timing: 600 }
+      );
+
+      this.get(
+        "/cities/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          return schema.db.cities.findBy((data) => data.cityId == id);
+        },
+        { timing: 400 }
+      );
+
+      this.put(
+        "/cities/:id/details",
+        (schema, request) => {
+          const id = request.params.id;
+          const newName = (
+            JSON.parse(request.requestBody) as UpdateCityDetailsRequest
+          ).cityName;
+
+          const element = schema.db.cities.findBy((data) => data.cityId == id);
+          schema.db.cities.update(element.id, { cityName: newName });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/cities/:id/region",
+        (schema, request) => {
+          const id = request.params.id;
+          const regionId = (
+            JSON.parse(request.requestBody) as UpdateCityRegionRequest
+          ).regionId;
+          const newName = schema.db.regions.findBy(
+            (data) => data.regionId == regionId
+          ).regionName;
+
+          const element = schema.db.cities.findBy((data) => {
+            return data.cityId == id;
+          });
+          schema.db.cities.update(element.id, { regionName: newName });
+        },
+        { timing: 600 }
       );
     }
   });

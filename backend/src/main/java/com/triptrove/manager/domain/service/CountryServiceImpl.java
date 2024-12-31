@@ -43,7 +43,7 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public List<Country> getCountries(CountryScrollPosition afterCountry, SortDirection sortDirection) {
+    public List<Country> getCountries(ScrollPosition afterCountry, SortDirection sortDirection) {
         log.atInfo().log("Getting a list of countries ordered in {} order, updated before {}", sortDirection, afterCountry.updatedOn());
 
         if (sortDirection == SortDirection.ASCENDING) {
@@ -73,7 +73,7 @@ public class CountryServiceImpl implements CountryService {
     public void updateCountryDetails(Integer id, String name) {
         log.atInfo().log("Updating the country name to '{}'", name);
         var country = countryRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Country name '%s' not found in the database".formatted(name), ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
         country.setName(name);
         countryRepo.save(country);
         log.atInfo().log("Country name has been updated to '{}'", name);

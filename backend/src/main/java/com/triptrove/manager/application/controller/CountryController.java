@@ -54,7 +54,7 @@ public class CountryController {
                     .map(GetCountryResponse::from)
                     .toList();
         }
-        return countryService.getCountries(after.toCountryScrollPosition(), sortDirection.toSortDirection())
+        return countryService.getCountries(after.toScrollPosition(), sortDirection.toSortDirection())
                 .stream()
                 .map(GetCountryResponse::from)
                 .toList();

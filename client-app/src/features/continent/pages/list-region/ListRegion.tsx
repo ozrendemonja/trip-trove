@@ -16,13 +16,18 @@ import { OrderOptions } from "../../domain/Continent.types";
 import { deleteRows } from "../../domain/Region";
 import { LastReadRegion, Region } from "../../domain/Region.types";
 import { RegionListCustomizer } from "../../domain/RegionListCustomizer";
-import { getRegions } from "../../infra/ManagerApi";
+import {
+  getRegionById,
+  getRegions,
+  searchRegion
+} from "../../infra/ManagerApi";
 import EditPropertyRegionDetails from "./EditPropertyRegionDetails";
 import EditRegionCountryDetails from "./EditRegionCountryDetails";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListRegion.config";
 import { useClasses } from "./ListRegion.styles";
 import { RegionRow } from "./ListRegion.types";
 import { toLastReadRegion } from "./ListRegion.utils";
+import { Suggestion } from "../../domain/Suggestion.types.";
 
 const onRenderItemColumn = (
   className: string,
@@ -101,14 +106,12 @@ export const RegionList: React.FunctionComponent = () => {
   }, [reloadData]);
 
   const [query, setQuery] = useState("");
-  //   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  //   useEffect(() => {
-  //     if (query.trim().length >= 3) {
-  //       searchCountry(query).then((data) => {
-  //         setSuggestions(data);
-  //       });
-  //     }
-  //   }, [query]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  useEffect(() => {
+    if (query.trim().length >= 3) {
+      searchRegion(query).then(setSuggestions);
+    }
+  }, [query]);
 
   return (
     <>
@@ -120,6 +123,7 @@ export const RegionList: React.FunctionComponent = () => {
           columns={columns}
           listHeader={{
             ...listHeader,
+            setItems: setSuggestions,
             onSortOptionChange: (
               _event: React.FormEvent<HTMLDivElement>,
               option?: IDropdownOption,
@@ -132,24 +136,24 @@ export const RegionList: React.FunctionComponent = () => {
               toggleReloadData();
             },
             sortOptions: sortOptions,
-            // items: suggestions,
+            items: suggestions,
             onSearchTyped: (
               _event?: React.ChangeEvent<HTMLInputElement>,
               newValue?: string
             ) => {
               setQuery(newValue ?? "");
+            },
+            onFindItem: (id: number) => {
+              getRegionById(id).then((data) => {
+                setRegionCustomizer(() => {
+                  return new RegionListCustomizer(
+                    setItems,
+                    setColumns
+                  ).withFixedRows([RegionRow.from(data)]);
+                });
+                setSuggestions([]);
+              });
             }
-            // onFindItem: (id: number) => {
-            //   getCountryById(id).then((data) => {
-            //     setCountryCustomizer(() => {
-            //       return new CountryListCustomizer(
-            //         setItems,
-            //         setColumns
-            //       ).withFixedRows([CountryRow.from(data)]);
-            //     });
-            //     setSuggestions([]);
-            //   });
-            // }
           }}
           addRowOptions={{
             text: "Add new region",

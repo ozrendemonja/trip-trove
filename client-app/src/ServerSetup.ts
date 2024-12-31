@@ -215,6 +215,19 @@ export default function makeServer(): ReturnType<typeof createServer> {
             });
 
           return { prefix: query, suggestions: result };
+        } else if (inElement == "REGION") {
+          let result = schema.db.regions
+            .sort()
+            .filter((data) => data.regionName.includes(query))
+            .map((region) => {
+              return {
+                value: region.regionName,
+                id: region.regionId,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
         }
       });
 
@@ -287,6 +300,16 @@ export default function makeServer(): ReturnType<typeof createServer> {
           schema.db.regions.update(element.id, { countryName: newName });
         },
         { timing: 600 }
+      );
+
+      this.get(
+        "/regions/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          return schema.db.regions.findBy((data) => data.regionId == id);
+        },
+        { timing: 400 }
       );
     }
   });

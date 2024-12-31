@@ -6,6 +6,7 @@ import {
   getAllCountries,
   getAllRegions,
   getCountry,
+  getRegion,
   getSearchedElements,
   saveContinent,
   saveCountry,
@@ -377,4 +378,58 @@ export const changeRegionCountry = async (
   if (error) {
     throw new Error("Error while updating region country", error);
   }
+};
+
+export const searchRegion = async (query: string): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "REGION"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for region", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
+};
+
+export const getRegionById = async (id: number): Promise<Region> => {
+  const { data, error } = await getRegion({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting region", error);
+  }
+
+  if (
+    !data ||
+    data.regionId == undefined ||
+    !data.regionName ||
+    !data.countryName ||
+    !data.changedOn
+  ) {
+    throw new Error("Invalid region data");
+  }
+
+  return {
+    id: data.regionId,
+    name: data.regionName!,
+    inCountry: data.countryName!,
+    updatedOn: data.changedOn
+  };
 };

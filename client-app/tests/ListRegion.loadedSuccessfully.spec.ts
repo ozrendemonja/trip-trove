@@ -185,7 +185,7 @@ test("List should contain updated values when edit region name dialog closes", a
   await expect(page).toHaveScreenshot();
 });
 
-test("Display the edit country name dialog prepopulated with existing data when the edit button in the continent column is clicked", async ({
+test("Display the edit country name dialog prepopulated with existing data when the edit button in the country column is clicked", async ({
   page
 }) => {
   page

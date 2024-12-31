@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Region;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,4 +27,6 @@ public interface RegionRepo {
     List<Region> findAll();
 
     Optional<Region> findById(int id);
+
+    List<Suggestion> search(String query, int limit);
 }

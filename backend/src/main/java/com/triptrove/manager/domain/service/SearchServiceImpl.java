@@ -4,6 +4,7 @@ import com.triptrove.manager.domain.model.SearchInElement;
 import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
+import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -18,6 +19,7 @@ import java.util.List;
 public class SearchServiceImpl implements SearchService {
     private final ContinentRepo continentRepo;
     private final CountryRepo countryRepo;
+    private final RegionRepo regionRepo;
     private final ManagerProperties properties;
 
     @Override
@@ -31,6 +33,10 @@ public class SearchServiceImpl implements SearchService {
         } else if (searchIn.equals(SearchInElement.CONTINENT)) {
             log.atInfo().log("Search for a continent name");
             result = continentRepo.search(query, properties.suggestionLimit());
+            log.atInfo().log("Found '{}' names", result.size());
+        } else if (searchIn.equals(SearchInElement.REGION)) {
+            log.atInfo().log("Search for a region name");
+            result = regionRepo.search(query, properties.suggestionLimit());
             log.atInfo().log("Found '{}' names", result.size());
         }
         return result;

@@ -2,6 +2,7 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Region;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.RegionRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -97,4 +98,14 @@ public class InMemoryRegionRepository implements RegionRepo {
                 .findAny();
     }
 
+    @Override
+    public List<Suggestion> search(String query, int limit) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(region -> region.getUpdatedOn().orElse(region.getCreatedOn()), Comparator.reverseOrder()))
+                .filter(region -> region.getName().contains(query))
+                .limit(limit)
+                .map(region -> new Suggestion(region.getName(), region.getId()))
+                .toList();
+    }
 }

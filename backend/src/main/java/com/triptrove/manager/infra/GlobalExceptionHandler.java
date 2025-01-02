@@ -4,7 +4,7 @@ import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.BaseApiException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
 
-@Slf4j
+@Log4j2
 @RequiredArgsConstructor
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -81,9 +81,9 @@ public class GlobalExceptionHandler {
         return handleException(ErrorCode.GENERAL, exception);
     }
 
-    private ResponseEntity<ErrorResponse> handleException(ErrorCode errorCode, Exception exception) {
+    private ResponseEntity<ErrorResponse> handleException(ErrorCode errorCode, Throwable exception) {
         String userMessage = messageSource.getMessage("error." + errorCode, new Object[0], "Internal Server Error", Locale.ENGLISH);
-        log.atError().log("Error {}: {}: {}", errorCode, userMessage, exception);
+        log.error("Error {} - {}: ", errorCode, userMessage, exception);
 
         return ResponseEntity.status(errorCode.statusCode).body(new ErrorResponse(ErrorCodeResponse.from(errorCode), userMessage));
     }

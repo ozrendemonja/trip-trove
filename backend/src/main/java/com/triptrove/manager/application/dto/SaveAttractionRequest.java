@@ -4,16 +4,13 @@ import com.triptrove.manager.domain.model.Address;
 import com.triptrove.manager.domain.model.Attraction;
 import com.triptrove.manager.domain.model.InformationProvider;
 import com.triptrove.manager.domain.model.VisitPeriod;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
-public record SaveAttractionRequest(@NotNull Integer countryId,
-                                    @NotNull Boolean isCountrywide,
-                                    @NotNull Integer regionId,
+public record SaveAttractionRequest(@NotNull Boolean isCountrywide,
+                                    Integer regionId,
                                     Integer cityId,
                                     @NotBlank(message = "Attraction name may not be null or empty")
                                     @Size(max = 2048, message = "Attraction name may not be longer then {max}")
@@ -34,6 +31,17 @@ public record SaveAttractionRequest(@NotNull Integer countryId,
                                     @NotNull LocalDate infoRecorded,
                                     DateSpanDTO optimalVisitPeriod
 ) {
+
+    @AssertTrue(message = "regionId or cityId is required")
+    boolean isRegionIdOrCityId() {
+        return regionId != null || cityId != null;
+    }
+
+    @AssertFalse(message = "regionId and cityId cannot be present simultaneously")
+    boolean isRegionIdAndCityId() {
+        return regionId != null && cityId != null;
+    }
+
     public Attraction toAttraction() {
         var attraction = new Attraction();
         attraction.setCountrywide(isCountrywide);

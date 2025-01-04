@@ -16,4 +16,12 @@ public interface AttractionService {
     void deleteAttraction(Long id);
 
     Attraction getAttraction(Long id);
+
+    void updateAttractionDestination(long id, boolean countrywide, Integer cityId, Integer regionId);
+
+    void updateAttractionDetail(long id, String attractionName, Long mainAttractionId);
+
+    void updateAttractionTraditional(long id, boolean isTraditional);
+
+    void updateAttractionLocation(long id, String address, Double latitude, Double longitude);
 }

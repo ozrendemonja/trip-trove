@@ -42,6 +42,7 @@ public class AttractionTest {
     public static final String CITY_NAME_0 = "Test city 0";
     public static final String CITY_NAME_1 = "Test city 1";
     public static final String CITY_NAME_2 = "Test city 2";
+    public static final String TEST_ATTRACTION_MAIN_0 = "Test attraction main 0";
 
     @Autowired
     private MockMvc mockMvc;
@@ -136,10 +137,16 @@ public class AttractionTest {
         city3.setId(3);
         city3.setCreatedOn(LocalDateTime.now().minusDays(3));
         cityRepo.save(city3);
+        var city4 = new City();
+        city4.setName(CITY_NAME_2);
+        city4.setRegion(region1);
+        city4.setId(4);
+        city4.setCreatedOn(LocalDateTime.now().minusDays(1));
+        cityRepo.save(city4);
 
         var attraction = new Attraction();
         attraction.setId(0L);
-        attraction.setName("Test attraction main 0");
+        attraction.setName(TEST_ATTRACTION_MAIN_0);
         attraction.setRegion(region3);
         attraction.setCountry(country1);
         attraction.setCategory(AttractionCategory.NATURE_AND_WILDLIFE_AREA);
@@ -202,16 +209,14 @@ public class AttractionTest {
     }
 
     private static Stream<InvalidFieldSize> provideInvalidAttractionData() {
-        String[] emptyStringMessage = {"infoFrom = Attraction name may not be null or empty", "attractionName = Attraction name may not be null or empty"};
+        String[] emptyStringMessage = {"attractionName = Attraction name may not be null or empty", "infoFrom = Attraction name may not be null or empty"};
         String[] tooLongStringMessage = {"attractionName = Attraction name may not be longer then 2048", "attractionAddress = Attraction address may not be longer then 512", "infoFrom = Information comes from may not be longer then 512", "tip = Tip may not be longer then 2048"};
-        String[] tooLongStringOptionalFieldsMessage = {"attractionAddress = Attraction address may not be longer then 512", "tip = Tip may not be longer then 2048"};
         return Stream.of(
                 new InvalidFieldSize("", "", "", "", emptyStringMessage),
                 new InvalidFieldSize("   ", "   ", "   ", "    ", emptyStringMessage),
                 new InvalidFieldSize("\t", "\t", "\t", "\t", emptyStringMessage),
                 new InvalidFieldSize("\n", "\n", "\n", "\n", emptyStringMessage),
-                new InvalidFieldSize("a".repeat(2049), "a".repeat(514), "a".repeat(2049), "a".repeat(514), tooLongStringMessage),
-                new InvalidFieldSize("abc", "a".repeat(514), "a".repeat(2049), "abc", tooLongStringOptionalFieldsMessage)
+                new InvalidFieldSize("a".repeat(2049), "a".repeat(514), "a".repeat(2049), "a".repeat(514), tooLongStringMessage)
         );
     }
 
@@ -690,4 +695,433 @@ public class AttractionTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
     }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void isCountrywideCityRegionAndCountryShouldBeUpdateWhenAttractionBelongToRegionIsChangedToBelongToCity() throws Exception {
+        var request = new UpdateAttractionDestinationRequest(true, null, 2);
+        mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var attraction = attractionRepo.findById(0L).orElseThrow();
+        assertThat(attraction.getName()).isEqualTo(TEST_ATTRACTION_MAIN_0);
+        assertThat(attraction.isCountrywide()).isTrue();
+        assertThat(attraction.getCountry().getName()).isEqualTo(COUNTRY_NAME_0);
+        assertThat(attraction.getRegion().getName()).isEqualTo(REGION_NAME_0);
+        assertThat(attraction.getCity().map(City::getName)).hasValue(CITY_NAME_2);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void regionAndCountryShouldBeUpdateWhenAttractionBelongToCityIsChangedToBelongToRegion() throws Exception {
+        var request = new SaveAttractionRequest(true, null, 0, "Test attraction 1", null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long attractionId = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var updateRequest = new UpdateAttractionDestinationRequest(true, 1, null);
+        mockMvc.perform(put("/attractions/" + attractionId + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var attraction = attractionRepo.findById(1L).orElseThrow();
+        assertThat(attraction.getName()).isEqualTo("Test attraction 1");
+        assertThat(attraction.isCountrywide()).isTrue();
+        assertThat(attraction.getCountry().getName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(attraction.getRegion().getName()).isEqualTo(REGION_NAME_1);
+        assertThat(attraction.getCity()).isEmpty();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenRequiredFieldsAreNull() throws Exception {
+        String[] expectedErrorMessages = {"isCountrywide = must not be null", "regionIdOrCityId = regionId or cityId is required"};
+        var updateRequest = new UpdateAttractionDestinationRequest(null, null, null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder(expectedErrorMessages);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenBothCityAndRegionIdAreSent() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(false, 0, 0);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{regionIdAndCityId = regionId and cityId cannot be present simultaneously}");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenAttractionIdNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(false, 0, null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 100 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenCityIdNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(false, null, 100);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenAttractionAlreadyExistsInTheGivenCity() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(true, null, 3);
+        mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var request = new SaveAttractionRequest(true, null, 0, TEST_ATTRACTION_MAIN_0, null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        updateRequest = new UpdateAttractionDestinationRequest(false, null, 3);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + id + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenAttractionAlreadyExistsInTheGivenCitysRegion() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(true, null, 3);
+        mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var request = new SaveAttractionRequest(true, null, 0, TEST_ATTRACTION_MAIN_0, null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        updateRequest = new UpdateAttractionDestinationRequest(false, null, 4);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + id + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenRegionIdNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionDestinationRequest(false, 100, null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDestinationRequestWhenAttractionAlreadyExistsInTheRegion() throws Exception {
+        var request = new SaveAttractionRequest(true, 0, null, TEST_ATTRACTION_MAIN_0, null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var updateRequest = new UpdateAttractionDestinationRequest(false, 3, null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + id + "/destination")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateAttractionDetailRequestWhenValidDataIsSent() throws Exception {
+        var request = new SaveAttractionRequest(true, 0, null, "Test attraction 0", null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var updateRequest = new UpdateAttractionDetailRequest("Sub test attraction 0", 0L);
+        mockMvc.perform(put("/attractions/" + id + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        assertThat(attractionRepo.findById(id).map(Attraction::getName)).hasValue("Sub test attraction 0");
+        assertThat(attractionRepo.findById(id).flatMap(Attraction::getMain).map(Attraction::getName)).hasValue(TEST_ATTRACTION_MAIN_0);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDetailRequestWhenAttractionNameAlreadyExistsInTheRegion() throws Exception {
+        var request = new SaveAttractionRequest(true, 3, null, TEST_ATTRACTION_MAIN_0 + " unique", null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var updateRequest = new UpdateAttractionDetailRequest(TEST_ATTRACTION_MAIN_0, null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + id + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDetailRequestWhenAttractionNameAlreadyExistsInTheCity() throws Exception {
+        var request = new SaveAttractionRequest(true, null, 0, TEST_ATTRACTION_MAIN_0 + " test 0", null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        request = new SaveAttractionRequest(true, null, 0, TEST_ATTRACTION_MAIN_0 + " test 1", null, "Test address, Test", new LocationDTO(10.541, 8.5425), AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.IMMINENT_CHANGE, false, true, "Tip ".repeat(54), "From test_user", LocalDate.now().minusDays(21), new DateSpanDTO(LocalDate.now().minusWeeks(10), LocalDate.now()));
+        var mvcResult = mockMvc.perform(post("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long id = Long.parseLong(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+
+        var updateRequest = new UpdateAttractionDetailRequest(TEST_ATTRACTION_MAIN_0 + " test 0", null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + id + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDetailRequestWhenAttractionIdNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionDetailRequest(TEST_ATTRACTION_MAIN_0 + " test 0", null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 100 + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDetailRequestWhenMainAttractionIdNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionDetailRequest(TEST_ATTRACTION_MAIN_0 + " test 0", 100L);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidAttractionData")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldRejectUpdateAttractionDetailRequestWhenAttractionNameIsInvalid(InvalidFieldSize input) throws Exception {
+        var updateRequest = new UpdateAttractionDetailRequest(input.attractionName(), null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/detail")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1)).isEqualTo(input.errorMessages()[0]);
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateAttractionTraditionalWhenValidRequestIsSent() throws Exception {
+        var updateRequest = new UpdateAttractionTraditionalRequest(true);
+        mockMvc.perform(put("/attractions/" + 0 + "/traditional")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        assertThat(attractionRepo.findById(0L).get().getName()).isEqualTo(TEST_ATTRACTION_MAIN_0);
+        assertThat(attractionRepo.findById(0L).get().isTraditional()).isTrue();
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldReturnBadRequestForUpdateAttractionTraditionalWhenInvalidRequestIsSent() throws Exception {
+        var updateRequest = new UpdateAttractionTraditionalRequest(null);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 0 + "/traditional")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isTraditional = must not be null}");
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void shouldUpdateAttractionTraditionalWhenInvalidAttractionIdIsSent() throws Exception {
+        var updateRequest = new UpdateAttractionTraditionalRequest(false);
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 100 + "/traditional")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
 }

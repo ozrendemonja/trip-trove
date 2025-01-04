@@ -51,4 +51,16 @@ public class Attraction {
     public Optional<VisitPeriod> getOptimalVisitPeriod() {
         return Optional.ofNullable(optimalVisitPeriod);
     }
+
+    public void setCity(City newCity) {
+        city = newCity;
+        region = newCity.getRegion();
+        country = city.getRegion().getCountry();
+    }
+
+    public void setRegion(Region newRegion) {
+        city = null;
+        region = newRegion;
+        country = newRegion.getCountry();
+    }
 }

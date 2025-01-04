@@ -1,9 +1,6 @@
 package com.triptrove.manager.application.controller;
 
-import com.triptrove.manager.application.dto.AttractionParameter;
-import com.triptrove.manager.application.dto.GetAttractionResponse;
-import com.triptrove.manager.application.dto.SaveAttractionRequest;
-import com.triptrove.manager.application.dto.SortDirectionParameter;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.AttractionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,6 +82,65 @@ public class AttractionController {
         var attraction = attractionService.getAttraction(id);
         return GetAttractionResponse.from(attraction);
     }
+
+    @PutMapping("/{id:\\d+}/destination")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction destination", responses = {
+            @ApiResponse(description = "Attraction destination is updated", responseCode = "204"),
+    })
+    public void updateAttractionDestination(@PathVariable String id, @RequestBody @Valid UpdateAttractionDestinationRequest attractionDestinationRequest) {
+        attractionService.updateAttractionDestination(Long.parseLong(id), attractionDestinationRequest.isCountrywide(), attractionDestinationRequest.cityId(), attractionDestinationRequest.regionId());
+    }
+
+    @PutMapping("/{id:\\d+}/detail")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction detail", responses = {
+            @ApiResponse(description = "Attraction detail is updated", responseCode = "204"),
+    })
+    public void updateAttractionDetail(@PathVariable String id, @RequestBody @Valid UpdateAttractionDetailRequest attractionDetailRequest) {
+        attractionService.updateAttractionDetail(Long.parseLong(id), attractionDetailRequest.attractionName(), attractionDetailRequest.mainAttractionId());
+    }
+
+    @PutMapping("/{id:\\d+}/traditional")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction is traditional", responses = {
+            @ApiResponse(description = "Attraction is updated", responseCode = "204"),
+    })
+    public void updateAttractionTraditional(@PathVariable String id, @RequestBody @Valid UpdateAttractionTraditionalRequest attractionDetailRequest) {
+        attractionService.updateAttractionTraditional(Long.parseLong(id), attractionDetailRequest.isTraditional());
+    }
+
+    @PutMapping("/{id:\\d+}/location")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction Location", responses = {
+            @ApiResponse(description = "Attraction Location is updated", responseCode = "204"),
+    })
+    public void updateAttractionLocation(@PathVariable String id, @RequestBody @Valid UpdateAttractionLocationRequest attractionDetailRequest) {
+        attractionService.updateAttractionLocation(Long.parseLong(id), attractionDetailRequest.attractionAddress(), attractionDetailRequest.attractionLocation().latitude(), attractionDetailRequest.attractionLocation().longitude());
+    }
+
+
+//    //Category
+//    @NotNull AttractionCategoryDTO attractionCategory,
+//
+//    //Type
+//    @NotNull AttractionTypeDTO attractionType,
+//
+//    // mustVisit
+//    @NotNull boolean mustVisit,
+//
+//    // Tip
+//    @Size(max = 2048, message = "Tip may not be longer then {max}")
+//    String tip,
+//
+//    //informationProvider
+//    @NotBlank(message = "Attraction name may not be null or empty")
+//    @Size(max = 512, message = "Information comes from may not be longer then {max}")
+//    String infoFrom,
+//    @NotNull LocalDate infoRecorded,
+//
+//    //Visit Period
+//    DateSpanDTO optimalVisitPeriod
 
 
 }

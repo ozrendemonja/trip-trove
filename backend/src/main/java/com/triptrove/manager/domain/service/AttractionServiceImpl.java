@@ -36,8 +36,6 @@ public class AttractionServiceImpl implements AttractionService {
             if (attractionRepo.findByNameAndRegionId(attraction.getName(), city.getRegion().getId()).isPresent()) {
                 throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), city.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
             }
-            attraction.setCountry(city.getRegion().getCountry());
-            attraction.setRegion(city.getRegion());
             attraction.setCity(city);
         } else {
             log.atInfo().log("Adding attraction under region");
@@ -45,7 +43,6 @@ public class AttractionServiceImpl implements AttractionService {
             if (attractionRepo.findByNameAndRegionId(attraction.getName(), regionId).isPresent()) {
                 throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
             }
-            attraction.setCountry(region.getCountry());
             attraction.setRegion(region);
         }
 
@@ -95,5 +92,76 @@ public class AttractionServiceImpl implements AttractionService {
         log.atInfo().log("Getting attraction with id '{}'", id);
         return attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+    }
+
+    @Override
+    public void updateAttractionDestination(long id, boolean countrywide, Integer cityId, Integer regionId) {
+        log.atInfo().log("Updating the attraction destination");
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+
+        attraction.setCountrywide(countrywide);
+        if (cityId != null) {
+            log.atInfo().log("Adding attraction to the city");
+            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+            if (attractionRepo.findByNameAndCityId(attraction.getName(), cityId).isPresent()) {
+                throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+            if (attractionRepo.findByNameAndRegionId(attraction.getName(), city.getRegion().getId()).isPresent()) {
+                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), city.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+            attraction.setCity(city);
+        } else {
+            log.atInfo().log("Adding attraction to the region");
+            var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+            if (attractionRepo.findByNameAndRegionId(attraction.getName(), regionId).isPresent()) {
+                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+            attraction.setRegion(region);
+        }
+
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionDetail(long id, String newAttractionName, Long mainAttractionId) {
+        log.atInfo().log("Updating the attraction detail adding name {}", newAttractionName);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+
+        if (attraction.getCity().isPresent()) {
+            if (attractionRepo.findByNameAndCityId(attraction.getName(), attraction.getCity().get().getId()).isPresent()) {
+                throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+        }
+        if (attractionRepo.findByNameAndRegionId(newAttractionName, attraction.getRegion().getId()).isPresent()) {
+            throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), attraction.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        }
+
+        attraction.setName(newAttractionName);
+        Attraction mainAttraction = null;
+        if (mainAttractionId != null) {
+            mainAttraction = attractionRepo.findById(mainAttractionId)
+                    .orElseThrow(() -> new BaseApiException("Main attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        }
+        attraction.setMain(mainAttraction);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionTraditional(long id, boolean isTraditional) {
+        log.atInfo().log("Updating the attraction detail setting  isTraditional to {}", isTraditional);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setTraditional(isTraditional);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionLocation(long id, String address, Double latitude, Double longitude) {
+
     }
 }

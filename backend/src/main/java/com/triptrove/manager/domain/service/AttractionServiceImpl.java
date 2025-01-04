@@ -1,9 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.CityRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
@@ -12,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -130,10 +128,8 @@ public class AttractionServiceImpl implements AttractionService {
         var attraction = attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
-        if (attraction.getCity().isPresent()) {
-            if (attractionRepo.findByNameAndCityId(attraction.getName(), attraction.getCity().get().getId()).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
+        if (attraction.getCity().isPresent() && attractionRepo.findByNameAndCityId(attraction.getName(), attraction.getCity().get().getId()).isPresent()) {
+            throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
         if (attractionRepo.findByNameAndRegionId(newAttractionName, attraction.getRegion().getId()).isPresent()) {
             throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), attraction.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
@@ -161,7 +157,77 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     @Override
-    public void updateAttractionLocation(long id, String address, Double latitude, Double longitude) {
-
+    public void updateAttractionLocation(long id, String newAddress, Double latitude, Double longitude) {
+        log.atInfo().log("Updating the attraction location to '{}' address and lat '{}', long '{}'", newAddress, latitude, longitude);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        Location location = null;
+        if (latitude != null && longitude != null) {
+            location = new Location(latitude, longitude);
+        }
+        attraction.setAddress(new Address(newAddress, location));
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
     }
+
+    @Override
+    public void updateAttractionCategory(long id, AttractionCategory attractionCategory) {
+        log.atInfo().log("Updating the attraction category to '{}'", attractionCategory);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setCategory(attractionCategory);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionType(long id, AttractionType attractionType) {
+        log.atInfo().log("Updating the attraction type to '{}'", attractionType);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setType(attractionType);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionVisit(long id, Boolean mustVisit) {
+        log.atInfo().log("Updating the attraction must visit to '{}'", mustVisit);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setMustVisit(mustVisit);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionTip(long id, String tip) {
+        log.atInfo().log("Updating the attraction tip");
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setTip(tip);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionVisitPeriod(long id, VisitPeriod visitPeriod) {
+        log.atInfo().log("Updating the attraction visit period to {}", visitPeriod);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setOptimalVisitPeriod(visitPeriod);
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
+    @Override
+    public void updateAttractionInformationProvider(long id, String infoFrom, LocalDate infoRecorded) {
+        log.atInfo().log("Updating the attraction information provider");
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setInformationProvider(new InformationProvider(infoFrom, infoRecorded));
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction has been updated");
+    }
+
 }

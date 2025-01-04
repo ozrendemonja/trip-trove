@@ -1,9 +1,8 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface AttractionService {
@@ -24,4 +23,16 @@ public interface AttractionService {
     void updateAttractionTraditional(long id, boolean isTraditional);
 
     void updateAttractionLocation(long id, String address, Double latitude, Double longitude);
+
+    void updateAttractionCategory(long id, AttractionCategory attractionCategory);
+
+    void updateAttractionType(long id, AttractionType attractionType);
+
+    void updateAttractionVisit(long id, Boolean mustVisit);
+
+    void updateAttractionTip(long id, String tip);
+
+    void updateAttractionVisitPeriod(long id, VisitPeriod visitPeriod);
+
+    void updateAttractionInformationProvider(long id, String infoFrom, LocalDate infoRecorded);
 }

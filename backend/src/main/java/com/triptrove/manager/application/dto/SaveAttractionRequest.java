@@ -4,6 +4,7 @@ import com.triptrove.manager.domain.model.Address;
 import com.triptrove.manager.domain.model.Attraction;
 import com.triptrove.manager.domain.model.InformationProvider;
 import com.triptrove.manager.domain.model.VisitPeriod;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -29,7 +30,7 @@ public record SaveAttractionRequest(@NotNull Boolean isCountrywide,
                                     @Size(max = 512, message = "Information comes from may not be longer then {max}")
                                     String infoFrom,
                                     @NotNull LocalDate infoRecorded,
-                                    DateSpanDTO optimalVisitPeriod
+                                    @Valid DateSpanDTO optimalVisitPeriod
 ) {
 
     @AssertTrue(message = "regionId or cityId is required")

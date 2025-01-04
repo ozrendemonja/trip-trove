@@ -116,31 +116,63 @@ public class AttractionController {
             @ApiResponse(description = "Attraction Location is updated", responseCode = "204"),
     })
     public void updateAttractionLocation(@PathVariable String id, @RequestBody @Valid UpdateAttractionLocationRequest attractionDetailRequest) {
-        attractionService.updateAttractionLocation(Long.parseLong(id), attractionDetailRequest.attractionAddress(), attractionDetailRequest.attractionLocation().latitude(), attractionDetailRequest.attractionLocation().longitude());
+        Double latitude = attractionDetailRequest.attractionLocation() != null ? attractionDetailRequest.attractionLocation().latitude() : null;
+        Double longitude = attractionDetailRequest.attractionLocation() != null ? attractionDetailRequest.attractionLocation().longitude() : null;
+
+        attractionService.updateAttractionLocation(Long.parseLong(id), attractionDetailRequest.attractionAddress(), latitude, longitude);
     }
 
+    @PutMapping("/{id:\\d+}/category")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction category", responses = {
+            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    })
+    public void updateAttractionCategory(@PathVariable String id, @RequestBody @Valid UpdateAttractionCategoryRequest attractionCategoryRequest) {
+        attractionService.updateAttractionCategory(Long.parseLong(id), attractionCategoryRequest.attractionCategory().toAttractionCategory());
+    }
 
-//    //Category
-//    @NotNull AttractionCategoryDTO attractionCategory,
-//
-//    //Type
-//    @NotNull AttractionTypeDTO attractionType,
-//
-//    // mustVisit
-//    @NotNull boolean mustVisit,
-//
-//    // Tip
-//    @Size(max = 2048, message = "Tip may not be longer then {max}")
-//    String tip,
-//
-//    //informationProvider
-//    @NotBlank(message = "Attraction name may not be null or empty")
-//    @Size(max = 512, message = "Information comes from may not be longer then {max}")
-//    String infoFrom,
-//    @NotNull LocalDate infoRecorded,
-//
-//    //Visit Period
-//    DateSpanDTO optimalVisitPeriod
+    @PutMapping("/{id:\\d+}/type")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction category", responses = {
+            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    })
+    public void updateAttractionType(@PathVariable String id, @RequestBody @Valid UpdateAttractionTypeRequest attractionTypeRequest) {
+        attractionService.updateAttractionType(Long.parseLong(id), attractionTypeRequest.attractionType().toAttractionType());
+    }
 
+    @PutMapping("/{id:\\d+}/visit")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction category", responses = {
+            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    })
+    public void updateAttractionVisit(@PathVariable String id, @RequestBody @Valid UpdateAttractionVisitRequest attractionVisitRequest) {
+        attractionService.updateAttractionVisit(Long.parseLong(id), attractionVisitRequest.mustVisit());
+    }
 
+    @PutMapping("/{id:\\d+}/tip")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction category", responses = {
+            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    })
+    public void updateAttractionTip(@PathVariable String id, @RequestBody @Valid UpdateAttractionTipRequest attractionTipRequest) {
+        attractionService.updateAttractionTip(Long.parseLong(id), attractionTipRequest.tip());
+    }
+
+    @PutMapping("/{id:\\d+}/informationProvider")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction category", responses = {
+            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    })
+    public void updateAttractionInformationProvider(@PathVariable String id, @RequestBody @Valid UpdateAttractionInformationProviderRequest attractionInformationProviderRequest) {
+        attractionService.updateAttractionInformationProvider(Long.parseLong(id), attractionInformationProviderRequest.infoFrom(), attractionInformationProviderRequest.infoRecorded());
+    }
+
+    @PutMapping("/{id:\\d+}/visitPeriod")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction visit period", responses = {
+            @ApiResponse(description = "Attraction visit period is updated", responseCode = "204"),
+    })
+    public void updateAttractionVisitPeriod(@PathVariable String id, @RequestBody @Valid UpdateAttractionVisitPeriodRequest attractionVisitPeriodRequest) {
+        attractionService.updateAttractionVisitPeriod(Long.parseLong(id), attractionVisitPeriodRequest.toVisitPeriod());
+    }
 }

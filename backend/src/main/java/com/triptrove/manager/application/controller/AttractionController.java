@@ -142,8 +142,8 @@ public class AttractionController {
 
     @PutMapping("/{id:\\d+}/visit")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Update attraction category", responses = {
-            @ApiResponse(description = "Attraction category is updated", responseCode = "204"),
+    @Operation(summary = "Update attraction visit", responses = {
+            @ApiResponse(description = "Attraction visit is updated", responseCode = "204"),
     })
     public void updateAttractionVisit(@PathVariable String id, @RequestBody @Valid UpdateAttractionVisitRequest attractionVisitRequest) {
         attractionService.updateAttractionVisit(Long.parseLong(id), attractionVisitRequest.mustVisit());

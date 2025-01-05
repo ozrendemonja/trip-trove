@@ -1,4 +1,5 @@
 import {
+  deleteAttraction,
   deleteCity,
   deleteContinent,
   deleteCountry,
@@ -7,6 +8,7 @@ import {
   getAllContinents,
   getAllCountries,
   getAllRegions,
+  getAttractions,
   getCity,
   getCountry,
   getRegion,
@@ -24,6 +26,7 @@ import {
   updateRegionDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
+import { Attraction, LastReadAttraction } from "../domain/Attraction.types";
 import { City, LastReadCity } from "../domain/City.types";
 import {
   Continent,
@@ -608,5 +611,101 @@ export const changeCityRegion = async (
 
   if (error) {
     throw new Error("Error while updating city region", error);
+  }
+};
+
+export const getPagedAttractions = async (
+  lastReadAttraction?: LastReadAttraction,
+  orderBy?: OrderOptions
+): Promise<Attraction[]> => {
+  const { data, error } = await getAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    query: {
+      sd: orderBy,
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        !attraction.countryName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
+};
+
+export const deleteAttractionWithId = async (id: number): Promise<void> => {
+  const { error } = await deleteAttraction({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while deleting attraction", error);
   }
 };

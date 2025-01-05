@@ -1,5 +1,6 @@
 import { createServer, Model } from "miragejs";
 import {
+  GetAttractionResponse,
   GetCityResponse,
   GetContinentResponse,
   GetCountryResponse,
@@ -19,7 +20,8 @@ export default function makeServer(): ReturnType<typeof createServer> {
       continent: Model.extend<GetContinentResponse>({}),
       country: Model.extend<GetCountryResponse>({}),
       region: Model.extend<GetRegionResponse>({}),
-      city: Model.extend<GetCityResponse>({})
+      city: Model.extend<GetCityResponse>({}),
+      attraction: Model.extend<GetAttractionResponse>({})
     },
 
     seeds(server) {
@@ -103,6 +105,75 @@ export default function makeServer(): ReturnType<typeof createServer> {
         cityName: "Vilnius ",
         regionName: "Dzūkija",
         countryName: "Lithuania",
+        changedOn: "2024-12-26T08:01:02.0000000"
+      });
+
+      server.create("attraction", {
+        attractionId: 0,
+        cityName: "Monaco",
+        regionName: "Monaco",
+        countryName: "Monaco",
+        isCountrywide: false,
+        attractionName: "Casino of Monte-Carlo",
+        mainAttractionName: "Casino Square",
+        attractionAddress: "Pl. du Casino, 98000 Monaco",
+        attractionLocation: { latitude: 43.7392869, longitude: 7.427225 },
+        attractionCategory: "POINT_OF_INTEREST_AND_LANDMARK",
+        attractionType: "STABLE",
+        mustVisit: true,
+        isTraditional: false,
+        infoFrom: "Lonely Planet",
+        infoRecorded: "2023-01-05",
+        changedOn: "2024-12-23T08:01:02.0000000"
+      });
+      server.create("attraction", {
+        attractionId: 1,
+        attractionName: "Casino Square",
+        regionName: "Monaco",
+        countryName: "Monaco",
+        isCountrywide: false,
+        attractionAddress: "Pl. du Casino, 98000 Monaco",
+        attractionCategory: "POINT_OF_INTEREST_AND_LANDMARK",
+        attractionType: "STABLE",
+        mustVisit: true,
+        isTraditional: false,
+        infoFrom: "Lonely Planet",
+        infoRecorded: "2023-01-05",
+        changedOn: "2024-12-23T08:01:02.0000000"
+      });
+      server.create("attraction", {
+        attractionId: 2,
+        regionName: "Monaco",
+        countryName: "Monaco",
+        isCountrywide: true,
+        attractionName: "Larvotto Beach",
+        attractionLocation: { latitude: 43.7461529, longitude: 7.4320442 },
+        attractionCategory: "OTHER_NATURE_AND_PARK",
+        attractionType: "POTENTIAL_CHANGE",
+        mustVisit: false,
+        isTraditional: false,
+        infoFrom: "Tripadvisor",
+        infoRecorded: "2024-06-15",
+        optimalVisitPeriod: {
+          fromDate: "2024-04-01",
+          toDate: "2024-11-01"
+        },
+        changedOn: "2024-12-21T08:01:02.0000000"
+      });
+      server.create("attraction", {
+        attractionId: 3,
+        cityName: "Vilnius",
+        regionName: "Dzūkija",
+        countryName: "Lithuania",
+        isCountrywide: false,
+        attractionName: "Vilnius Old Town",
+        attractionCategory: "HISTORIC_SITE",
+        attractionType: "STABLE",
+        mustVisit: true,
+        isTraditional: true,
+        tip: "There are no hard rules for tipping at bars or coffee shops, but if you notice a tip jar, adding a tip is a thoughtful way to express your satisfaction.",
+        infoFrom: "Google reviews",
+        infoRecorded: "2024-08-04",
         changedOn: "2024-12-26T08:01:02.0000000"
       });
     },
@@ -434,6 +505,42 @@ export default function makeServer(): ReturnType<typeof createServer> {
             return data.cityId == id;
           });
           schema.db.cities.update(element.id, { regionName: newName });
+        },
+        { timing: 600 }
+      );
+
+      this.get(
+        "/attractions",
+        (schema, request) => {
+          const sortDirection = request.queryParams.sd;
+          const attractionId = request.queryParams.attractionId;
+          let result = schema.db.attractions.sort() as GetAttractionResponse[];
+          if (sortDirection != "ASC") {
+            result = result.toReversed();
+          }
+
+          if (attractionId) {
+            result = result.slice(
+              result.findIndex(
+                (attraction) =>
+                  attraction.attractionId == (attractionId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.slice(0, 2);
+        },
+        { timing: 600 }
+      );
+
+      this.delete(
+        "/attractions/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          const element = schema.db.attractions.findBy(
+            (attraction) => attraction.attractionId == id
+          );
+          schema.db.attractions.remove(element);
         },
         { timing: 600 }
       );

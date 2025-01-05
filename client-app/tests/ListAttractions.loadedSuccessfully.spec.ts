@@ -59,7 +59,7 @@ test("All elements should be present when canceling delete menu", async ({
   await page.getByRole("gridcell", { name: "Larvotto Beach" }).click();
   await page.getByRole("menuitem", { name: "Delete attraction" }).click();
   await page.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("gridcell", { name: "Larvotto Beach" }).focus();
+  await page.getByRole("gridcell", { name: "Larvotto Beach" }).click();
 
   await expect(page).toHaveScreenshot();
 });

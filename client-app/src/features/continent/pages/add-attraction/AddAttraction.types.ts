@@ -44,8 +44,8 @@ type FormFields = {
   mainAttractionId: ExtendedSearchTextProps;
   address: ITextFieldProps;
   geoLocation: IMaskedTextFieldProps,
-  category: Omit<IDropdownProps, "options"> & {value: string},
-  type: Omit<IDropdownProps, "options"> & {value: string};
+  category: Omit<IDropdownProps, "options"> & {value: CategoryType},
+  type: Omit<IDropdownProps, "options"> & {value: AttractionType};
   optimalVisitPeriod: DateRangePickerProps;
   tip: ITextFieldProps;
   source: ITextFieldProps;

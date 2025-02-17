@@ -5,24 +5,25 @@ import {
   IDatePickerProps,
   IDatePickerStrings,
   IDropdownOption,
-  IMaskedTextFieldProps,
+  IDropdownProps,
   ITextFieldProps
 } from "@fluentui/react";
 import { useState } from "react";
-import { Validator } from "../../infra/Validator";
-import {
-  AddAttractionFormElements,
-  AttractionFormFieldProps,
-  ExtendedSearchTextProps
-} from "./AddAttraction.types";
+import { DateRangePickerProps } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
+import { AttractionType, CategoryType } from "../../domain/Attraction.types";
+import { createAttractionValidation } from "../../infra/AttractionValidationRules";
 import {
   searchAttraction,
   searchCity,
   searchCountry,
   searchRegion
 } from "../../infra/ManagerApi";
-import { DateRangePickerProps } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
-import { AttractionType, CategoryType } from "../../domain/Attraction.types";
+import { Validator } from "../../infra/Validator";
+import {
+  AddAttractionFormElements,
+  AttractionFormFieldProps,
+  ExtendedSearchTextProps
+} from "./AddAttraction.types";
 
 export const useAttractionFormField = (): AttractionFormFieldProps => {
   const initialTouched = {
@@ -55,7 +56,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     sourceFrom: undefined,
     optimalVisitPeriod: undefined
   };
-  const validator = new Validator();
+  const validator = new Validator(createAttractionValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -84,7 +85,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, regionId: id });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.countryId ? errorMessage?.regionIdError : undefined,
+      touched.regionId ? errorMessage?.regionIdError : undefined,
     getSuggestions: searchRegion,
     value: values.regionId
   };
@@ -98,7 +99,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, cityId: id });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.countryId ? errorMessage?.cityIdError : undefined,
+      touched.cityId ? errorMessage?.cityIdError : undefined,
     getSuggestions: searchCity,
     value: values.cityId
   };
@@ -127,7 +128,9 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, mainAttractionId: id });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.countryId ? errorMessage?.mainAttractionIdError : undefined,
+      touched.mainAttractionId
+        ? errorMessage?.mainAttractionIdError
+        : undefined,
     getSuggestions: searchAttraction,
     value: values.mainAttractionId
   };
@@ -141,24 +144,18 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, address: value ?? "" });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.name ? errorMessage?.addressError : undefined,
+      touched.address ? errorMessage?.addressError : undefined,
     validateOnLoad: false,
     validateOnFocusOut: true,
     required: false
   };
 
-  const geoLocationField: IMaskedTextFieldProps = {
+  const geoLocationField: ITextFieldProps = {
     label: "Geo location",
     iconProps: {
       iconName: "POISolid"
     },
-    placeholder: "Longitude, Latitude",
-    mask: "199.999999, 79.999999",
-    maskFormat: {
-      "1": /[0-1]?/,
-      "9": /[0-9]/,
-      "7": /[0-7]/
-    },
+    placeholder: "Latitude, Longitude",
     name: "geoLocation",
     value: values.geoLocation,
     onChange: (_event, value: string | undefined): void => {
@@ -169,12 +166,15 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.name ? errorMessage?.geoLocationError : undefined,
+      touched.geoLocation ? errorMessage?.geoLocationError : undefined,
     validateOnLoad: false,
-    validateOnFocusOut: true
+    validateOnFocusOut: true,
+    required: false
   };
 
-  const categoryDropdown = {
+  const categoryDropdown: Omit<IDropdownProps, "options"> & {
+    value: CategoryType;
+  } = {
     placeholder: "Attraction category",
     label: "Attraction category",
     required: true,
@@ -189,7 +189,9 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     }
   };
 
-  const typeDropdown = {
+  const typeDropdown: Omit<IDropdownProps, "options"> & {
+    value: AttractionType;
+  } = {
     placeholder: "Attraction type",
     label: "Attraction type",
     required: true,
@@ -213,7 +215,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, tip: value ?? "" });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.name ? errorMessage?.tipError : undefined,
+      touched.tip ? errorMessage?.tipError : undefined,
     validateOnLoad: false,
     validateOnFocusOut: true,
     multiline: true
@@ -229,7 +231,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setValues({ ...values, source: value ?? "" });
     },
     onGetErrorMessage: (_value: string) =>
-      touched.name ? errorMessage?.sourceError : undefined,
+      touched.source ? errorMessage?.sourceError : undefined,
     validateOnLoad: false,
     validateOnFocusOut: true,
     multiline: true
@@ -243,20 +245,18 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     isOutOfBoundsErrorMessage: `Date must be between ${minDate.toLocaleDateString()} and ${maxDate.toLocaleDateString()}`
   };
   const sourceFromField: IDatePickerProps = {
-    placeholder: "Select a date...",
-    ariaLabel: "Select a date",
+    placeholder: "Select recorded date...",
+    ariaLabel: "Select recorded date...",
     onSelectDate: (date: Date | null | undefined): void => {
       setTouched({ ...touched, sourceFrom: true });
       setValues({ ...values, sourceFrom: date });
     },
-    // onGetErrorMessage: (_value: string) =>
-    // touched.name ? errorMessage?.sourceFromError : undefined,
     value: values.sourceFrom,
     isRequired: true,
     strings: dataPickerStrings,
     minDate: minDate,
     maxDate: maxDate,
-    allowTextInput: false
+    allowTextInput: true
   };
 
   const today = new Date(Date.now());

@@ -3,7 +3,7 @@ import {
   DatePicker,
   DefaultButton,
   Dropdown,
-  MaskedTextField,
+  IDropdownStyles,
   mergeStyleSets,
   PrimaryButton,
   Separator,
@@ -54,17 +54,42 @@ export const AddAttraction: React.FunctionComponent = () => {
 
   const searchClass = {
     searchBox: {
+      width: "90vh",
+      maxWidth: "1200px",
       marginTop: "10px",
-      boxShadow: "0"
+      boxShadow: "0",
+      marginLeft: "25px"
     }
   };
 
   const field = {
     row: {
       marginTop: "15px"
+    },
+    whereToVisit: {
+      marginTop: "30px",
+      marginLeft: "25px"
+    },
+    tip: {
+      marginTop: "15px",
+      marginLeft: "25px"
+    },
+    attractionName: {
+      width: "90vh",
+      maxWidth: "1200px",
+      marginLeft: "25px"
+    },
+    dropdowns: {
+      marginLeft: "25px"
     }
   };
   const classNew = mergeStyleSets(field);
+
+  const dropdownStyles: Partial<IDropdownStyles> = {
+    dropdown: { width: 300 },
+    dropdownOptionText: { overflow: "visible", whiteSpace: "normal" },
+    dropdownItem: { height: "auto" }
+  };
 
   return (
     <>
@@ -128,7 +153,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           horizontal={true}
           className={classNew.row}
         >
-          <TextField {...formFields.name} />
+          <TextField {...formFields.name} className={classNew.attractionName} />
           <Toggle
             className={classes.inputToggle}
             label="Part of attraction"
@@ -147,21 +172,34 @@ export const AddAttraction: React.FunctionComponent = () => {
           horizontal={true}
           className={classNew.row}
         >
-          <TextField {...formFields.address} />
-          <MaskedTextField {...formFields.geoLocation} />
+          <TextField
+            {...formFields.address}
+            className={classNew.attractionName}
+          />
+          <TextField {...formFields.geoLocation} />
         </Stack>
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
           className={classNew.row}
         >
-          <Dropdown {...formFields.category} options={categoryOptions} />
-          <Dropdown {...formFields.type} options={typeOptions} />
+          <Dropdown
+            {...formFields.category}
+            options={categoryOptions}
+            className={classNew.dropdowns}
+            styles={dropdownStyles}
+          />
+          <Dropdown
+            {...formFields.type}
+            options={typeOptions}
+            className={classNew.dropdowns}
+            styles={dropdownStyles}
+          />
         </Stack>
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.row}
+          className={classNew.whereToVisit}
         >
           <Stack>
             <Text as="label">Where to visit</Text>
@@ -174,11 +212,11 @@ export const AddAttraction: React.FunctionComponent = () => {
             className={classes.countrywideMore}
           />
         </Stack>
-        <TextField {...formFields.tip} className={classNew.row} />
+        <TextField {...formFields.tip} className={classNew.tip} />
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.row}
+          className={classNew.tip}
         >
           <TextField {...formFields.source} />
           <Stack>
@@ -200,11 +238,18 @@ export const AddAttraction: React.FunctionComponent = () => {
               const attractionLocation = formFields.geoLocation?.value
                 ? {
                     latitude: Number(
-                      formFields.geoLocation.value.split(",")[1]
+                      formFields.geoLocation.value.split(",")[0]
                     ),
                     longitude: Number(
-                      formFields.geoLocation.value.split(",")[0]
+                      formFields.geoLocation.value.split(",")[1]
                     )
+                  }
+                : undefined;
+
+              const optimalVisitPeriod = formFields.optimalVisitPeriod?.value
+                ? {
+                    fromDate: formFields.optimalVisitPeriod?.value?.from,
+                    toDate: formFields.optimalVisitPeriod?.value?.to
                   }
                 : undefined;
 
@@ -223,10 +268,7 @@ export const AddAttraction: React.FunctionComponent = () => {
                 tip: formFields.tip?.value,
                 infoFrom: formFields.source.value!,
                 infoRecorded: formFields.sourceFrom.value!.toISOString(),
-                optimalVisitPeriod: {
-                  fromDate: formFields.optimalVisitPeriod?.value?.from,
-                  toDate: formFields.optimalVisitPeriod?.value?.to
-                }
+                optimalVisitPeriod: optimalVisitPeriod
               };
               console.log("//////////////////");
               console.log(JSON.stringify(newAttraction));
@@ -234,7 +276,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               saveNewAttraction(newAttraction);
               navigate(-1);
             }}
-            // disabled={!isFormValid}
+            disabled={!isFormValid}
             text="Save"
           />
         </Stack>

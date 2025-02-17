@@ -7,6 +7,7 @@ import {
   ExtendedSearchTextProps,
   RegionFormFieldProps
 } from "./AddRegion.types";
+import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 
 export const useRegionFormField = (): RegionFormFieldProps => {
   const initialTouched = {
@@ -17,7 +18,7 @@ export const useRegionFormField = (): RegionFormFieldProps => {
     regionName: "",
     countryId: undefined
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -68,7 +69,7 @@ export const useRegionDetailsFormField = (): RegionFormFieldProps => {
   const initialValues: Partial<AddRegionFormElements> = {
     regionName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -104,7 +105,7 @@ export const useRegionCountryFormField = (): RegionFormFieldProps => {
   const initialValues: Partial<AddRegionFormElements> = {
     countryId: undefined
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);

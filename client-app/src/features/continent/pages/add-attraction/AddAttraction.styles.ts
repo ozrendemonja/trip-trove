@@ -25,7 +25,10 @@ export const useClasses = () => {
       fontWeight: "600"
     },
     countrywide: {
-      marginTop: "10px"
+      marginTop: "15px"
+    },
+    countrywideMore: {
+      marginTop: "25px"
     },
     inputToggle: {
       marginTop: "26px"

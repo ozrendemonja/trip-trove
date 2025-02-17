@@ -59,6 +59,13 @@ export const AddAttraction: React.FunctionComponent = () => {
     }
   };
 
+  const field = {
+    row: {
+      marginTop: "15px"
+    }
+  };
+  const classNew = mergeStyleSets(field);
+
   return (
     <>
       <Navigation />
@@ -84,7 +91,7 @@ export const AddAttraction: React.FunctionComponent = () => {
         <Separator></Separator>
         <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
           <Text as="h2" className={classes.subHeader}>
-            Region
+            {isReginal ? "Region" : "City"}
           </Text>
           <Toggle
             className={classes.countrywide}
@@ -93,15 +100,14 @@ export const AddAttraction: React.FunctionComponent = () => {
             onChange={toggleReginal}
           />
         </Stack>
-        {!isReginal && (
-          <SearchText {...formFields.regionId} className={searchClass} />
-        )}
-        <Separator></Separator>
         {isReginal && (
           <>
-            <Text as="h2" className={classes.subHeader}>
-              City
-            </Text>
+            <SearchText {...formFields.regionId} className={searchClass} />
+            <Separator></Separator>
+          </>
+        )}
+        {!isReginal && (
+          <>
             <SearchText {...formFields.cityId} className={searchClass} />
             <Separator></Separator>
           </>
@@ -117,8 +123,11 @@ export const AddAttraction: React.FunctionComponent = () => {
             onChange={toggleMustVisit}
           />
         </Stack>
-        <Separator></Separator>
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+        <Stack
+          tokens={{ childrenGap: 48 }}
+          horizontal={true}
+          className={classNew.row}
+        >
           <TextField {...formFields.name} />
           <Toggle
             className={classes.inputToggle}
@@ -133,15 +142,27 @@ export const AddAttraction: React.FunctionComponent = () => {
             className={searchClass}
           />
         )}
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+        <Stack
+          tokens={{ childrenGap: 48 }}
+          horizontal={true}
+          className={classNew.row}
+        >
           <TextField {...formFields.address} />
           <MaskedTextField {...formFields.geoLocation} />
         </Stack>
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+        <Stack
+          tokens={{ childrenGap: 48 }}
+          horizontal={true}
+          className={classNew.row}
+        >
           <Dropdown {...formFields.category} options={categoryOptions} />
           <Dropdown {...formFields.type} options={typeOptions} />
         </Stack>
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+        <Stack
+          tokens={{ childrenGap: 48 }}
+          horizontal={true}
+          className={classNew.row}
+        >
           <Stack>
             <Text as="label">Where to visit</Text>
             <DateRangePicker {...formFields.optimalVisitPeriod} />
@@ -150,13 +171,20 @@ export const AddAttraction: React.FunctionComponent = () => {
             label="Traditional"
             checked={isTraditional}
             onChange={toggleIsTraditional}
+            className={classes.countrywideMore}
           />
         </Stack>
-        <TextField {...formFields.tip} />
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+        <TextField {...formFields.tip} className={classNew.row} />
+        <Stack
+          tokens={{ childrenGap: 48 }}
+          horizontal={true}
+          className={classNew.row}
+        >
           <TextField {...formFields.source} />
           <Stack>
-            <Text as="label">When information comes from?</Text>
+            <Text as="label" className={classes.countrywideMore}>
+              When information comes from?
+            </Text>
             <DatePicker {...formFields.sourceFrom} />
           </Stack>
         </Stack>

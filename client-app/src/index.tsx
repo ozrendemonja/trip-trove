@@ -21,7 +21,8 @@ const appTheme: PartialTheme = {
     orange: "#fec703"
   },
   semanticColors: {
-    bodyBackground: "transparent"
+    bodyBackground: "transparent",
+    inputBackgroundChecked: "#FEC703"
   },
   components: {
     Nav: {

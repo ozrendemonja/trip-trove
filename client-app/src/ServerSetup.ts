@@ -349,6 +349,19 @@ export default function makeServer(): ReturnType<typeof createServer> {
             });
 
           return { prefix: query, suggestions: result };
+        } else if (inElement == "ATTRACTION") {
+          let result = schema.db.attractions
+            .sort()
+            .filter((attraction) => attraction.attractionName.includes(query))
+            .map((attraction) => {
+              return {
+                value: attraction.attractionName,
+                id: attraction.attractionId,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
         }
       });
 

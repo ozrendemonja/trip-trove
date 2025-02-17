@@ -12,7 +12,7 @@ import { positionSuggestionDropdown, useClasses } from "./SearchText.styles";
 import { SearchTextProps } from "./SearchText.types";
 
 export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
-  let classes = useClasses();
+  let classes = mergeStyleSets(useClasses(), props.className);
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);

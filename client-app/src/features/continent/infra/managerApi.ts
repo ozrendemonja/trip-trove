@@ -1,4 +1,5 @@
 import {
+  DateSpanDTO,
   deleteAttraction,
   deleteCity,
   deleteContinent,
@@ -13,6 +14,8 @@ import {
   getCountry,
   getRegion,
   getSearchedElements,
+  LocationDTO,
+  saveAttraction,
   saveCity,
   saveContinent,
   saveCountry,
@@ -26,7 +29,11 @@ import {
   updateRegionDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import { Attraction, LastReadAttraction } from "../domain/Attraction.types";
+import {
+  Attraction,
+  LastReadAttraction,
+  SaveAttraction
+} from "../domain/Attraction.types";
 import { City, LastReadCity } from "../domain/City.types";
 import {
   Continent,
@@ -708,4 +715,61 @@ export const deleteAttractionWithId = async (id: number): Promise<void> => {
   if (error) {
     throw new Error("Error while deleting attraction", error);
   }
+};
+
+export const saveNewAttraction = async (
+  newAttraction: SaveAttraction
+): Promise<void> => {
+  const optimalVisitPeriod: DateSpanDTO | undefined =
+    newAttraction.optimalVisitPeriod
+      ? {
+          fromDate: newAttraction.optimalVisitPeriod.fromDate!,
+          toDate: newAttraction.optimalVisitPeriod.toDate!
+        }
+      : undefined;
+  const attractionLocation: LocationDTO | undefined =
+    newAttraction.attractionLocation
+      ? { ...newAttraction.attractionLocation }
+      : undefined;
+
+  const { error } = await saveAttraction({
+    body: {
+      ...newAttraction,
+      attractionCategory: "AIR_BASED_ACTIVITY", // TODO replace newAttraction.attractionCategory,
+      attractionType: "IMMINENT_CHANGE", //// TODO replace newAttraction.attractionType,
+      attractionLocation,
+      optimalVisitPeriod
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while saving attraction ", error);
+  }
+};
+
+export const searchAttraction = async (
+  query: string
+): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "ATTRACTION"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for attraction", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
 };

@@ -4,6 +4,7 @@ import {
   ContinentFormFieldProps
 } from "./AddContinent.types";
 import { Validator } from "../../infra/Validator";
+import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 
 export const useContinentFormField = (): ContinentFormFieldProps => {
   const initialTouched = {
@@ -12,7 +13,7 @@ export const useContinentFormField = (): ContinentFormFieldProps => {
   const initialValues: AddContinentFormElements = {
     continentName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);

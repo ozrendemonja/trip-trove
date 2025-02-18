@@ -11,6 +11,7 @@ import RegionList from "./features/continent/pages/list-region/ListRegion";
 import CityList from "./features/continent/pages/list-city/ListCity";
 import AddCity from "./features/continent/pages/add-city/AddCity";
 import AttractionList from "./features/continent/pages/list-attraction/ListAttraction";
+import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -21,7 +22,8 @@ const appTheme: PartialTheme = {
     orange: "#fec703"
   },
   semanticColors: {
-    bodyBackground: "transparent"
+    bodyBackground: "transparent",
+    inputBackgroundChecked: "#FEC703"
   },
   components: {
     Nav: {
@@ -54,6 +56,7 @@ root.render(
         <Route path="/cities" element={<CityList />} />
         <Route path="/add-city" element={<AddCity />} />
         <Route path="/attractions" element={<AttractionList />} />
+        <Route path="/add-attraction" element={<AddAttraction />} />
       </Routes>
     </BrowserRouter>
     <style>{styleOverrides}</style>

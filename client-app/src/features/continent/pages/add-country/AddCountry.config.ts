@@ -5,6 +5,7 @@ import {
   AddCountryFormElements,
   CountryFormFieldProps
 } from "./AddCountry.types";
+import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 
 export const useCountryFormField = (): CountryFormFieldProps => {
   const initialTouched = {
@@ -15,7 +16,7 @@ export const useCountryFormField = (): CountryFormFieldProps => {
     countryName: "",
     continentName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -67,7 +68,7 @@ export const useCountryDetailsFormField = (): CountryFormFieldProps => {
   const initialValues: AddCountryFormElements = {
     countryName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -103,7 +104,7 @@ export const useCountryContinentFormField = (): CountryFormFieldProps => {
   const initialValues: AddCountryFormElements = {
     continentName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);

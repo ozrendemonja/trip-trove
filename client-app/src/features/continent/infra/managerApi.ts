@@ -13,6 +13,7 @@ import {
   getCountry,
   getRegion,
   getSearchedElements,
+  saveAttraction,
   saveCity,
   saveContinent,
   saveCountry,
@@ -26,7 +27,13 @@ import {
   updateRegionDetail
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import { Attraction, LastReadAttraction } from "../domain/Attraction.types";
+import {
+  Attraction,
+  LastReadAttraction,
+  mapCategory,
+  mapType,
+  SaveAttraction
+} from "../domain/Attraction.types";
 import { City, LastReadCity } from "../domain/City.types";
 import {
   Continent,
@@ -708,4 +715,56 @@ export const deleteAttractionWithId = async (id: number): Promise<void> => {
   if (error) {
     throw new Error("Error while deleting attraction", error);
   }
+};
+
+export const saveNewAttraction = async (
+  attraction: SaveAttraction
+): Promise<void> => {
+  const optimalVisitPeriod = attraction.optimalVisitPeriod
+    ? { ...attraction.optimalVisitPeriod }
+    : undefined;
+  const attractionLocation = attraction.attractionLocation
+    ? { ...attraction.attractionLocation }
+    : undefined;
+
+  const { error } = await saveAttraction({
+    body: {
+      ...attraction,
+      attractionCategory: mapCategory[attraction.attractionCategory],
+      attractionType: mapType[attraction.attractionType],
+      attractionLocation,
+      optimalVisitPeriod
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while saving attraction ", error);
+  }
+};
+
+export const searchAttraction = async (
+  query: string
+): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "ATTRACTION"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for attraction", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
 };

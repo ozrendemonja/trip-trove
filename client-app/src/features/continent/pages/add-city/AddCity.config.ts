@@ -1,12 +1,13 @@
 import { ITextFieldProps } from "@fluentui/react";
 import { useState } from "react";
+import { searchRegion } from "../../infra/ManagerApi";
+import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 import { Validator } from "../../infra/Validator";
 import {
   AddCityFormElements,
   CityFormFieldProps,
   ExtendedSearchTextProps
 } from "./AddCity.types";
-import { searchRegion } from "../../infra/ManagerApi";
 
 export const useCityFormField = (): CityFormFieldProps => {
   const initialTouched = {
@@ -17,7 +18,7 @@ export const useCityFormField = (): CityFormFieldProps => {
     cityName: "",
     regionId: undefined
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -68,7 +69,7 @@ export const useCityDetailsFormField = (): CityFormFieldProps => {
   const initialValues: Partial<AddCityFormElements> = {
     cityName: ""
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
@@ -104,7 +105,7 @@ export const useCityRegionFormField = (): CityFormFieldProps => {
   const initialValues: Partial<AddCityFormElements> = {
     regionId: undefined
   };
-  const validator = new Validator();
+  const validator = new Validator(createPlaceValidation());
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);

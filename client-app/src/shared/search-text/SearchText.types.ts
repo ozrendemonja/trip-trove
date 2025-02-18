@@ -30,4 +30,6 @@ export interface SearchTextProps {
   onGetErrorMessage?: (
     value: string
   ) => string | JSX.Element | PromiseLike<string | JSX.Element> | undefined;
+
+  className?: object;
 }

@@ -1,12 +1,11 @@
 import {
-  addMonths,
-  addYears,
   DatePicker,
   defaultDatePickerStrings,
   FontIcon,
   IDatePickerStyles,
   Stack
 } from "@fluentui/react";
+import { DateRangePickerProps } from "./DateRangePicker.types";
 
 const datePickerStyles: Partial<IDatePickerStyles> = {
   root: { width: 100, color: "#fec703", backgroundColor: "white" },
@@ -21,11 +20,9 @@ const formatDate = (date?: Date): string => {
   return `${day} ${month}`; //.${year}`;
 };
 
-const DatePickerMy: React.FunctionComponent = () => {
-  const today = new Date(Date.now());
-  const minDate = addMonths(today, -1);
-  const maxDate = addYears(today, 1);
-
+const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
+  props
+) => {
   return (
     <Stack tokens={{ childrenGap: 0 }} horizontal={true}>
       <DatePicker
@@ -34,11 +31,12 @@ const DatePickerMy: React.FunctionComponent = () => {
         strings={defaultDatePickerStrings}
         // dateTimeFormatter={"MM/yyyy"}
         formatDate={formatDate}
-        placeholder="Select a date..."
-        ariaLabel="Select a date"
-        minDate={minDate}
-        maxDate={maxDate}
-        allowTextInput
+        placeholder={props.placeholder}
+        ariaLabel={props.ariaLabel}
+        onSelectDate={props.onSelectStartDate}
+        minDate={props.minDate}
+        maxDate={props.maxDate}
+        allowTextInput={props.allowTextInput}
       />
       {/* <Icon iconProps={{ iconName: "ChromeBackMirrored", styles: { root: { color: "#fec703", textAlign: "centre" } } }} /> */}
       <div style={{ padding: "5px" }}>
@@ -58,15 +56,16 @@ const DatePickerMy: React.FunctionComponent = () => {
         strings={defaultDatePickerStrings}
         // dateTimeFormatter={"MM/yyyy"}
         formatDate={formatDate}
-        placeholder="Select a date..."
-        ariaLabel="Select a date"
-        minDate={minDate}
-        maxDate={maxDate}
-        allowTextInput
+        placeholder={props.placeholder}
+        ariaLabel={props.ariaLabel}
+        onSelectDate={props.onSelectEndDate}
+        minDate={props.minDate}
+        maxDate={props.maxDate}
+        allowTextInput={props.allowTextInput}
       />
       {/* <IconButton iconProps={{ iconName: "Checkbox", styles: { root: { color: "#fec703", fontSize: 24 } } }} /> */}
     </Stack>
   );
 };
 
-export default DatePickerMy;
+export default DateRangePicker;

@@ -12,7 +12,7 @@ import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
-import DatePickerMy from "../../../../shared/list-element/ui/date-picker/DatePickerMy";
+import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Attraction";
@@ -148,7 +148,7 @@ const onRenderItemColumn = (
   } else if (column?.key === "optimalVisitPeriod") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        {atraction?.optimalVisitPeriod && <DatePickerMy></DatePickerMy>}
+        {atraction?.optimalVisitPeriod && <DateRangePicker></DateRangePicker>}
         {/* <EditCityRegionDetails
             cityId={city!.id}
             text={city!.region}

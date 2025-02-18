@@ -1,5 +1,4 @@
 import {
-  DateSpanDTO,
   deleteAttraction,
   deleteCity,
   deleteContinent,
@@ -14,7 +13,6 @@ import {
   getCountry,
   getRegion,
   getSearchedElements,
-  LocationDTO,
   saveAttraction,
   saveCity,
   saveContinent,
@@ -32,6 +30,8 @@ import managerClient from "../../../config/ClientsApiConfig";
 import {
   Attraction,
   LastReadAttraction,
+  mapCategory,
+  mapType,
   SaveAttraction
 } from "../domain/Attraction.types";
 import { City, LastReadCity } from "../domain/City.types";
@@ -718,25 +718,20 @@ export const deleteAttractionWithId = async (id: number): Promise<void> => {
 };
 
 export const saveNewAttraction = async (
-  newAttraction: SaveAttraction
+  attraction: SaveAttraction
 ): Promise<void> => {
-  const optimalVisitPeriod: DateSpanDTO | undefined =
-    newAttraction.optimalVisitPeriod
-      ? {
-          fromDate: newAttraction.optimalVisitPeriod.fromDate!,
-          toDate: newAttraction.optimalVisitPeriod.toDate!
-        }
-      : undefined;
-  const attractionLocation: LocationDTO | undefined =
-    newAttraction.attractionLocation
-      ? { ...newAttraction.attractionLocation }
-      : undefined;
+  const optimalVisitPeriod = attraction.optimalVisitPeriod
+    ? { ...attraction.optimalVisitPeriod }
+    : undefined;
+  const attractionLocation = attraction.attractionLocation
+    ? { ...attraction.attractionLocation }
+    : undefined;
 
   const { error } = await saveAttraction({
     body: {
-      ...newAttraction,
-      attractionCategory: "AIR_BASED_ACTIVITY", // TODO replace newAttraction.attractionCategory,
-      attractionType: "IMMINENT_CHANGE", //// TODO replace newAttraction.attractionType,
+      ...attraction,
+      attractionCategory: mapCategory[attraction.attractionCategory],
+      attractionType: mapType[attraction.attractionType],
       attractionLocation,
       optimalVisitPeriod
     },

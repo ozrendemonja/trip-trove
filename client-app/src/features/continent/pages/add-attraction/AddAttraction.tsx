@@ -25,7 +25,7 @@ import {
 } from "../../domain/Attraction.types";
 import { saveNewAttraction } from "../../infra/ManagerApi";
 import { useAttractionFormField } from "./AddAttraction.config";
-import { useClasses } from "./AddAttraction.styles";
+import { searchOverride, useClasses } from "./AddAttraction.styles";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
@@ -52,45 +52,6 @@ export const AddAttraction: React.FunctionComponent = () => {
     useBoolean(false);
   const [isTraditional, { toggle: toggleIsTraditional }] = useBoolean(false);
 
-  const searchClass = {
-    searchBox: {
-      width: "90vh",
-      maxWidth: "1200px",
-      marginTop: "10px",
-      boxShadow: "0",
-      marginLeft: "25px"
-    }
-  };
-
-  const field = {
-    row: {
-      marginTop: "15px"
-    },
-    whereToVisit: {
-      marginTop: "30px",
-      marginLeft: "25px"
-    },
-    tip: {
-      marginTop: "15px",
-      marginLeft: "25px"
-    },
-    attractionName: {
-      width: "90vh",
-      maxWidth: "1200px",
-      marginLeft: "25px"
-    },
-    dropdowns: {
-      marginLeft: "25px"
-    }
-  };
-  const classNew = mergeStyleSets(field);
-
-  const dropdownStyles: Partial<IDropdownStyles> = {
-    dropdown: { width: 300 },
-    dropdownOptionText: { overflow: "visible", whiteSpace: "normal" },
-    dropdownItem: { height: "auto" }
-  };
-
   return (
     <>
       <Navigation />
@@ -106,20 +67,20 @@ export const AddAttraction: React.FunctionComponent = () => {
             Country
           </Text>
           <Toggle
-            className={classes.countrywide}
+            className={classes.checkbox}
             label="Nationally Recognized Attraction"
             inlineLabel
             onChange={toggleIsCountrywide}
           />
         </Stack>
-        <SearchText {...formFields.countryId} className={searchClass} />
+        <SearchText {...formFields.countryId} className={searchOverride} />
         <Separator></Separator>
         <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
           <Text as="h2" className={classes.subHeader}>
             {isReginal ? "Region" : "City"}
           </Text>
           <Toggle
-            className={classes.countrywide}
+            className={classes.checkbox}
             label="Attraction is region level"
             inlineLabel
             onChange={toggleReginal}
@@ -127,13 +88,13 @@ export const AddAttraction: React.FunctionComponent = () => {
         </Stack>
         {isReginal && (
           <>
-            <SearchText {...formFields.regionId} className={searchClass} />
+            <SearchText {...formFields.regionId} className={searchOverride} />
             <Separator></Separator>
           </>
         )}
         {!isReginal && (
           <>
-            <SearchText {...formFields.cityId} className={searchClass} />
+            <SearchText {...formFields.cityId} className={searchOverride} />
             <Separator></Separator>
           </>
         )}
@@ -142,7 +103,7 @@ export const AddAttraction: React.FunctionComponent = () => {
             Attraction
           </Text>
           <Checkbox
-            className={classes.countrywide}
+            className={classes.checkbox}
             label="Must visit"
             checked={mustVisit}
             onChange={toggleMustVisit}
@@ -151,9 +112,9 @@ export const AddAttraction: React.FunctionComponent = () => {
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.row}
+          className={classes.row}
         >
-          <TextField {...formFields.name} className={classNew.attractionName} />
+          <TextField {...formFields.name} className={classes.attractionName} />
           <Toggle
             className={classes.inputToggle}
             label="Part of attraction"
@@ -164,42 +125,40 @@ export const AddAttraction: React.FunctionComponent = () => {
         {isPartOfAttraction && (
           <SearchText
             {...formFields.mainAttractionId}
-            className={searchClass}
+            className={searchOverride}
           />
         )}
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.row}
+          className={classes.row}
         >
           <TextField
             {...formFields.address}
-            className={classNew.attractionName}
+            className={classes.attractionName}
           />
           <TextField {...formFields.geoLocation} />
         </Stack>
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.row}
+          className={classes.row}
         >
           <Dropdown
             {...formFields.category}
             options={categoryOptions}
-            className={classNew.dropdowns}
-            styles={dropdownStyles}
+            className={classes.dropdowns}
           />
           <Dropdown
             {...formFields.type}
             options={typeOptions}
-            className={classNew.dropdowns}
-            styles={dropdownStyles}
+            className={classes.dropdowns}
           />
         </Stack>
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.whereToVisit}
+          className={classes.whereToVisit}
         >
           <Stack>
             <Text as="label">Where to visit</Text>
@@ -209,18 +168,18 @@ export const AddAttraction: React.FunctionComponent = () => {
             label="Traditional"
             checked={isTraditional}
             onChange={toggleIsTraditional}
-            className={classes.countrywideMore}
+            className={classes.checkbox}
           />
         </Stack>
-        <TextField {...formFields.tip} className={classNew.tip} />
+        <TextField {...formFields.tip} className={classes.tip} />
         <Stack
           tokens={{ childrenGap: 48 }}
           horizontal={true}
-          className={classNew.tip}
+          className={classes.tip}
         >
           <TextField {...formFields.source} />
           <Stack>
-            <Text as="label" className={classes.countrywideMore}>
+            <Text as="label" className={classes.checkbox}>
               When information comes from?
             </Text>
             <DatePicker {...formFields.sourceFrom} />
@@ -261,8 +220,8 @@ export const AddAttraction: React.FunctionComponent = () => {
                 mainAttractionId: formFields.mainAttractionId?.value,
                 attractionAddress: formFields.address?.value,
                 attractionLocation: attractionLocation,
-                attractionCategory: formFields.category?.value!,
-                attractionType: formFields.type.value!,
+                attractionCategory: formFields.category?.value,
+                attractionType: formFields.type.value,
                 mustVisit: mustVisit,
                 isTraditional: isTraditional,
                 tip: formFields.tip?.value,
@@ -270,9 +229,6 @@ export const AddAttraction: React.FunctionComponent = () => {
                 infoRecorded: formFields.sourceFrom.value!.toISOString(),
                 optimalVisitPeriod: optimalVisitPeriod
               };
-              console.log("//////////////////");
-              console.log(JSON.stringify(newAttraction));
-
               saveNewAttraction(newAttraction);
               navigate(-1);
             }}

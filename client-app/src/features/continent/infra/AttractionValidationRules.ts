@@ -80,7 +80,7 @@ export const createAttractionValidation: yup.AnyObject = () => {
         .string()
         .trim()
         .ensure()
-        .required("Info from may not be null or empty")
+        .required("Info from date may not be null or empty")
     },
     [["cityId", "regionId"]]
   );
@@ -95,6 +95,6 @@ function ValidLongitude(value: string): boolean {
   if (value.split(",").length < 2) {
     return true;
   }
-  const latitude = Number(value.split(",")[1].trim());
-  return Math.abs(latitude) <= 180.0;
+  const longitude = Number(value.split(",")[1].trim());
+  return Math.abs(longitude) <= 180.0;
 }

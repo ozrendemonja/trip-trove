@@ -79,7 +79,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
   const regionIdSearchText: ExtendedSearchTextProps = {
     label: "Select a region",
     placeholder: "Search",
-    required: false,
+    required: true,
     onSelectItem: (id: number | undefined) => {
       setTouched({ ...touched, regionId: true });
       setValues({ ...values, regionId: id });
@@ -93,7 +93,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
   const cityIdSearchText: ExtendedSearchTextProps = {
     label: "Select a city",
     placeholder: "Search",
-    required: false,
+    required: true,
     onSelectItem: (id: number | undefined) => {
       setTouched({ ...touched, cityId: true });
       setValues({ ...values, cityId: id });
@@ -185,7 +185,10 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       _index?: number
     ) => {
       setTouched({ ...touched, category: true });
-      setValues({ ...values, category: option?.key as CategoryType });
+      setValues({
+        ...values,
+        category: option?.key ? CategoryType[option.key] : undefined
+      });
     }
   };
 
@@ -202,7 +205,10 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       _index?: number
     ) => {
       setTouched({ ...touched, type: true });
-      setValues({ ...values, type: option?.key as AttractionType });
+      setValues({
+        ...values,
+        type: option?.key ? AttractionType[option.key] : undefined
+      });
     }
   };
 
@@ -237,12 +243,10 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     multiline: true
   };
 
-  const minDate = addYears(new Date(Date.now()), -50);
-  const maxDate = new Date(Date.now());
-  const dataPickerStrings: IDatePickerStrings = {
+  const sourceFromDataPicker: IDatePickerStrings = {
     ...defaultDatePickerStrings,
     // eslint-disable-next-line @fluentui/max-len
-    isOutOfBoundsErrorMessage: `Date must be between ${minDate.toLocaleDateString()} and ${maxDate.toLocaleDateString()}`
+    isOutOfBoundsErrorMessage: "Date must be today or earlier"
   };
   const sourceFromField: IDatePickerProps = {
     placeholder: "Select recorded date...",
@@ -253,15 +257,14 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     },
     value: values.sourceFrom,
     isRequired: true,
-    strings: dataPickerStrings,
-    minDate: minDate,
-    maxDate: maxDate,
+    strings: sourceFromDataPicker,
+    maxDate: new Date(Date.now()),
     allowTextInput: true
   };
 
   const today = new Date(Date.now());
-  const minOptimalDate = addMonths(today, -1);
-  const maxOptimalDate = addYears(today, 1);
+  const minDate = addMonths(today, -1);
+  const maxDate = addYears(today, 1);
   const optimalVisitPeriodField: DateRangePickerProps = {
     placeholder: "Select a date...",
     ariaLabel: "Select a date",
@@ -285,12 +288,9 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
         }
       });
     },
-    // onGetErrorMessage: (_value: string) =>
-    // touched.name ? errorMessage?.sourceFromError : undefined,
     value: values.optimalVisitPeriod,
-    // strings: dataPickerStrings,
-    minDate: minOptimalDate,
-    maxDate: maxOptimalDate,
+    minDate: minDate,
+    maxDate: maxDate,
     allowTextInput: false
   };
 

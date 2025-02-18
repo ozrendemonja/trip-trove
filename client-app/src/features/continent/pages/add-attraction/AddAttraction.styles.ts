@@ -24,14 +24,38 @@ export const useClasses = () => {
       marginTop: "10px",
       fontWeight: "600"
     },
-    countrywide: {
+    row: {
       marginTop: "15px"
     },
-    countrywideMore: {
-      marginTop: "25px"
+    attractionName: {
+      width: "90vh",
+      maxWidth: "1200px",
+      marginLeft: "25px"
     },
     inputToggle: {
       marginTop: "26px"
+    },
+    dropdowns: {
+      marginLeft: "25px",
+      width: 300,
+      selectors: {
+        ".ms-Callout-main": {
+          overflow: "visible",
+          whiteSpace: "normal",
+          height: "auto"
+        }
+      }
+    },
+    whereToVisit: {
+      marginTop: "30px",
+      marginLeft: "25px"
+    },
+    tip: {
+      marginTop: "15px",
+      marginLeft: "25px"
+    },
+    checkbox: {
+      marginTop: "15px"
     },
     formText: {
       maxWidth: "1200px",
@@ -51,4 +75,14 @@ export const useClasses = () => {
       marginTop: "48px"
     }
   });
+};
+
+export const searchOverride = {
+  searchBox: {
+    width: "90vh",
+    maxWidth: "1200px",
+    marginTop: "10px",
+    boxShadow: "0",
+    marginLeft: "25px"
+  }
 };

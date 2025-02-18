@@ -557,6 +557,18 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 600 }
       );
+
+      this.get(
+        "/attractions/:id",
+        (schema, request) => {
+          const id = request.params.id;
+
+          return schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+        },
+        { timing: 400 }
+      );
     }
   });
 }

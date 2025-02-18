@@ -88,7 +88,7 @@ export type Attraction = {
   isTraditional: boolean;
   tip?: string;
   infoFrom: AttractionInfoFrom;
-  optimalVisitPeriod: AttractionOptimalVisitPeriod;
+  optimalVisitPeriod?: AttractionOptimalVisitPeriod;
   updatedOn: string;
 };
 

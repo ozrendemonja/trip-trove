@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Attraction;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +29,6 @@ public interface AttractionRepo {
     List<Attraction> findAll();
 
     void delete(Attraction attraction);
+
+    List<Suggestion> search(String query, int limit);
 }

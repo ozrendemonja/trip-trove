@@ -5,14 +5,8 @@ import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
-import com.triptrove.manager.domain.model.City;
-import com.triptrove.manager.domain.model.Continent;
-import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.model.Region;
-import com.triptrove.manager.domain.repo.CityRepo;
-import com.triptrove.manager.domain.repo.ContinentRepo;
-import com.triptrove.manager.domain.repo.CountryRepo;
-import com.triptrove.manager.domain.repo.RegionRepo;
+import com.triptrove.manager.domain.model.*;
+import com.triptrove.manager.domain.repo.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +20,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
@@ -52,6 +47,10 @@ public class SearchTest {
     public static final String CITY_NAME_0 = "Test city 0";
     public static final String CITY_NAME_1 = "Test city 1";
     public static final String CITY_NAME_2 = "New ctest 2";
+    public static final String ATTRACTION_NAME_0 = "Test attraction 0";
+    public static final String ATTRACTION_NAME_1 = "Test attraction 1";
+    public static final String ATTRACTION_NAME_2 = "New attraction 2";
+    public static final String ATTRACTION_NAME_3 = "New cattraction 3";
 
     @Autowired
     private MockMvc mockMvc;
@@ -67,6 +66,9 @@ public class SearchTest {
 
     @Autowired
     private CityRepo cityRepo;
+
+    @Autowired
+    private AttractionRepo attractionRepo;
 
     @BeforeEach
     void setupContinent() {
@@ -166,6 +168,43 @@ public class SearchTest {
         city3.setId(3);
         city3.setCreatedOn(LocalDateTime.now().minusDays(1));
         cityRepo.save(city3);
+
+        var attraction0 = new Attraction();
+        attraction0.setCity(city0);
+        attraction0.setName(ATTRACTION_NAME_0);
+        attraction0.setCategory(AttractionCategory.NATURE_AND_WILDLIFE_AREA);
+        attraction0.setType(AttractionType.STABLE);
+        attraction0.setId(0L);
+        attraction0.setInformationProvider(new InformationProvider("Test provider 0", LocalDate.of(2025, 2, 18)));
+        attraction0.setCreatedOn(LocalDateTime.now().minusDays(4));
+        attractionRepo.save(attraction0);
+        var attraction1 = new Attraction();
+        attraction1.setCity(city0);
+        attraction1.setName(ATTRACTION_NAME_1);
+        attraction1.setCategory(AttractionCategory.NATURE_AND_WILDLIFE_AREA);
+        attraction1.setType(AttractionType.STABLE);
+        attraction1.setId(1L);
+        attraction1.setInformationProvider(new InformationProvider("Test provider 1", LocalDate.of(2025, 2, 17)));
+        attraction1.setCreatedOn(LocalDateTime.now().minusDays(3));
+        attractionRepo.save(attraction1);
+        var attraction2 = new Attraction();
+        attraction2.setCity(city1);
+        attraction2.setName(ATTRACTION_NAME_2);
+        attraction2.setCategory(AttractionCategory.ART_MUSEUM);
+        attraction2.setType(AttractionType.POTENTIAL_CHANGE);
+        attraction2.setId(2L);
+        attraction2.setInformationProvider(new InformationProvider("Test provider 2", LocalDate.of(2025, 2, 16)));
+        attraction2.setCreatedOn(LocalDateTime.now().minusDays(2));
+        attractionRepo.save(attraction2);
+        var attraction3 = new Attraction();
+        attraction3.setCity(city1);
+        attraction3.setName(ATTRACTION_NAME_3);
+        attraction3.setCategory(AttractionCategory.ART_MUSEUM);
+        attraction3.setType(AttractionType.STABLE);
+        attraction3.setId(3L);
+        attraction3.setInformationProvider(new InformationProvider("Test provider 3", LocalDate.of(2025, 2, 15)));
+        attraction3.setCreatedOn(LocalDateTime.now().minusDays(1));
+        attractionRepo.save(attraction3);
     }
 
     @ParameterizedTest
@@ -427,6 +466,76 @@ public class SearchTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("q", input)
                         .param("i", "CITY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidAttractionQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void limitNumberOfSortedAttractionNamesWhichGivenSearchStringIsSubstringOfWhenSearchByAttractionName(QueryAndSuggestions input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input.query())
+                        .param("i", "ATTRACTION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input.query());
+        assertThat(response.suggestions()).hasSize(input.suggestedNames().size());
+        assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
+    }
+
+    private static Stream<QueryAndSuggestions> provideValidAttractionQueries() {
+        return Stream.of(
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(ATTRACTION_NAME_1, 1), createSuggestionDto(ATTRACTION_NAME_0, 0))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto(ATTRACTION_NAME_1, 1), createSuggestionDto(ATTRACTION_NAME_0, 0))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(ATTRACTION_NAME_1, 1), createSuggestionDto(ATTRACTION_NAME_0, 0))),
+                new QueryAndSuggestions("New ", List.of(createSuggestionDto(ATTRACTION_NAME_3, 3), createSuggestionDto(ATTRACTION_NAME_2, 2))),
+                new QueryAndSuggestions("New c", List.of(createSuggestionDto(ATTRACTION_NAME_3, 3)))
+        );
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyAttractionName() throws Exception {
+        String input = "Not valid";
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "ATTRACTION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input);
+        assertThat(response.suggestions()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInValidQueries")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        // TMP solution for non existing clear of database
+    void userShouldGetConflictResponseWhenAttractionQueryNameIsTooShort(String input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "ATTRACTION")
                         .header("x-api-version", "1"))
                 .andExpect(status().isBadRequest())
                 .andReturn()

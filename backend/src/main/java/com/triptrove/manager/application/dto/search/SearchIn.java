@@ -8,7 +8,8 @@ public enum SearchIn {
     COUNTRY("country"),
     CONTINENT("continent"),
     REGION("region"),
-    CITY("city");
+    CITY("city"),
+    ATTRACTION("ATTRACTION");
     private final String value;
 
     SearchIn(String in) {
@@ -31,6 +32,7 @@ public enum SearchIn {
             case CONTINENT -> SearchInElement.CONTINENT;
             case REGION -> SearchInElement.REGION;
             case CITY -> SearchInElement.CITY;
+            case ATTRACTION -> SearchInElement.ATTRACTION;
         };
     }
 }

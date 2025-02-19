@@ -2,6 +2,7 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.domain.model.Attraction;
 import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.Suggestion;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -109,6 +110,17 @@ public class InMemoryAttractionRepository implements AttractionRepo {
         return inMemoryDb.values()
                 .stream()
                 .filter(attraction -> attraction.getName().equals(name))
+                .toList();
+    }
+
+    @Override
+    public List<Suggestion> search(String query, int limit) {
+        return inMemoryDb.values()
+                .stream()
+                .sorted(Comparator.comparing(attraction -> attraction.getUpdatedOn().orElse(attraction.getCreatedOn()), Comparator.reverseOrder()))
+                .filter(attraction -> attraction.getName().contains(query))
+                .limit(limit)
+                .map(attraction -> new Suggestion(attraction.getName(), attraction.getId().intValue()))
                 .toList();
     }
 }

@@ -19,11 +19,16 @@ import { deleteRows } from "../../domain/Attraction";
 import { Attraction, LastReadAttraction } from "../../domain/Attraction.types";
 import { AttractionListCustomizer } from "../../domain/AttractionListCustomizer";
 import { OrderOptions } from "../../domain/Continent.types";
-import { getPagedAttractions } from "../../infra/ManagerApi";
+import {
+  getAttractionById,
+  getPagedAttractions,
+  searchAttraction
+} from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListAttraction.config";
 import { useClasses } from "./ListAttraction.styles";
 import { AttractionRow } from "./ListAttraction.types";
 import { toLastReadAttraction } from "./ListAttraction.util";
+import { Suggestion } from "../../domain/Suggestion.types.";
 
 const onRenderItemColumn = (
   className: string,
@@ -208,13 +213,13 @@ export const AttractionList: React.FunctionComponent = () => {
     });
   }, [reloadData]);
 
-  //   const [query, setQuery] = useState("");
-  //   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  //   useEffect(() => {
-  //     if (query.trim().length >= 3) {
-  //       searchCity(query).then(setSuggestions);
-  //     }
-  //   }, [query]);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  useEffect(() => {
+    if (query.trim().length >= 3) {
+      searchAttraction(query).then(setSuggestions);
+    }
+  }, [query]);
 
   return (
     <>
@@ -226,7 +231,7 @@ export const AttractionList: React.FunctionComponent = () => {
           columns={columns}
           listHeader={{
             ...listHeader,
-            // setItems: setSuggestions,
+            setItems: setSuggestions,
             onSortOptionChange: (
               _event: React.FormEvent<HTMLDivElement>,
               option?: IDropdownOption,
@@ -238,25 +243,25 @@ export const AttractionList: React.FunctionComponent = () => {
               );
               toggleReloadData();
             },
-            sortOptions: sortOptions
-            // items: suggestions,
-            // onSearchTyped: (
-            //   _event?: React.ChangeEvent<HTMLInputElement>,
-            //   newValue?: string
-            // ) => {
-            //   setQuery(newValue ?? "");
-            // },
-            // onFindItem: (id: number) => {
-            //   getCityById(id).then((data) => {
-            //     setCityCustomizer(() => {
-            //       return new CityListCustomizer(
-            //         setItems,
-            //         setColumns
-            //       ).withFixedRows([CityRow.from(data)]);
-            //     });
-            //     setSuggestions([]);
-            //   });
-            // }
+            sortOptions: sortOptions,
+            items: suggestions,
+            onSearchTyped: (
+              _event?: React.ChangeEvent<HTMLInputElement>,
+              newValue?: string
+            ) => {
+              setQuery(newValue ?? "");
+            },
+            onFindItem: (id: number) => {
+              getAttractionById(id).then((data) => {
+                setAttractionCustomizer(() => {
+                  return new AttractionListCustomizer(
+                    setItems,
+                    setColumns
+                  ).withFixedRows([AttractionRow.from(data)]);
+                });
+                setSuggestions([]);
+              });
+            }
           }}
           addRowOptions={{
             text: "Add new attraction",

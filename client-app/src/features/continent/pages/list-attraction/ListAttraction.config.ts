@@ -9,5 +9,5 @@ export const onRenderWhenNoMoreItems = (
 
 export const listHeader: Partial<ListHeaderProps> = {
   text: "All attractions",
-  showSearchBar: false
+  showSearchBar: true
 };

@@ -8,6 +8,7 @@ import {
   getAllContinents,
   getAllCountries,
   getAllRegions,
+  getAttraction,
   getAttractions,
   getCity,
   getCountry,
@@ -29,6 +30,8 @@ import {
 import managerClient from "../../../config/ClientsApiConfig";
 import {
   Attraction,
+  AttractionType,
+  CategoryType,
   LastReadAttraction,
   mapCategory,
   mapType,
@@ -767,4 +770,73 @@ export const searchAttraction = async (
       return { value: suggestion.value, id: suggestion.id } as Suggestion;
     }) ?? []
   );
+};
+
+export const getAttractionById = async (id: number): Promise<Attraction> => {
+  const { data, error } = await getAttraction({
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting attraction", error);
+  }
+
+  if (
+    !data ||
+    data.attractionId == undefined ||
+    !data.countryName ||
+    !data.attractionName ||
+    !data.regionName ||
+    !data.attractionCategory ||
+    !data.attractionType ||
+    !data.infoFrom ||
+    !data.infoRecorded ||
+    !data.changedOn
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return {
+    id: data.attractionId,
+    name: {
+      name: data.attractionName,
+      mainAttractionName: data.mainAttractionName
+    },
+    destination: {
+      countryName: data.countryName,
+      isCountrywide: data.isCountrywide || false,
+      regionName: data.regionName,
+      cityName: data.cityName
+    },
+    address: {
+      streetAddress: data.attractionAddress,
+      location: data.attractionLocation
+        ? {
+            latitude: data.attractionLocation.latitude!,
+            longitude: data.attractionLocation.longitude!
+          }
+        : undefined
+    },
+    category: CategoryType[CategoryType[data.attractionCategory]],
+    type: AttractionType[AttractionType[data.attractionType]],
+    mustVisit: data.mustVisit || false,
+    isTraditional: data.isTraditional || false,
+    tip: data.tip,
+    infoFrom: {
+      source: data.infoFrom,
+      recorded: data.infoRecorded
+    },
+    optimalVisitPeriod: data.optimalVisitPeriod
+      ? {
+          fromDate: data.optimalVisitPeriod.fromDate!,
+          toDate: data.optimalVisitPeriod.toDate!
+        }
+      : undefined,
+    updatedOn: data.changedOn
+  };
 };

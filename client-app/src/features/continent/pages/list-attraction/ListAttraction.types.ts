@@ -1,4 +1,9 @@
-import { Attraction } from "../../domain/Attraction.types";
+import {
+  Attraction,
+  AttractionAddress,
+  AttractionInfoFrom,
+  AttractionOptimalVisitPeriod
+} from "../../domain/Attraction.types";
 
 export class AttractionRow implements Omit<Attraction, "updatedOn"> {
   private constructor(
@@ -30,4 +35,95 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
       attraction.tip
     );
   }
+}
+
+export interface EditPropertyAttractionDetailsProps {
+  /**
+   * Text to display as the header
+   */
+  text: string;
+
+  attractionId: number;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionDestinationProps {
+  attractionId: number;
+
+  destination: Attraction["destination"];
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionAddressProps {
+  attractionId: number;
+
+  address: AttractionAddress;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionMustVisitProps {
+  attractionId: number;
+
+  attractionName: string;
+
+  mustVisit: boolean;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionTraditionalProps {
+  attractionId: number;
+
+  attractionName: string;
+
+  isTraditional: boolean;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionInfoFromDetailsProps {
+  attractionId: number;
+
+  infoFrom: AttractionInfoFrom;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionVisitPeriodProps {
+  attractionId: number;
+
+  attractionName: string;
+
+  visitPeriod?: AttractionOptimalVisitPeriod;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionTipProps {
+  attractionId: number;
+
+  attractionName: string;
+
+  tip?: string;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionCategoryProps {
+  attractionId: number;
+
+  category: string;
+
+  onUpdateClick: () => void;
+}
+
+export interface EditAttractionTypeProps {
+  attractionId: number;
+
+  type: string;
+
+  onUpdateClick: () => void;
 }

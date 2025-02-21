@@ -5,6 +5,15 @@ import {
   GetContinentResponse,
   GetCountryResponse,
   GetRegionResponse,
+  UpdateAttractionCategoryRequest,
+  UpdateAttractionDestinationRequest,
+  UpdateAttractionDetailRequest,
+  UpdateAttractionInformationProviderRequest,
+  UpdateAttractionLocationRequest,
+  UpdateAttractionTraditionalRequest,
+  UpdateAttractionTypeRequest,
+  UpdateAttractionVisitPeriodRequest,
+  UpdateAttractionVisitRequest,
   UpdateCityDetailsRequest,
   UpdateCityRegionRequest,
   UpdateContinentRequest,
@@ -568,6 +577,215 @@ export default function makeServer(): ReturnType<typeof createServer> {
           );
         },
         { timing: 400 }
+      );
+
+      this.put(
+        "/attractions/:id/detail",
+        (schema, request) => {
+          const id = request.params.id;
+          const newName = (
+            JSON.parse(request.requestBody) as UpdateAttractionDetailRequest
+          ).attractionName;
+          const newMainAttractionId = (
+            JSON.parse(request.requestBody) as UpdateAttractionDetailRequest
+          ).mainAttractionId;
+
+          const newMainAttraction =
+            newMainAttractionId != undefined
+              ? schema.db.attractions.findBy(
+                  (data) => data.attractionId == newMainAttractionId
+                ).attractionName
+              : undefined;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            attractionName: newName,
+            mainAttractionName: newMainAttraction
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/destination",
+        (schema, request) => {
+          const id = request.params.id;
+          const isCountrywide = (
+            JSON.parse(
+              request.requestBody
+            ) as UpdateAttractionDestinationRequest
+          ).isCountrywide;
+          const newRegionId = (
+            JSON.parse(
+              request.requestBody
+            ) as UpdateAttractionDestinationRequest
+          ).regionId;
+          const newCityId = (
+            JSON.parse(
+              request.requestBody
+            ) as UpdateAttractionDestinationRequest
+          ).cityId;
+
+          let city;
+          let region;
+          if (newRegionId != undefined) {
+            region = schema.db.regions.findBy((data) => {
+              return data.regionId == newRegionId;
+            });
+          } else {
+            city = schema.db.cities.findBy((data) => {
+              return data.cityId == newCityId;
+            });
+          }
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            isCountrywide: isCountrywide,
+            countryName: region?.countryName ?? city.countryName,
+            regionName: region?.regionName ?? city.regionName,
+            cityName: city?.cityName ?? ""
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/location",
+        (schema, request) => {
+          const id = request.params.id;
+          const newAddress = (
+            JSON.parse(request.requestBody) as UpdateAttractionLocationRequest
+          ).attractionAddress;
+          const newLocation = (
+            JSON.parse(request.requestBody) as UpdateAttractionLocationRequest
+          ).attractionLocation;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            attractionAddress: newAddress,
+            attractionLocation: newLocation
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/visit",
+        (schema, request) => {
+          const id = request.params.id;
+          const newMustVisit = (
+            JSON.parse(request.requestBody) as UpdateAttractionVisitRequest
+          ).mustVisit;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            mustVisit: newMustVisit
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/traditional",
+        (schema, request) => {
+          const id = request.params.id;
+          const isTraditional = (
+            JSON.parse(
+              request.requestBody
+            ) as UpdateAttractionTraditionalRequest
+          ).isTraditional;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            isTraditional: isTraditional
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/informationProvider",
+        (schema, request) => {
+          const id = request.params.id;
+          const info = JSON.parse(
+            request.requestBody
+          ) as UpdateAttractionInformationProviderRequest;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            infoFrom: info.infoFrom,
+            infoRecorded: info.infoRecorded.substring(0, 10)
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/visitPeriod",
+        (schema, request) => {
+          const id = request.params.id;
+          const visitPeriod = (
+            JSON.parse(
+              request.requestBody
+            ) as UpdateAttractionVisitPeriodRequest
+          ).optimalVisitPeriod;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            optimalVisitPeriod: visitPeriod
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/category",
+        (schema, request) => {
+          const id = request.params.id;
+          const category = (
+            JSON.parse(request.requestBody) as UpdateAttractionCategoryRequest
+          ).attractionCategory;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            attractionCategory: category
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/type",
+        (schema, request) => {
+          const id = request.params.id;
+          const type = (
+            JSON.parse(request.requestBody) as UpdateAttractionTypeRequest
+          ).attractionType;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            attractionType: type
+          });
+        },
+        { timing: 600 }
       );
     }
   });

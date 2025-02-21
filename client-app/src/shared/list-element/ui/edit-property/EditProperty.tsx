@@ -22,7 +22,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   return (
     <>
       <IconButton
-        iconProps={{ iconName: "Edit" }}
+        iconProps={{ iconName: props.editIconName ?? "Edit" }}
         ariaLabel={props.editIconAriaLabel}
         className={classes.editIcon}
         onClick={toggleHideDialog}

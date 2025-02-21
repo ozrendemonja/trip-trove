@@ -17,17 +17,17 @@ type AttractionLocation = {
   longitude: number;
 };
 
-type AttractionAddress = {
+export type AttractionAddress = {
   streetAddress?: string;
   location?: AttractionLocation;
 };
 
-type AttractionInfoFrom = {
+export type AttractionInfoFrom = {
   source: string;
   recorded: string;
 };
 
-type AttractionOptimalVisitPeriod = {
+export type AttractionOptimalVisitPeriod = {
   fromDate: string;
   toDate: string;
 };

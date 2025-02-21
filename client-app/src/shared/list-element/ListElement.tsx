@@ -37,19 +37,21 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
   }, []);
 
   return (
-    <Stack className={classes.root}>
-      <ListHeader {...props.listHeader} />
-      <DeleteDialog
-        selectedItem={{
-          haveSelectedItem: haveSelectedItem,
-          name: selectedItemName
-        }}
-        addRowOptions={props.addRowOptions}
-        deleteRowOptions={{
-          text: props.deleteRowOptions.text,
-          onDeleteRow: () => props.deleteRowOptions.onDeleteRow(selection)
-        }}
-      />
+    <>
+      <Stack className={classes.root}>
+        <ListHeader {...props.listHeader} />
+        <DeleteDialog
+          selectedItem={{
+            haveSelectedItem: haveSelectedItem,
+            name: selectedItemName
+          }}
+          addRowOptions={props.addRowOptions}
+          deleteRowOptions={{
+            text: props.deleteRowOptions.text,
+            onDeleteRow: () => props.deleteRowOptions.onDeleteRow(selection)
+          }}
+        />
+      </Stack>
       <DetailsList
         className={classes.listBody}
         setKey={`${props.listHeader.text}-DetailsList`}
@@ -76,7 +78,7 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
         onRenderItemColumn={props.onRenderItemColumn}
         ariaLabelForGrid="Item details"
       />
-    </Stack>
+    </>
   );
 };
 

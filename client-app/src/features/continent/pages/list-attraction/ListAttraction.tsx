@@ -1,7 +1,5 @@
 import {
-  FontIcon,
   IColumn,
-  IconButton,
   IDropdownOption,
   Link,
   Selection,
@@ -19,16 +17,26 @@ import { deleteRows } from "../../domain/Attraction";
 import { Attraction, LastReadAttraction } from "../../domain/Attraction.types";
 import { AttractionListCustomizer } from "../../domain/AttractionListCustomizer";
 import { OrderOptions } from "../../domain/Continent.types";
+import { Suggestion } from "../../domain/Suggestion.types.";
 import {
   getAttractionById,
   getPagedAttractions,
   searchAttraction
 } from "../../infra/ManagerApi";
+import EditAttractionAddress from "./EditAttractionAddress";
+import EditAttractionCategory from "./EditAttractionCategory";
+import EditAttractionDestination from "./EditAttractionDestination";
+import EditAttractionInfoFromDetails from "./EditAttractionInfoFromDetails";
+import EditAttractionMustVisit from "./EditAttractionMustVisit";
+import EditAttractionTip from "./EditAttractionTip";
+import EditAttractionTraditional from "./EditAttractionTraditional";
+import EditAttractionType from "./EditAttractionType";
+import EditAttractionVisitPeriod from "./EditAttractionVisitPeriod";
+import EditPropertyAttractionDetails from "./EditPropertyAttractionDetails";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListAttraction.config";
 import { useClasses } from "./ListAttraction.styles";
 import { AttractionRow } from "./ListAttraction.types";
 import { toLastReadAttraction } from "./ListAttraction.util";
-import { Suggestion } from "../../domain/Suggestion.types.";
 
 const onRenderItemColumn = (
   className: string,
@@ -54,11 +62,11 @@ const onRenderItemColumn = (
             <div>(part of {atraction?.name.mainAttractionName})</div>
           )}
         </Link>
-        {/* <EditPropertyCityDetails
-          cityId={city!.id}
-          text={city!.name}
+        <EditPropertyAttractionDetails
+          attractionId={atraction!.id}
+          text={atraction!.name.name}
           onUpdateClick={onUpdateClick}
-        /> */}
+        />
       </Stack>
     );
   } else if (column?.key === "destination") {
@@ -72,11 +80,11 @@ const onRenderItemColumn = (
             ", " +
             atraction?.destination.countryName}
         </Text>
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
+        <EditAttractionDestination
+          attractionId={atraction!.id}
+          destination={atraction!.destination}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   } else if (column?.key === "address") {
@@ -96,44 +104,33 @@ const onRenderItemColumn = (
             </div>
           )}
         </Text>
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
+        <EditAttractionAddress
+          attractionId={atraction!.id}
+          address={atraction?.address}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   } else if (column?.key === "mustVisit") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        <IconButton
-          iconProps={{
-            iconName: atraction?.mustVisit ? "FavoriteStarFill" : "AddFavorite",
-            styles: { root: { color: "#fec703", fontSize: 20 } }
-          }}
+        <EditAttractionMustVisit
+          attractionId={atraction!.id}
+          attractionName={atraction?.name.name!}
+          mustVisit={atraction?.mustVisit || false}
+          onUpdateClick={onUpdateClick}
         />
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
       </Stack>
     );
   } else if (column?.key === "isTraditional") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        <FontIcon
-          aria-label={
-            atraction?.isTraditional ? "CheckboxComposite" : "Checkbox"
-          }
-          iconName={atraction?.isTraditional ? "CheckboxComposite" : "Checkbox"}
-          // className={iconClass}
+        <EditAttractionTraditional
+          attractionId={atraction!.id}
+          attractionName={atraction?.name.name!}
+          isTraditional={atraction?.isTraditional || false}
+          onUpdateClick={onUpdateClick}
         />
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
       </Stack>
     );
   } else if (column?.key === "infoFrom") {
@@ -143,33 +140,57 @@ const onRenderItemColumn = (
           <div>{atraction?.infoFrom.source}</div>
           <div>({atraction?.infoFrom.recorded})</div>
         </div>
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
+        <EditAttractionInfoFromDetails
+          attractionId={atraction!.id}
+          infoFrom={atraction?.infoFrom!}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   } else if (column?.key === "optimalVisitPeriod") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
         {atraction?.optimalVisitPeriod && <DateRangePicker></DateRangePicker>}
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
+        <EditAttractionVisitPeriod
+          attractionId={atraction!.id}
+          attractionName={atraction?.name.name!}
+          visitPeriod={atraction!.optimalVisitPeriod}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   } else if (column?.key === "tip") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
         <Text>{atraction?.tip}</Text>
-        {/* <EditCityRegionDetails
-            cityId={city!.id}
-            text={city!.region}
-            onUpdateClick={onUpdateClick}
-          /> */}
+        <EditAttractionTip
+          attractionId={atraction!.id}
+          attractionName={atraction?.name.name!}
+          tip={atraction!.tip}
+          onUpdateClick={onUpdateClick}
+        />
+      </Stack>
+    );
+  } else if (column?.key === "category") {
+    return (
+      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+        <Text>{atraction?.category}</Text>
+        <EditAttractionCategory
+          attractionId={atraction!.id}
+          category={atraction?.category!}
+          onUpdateClick={onUpdateClick}
+        />
+      </Stack>
+    );
+  } else if (column?.key === "type") {
+    return (
+      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+        <Text>{atraction?.type}</Text>
+        <EditAttractionType
+          attractionId={atraction!.id}
+          type={atraction?.type!}
+          onUpdateClick={onUpdateClick}
+        />
       </Stack>
     );
   }

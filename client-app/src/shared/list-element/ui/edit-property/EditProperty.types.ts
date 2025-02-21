@@ -10,5 +10,7 @@ export interface EditPropertyProps {
 
   children: React.ReactNode;
 
+  editIconName?: string;
+
   onUpdateClick: () => Promise<void>;
 }

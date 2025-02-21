@@ -1,4 +1,5 @@
 import {
+  DateSpanDTO,
   deleteAttraction,
   deleteCity,
   deleteContinent,
@@ -19,6 +20,18 @@ import {
   saveContinent,
   saveCountry,
   saveRegion,
+  updateAttractionCategory,
+  UpdateAttractionCategoryRequest,
+  updateAttractionDestination,
+  updateAttractionDetail,
+  updateAttractionInformationProvider,
+  updateAttractionLocation,
+  updateAttractionTip,
+  updateAttractionTraditional,
+  updateAttractionType,
+  UpdateAttractionTypeRequest,
+  updateAttractionVisit,
+  updateAttractionVisitPeriod,
   updateCityDetail,
   updateCityRegion,
   updateContinent,
@@ -30,6 +43,7 @@ import {
 import managerClient from "../../../config/ClientsApiConfig";
 import {
   Attraction,
+  AttractionAddress,
   AttractionType,
   CategoryType,
   LastReadAttraction,
@@ -649,7 +663,6 @@ export const getPagedAttractions = async (
         attraction.attractionId == undefined ||
         !attraction.attractionName ||
         !attraction.regionName ||
-        !attraction.countryName ||
         attraction.isCountrywide == undefined ||
         !attraction.attractionCategory ||
         !attraction.attractionType ||
@@ -839,4 +852,231 @@ export const getAttractionById = async (id: number): Promise<Attraction> => {
       : undefined,
     updatedOn: data.changedOn
   };
+};
+
+export const changeAttractionDetails = async (
+  id: string,
+  attractionName: string,
+  mainAttractionId: number | undefined
+): Promise<void> => {
+  const { error } = await updateAttractionDetail({
+    body: {
+      attractionName: attractionName,
+      mainAttractionId: mainAttractionId
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction details", error);
+  }
+};
+
+export const changeAttractionDestination = async (
+  id: string,
+  isCountrywide: boolean,
+  regionId?: number,
+  cityId?: number
+): Promise<void> => {
+  const { error } = await updateAttractionDestination({
+    body: {
+      isCountrywide: isCountrywide,
+      regionId: regionId,
+      cityId: cityId
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction details", error);
+  }
+};
+
+export const changeAttractionAddress = async (
+  id: string,
+  attractionAddress: AttractionAddress
+): Promise<void> => {
+  const { error } = await updateAttractionLocation({
+    body: {
+      attractionAddress: attractionAddress?.streetAddress,
+      attractionLocation: attractionAddress?.location
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction address", error);
+  }
+};
+
+export const changeAttractionMustVisit = async (
+  id: string,
+  mustVisit: boolean
+): Promise<void> => {
+  const { error } = await updateAttractionVisit({
+    body: {
+      mustVisit: mustVisit
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction must visit", error);
+  }
+};
+
+export const changeAttractionTraditional = async (
+  id: string,
+  isTraditional: boolean
+): Promise<void> => {
+  const { error } = await updateAttractionTraditional({
+    body: {
+      isTraditional: isTraditional
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction is traditional", error);
+  }
+};
+
+export const changeAttractionInfoFrom = async (
+  id: string,
+  infoFrom: string,
+  infoRecorded: string
+): Promise<void> => {
+  const { error } = await updateAttractionInformationProvider({
+    body: {
+      infoFrom: infoFrom,
+      infoRecorded: infoRecorded
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction is traditional", error);
+  }
+};
+
+export const changeAttractionVisitPeriod = async (
+  id: string,
+  visitPeriod?: { fromDate: string; toDate: string }
+): Promise<void> => {
+  const optimalVisitPeriod: DateSpanDTO | undefined = visitPeriod
+    ? { ...visitPeriod }
+    : undefined;
+  const { error } = await updateAttractionVisitPeriod({
+    body: {
+      optimalVisitPeriod: optimalVisitPeriod
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction visit period", error);
+  }
+};
+
+export const changeAttractionTip = async (
+  id: string,
+  tip?: string
+): Promise<void> => {
+  const { error } = await updateAttractionTip({
+    body: {
+      tip: tip
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction tip", error);
+  }
+};
+
+export const changeAttractionCategory = async (
+  id: string,
+  category: string
+): Promise<void> => {
+  const newCategory =
+    category as UpdateAttractionCategoryRequest["attractionCategory"];
+
+  const { error } = await updateAttractionCategory({
+    body: {
+      attractionCategory: newCategory
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction category", error);
+  }
+};
+
+export const changeAttractionType = async (
+  id: string,
+  type: string
+): Promise<void> => {
+  const newType = type as UpdateAttractionTypeRequest["attractionType"];
+
+  const { error } = await updateAttractionType({
+    body: {
+      attractionType: newType
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction type", error);
+  }
 };

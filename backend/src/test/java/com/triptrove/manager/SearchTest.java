@@ -7,7 +7,7 @@ import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.*;
-import org.junit.jupiter.api.BeforeEach;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-public class SearchTest {
+public class SearchTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String CONTINENT_NAME_0 = "Test continent 0";
     public static final String CONTINENT_NAME_1 = "Test continent 1";
@@ -70,7 +71,7 @@ public class SearchTest {
     @Autowired
     private AttractionRepo attractionRepo;
 
-    @BeforeEach
+    //    @BeforeEach
     void setupContinent() {
         var continent0 = new Continent();
         continent0.setId((short) 0);
@@ -241,11 +242,11 @@ public class SearchTest {
         );
     }
 
+    @Transactional
     @ParameterizedTest
     @MethodSource("provideValidContinentQueries")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void limitNumberOfSortedContinentsNamesWhichGivenSearchStringIsSubstringOfWhenSearchByContinentName(QueryAndSuggestions input) throws Exception {
+    @Sql("/db/continent-test-data.sql")
+    void limitedNumberOfSortedContinentsNamesWhichGivenSearchStringIsSubstringOfIsReturnedWhenSearchByContinentName(QueryAndSuggestions input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("q", input.query())
@@ -264,13 +265,32 @@ public class SearchTest {
 
     private static Stream<QueryAndSuggestions> provideValidContinentQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(CONTINENT_NAME_1, 1), createSuggestionDto(CONTINENT_NAME_0, 0))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto(CONTINENT_NAME_1, 1), createSuggestionDto(CONTINENT_NAME_0, 0))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(CONTINENT_NAME_1, 1), createSuggestionDto(CONTINENT_NAME_0, 0))),
-                new QueryAndSuggestions("Test c", List.of(createSuggestionDto(CONTINENT_NAME_1, 1), createSuggestionDto(CONTINENT_NAME_0, 0))),
-                new QueryAndSuggestions("ontinent", List.of(createSuggestionDto(CONTINENT_NAME_2, 2), createSuggestionDto(CONTINENT_NAME_1, 1), createSuggestionDto(CONTINENT_NAME_0, 0))),
-                new QueryAndSuggestions("new", List.of(createSuggestionDto(CONTINENT_NAME_2, 2)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
+                new QueryAndSuggestions("ontinent 3", List.of(createSuggestionDto("Test continent 3", 3)))
         );
+    }
+
+    @Transactional
+    @Test
+    @Sql("/db/continent-test-data.sql")
+    void returnEmptyListOfSuggestionsWhenGivenSearchStringIsNotSubstringOfAnyContinentName() throws Exception {
+        String input = "Not valid";
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", input)
+                        .param("i", "CONTINENT")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(input);
+        assertThat(response.suggestions()).isEmpty();
     }
 
     @Test
@@ -293,25 +313,6 @@ public class SearchTest {
         assertThat(response.suggestions()).isEmpty();
     }
 
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyContinentName() throws Exception {
-        String input = "Not valid";
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
-                        .param("i", "CONTINENT")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
-        assertThat(response.prefix()).isEqualTo(input);
-        assertThat(response.suggestions()).isEmpty();
-    }
 
     @ParameterizedTest
     @MethodSource("provideInValidQueries")

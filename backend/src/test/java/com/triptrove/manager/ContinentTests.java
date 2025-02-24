@@ -6,17 +6,18 @@ import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.repo.ContinentRepo;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.util.UriUtils;
@@ -32,10 +33,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Transactional
 @ExtendWith(SpringExtension.class)
-@SpringBootTest
 @AutoConfigureMockMvc
-class ContinentTests {
+class ContinentTests extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
@@ -44,11 +45,10 @@ class ContinentTests {
     @Autowired
     private ContinentRepo continentRepo;
 
+
     @ParameterizedTest
     @MethodSource("provideValidContinentNames")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentShouldBeSavedWhenValidNameIsSent(String continentName) throws Exception {
+    void continentShouldBeSavedWhenValidNameIsUsed(String continentName) throws Exception {
         var request = new SaveContinentRequest(continentName);
 
         mockMvc.perform(post("/continents")
@@ -67,8 +67,8 @@ class ContinentTests {
     }
 
     @ParameterizedTest
-    @MethodSource("provideTooLongContinentNames")
-    void continentSaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidContinentName input) throws Exception {
+    @MethodSource("provideInvalidContinentNames")
+    void continentShouldNotBeSavedWhenInvalidNameIsUsed(InvalidContinentName input) throws Exception {
         var request = new SaveContinentRequest(input.continentName);
 
         var jsonResponse = mockMvc.perform(post("/continents")
@@ -88,7 +88,7 @@ class ContinentTests {
     private record InvalidContinentName(String continentName, String errorMessage) {
     }
 
-    private static Stream<InvalidContinentName> provideTooLongContinentNames() {
+    private static Stream<InvalidContinentName> provideInvalidContinentNames() {
         return Stream.of(
                 new InvalidContinentName(null, "{continentName = Continent name may not be null or empty}"),
                 new InvalidContinentName("", "{continentName = Continent name may not be null or empty}"),
@@ -101,30 +101,14 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentsShouldBeReturnedInAscendingOrderWhenNoOrderIsSent() throws Exception {
-        var expected = new GetContinentResponse[3];
-        var request = new SaveContinentRequest("Test continent 0");
-        expected[0] = new GetContinentResponse("Test continent 0");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 1");
-        expected[1] = new GetContinentResponse("Test continent 1");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 2");
-        expected[2] = new GetContinentResponse("Test continent 2");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
+    @Sql("/db/continent-test-data.sql")
+    void continentsShouldBeReturnedInAscendingOrderWithTheMostRecentlyModifiedElementAppearingLast() throws Exception {
+        GetContinentResponse[] expected = {
+                new GetContinentResponse("Test continent 2"),
+                new GetContinentResponse("Test continent 1"),
+                new GetContinentResponse("Test continent 3"),
+                new GetContinentResponse("Test continent 0")
+        };
 
         var jsonResponse = mockMvc.perform(get("/continents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,30 +123,14 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentsShouldBeReturnedInDescendingOrderWhenDescOrderIsSent() throws Exception {
-        var expected = new GetContinentResponse[3];
-        var request = new SaveContinentRequest("Test continent 0");
-        expected[2] = new GetContinentResponse("Test continent 0");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 1");
-        expected[1] = new GetContinentResponse("Test continent 1");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 2");
-        expected[0] = new GetContinentResponse("Test continent 2");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
+    @Sql("/db/continent-test-data.sql")
+    void continentsShouldBeListedInDescendingOrderWithTheMostRecentlyModifiedElementAppearingFirstWhenDescOrderIsSpecified() throws Exception {
+        GetContinentResponse[] expected = {
+                new GetContinentResponse("Test continent 0"),
+                new GetContinentResponse("Test continent 3"),
+                new GetContinentResponse("Test continent 1"),
+                new GetContinentResponse("Test continent 2")
+        };
 
         var jsonResponse = mockMvc.perform(get("/continents")
                         .param("sd", "DESC")
@@ -178,55 +146,6 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentsShouldBeListedInDescendingOrderWithTheMostRecentlyModifiedElementAppearingFirst() throws Exception {
-        var expected = new GetContinentResponse[3];
-        var request = new SaveContinentRequest("Test continent 0");
-        expected[2] = new GetContinentResponse("Test continent 0");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 1");
-        expected[0] = new GetContinentResponse("Test continent 1");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent 2");
-        expected[1] = new GetContinentResponse("Test continent 2");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        var updateRequest = new UpdateContinentRequest("Test continent 0");
-        mockMvc.perform(put("/continents/" + "Test continent 0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isNoContent());
-
-
-        var jsonResponse = mockMvc.perform(get("/continents")
-                        .param("sd", "ASC")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetContinentResponse[] response = mapper.readValue(jsonResponse, GetContinentResponse[].class);
-        assertThat(response).usingRecursiveFieldByFieldElementComparator().isEqualTo(expected);
-    }
-
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void emptyListOfContinentsShouldBeReturnedWhenThereIsNoContinentSaved() throws Exception {
         var jsonResponse = mockMvc.perform(get("/continents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -241,49 +160,30 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentsShouldBeDeletedWhenRequestIsSent() throws Exception {
-        var request = new SaveContinentRequest("Test continent0");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent1");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-        request = new SaveContinentRequest("Test continent2");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-
-
-        mockMvc.perform(delete("/continents/" + "Test continent0")
+    @Sql("/db/continent-test-data.sql")
+    void continentsShouldBeDeletedWhenPresentedNameIsProvided() throws Exception {
+        mockMvc.perform(delete("/continents/" + "Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(delete("/continents/" + "Test continent1")
+        mockMvc.perform(delete("/continents/" + "Test continent 1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(delete("/continents/" + "Test continent2")
+        mockMvc.perform(delete("/continents/" + "Test continent 2")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNoContent());
-
+        mockMvc.perform(delete("/continents/" + "Test continent 3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
 
         assertThat(continentRepo.findAll()).isEmpty();
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingContinentIsRequestedToBeDeleted() throws Exception {
+    void errorShouldBeReturnedWhenNonExistingContinentIsRequestedToBeDeleted() throws Exception {
         mockMvc.perform(delete("/continents/" + "Test continent0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -291,30 +191,9 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingContinentIsRequested() throws Exception {
-        mockMvc.perform(get("/continents/" + "Test continent0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentShouldBeReturnedWhenRequestIsSent() throws Exception {
+    @Sql("/db/continent-test-data.sql")
+    void continentWithARequiredNameShouldBeReturnedWhenExistingNameIsProvided() throws Exception {
         var expected = new GetContinentResponse("Test continent 0");
-        var request = new SaveContinentRequest("Test continent 0");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
-        request = new SaveContinentRequest("Test continent 1");
-        mockMvc.perform(post("/continents")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("x-api-version", "1")
-                .content(mapper.writeValueAsString(request)));
 
         var jsonResponse = mockMvc.perform(get("/continents/Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -328,71 +207,90 @@ class ContinentTests {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetConflictResponseWhenDuplicateContinentNameSend() throws Exception {
-        var request = new SaveContinentRequest("Test continent 0");
-        mockMvc.perform(post("/continents")
+    void errorShouldBeReturnedWhenAskedForContinentUsingNonExistingName() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/continents/Test continent 2")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        mockMvc.perform(post("/continents")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict());
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void continentNameShouldBeUpdatedWhenNewNameIsSend() throws Exception {
-        var initialRequest = new SaveContinentRequest("Test continent 0");
-        mockMvc.perform(post("/continents")
+    @Sql("/db/continent-test-data.sql")
+    void userShouldBePreventedToSaveContinentWhenNewContinentNameAlreadyExists() throws Exception {
+        var request = new SaveContinentRequest("Test continent 0");
+
+        var jsonResponse = mockMvc.perform(post("/continents")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(initialRequest)))
-                .andExpect(status().isCreated());
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+    }
+
+    @Test
+    @Sql("/db/continent-test-data.sql")
+    void continentNameShouldBeUpdatedWhenNewNameIsProvided() throws Exception {
         var request = new UpdateContinentRequest("Updated test continent 0");
+
         mockMvc.perform(put("/continents/" + "Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
 
-        assertThat(continentRepo.findAll()).hasSize(1);
-        assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo("Updated test continent 0");
-        assertThat(continentRepo.findAll().getFirst().getUpdatedOn().orElseThrow()).isCloseTo(LocalDateTime.now(), within(1, ChronoUnit.HOURS));
+        assertThat(continentRepo.findById((short) 0).map(Continent::getName)).hasValue("Updated test continent 0");
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetNotFoundErrorWhenOldNameDoestExist() throws Exception {
-        var request = new UpdateContinentRequest("Updated test continent 0");
-        mockMvc.perform(put("/continents/" + "Test continent 0")
+    @Sql("/db/continent-test-data.sql")
+    void updatedOnTimeShouldBeSetWhenContinentNameIsChanged() throws Exception {
+        var request = new UpdateContinentRequest("Updated test continent 1");
+
+        mockMvc.perform(put("/continents/" + "Test continent 1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNoContent());
+
+        assertThat(continentRepo.findById((short) 1).flatMap(Continent::getUpdatedOn).orElseThrow()).isCloseTo(LocalDateTime.now(), within(5, ChronoUnit.MINUTES));
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenUserTryToUpdateContinentWithPreviouslyNotExistedContinentName() throws Exception {
+        var request = new UpdateContinentRequest("Updated test continent 0");
+        var jsonResponse = mockMvc.perform(put("/continents/" + "Test continent 0")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 
     @ParameterizedTest
-    @MethodSource("provideTooLongContinentNames")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNewContinentNameIsInvalid(InvalidContinentName input) throws Exception {
-        var initialRequest = new SaveContinentRequest("Test continent 0");
-        mockMvc.perform(post("/continents")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(initialRequest)))
-                .andExpect(status().isCreated());
-
+    @MethodSource("provideInvalidContinentNames")
+    @Sql("/db/continent-test-data.sql")
+    void errorShouldBeReturnedWhenNewContinentNameIsInvalid(InvalidContinentName input) throws Exception {
         var request = new UpdateContinentRequest(input.continentName);
+
         var jsonResponse = mockMvc.perform(put("/continents/Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -405,6 +303,25 @@ class ContinentTests {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
         assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
+    }
+
+    @Test
+    @Sql("/db/continent-test-data.sql")
+    void errorShouldBeReturnedWhenNewContinentNameAlreadyExists() throws Exception {
+        var request = new UpdateContinentRequest("Test continent 1");
+
+        var jsonResponse = mockMvc.perform(put("/continents/Test continent 0")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
     }
 
 }

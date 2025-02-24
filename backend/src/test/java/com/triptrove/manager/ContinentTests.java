@@ -102,7 +102,7 @@ class ContinentTests extends AbstractIntegrationTest {
 
     @Test
     @Sql("/db/continent-test-data.sql")
-    void continentsShouldBeReturnedInAscendingOrderWithTheMostRecentlyModifiedElementAppearingFirst() throws Exception {
+    void continentsShouldBeReturnedInAscendingOrderWithTheMostRecentlyModifiedElementAppearingLast() throws Exception {
         GetContinentResponse[] expected = {
                 new GetContinentResponse("Test continent 2"),
                 new GetContinentResponse("Test continent 1"),

@@ -1,23 +1,28 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Continent;
-import com.triptrove.manager.domain.model.Suggestion;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ContinentRepo {
-    Continent save(Continent continent);
-
-    List<Continent> findAll();
-
-    List<Continent> findAllOrderByUpdatedOnOrCreatedOnAsc();
-
+public interface ContinentRepo extends JpaRepository<Continent, Short> {
+    @Query("""
+            SELECT c FROM Continent c ORDER BY
+            CASE WHEN c.updatedOn IS NULL THEN c.createdOn ELSE c.updatedOn END DESC
+            """)
     List<Continent> findAllOrderByUpdatedOnOrCreatedOnDesc();
 
-    void deleteByName(String name);
+    @Query("""
+            SELECT c FROM Continent c ORDER BY
+            CASE WHEN c.updatedOn IS NULL THEN c.createdOn ELSE c.updatedOn END ASC
+            """)
+    List<Continent> findAllOrderByUpdatedOnOrCreatedOnAsc();
+
+    int deleteByName(String name);
 
     Optional<Continent> findByName(String name);
 
-    List<Suggestion> search(String query, int limit);
+//    List<Suggestion> search(String query, int limit);
 }

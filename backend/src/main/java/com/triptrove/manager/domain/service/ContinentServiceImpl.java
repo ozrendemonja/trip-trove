@@ -43,7 +43,11 @@ public class ContinentServiceImpl implements ContinentService {
     @Override
     public void deleteContinent(String name) {
         log.atInfo().log("Deleting continent '{}'", name);
-        continentRepo.deleteByName(name);
+        int deletedElements = continentRepo.deleteByName(name);
+        if (deletedElements == 0) {
+            throw new BaseApiException("Continent not found", ErrorCode.OBJECT_NOT_FOUND);
+        }
+        log.atInfo().log("Continent '{}' is deleted", name);
     }
 
     @Override
@@ -59,6 +63,9 @@ public class ContinentServiceImpl implements ContinentService {
     @Override
     public void updateContinent(String oldName, String newName) {
         log.atInfo().log("Updating a continent with name '{}'", oldName);
+        if (continentRepo.findByName(newName).isPresent()) {
+            throw new BaseApiException("Continent already exists in the database", ErrorCode.DUPLICATE_NAME);
+        }
         Continent continent = continentRepo.findByName(oldName)
                 .orElseThrow(() -> new BaseApiException("Continent '%s' does not exist in the database".formatted(oldName), ErrorCode.OBJECT_NOT_FOUND));
         continent.setName(newName);

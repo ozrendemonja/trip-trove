@@ -26,26 +26,27 @@ public class SearchServiceImpl implements SearchService {
     public List<Suggestion> suggestNames(String query, SearchInElement searchIn) {
         log.atInfo().log("Search using query '{}'", query);
         List<Suggestion> result = Collections.emptyList();
+        String foundMessage = "Found '{}' names";
         if (searchIn.equals(SearchInElement.COUNTRY)) {
             log.atInfo().log("Search for a country name");
             result = countryRepo.search(query, properties.suggestionLimit());
-            log.atInfo().log("Found '{}' names", result.size());
+            log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CONTINENT)) {
             log.atInfo().log("Search for a continent name");
-            result = continentRepo.search(query, properties.suggestionLimit());
-            log.atInfo().log("Found '{}' names", result.size());
+//            result = continentRepo.search(query, properties.suggestionLimit());
+//            log.atInfo().log("Found '{}' names", result.size());
         } else if (searchIn.equals(SearchInElement.REGION)) {
             log.atInfo().log("Search for a region name");
             result = regionRepo.search(query, properties.suggestionLimit());
-            log.atInfo().log("Found '{}' names", result.size());
+            log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CITY)) {
             log.atInfo().log("Search for a city name");
             result = cityRepo.search(query, properties.suggestionLimit());
-            log.atInfo().log("Found '{}' names", result.size());
+            log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.ATTRACTION)) {
             log.atInfo().log("Search for a attraction name");
             result = attractionRepo.search(query, properties.suggestionLimit());
-            log.atInfo().log("Found '{}' names", result.size());
+            log.atInfo().log(foundMessage, result.size());
         }
         return result;
     }

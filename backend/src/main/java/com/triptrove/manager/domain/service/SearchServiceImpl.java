@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.repo.*;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -33,8 +34,8 @@ public class SearchServiceImpl implements SearchService {
             log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CONTINENT)) {
             log.atInfo().log("Search for a continent name");
-//            result = continentRepo.search(query, properties.suggestionLimit());
-//            log.atInfo().log("Found '{}' names", result.size());
+            result = continentRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(properties.suggestionLimit()));
+            log.atInfo().log("Found '{}' names", result.size());
         } else if (searchIn.equals(SearchInElement.REGION)) {
             log.atInfo().log("Search for a region name");
             result = regionRepo.search(query, properties.suggestionLimit());

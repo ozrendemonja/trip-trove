@@ -47,14 +47,8 @@ public class CountryController {
     public List<GetCountryResponse> getAllCountries(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             CountryParameter after) {
-        boolean isFirstPage = after == null || after.countryId() == null;
-        if (isFirstPage) {
-            return countryService.getCountries(sortDirection.toSortDirection())
-                    .stream()
-                    .map(GetCountryResponse::from)
-                    .toList();
-        }
-        return countryService.getCountries(after.toScrollPosition(), sortDirection.toSortDirection())
+        var afterCountry = after.countryId() != null ? after.toScrollPosition() : null;
+        return countryService.getCountries(afterCountry, sortDirection.toSortDirection())
                 .stream()
                 .map(GetCountryResponse::from)
                 .toList();
@@ -83,7 +77,7 @@ public class CountryController {
     @Operation(summary = "Update country details", responses = {
             @ApiResponse(description = "Country details are updated", responseCode = "204"),
     })
-    public void updateCountryDetail(@PathVariable String id, @RequestBody UpdateCountryDetailsRequest countryDetailsRequest) {
+    public void updateCountryDetail(@PathVariable String id, @Valid @RequestBody UpdateCountryDetailsRequest countryDetailsRequest) {
         countryService.updateCountryDetails(Integer.valueOf(id), countryDetailsRequest.countryName());
     }
 

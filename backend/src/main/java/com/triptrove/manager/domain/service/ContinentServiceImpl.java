@@ -43,6 +43,9 @@ public class ContinentServiceImpl implements ContinentService {
     @Override
     public void deleteContinent(String name) {
         log.atInfo().log("Deleting continent '{}'", name);
+        if (continentRepo.hasContinentCountries(name)) {
+            throw new BaseApiException("Continent has countries under", ErrorCode.HAS_CHILDREN);
+        }
         int deletedElements = continentRepo.deleteByName(name);
         if (deletedElements == 0) {
             throw new BaseApiException("Continent not found", ErrorCode.OBJECT_NOT_FOUND);

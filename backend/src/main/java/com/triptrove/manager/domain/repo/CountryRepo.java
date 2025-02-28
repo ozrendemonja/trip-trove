@@ -3,30 +3,49 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
-public interface CountryRepo {
-    Country save(Country country);
-
-    List<Country> findAll();
-
+public interface CountryRepo extends JpaRepository<Country, Integer> {
     List<Country> findByName(String name);
 
-    List<Country> findNextOldest(int pageSize, ScrollPosition afterCountry);
+    @Query("""
+            SELECT c FROM Country c
+            WHERE c.id > :#{#afterCountry.elementId} AND c.createdOn >= :#{#afterCountry.updatedOn}
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC
+            """)
+    List<Country> findOldestAfter(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
-    List<Country> findNextNewest(int pageSize, ScrollPosition afterCountry);
+    @Query("""
+            SELECT c FROM Country c
+            WHERE c.id < :#{#afterCountry.elementId} AND c.createdOn <= :#{#afterCountry.updatedOn}
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            """)
+    List<Country> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
-    List<Country> findTopNewest(int pageSize);
+    @Query("""
+            SELECT c FROM Country c ORDER BY
+            coalesce(c.updatedOn, c.createdOn) DESC
+            """)
+    List<Country> findAllOrderByNewest(Limit limit);
 
-    List<Country> findTopOldest(int pageSize);
+    @Query("""
+            SELECT c FROM Country c ORDER BY
+            coalesce(c.updatedOn, c.createdOn) ASC
+            """)
+    List<Country> findAllOrderByOldest(Limit limit);
 
-    Optional<Country> findByNameAndContinentName(String countryName, String continentName);
+    boolean existsByNameAndContinentName(String countryName, String continentName);
 
     void deleteById(Integer id);
 
-    Optional<Country> findById(Integer id);
-
-    List<Suggestion> search(String query, int limit);
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id) FROM Country c WHERE c.name LIKE %:query%
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            """)
+    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
 }

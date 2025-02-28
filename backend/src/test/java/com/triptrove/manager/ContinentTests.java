@@ -191,6 +191,22 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @Sql({"/db/continent-test-data.sql", "/db/countries-test-data.sql"})
+    void errorShouldBeReturnedWhenContinentWithCountriesIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/continents/" + "Test continent 0")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+    }
+
+    @Test
     @Sql("/db/continent-test-data.sql")
     void continentWithARequiredNameShouldBeReturnedWhenExistingNameIsProvided() throws Exception {
         var expected = new GetContinentResponse("Test continent 0");

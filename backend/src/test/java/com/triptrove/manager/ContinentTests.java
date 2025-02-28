@@ -191,7 +191,7 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql({"/db/continent-test-data.sql", "/db/countries-test-data.sql"})
+    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenContinentWithCountriesIsRequestedToBeDeleted() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/continents/" + "Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)

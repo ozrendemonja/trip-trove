@@ -11,8 +11,6 @@ public interface CountryService {
 
     List<Country> getCountries(ScrollPosition afterCountry, SortDirection sortDirection);
 
-    List<Country> getCountries(SortDirection sortDirection);
-
     void deleteCountry(Integer id);
 
     void updateCountryDetails(Integer id, String name);

@@ -31,4 +31,7 @@ public interface ContinentRepo extends JpaRepository<Continent, Short> {
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+
+    @Query("SELECT COUNT(o)>0 FROM Continent c INNER JOIN c.countries o WHERE c.name = :name")
+    boolean hasContinentCountries(String name);
 }

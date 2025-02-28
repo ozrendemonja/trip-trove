@@ -30,7 +30,7 @@ public class SearchServiceImpl implements SearchService {
         String foundMessage = "Found '{}' names";
         if (searchIn.equals(SearchInElement.COUNTRY)) {
             log.atInfo().log("Search for a country name");
-            result = countryRepo.search(query, properties.suggestionLimit());
+            result = countryRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(properties.suggestionLimit()));
             log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CONTINENT)) {
             log.atInfo().log("Search for a continent name");

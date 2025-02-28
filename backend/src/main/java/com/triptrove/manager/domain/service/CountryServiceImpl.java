@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.repo.CountryRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,18 +24,16 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public Country saveCountry(String continentName, String countryName) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
-        if (countryRepo.findByNameAndContinentName(countryName, continentName).isPresent()) {
+        if (countryRepo.existsByNameAndContinentName(countryName, continentName)) {
             throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName, continentName), ErrorCode.DUPLICATE_NAME);
         }
+        log.atInfo().log("Given country name is unique");
 
-        var continent = continentRepo.findByName(continentName);
-        if (continent.isEmpty()) {
-            throw new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND);
-        }
+        var continent = continentRepo.findByName(continentName).orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND));
+
         var country = new Country();
         country.setName(countryName);
-        country.setContinent(continent.get());
-
+        country.setContinent(continent);
         var result = countryRepo.save(country);
 
         log.atInfo().log("Country '{}' successfully saved", result.getName());
@@ -43,23 +42,37 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public List<Country> getCountries(ScrollPosition afterCountry, SortDirection sortDirection) {
-        log.atInfo().log("Getting a list of countries ordered in {} order, updated before {}", sortDirection, afterCountry.updatedOn());
-
+    public List<Country> getCountries(ScrollPosition country, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
-            return countryRepo.findNextOldest(managerProperties.pageSize(), afterCountry);
+            return getCountriesAfter(country);
         }
-        return countryRepo.findNextNewest(managerProperties.pageSize(), afterCountry);
+        return getCountriesBefore(country);
     }
 
-    @Override
-    public List<Country> getCountries(SortDirection sortDirection) {
-        log.atInfo().log("Getting the first page of countries, ordered in {} order", sortDirection);
-
-        if (sortDirection == SortDirection.ASCENDING) {
-            return countryRepo.findTopOldest(managerProperties.pageSize());
+    private List<Country> getCountriesAfter(ScrollPosition country) {
+        if (country == null) {
+            log.atInfo().log("Getting a list of first {} oldest countries", managerProperties.pageSize());
+            List<Country> result = countryRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} countries", result.size());
+            return result;
         }
-        return countryRepo.findTopNewest(managerProperties.pageSize());
+        log.atInfo().log("Getting a list of oldest countries, updated after {}", country.updatedOn());
+        List<Country> result = countryRepo.findOldestAfter(country, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} countries", result.size());
+        return result;
+    }
+
+    private List<Country> getCountriesBefore(ScrollPosition country) {
+        if (country == null) {
+            log.atInfo().log("Getting a list of first {} newest countries", managerProperties.pageSize());
+            List<Country> result = countryRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} countries", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of newest countries, updated before {}", country.updatedOn());
+        List<Country> result = countryRepo.findNewestBefore(country, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} countries", result.size());
+        return result;
     }
 
     @Override
@@ -72,8 +85,14 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public void updateCountryDetails(Integer id, String name) {
         log.atInfo().log("Updating the country name to '{}'", name);
+
         var country = countryRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+
+        if (countryRepo.existsByNameAndContinentName(name, country.getContinent().getName())) {
+            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(name, country.getContinent().getName()), ErrorCode.DUPLICATE_NAME);
+        }
+
         country.setName(name);
         countryRepo.save(country);
         log.atInfo().log("Country name has been updated to '{}'", name);
@@ -86,10 +105,12 @@ public class CountryServiceImpl implements CountryService {
                 .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND));
         Country country = countryRepo.findById(countryId)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
-        if (countryRepo.findByNameAndContinentName(country.getName(), continentName).isPresent()) {
+
+        if (countryRepo.existsByNameAndContinentName(country.getName(), continentName)) {
             throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continentName), ErrorCode.DUPLICATE_NAME);
         }
         country.setContinent(newContinent);
+
         countryRepo.save(country);
         log.atInfo().log("Updated the country to belong to the '{}' continent", continentName);
     }

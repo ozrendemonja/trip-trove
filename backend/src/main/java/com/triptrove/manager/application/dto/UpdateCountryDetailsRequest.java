@@ -1,4 +1,10 @@
 package com.triptrove.manager.application.dto;
 
-public record UpdateCountryDetailsRequest(String countryName) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateCountryDetailsRequest(
+        @NotBlank(message = "Country name may not be null or empty")
+        @Size(max = 256, message = "Country name may not be longer then {max}")
+        String countryName) {
 }

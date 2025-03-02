@@ -52,14 +52,8 @@ public class RegionController {
     public List<GetRegionResponse> getAllRegions(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             RegionParameter after) {
-        boolean isFirstPage = after == null || after.regionId() == null;
-        if (isFirstPage) {
-            return regionService.getRegions(sortDirection.toSortDirection())
-                    .stream()
-                    .map(GetRegionResponse::from)
-                    .toList();
-        }
-        return regionService.getRegions(after.toScrollPosition(), sortDirection.toSortDirection())
+        var afterCountry = after.regionId() != null ? after.toScrollPosition() : null;
+        return regionService.getRegions(afterCountry, sortDirection.toSortDirection())
                 .stream()
                 .map(GetRegionResponse::from)
                 .toList();
@@ -88,7 +82,7 @@ public class RegionController {
     @Operation(summary = "Update region details", responses = {
             @ApiResponse(description = "Region details are updated", responseCode = "204"),
     })
-    public void updateRegionDetail(@PathVariable String id, @RequestBody UpdateRegionDetailsRequest regionDetailsRequest) {
+    public void updateRegionDetail(@PathVariable String id, @Valid @RequestBody UpdateRegionDetailsRequest regionDetailsRequest) {
         regionService.updateRegionDetails(Integer.parseInt(id), regionDetailsRequest.regionName());
     }
 

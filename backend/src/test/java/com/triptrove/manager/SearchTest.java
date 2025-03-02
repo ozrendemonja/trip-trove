@@ -31,9 +31,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Transactional
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@Sql(value = "/db/regions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 public class SearchTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String CONTINENT_NAME_0 = "Test continent 0";
@@ -44,7 +46,9 @@ public class SearchTest extends AbstractIntegrationTest {
     public static final String COUNTRY_NAME_2 = "New ctest 2";
     public static final String REGION_NAME_0 = "Test region 0";
     public static final String REGION_NAME_1 = "Test region 1";
-    public static final String REGION_NAME_2 = "New rtest 2";
+    public static final String REGION_NAME_2 = "Test region 2";
+    public static final String REGION_NAME_3 = "Test region 3";
+    public static final String REGION_NAME_4 = "Test region 4";
     public static final String CITY_NAME_0 = "Test city 0";
     public static final String CITY_NAME_1 = "Test city 1";
     public static final String CITY_NAME_2 = "New ctest 2";
@@ -208,10 +212,8 @@ public class SearchTest extends AbstractIntegrationTest {
         attractionRepo.save(attraction3);
     }
 
-    @Transactional
     @ParameterizedTest
     @MethodSource("provideValidCountryQueries")
-    @Sql("/db/countries-test-data.sql")
     void limitNumberOfSortedCountryNamesWhichGivenSearchStringIsSubstringOfWhenSearchByCountryName(QueryAndSuggestions input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -234,17 +236,15 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidCountryQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test country 4", 6), createSuggestionDto("Test country 3", 5), createSuggestionDto("Test country 2", 4))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test country 4", 6), createSuggestionDto("Test country 3", 5), createSuggestionDto("Test country 2", 4))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test country 4", 6), createSuggestionDto("Test country 3", 5), createSuggestionDto("Test country 2", 4))),
-                new QueryAndSuggestions("country 4", List.of(createSuggestionDto("Test country 4", 6)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
+                new QueryAndSuggestions("country 4", List.of(createSuggestionDto("Test country 4", 4)))
         );
     }
 
-    @Transactional
     @ParameterizedTest
     @MethodSource("provideValidContinentQueries")
-    @Sql("/db/continent-test-data.sql")
     void limitedNumberOfSortedContinentsNamesWhichGivenSearchStringIsSubstringOfIsReturnedWhenSearchByContinentName(QueryAndSuggestions input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -271,9 +271,7 @@ public class SearchTest extends AbstractIntegrationTest {
         );
     }
 
-    @Transactional
     @Test
-    @Sql("/db/continent-test-data.sql")
     void returnEmptyListOfSuggestionsWhenGivenSearchStringIsNotSubstringOfAnyContinentName() throws Exception {
         String input = "Not valid";
 
@@ -292,9 +290,7 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.suggestions()).isEmpty();
     }
 
-    @Transactional
     @Test
-    @Sql("/db/countries-test-data.sql")
     void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyCountryName() throws Exception {
         String input = "Not valid";
 
@@ -313,10 +309,8 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.suggestions()).isEmpty();
     }
 
-    @Transactional
     @ParameterizedTest
     @MethodSource("provideInValidQueries")
-    @Sql("/db/countries-test-data.sql")
     void userShouldGetConflictResponseWhenCountryQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -337,8 +331,6 @@ public class SearchTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyRegionName() throws Exception {
         String input = "Not valid";
         var jsonResponse = mockMvc.perform(get("/search")
@@ -358,8 +350,6 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInValidQueries")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void userShouldGetConflictResponseWhenRegionQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -377,8 +367,6 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideValidRegionQueries")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void limitNumberOfSortedRegionNamesWhichGivenSearchStringIsSubstringOfWhenSearchByRegionName(QueryAndSuggestions input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -398,11 +386,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidRegionQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
-                new QueryAndSuggestions("Test r", List.of(createSuggestionDto(REGION_NAME_0, 3), createSuggestionDto(REGION_NAME_1, 1), createSuggestionDto(REGION_NAME_0, 0))),
-                new QueryAndSuggestions("New", List.of(createSuggestionDto(REGION_NAME_2, 2)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
+                new QueryAndSuggestions("Test r", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
+                new QueryAndSuggestions("region 4", List.of(createSuggestionDto(REGION_NAME_4, 5)))
         );
     }
 

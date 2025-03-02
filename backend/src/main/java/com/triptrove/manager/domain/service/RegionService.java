@@ -9,8 +9,6 @@ import java.util.List;
 public interface RegionService {
     Region saveRegion(String name, int countryId);
 
-    List<Region> getRegions(SortDirection sortDirection);
-
     List<Region> getRegions(ScrollPosition afterRegion, SortDirection sortDirection);
 
     void deleteRegion(int id);

@@ -38,7 +38,7 @@ public class SearchServiceImpl implements SearchService {
             log.atInfo().log("Found '{}' names", result.size());
         } else if (searchIn.equals(SearchInElement.REGION)) {
             log.atInfo().log("Search for a region name");
-            result = regionRepo.search(query, properties.suggestionLimit());
+            result = regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(properties.suggestionLimit()));
             log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CITY)) {
             log.atInfo().log("Search for a city name");

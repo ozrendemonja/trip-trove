@@ -8,51 +8,45 @@ import com.triptrove.manager.application.dto.UpdateRegionCountryRequest;
 import com.triptrove.manager.application.dto.UpdateRegionDetailsRequest;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
-import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.repo.ContinentRepo;
+import com.triptrove.manager.domain.model.Region;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@Transactional
 @ExtendWith(SpringExtension.class)
-@SpringBootTest
 @AutoConfigureMockMvc
-public class RegionTest {
+@Sql(value = "/db/regions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+public class RegionTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
-    public static final String CONTINENT_NAME_0 = "Test continent 0";
-    public static final String CONTINENT_NAME_1 = "Test continent 1";
     public static final String COUNTRY_NAME_0 = "Test country 0";
     public static final String COUNTRY_NAME_1 = "Test country 1";
-    public static final String COUNTRY_NAME_2 = "New ctest 2";
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private CountryRepo countryRepo;
-
-    @Autowired
-    private ContinentRepo continentRepo;
 
     @Autowired
     private RegionRepo regionRepo;
@@ -62,52 +56,19 @@ public class RegionTest {
         mapper.registerModule(new JavaTimeModule());
     }
 
-    @BeforeEach
-    void setupRegion() {
-        var continent0 = new Continent();
-        continent0.setId((short) 0);
-        continent0.setName(CONTINENT_NAME_0);
-        continent0.setCreatedOn(LocalDateTime.now().minusDays(3));
-        continentRepo.save(continent0);
-        var continent1 = new Continent();
-        continent1.setId((short) 1);
-        continent1.setName(CONTINENT_NAME_1);
-        continent1.setCreatedOn(LocalDateTime.now().minusDays(2));
-        continentRepo.save(continent1);
-
-        var country0 = new Country();
-        country0.setName(COUNTRY_NAME_0);
-        country0.setContinent(continent0);
-        country0.setId(0);
-        country0.setCreatedOn(LocalDateTime.now().minusDays(5));
-        countryRepo.save(country0);
-        var country1 = new Country();
-        country1.setName(COUNTRY_NAME_1);
-        country1.setContinent(continent0);
-        country1.setId(1);
-        country1.setCreatedOn(LocalDateTime.now().minusDays(4));
-        countryRepo.save(country1);
-        var country2 = new Country();
-        country2.setName(COUNTRY_NAME_2);
-        country2.setContinent(continent0);
-        country2.setId(2);
-        country2.setCreatedOn(LocalDateTime.now().minusDays(3));
-        countryRepo.save(country2);
-    }
-
     @ParameterizedTest
     @MethodSource("provideValidRegionNames")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void shouldSaveRegionWhenRegionNameIsValid(String regionName) throws Exception {
         var request = new SaveRegionRequest(regionName, 0);
         mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-// TODO Return when implement DB
-//                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + input.id()));
+                .andExpect(status().isCreated())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).getFirst().getId()));
+
+        assertThat(regionRepo.findByName(regionName)).hasSize(1);
+        assertThat(regionRepo.findByName(regionName).getFirst().getName()).isEqualTo(regionName);
     }
 
     private static Stream<String> provideValidRegionNames() {
@@ -115,10 +76,9 @@ public class RegionTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void regionSaveRequestShouldBeRejectedWhenGivenCountryNotExist() throws Exception {
         var request = new SaveRegionRequest("Test region 0", 100);
+
         var jsonResponse = mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -134,10 +94,9 @@ public class RegionTest {
 
     @ParameterizedTest
     @MethodSource("provideInvalidRegionNames")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void regionSaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidRegionName input) throws Exception {
         var request = new SaveRegionRequest(input.regionName(), 0);
+
         var jsonResponse = mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -168,15 +127,8 @@ public class RegionTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void regionSaveRequestShouldBeRejectedWhenGivenRegionNameUnderGivenCountryAlreadyExists() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 1);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        var request = new SaveRegionRequest("Test region 0", 0);
 
         var jsonResponse = mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -192,51 +144,22 @@ public class RegionTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void regionShouldBeSavedWhenGivenRegionNameAlreadyExistsUnderDifferentCountry() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        String regionName = "Test region 0";
+        var request = new SaveRegionRequest(regionName, 1);
 
-        request = new SaveRegionRequest("Test region 0", 1);
         mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-        // TODO Return when implement DB
-//                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + UriUtils.encode("Test country 0", StandardCharsets.UTF_8)));
+                .andExpect(status().isCreated())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).get(1).getId()));
+
+        assertThat(regionRepo.findByName(regionName).get(1).getName()).isEqualTo(regionName);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void regionShouldBeReturnedInTwoPagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 1);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        request = new SaveRegionRequest("Test region 1", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        request = new SaveRegionRequest("Test region 2", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
+    void regionShouldBeReturnedInThreePagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -247,8 +170,25 @@ public class RegionTest {
 
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].regionName()).isEqualTo("Test region 2");
+        assertThat(response[0].regionName()).isEqualTo("Test region 4");
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
+        assertThat(response[1].regionName()).isEqualTo("Test region 3");
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_1);
+
+        jsonResponse = mockMvc.perform(get("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("regionId", response[1].regionId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].regionName()).isEqualTo("Test region 2");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
@@ -265,34 +205,11 @@ public class RegionTest {
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(1);
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void regionShouldBeReturnedInTwoPagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 1);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        request = new SaveRegionRequest("Test region 1", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        request = new SaveRegionRequest("Test region 2", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
+    void regionShouldBeReturnedInThreePagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/regions")
                         .param("sd", "ASC")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -305,7 +222,7 @@ public class RegionTest {
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
@@ -321,15 +238,33 @@ public class RegionTest {
                 .getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
-        assertThat(response).hasSize(1);
+        assertThat(response).hasSize(2);
         assertThat(response[0].regionName()).isEqualTo("Test region 2");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[1].regionName()).isEqualTo("Test region 3");
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_1);
+
+        jsonResponse = mockMvc.perform(get("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("regionId", response[1].regionId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .param("sd", "ASC")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].regionName()).isEqualTo("Test region 4");
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void regionShouldBeReturnedEmptyListWhenNoRegionExists() throws Exception {
+        regionRepo.deleteAll();
+
         var jsonResponse = mockMvc.perform(get("/regions")
                         .param("sd", "ASC")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -344,39 +279,10 @@ public class RegionTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void countryShouldBeDeletedWhenRequestIsSent() throws Exception {
-        Integer[] regionIds = new Integer[3];
-        var request = new SaveRegionRequest("Test region 0", 1);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        regionIds[0] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
-        request = new SaveRegionRequest("Test region 1", 0);
-        mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        regionIds[1] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
-        request = new SaveRegionRequest("Test region 2", 0);
-        mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        regionIds[2] = Integer.valueOf(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
+    void regionShouldBeDeletedWhenRequestIsSent() throws Exception {
+        int[] regionIds = {1, 2, 3, 4, 5};
         for (Integer id : regionIds) {
-            mockMvc.perform(delete("/regions/" + id.toString())
+            mockMvc.perform(delete("/regions/" + id)
                             .contentType(MediaType.APPLICATION_JSON)
                             .header("x-api-version", "1"))
                     .andExpect(status().isNoContent());
@@ -386,29 +292,8 @@ public class RegionTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingRegionIsRequestedToBeDeleted() throws Exception {
-        mockMvc.perform(delete("/regions/" + "100")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void countryShouldBeReturnedWhenValidIdIsSent() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 1);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
-        var jsonResponse = mockMvc.perform(get("/regions/" + id)
+    void regionShouldBeReturnedWhenValidIdIsSent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/regions/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
@@ -418,96 +303,111 @@ public class RegionTest {
 
         GetRegionResponse response = mapper.readValue(jsonResponse, GetRegionResponse.class);
         assertThat(response.regionName()).isEqualTo("Test region 0");
-        assertThat(response.countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response.countryName()).isEqualTo(COUNTRY_NAME_0);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetErrorResponseWhenNonExistingIdIsSent() throws Exception {
-        mockMvc.perform(get("/countries/" + 100)
+    void errorShouldBeReturnedWhenNonExistingIdIsSent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/regions/" + 100)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 
     @ParameterizedTest
     @MethodSource("provideValidRegionNames")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void shouldUpdateRegionNameWhenNewNameIsValid(String newRegionName) throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
         var update = new UpdateRegionDetailsRequest(newRegionName);
-        mockMvc.perform(put("/regions/" + id + "/details")
+
+        mockMvc.perform(put("/regions/1/details")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
                 .andExpect(status().isNoContent());
 
-        assertThat(regionRepo.findAll()).hasSize(1);
-        assertThat(regionRepo.findAll().getFirst().getName()).isEqualTo(newRegionName);
+        assertThat(regionRepo.findById(1).map(Region::getName)).hasValue(newRegionName);
+        assertThat(regionRepo.findById(1).map(Region::getCountry).map(Country::getName)).hasValue(COUNTRY_NAME_0);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingRegionIsRequestedToBeUpdated() throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
+    void errorShouldBeReturnedWhenNonExistingRegionIsRequestedToBeUpdated() throws Exception {
         var update = new UpdateRegionDetailsRequest("New region name");
-        mockMvc.perform(put("/regions/123/details")
+
+        var jsonResponse = mockMvc.perform(put("/regions/123/details")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        assertThat(regionRepo.findAll()).hasSize(1);
-        assertThat(regionRepo.findAll().getFirst().getName()).isEqualTo("Old region name");
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidRegionNames")
+    void errorShouldBeReturnedWhenNewNameIsInvalid(InvalidRegionName input) throws Exception {
+        var update = new UpdateRegionDetailsRequest(input.regionName());
+
+        var jsonResponse = mockMvc.perform(put("/regions/1/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void shouldUpdateRegionContinentNameWhileLeavingOriginalCountryNamesWhenNewRegionNameIsValid() throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
-        var mvcResult = mockMvc.perform(post("/regions")
+    void errorShouldBeReturnedWhenNewRegionNameUnderGivenCountryAlreadyExists() throws Exception {
+        var update = new UpdateRegionDetailsRequest("Test region 1");
+
+        var jsonResponse = mockMvc.perform(put("/regions/1/details")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+    }
+
+    @Test
+    void shouldUpdateRegionCountryNameWhileLeavingOriginalRegionNameWhenNewCountryIsGiven() throws Exception {
         var update = new UpdateRegionCountryRequest(1);
-        mockMvc.perform(put("/regions/" + id + "/country")
+
+        mockMvc.perform(put("/regions/" + 1 + "/country")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
                 .andExpect(status().isNoContent());
 
-        assertThat(regionRepo.findAll()).hasSize(1);
-        assertThat(regionRepo.findAll().getFirst().getCountry().getName()).isEqualTo(COUNTRY_NAME_1);
-        assertThat(countryRepo.findAll().stream().map(Country::getName).toList()).containsExactlyInAnyOrder(COUNTRY_NAME_0, COUNTRY_NAME_1, COUNTRY_NAME_2);
+        assertThat(regionRepo.findById(1).map(Region::getCountry).map(Country::getName)).hasValue(COUNTRY_NAME_1);
+        assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(COUNTRY_NAME_1);
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenWhenCurrentCountryAlreadyContainsNewRegionName() throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
+    void errorShouldBeReturnedWhenCurrentCountryAlreadyContainsRegionName() throws Exception {
+        var request = new SaveRegionRequest("Test region 0", 2);
         var mvcResult = mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -515,83 +415,54 @@ public class RegionTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
+        var update = new UpdateRegionCountryRequest(0);
 
-        request = new SaveRegionRequest("Old region name", 1);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        var update = new UpdateRegionCountryRequest(1);
-        mockMvc.perform(put("/regions/" + id + "/country")
+        var jsonResponse = mockMvc.perform(put("/regions/" + id + "/country")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        assertThat(regionRepo.findAll()).hasSize(2);
-        assertThat(regionRepo.findAll().getFirst().getCountry().getName()).isEqualTo(COUNTRY_NAME_0);
-        assertThat(regionRepo.findAll().get(1).getCountry().getName()).isEqualTo(COUNTRY_NAME_1);
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void shouldUpdateRegionCountryNameWhenNewNameIsValid() throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
-        var update = new UpdateRegionCountryRequest(1);
-        mockMvc.perform(put("/regions/" + id + "/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNoContent());
-
-        assertThat(regionRepo.findAll()).hasSize(1);
-        assertThat(regionRepo.findAll().getFirst().getCountry().getName()).isEqualTo(COUNTRY_NAME_1);
-    }
-
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingCountryIsSentToBeUpdated() throws Exception {
-        var request = new SaveRegionRequest("Old region name", 0);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-
+    void errorShouldBeReturnedWhenNonExistingCountryIsSentToBeUpdated() throws Exception {
         var update = new UpdateRegionCountryRequest(100);
-        mockMvc.perform(put("/regions/" + id + "/country")
+
+        var jsonResponse = mockMvc.perform(put("/regions/" + 1 + "/country")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        assertThat(regionRepo.findAll()).hasSize(1);
-        assertThat(regionRepo.findAll().getFirst().getCountry().getName()).isEqualTo(COUNTRY_NAME_0);
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
-    void userShouldGetClientErrorResponseWhenNonExistingRegionIdIsSent() throws Exception {
+    void errorShouldBeReturnedWhenNonExistingRegionIdIsSent() throws Exception {
         var update = new UpdateRegionCountryRequest(1);
-        mockMvc.perform(put("/regions/" + 100 + "/country")
+        var jsonResponse = mockMvc.perform(put("/regions/" + 100 + "/country")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 }

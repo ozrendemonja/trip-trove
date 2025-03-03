@@ -52,8 +52,8 @@ public class RegionController {
     public List<GetRegionResponse> getAllRegions(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             RegionParameter after) {
-        var afterCountry = after.regionId() != null ? after.toScrollPosition() : null;
-        return regionService.getRegions(afterCountry, sortDirection.toSortDirection())
+        var afterRegion = after.regionId() != null ? after.toScrollPosition() : null;
+        return regionService.getRegions(afterRegion, sortDirection.toSortDirection())
                 .stream()
                 .map(GetRegionResponse::from)
                 .toList();

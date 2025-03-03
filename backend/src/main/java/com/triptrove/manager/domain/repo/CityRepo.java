@@ -3,30 +3,49 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
-import java.util.Optional;
 
-public interface CityRepo {
-    City save(City city);
+public interface CityRepo extends JpaRepository<City, Integer> {
 
-    Optional<City> findByNameAndRegionId(String name, int regionId);
+    boolean existsByNameAndRegionId(String name, int regionId);
 
     List<City> findByName(String name);
 
-    List<City> findTopOldest(int pageSize);
+    @Query("""
+            SELECT c FROM City c
+            ORDER BY c.createdOn ASC
+            """)
+    List<City> findAllOrderByOldest(Limit limit);
 
-    List<City> findTopNewest(int pageSize);
+    @Query("""
+            SELECT c FROM City c
+            ORDER BY c.createdOn DESC
+            """)
+    List<City> findAllOrderByNewest(Limit limit);
 
-    List<City> findNextOldest(int pageSize, ScrollPosition afterCity);
+    @Query("""
+            SELECT c FROM City c
+            WHERE c.id > :#{#afterCity.elementId} AND c.createdOn >= :#{#afterCity.updatedOn}
+            ORDER BY c.createdOn ASC
+            """)
+    List<City> findOldestAfter(ScrollPosition afterCity, Limit limit);
 
-    List<City> findNextNewest(int pageSize, ScrollPosition afterCity);
+    @Query("""
+            SELECT c FROM City c
+            WHERE c.id < :#{#afterCity.elementId} AND c.createdOn <= :#{#afterCity.updatedOn}
+            ORDER BY c.createdOn DESC
+            """)
+    List<City> findNewestBefore(ScrollPosition afterCity, Limit limit);
 
-    Optional<City> findById(int id);
-
-    void delete(City city);
-
-    List<City> findAll();
-
-    List<Suggestion> search(String query, int limit);
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id)
+            FROM City c
+            WHERE c.name LIKE %:query%
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            """)
+    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
 }

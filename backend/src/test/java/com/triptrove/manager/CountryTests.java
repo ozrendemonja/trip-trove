@@ -15,7 +15,6 @@ import com.triptrove.manager.domain.repo.CountryRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
@@ -35,8 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Transactional
-@ExtendWith(SpringExtension.class)
 @AutoConfigureMockMvc
+@Sql(value = "/db/countries-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class CountryTests extends AbstractIntegrationTest {
     private static final String CONTINENT_NAME_0 = "Test continent 0";
     private static final String CONTINENT_NAME_1 = "Test continent 1";
@@ -59,7 +57,6 @@ class CountryTests extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideValidCountryNames")
-    @Sql("/db/continent-test-data.sql")
     void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
 
@@ -70,8 +67,7 @@ class CountryTests extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/countries/" + countryRepo.findByName(countryName).getFirst().getId()));
 
-        assertThat(countryRepo.findAll()).hasSize(1);
-        assertThat(countryRepo.findAll().getFirst().getName()).isEqualTo(countryName);
+        assertThat(countryRepo.findByName(countryName).getFirst().getName()).isEqualTo(countryName);
     }
 
     private static Stream<String> provideValidCountryNames() {
@@ -113,7 +109,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countrySaveRequestShouldFailWithConflictResponseWhenCountryNameUnderGivenContinentAlreadyExists() throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
 
@@ -125,7 +120,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countryShouldBeSavedWhenGivenCountryNameAlreadyExistsUnderDifferentContinent() throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
 
@@ -141,7 +135,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void userShouldGetNotFoundExceptionWhenNonExistingContinentNameIsSend() throws Exception {
         var request = new SaveCountryRequest("Invalid continent", "Test country");
 
@@ -155,6 +148,8 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void emptyListOfCountriesShouldBeReturnWhenNoCountriesAreAdded() throws Exception {
+        countryRepo.deleteAll();
+
         var jsonResponse = mockMvc.perform(get("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -168,7 +163,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countriesShouldBeReturnedInTwoPagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -216,7 +210,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countriesShouldBeReturnedInTwoPagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -267,9 +260,8 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countryShouldBeDeletedWhenRequestIsSent() throws Exception {
-        int[] countryIds = {2, 3, 4, 5, 6};
+        int[] countryIds = {1, 2, 3, 4, 5};
         for (Integer id : countryIds) {
             mockMvc.perform(delete("/countries/" + id.toString())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -290,7 +282,6 @@ class CountryTests extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideValidCountryNames")
-    @Sql("/db/countries-test-data.sql")
     void shouldUpdateCountryNameWhenNewNameIsValid(String newCountryName) throws Exception {
         var update = new UpdateCountryDetailsRequest(newCountryName);
 
@@ -305,7 +296,6 @@ class CountryTests extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenNewNameIsInvalid(InvalidCountryName input) throws Exception {
         var update = new UpdateCountryDetailsRequest(input.countryName);
 
@@ -324,7 +314,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenNonExistingCountryIsRequestedToBeUpdated() throws Exception {
         var update = new UpdateCountryDetailsRequest("New country name");
 
@@ -336,11 +325,10 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenNewNameAlreadyExistsUnderTheSameContinent() throws Exception {
         var update = new UpdateCountryDetailsRequest("Test country 2");
 
-        var jsonResponse = mockMvc.perform(put("/countries/2/details")
+        var jsonResponse = mockMvc.perform(put("/countries/1/details")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(update)))
@@ -355,22 +343,20 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void shouldUpdateCountryContinentNameWhileLeavingOriginalContinentNamesWhenNewContinentNameIsValid() throws Exception {
         var request = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
 
-        mockMvc.perform(put("/countries/" + 2 + "/continent")
+        mockMvc.perform(put("/countries/" + 1 + "/continent")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
 
-        assertThat(countryRepo.findById(2).map(Country::getContinent).map(Continent::getName)).hasValue(CONTINENT_NAME_1);
-        assertThat(countryRepo.findById(2).map(Country::getName)).hasValue("Test country 0");
+        assertThat(countryRepo.findById(1).map(Country::getContinent).map(Continent::getName)).hasValue(CONTINENT_NAME_1);
+        assertThat(countryRepo.findById(1).map(Country::getName)).hasValue("Test country 0");
     }
 
     @Test
-    @Sql(value = "/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenCurrentCountryNameAlreadyExistsUnderNewContinentName() throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 4");
         var mvcResult = mockMvc.perform(post("/countries")
@@ -397,7 +383,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenNonExistingContinentIsSentToBeUpdated() throws Exception {
         var update = new UpdateCountryContinentRequest("Bad continent name");
         var jsonResponse = mockMvc.perform(put("/countries/" + 0 + "/continent")
@@ -415,7 +400,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenNonExistingCountryIdIsSent() throws Exception {
         var update = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
 
@@ -434,9 +418,8 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void countryShouldBeReturnedWhenValidIdIsSent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/countries/" + 2)
+        var jsonResponse = mockMvc.perform(get("/countries/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
@@ -455,5 +438,4 @@ class CountryTests extends AbstractIntegrationTest {
                         .header("x-api-version", "1"))
                 .andExpect(status().isNotFound());
     }
-
 }

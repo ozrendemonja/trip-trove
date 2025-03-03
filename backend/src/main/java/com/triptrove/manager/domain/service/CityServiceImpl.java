@@ -9,6 +9,7 @@ import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,8 +25,8 @@ public class CityServiceImpl implements CityService {
     @Override
     public City saveCity(String name, int regionId) {
         log.atInfo().log("Processing save city request for city '{}'", name);
-        var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (cityRepo.findByNameAndRegionId(name, regionId).isPresent()) {
+        var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        if (cityRepo.existsByNameAndRegionId(name, regionId)) {
             throw new BaseApiException("City '%s' in '%s' region already exists in the database.".formatted(name, region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
 
@@ -39,23 +40,37 @@ public class CityServiceImpl implements CityService {
     }
 
     @Override
-    public List<City> getCities(SortDirection sortDirection) {
-        log.atInfo().log("Getting the first page of cities, ordered in {} order", sortDirection);
-
+    public List<City> getCities(ScrollPosition afterCity, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
-            return cityRepo.findTopOldest(managerProperties.pageSize());
+            return getCityAfter(afterCity);
         }
-        return cityRepo.findTopNewest(managerProperties.pageSize());
+        return getCityBefore(afterCity);
     }
 
-    @Override
-    public List<City> getCities(ScrollPosition afterCity, SortDirection sortDirection) {
-        log.atInfo().log("Getting a list of cities ordered in {} order, updated before {}", sortDirection, afterCity.updatedOn());
-
-        if (sortDirection == SortDirection.ASCENDING) {
-            return cityRepo.findNextOldest(managerProperties.pageSize(), afterCity);
+    private List<City> getCityAfter(ScrollPosition city) {
+        if (city == null) {
+            log.atInfo().log("Getting a list of first {} oldest cities", managerProperties.pageSize());
+            List<City> result = cityRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} cities", result.size());
+            return result;
         }
-        return cityRepo.findNextNewest(managerProperties.pageSize(), afterCity);
+        log.atInfo().log("Getting a list of oldest cities, updated after {}", city.updatedOn());
+        List<City> result = cityRepo.findOldestAfter(city, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} cities", result.size());
+        return result;
+    }
+
+    private List<City> getCityBefore(ScrollPosition city) {
+        if (city == null) {
+            log.atInfo().log("Getting a list of first {} newest cities", managerProperties.pageSize());
+            List<City> result = cityRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} cities", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of newest cities, updated before {}", city.updatedOn());
+        List<City> result = cityRepo.findNewestBefore(city, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} cities", result.size());
+        return result;
     }
 
     @Override
@@ -78,6 +93,9 @@ public class CityServiceImpl implements CityService {
         log.atInfo().log("Updating the city name to '{}'", newCityName);
         var city = cityRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        if (cityRepo.existsByNameAndRegionId(newCityName, city.getRegion().getId())) {
+            throw new BaseApiException("Cannot change the city to '%s' as it already exists in the database".formatted(city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        }
         city.setName(newCityName);
         cityRepo.save(city);
         log.atInfo().log("City name has been updated to '{}'", newCityName);
@@ -90,7 +108,7 @@ public class CityServiceImpl implements CityService {
                 .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         var newRegion = regionRepo.findById(regionId)
                 .orElseThrow(() -> new BaseApiException("Region is not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (cityRepo.findByNameAndRegionId(city.getName(), regionId).isPresent()) {
+        if (cityRepo.existsByNameAndRegionId(city.getName(), regionId)) {
             throw new BaseApiException("Cannot change the region to '%s' as it already exists in the database".formatted(newRegion.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
         city.setRegion(newRegion);

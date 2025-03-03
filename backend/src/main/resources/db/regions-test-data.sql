@@ -13,7 +13,7 @@
     (3, '2025-02-02T08:14:00', 'Test country 3', null, 0),
     (4, '2025-03-01T22:05:11', 'Test country 4', null, 1);
 
-INSERT INTO public.region(created_on, name, updated_on, country_id)
+INSERT INTO region(created_on, name, updated_on, country_id)
 	VALUES
     ('2024-08-20T20:04:59', 'Test region 0', null, 0),
     ('2024-10-05T12:32:10', 'Test region 1', null, 0),

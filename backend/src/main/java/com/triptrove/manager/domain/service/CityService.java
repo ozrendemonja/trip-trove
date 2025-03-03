@@ -9,8 +9,6 @@ import java.util.List;
 public interface CityService {
     City saveCity(String name, int regionId);
 
-    List<City> getCities(SortDirection sortDirection);
-
     List<City> getCities(ScrollPosition afterCity, SortDirection sortDirection);
 
     void deleteCity(int id);

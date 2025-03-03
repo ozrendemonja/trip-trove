@@ -70,7 +70,7 @@ public class RegionServiceImpl implements RegionService {
         }
         log.atInfo().log("Getting a list of newest regions, updated before {}", region.updatedOn());
         List<Region> result = regionRepo.findNewestBefore(region, Limit.of(managerProperties.pageSize()));
-        log.atInfo().log("Found {} countries", result.size());
+        log.atInfo().log("Found {} regions", result.size());
         return result;
     }
 

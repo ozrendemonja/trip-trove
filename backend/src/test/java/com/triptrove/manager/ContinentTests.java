@@ -7,10 +7,11 @@ import com.triptrove.manager.application.dto.UpdateContinentRequest;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.repo.ContinentRepo;
+import com.triptrove.manager.domain.repo.CountryRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.util.UriUtils;
 
@@ -34,8 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Transactional
-@ExtendWith(SpringExtension.class)
 @AutoConfigureMockMvc
+@Sql(value = "/db/continent-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class ContinentTests extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
 
@@ -44,6 +44,9 @@ class ContinentTests extends AbstractIntegrationTest {
 
     @Autowired
     private ContinentRepo continentRepo;
+
+    @Autowired
+    CountryRepo countryRepo;
 
 
     @ParameterizedTest
@@ -58,8 +61,7 @@ class ContinentTests extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/continents/" + UriUtils.encode(continentName, StandardCharsets.UTF_8)));
 
-        assertThat(continentRepo.findAll()).hasSize(1);
-        assertThat(continentRepo.findAll().getFirst().getName()).isEqualTo(continentName);
+        assertThat(continentRepo.findByName(continentName).map(Continent::getName)).hasValue(continentName);
     }
 
     private static Stream<String> provideValidContinentNames() {
@@ -101,7 +103,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void continentsShouldBeReturnedInAscendingOrderWithTheMostRecentlyModifiedElementAppearingLast() throws Exception {
         GetContinentResponse[] expected = {
                 new GetContinentResponse("Test continent 2"),
@@ -123,7 +124,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void continentsShouldBeListedInDescendingOrderWithTheMostRecentlyModifiedElementAppearingFirstWhenDescOrderIsSpecified() throws Exception {
         GetContinentResponse[] expected = {
                 new GetContinentResponse("Test continent 0"),
@@ -147,6 +147,8 @@ class ContinentTests extends AbstractIntegrationTest {
 
     @Test
     void emptyListOfContinentsShouldBeReturnedWhenThereIsNoContinentSaved() throws Exception {
+        continentRepo.deleteAll();
+
         var jsonResponse = mockMvc.perform(get("/continents")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -160,24 +162,14 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void continentsShouldBeDeletedWhenPresentedNameIsProvided() throws Exception {
-        mockMvc.perform(delete("/continents/" + "Test continent 0")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
-        mockMvc.perform(delete("/continents/" + "Test continent 1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
-        mockMvc.perform(delete("/continents/" + "Test continent 2")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
-        mockMvc.perform(delete("/continents/" + "Test continent 3")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        String[] continentIds = {"Test continent 0", "Test continent 1", "Test continent 2", "Test continent 3"};
+        for (String continent : continentIds) {
+            mockMvc.perform(delete("/continents/" + continent)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("x-api-version", "1"))
+                    .andExpect(status().isNoContent());
+        }
 
         assertThat(continentRepo.findAll()).isEmpty();
     }
@@ -191,8 +183,12 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/countries-test-data.sql")
     void errorShouldBeReturnedWhenContinentWithCountriesIsRequestedToBeDeleted() throws Exception {
+        Country country = new Country();
+        country.setName("Test country 0");
+        country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow(Exception::new));
+        countryRepo.save(country);
+
         var jsonResponse = mockMvc.perform(delete("/continents/" + "Test continent 0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -207,7 +203,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void continentWithARequiredNameShouldBeReturnedWhenExistingNameIsProvided() throws Exception {
         var expected = new GetContinentResponse("Test continent 0");
 
@@ -224,7 +219,7 @@ class ContinentTests extends AbstractIntegrationTest {
 
     @Test
     void errorShouldBeReturnedWhenAskedForContinentUsingNonExistingName() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/continents/Test continent 2")
+        var jsonResponse = mockMvc.perform(get("/continents/Test continent 123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNotFound())
@@ -238,7 +233,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void userShouldBePreventedToSaveContinentWhenNewContinentNameAlreadyExists() throws Exception {
         var request = new SaveContinentRequest("Test continent 0");
 
@@ -257,7 +251,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void continentNameShouldBeUpdatedWhenNewNameIsProvided() throws Exception {
         var request = new UpdateContinentRequest("Updated test continent 0");
 
@@ -267,11 +260,10 @@ class ContinentTests extends AbstractIntegrationTest {
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
 
-        assertThat(continentRepo.findById((short) 0).map(Continent::getName)).hasValue("Updated test continent 0");
+        assertThat(continentRepo.findById((short) 1).map(Continent::getName)).hasValue("Updated test continent 0");
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void updatedOnTimeShouldBeSetWhenContinentNameIsChanged() throws Exception {
         var request = new UpdateContinentRequest("Updated test continent 1");
 
@@ -281,13 +273,14 @@ class ContinentTests extends AbstractIntegrationTest {
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isNoContent());
 
-        assertThat(continentRepo.findById((short) 1).flatMap(Continent::getUpdatedOn).orElseThrow()).isCloseTo(LocalDateTime.now(), within(5, ChronoUnit.MINUTES));
+        assertThat(continentRepo.findById((short) 2).flatMap(Continent::getUpdatedOn).orElseThrow()).isCloseTo(LocalDateTime.now(), within(5, ChronoUnit.MINUTES));
     }
 
     @Test
     void errorShouldBeReturnedWhenUserTryToUpdateContinentWithPreviouslyNotExistedContinentName() throws Exception {
-        var request = new UpdateContinentRequest("Updated test continent 0");
-        var jsonResponse = mockMvc.perform(put("/continents/" + "Test continent 0")
+        var request = new UpdateContinentRequest("Updated test continent 1");
+
+        var jsonResponse = mockMvc.perform(put("/continents/" + "Test continent 123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
@@ -303,7 +296,6 @@ class ContinentTests extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInvalidContinentNames")
-    @Sql("/db/continent-test-data.sql")
     void errorShouldBeReturnedWhenNewContinentNameIsInvalid(InvalidContinentName input) throws Exception {
         var request = new UpdateContinentRequest(input.continentName);
 
@@ -322,7 +314,6 @@ class ContinentTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @Sql("/db/continent-test-data.sql")
     void errorShouldBeReturnedWhenNewContinentNameAlreadyExists() throws Exception {
         var request = new UpdateContinentRequest("Test continent 1");
 
@@ -339,5 +330,4 @@ class ContinentTests extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
         assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
     }
-
 }

@@ -52,14 +52,8 @@ public class CityController {
     public List<GetCityResponse> getAllCities(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             CityParameter after) {
-        boolean isFirstPage = after == null || after.cityId() == null;
-        if (isFirstPage) {
-            return cityService.getCities(sortDirection.toSortDirection())
-                    .stream()
-                    .map(GetCityResponse::from)
-                    .toList();
-        }
-        return cityService.getCities(after.toScrollPosition(), sortDirection.toSortDirection())
+        var afterCity = after.cityId() != null ? after.toScrollPosition() : null;
+        return cityService.getCities(afterCity, sortDirection.toSortDirection())
                 .stream()
                 .map(GetCityResponse::from)
                 .toList();

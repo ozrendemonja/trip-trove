@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-@Sql(value = "/db/regions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(value = "/db/cities-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 public class SearchTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String CONTINENT_NAME_0 = "Test continent 0";
@@ -52,6 +52,9 @@ public class SearchTest extends AbstractIntegrationTest {
     public static final String CITY_NAME_0 = "Test city 0";
     public static final String CITY_NAME_1 = "Test city 1";
     public static final String CITY_NAME_2 = "New ctest 2";
+    public static final String CITY_NAME_4_3 = "Test city 4";
+    public static final String CITY_NAME_4_2 = "Test city 4";
+    public static final String CITY_NAME_3 = "Test city 3";
     public static final String ATTRACTION_NAME_0 = "Test attraction 0";
     public static final String ATTRACTION_NAME_1 = "Test attraction 1";
     public static final String ATTRACTION_NAME_2 = "New attraction 2";
@@ -395,8 +398,6 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideValidCityQueries")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void limitNumberOfSortedCityNamesWhichGivenSearchStringIsSubstringOfWhenSearchByCityName(QueryAndSuggestions input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -416,19 +417,17 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidCityQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
-                new QueryAndSuggestions("Test c", List.of(createSuggestionDto(CITY_NAME_1, 1), createSuggestionDto(CITY_NAME_0, 0))),
-                new QueryAndSuggestions("New", List.of(createSuggestionDto(CITY_NAME_2, 3), createSuggestionDto(CITY_NAME_2, 2)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
+                new QueryAndSuggestions("Test c", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
+                new QueryAndSuggestions("city 4", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5)))
         );
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void returnEmptyListAsResultWhenGivenSearchStringIsNotSubstringOfAnyCityName() throws Exception {
         String input = "Not valid";
+
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("q", input)
@@ -446,8 +445,6 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInValidQueries")
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
-        // TMP solution for non existing clear of database
     void userShouldGetConflictResponseWhenCityQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)

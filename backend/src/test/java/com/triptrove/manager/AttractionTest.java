@@ -38,8 +38,6 @@ public class AttractionTest extends AbstractIntegrationTest {
     public static final String REGION_NAME_1 = "Test region 1";
     public static final String REGION_NAME_3 = "Test region 3";
     public static final String CITY_NAME_0 = "Test city 0";
-    public static final String CITY_NAME_2 = "Test city 2";
-    public static final String TEST_ATTRACTION_MAIN_0 = "Test attraction main 0";
 
     @Autowired
     private MockMvc mockMvc;

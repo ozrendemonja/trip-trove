@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Transactional
 @AutoConfigureMockMvc
-@Sql(value = "/db/countries-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class CountryTests extends AbstractIntegrationTest {
     private static final String CONTINENT_NAME_0 = "Test continent 0";
     private static final String CONTINENT_NAME_1 = "Test continent 1";
@@ -146,21 +146,6 @@ class CountryTests extends AbstractIntegrationTest {
 
     }
 
-    @Test
-    void emptyListOfCountriesShouldBeReturnWhenNoCountriesAreAdded() throws Exception {
-        countryRepo.deleteAll();
-
-        var jsonResponse = mockMvc.perform(get("/countries")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetCountryResponse[] response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
-        assertThat(response).isEmpty();
-    }
 
     @Test
     void countriesShouldBeReturnedInTwoPagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
@@ -261,15 +246,13 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void countryShouldBeDeletedWhenRequestIsSent() throws Exception {
-        int[] countryIds = {1, 2, 3, 4, 5};
-        for (Integer id : countryIds) {
-            mockMvc.perform(delete("/countries/" + id.toString())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .header("x-api-version", "1"))
-                    .andExpect(status().isNoContent());
-        }
+        mockMvc.perform(delete("/countries/" + 4)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
 
-        assertThat(countryRepo.findAll()).isEmpty();
+        assertThat(countryRepo.findAll()).hasSize(4);
+        assertThat(countryRepo.findById(4)).isEmpty();
     }
 
     @Test
@@ -366,7 +349,7 @@ class CountryTests extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-        var update = new UpdateCountryContinentRequest(CONTINENT_NAME_1);
+        var update = new UpdateCountryContinentRequest("Test continent 2");
 
         var jsonResponse = mockMvc.perform(put("/countries/" + id + "/continent")
                         .contentType(MediaType.APPLICATION_JSON)

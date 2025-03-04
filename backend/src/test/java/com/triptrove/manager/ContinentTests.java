@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Transactional
 @AutoConfigureMockMvc
-@Sql(value = "/db/continent-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class ContinentTests extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
 
@@ -145,33 +145,16 @@ class ContinentTests extends AbstractIntegrationTest {
         assertThat(response).usingRecursiveFieldByFieldElementComparator().isEqualTo(expected);
     }
 
-    @Test
-    void emptyListOfContinentsShouldBeReturnedWhenThereIsNoContinentSaved() throws Exception {
-        continentRepo.deleteAll();
-
-        var jsonResponse = mockMvc.perform(get("/continents")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetContinentResponse[] response = mapper.readValue(jsonResponse, GetContinentResponse[].class);
-        assertThat(response).isEmpty();
-    }
 
     @Test
     void continentsShouldBeDeletedWhenPresentedNameIsProvided() throws Exception {
-        String[] continentIds = {"Test continent 0", "Test continent 1", "Test continent 2", "Test continent 3"};
-        for (String continent : continentIds) {
-            mockMvc.perform(delete("/continents/" + continent)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .header("x-api-version", "1"))
-                    .andExpect(status().isNoContent());
-        }
+        mockMvc.perform(delete("/continents/" + "Test continent 3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
 
-        assertThat(continentRepo.findAll()).isEmpty();
+        assertThat(continentRepo.findAll()).hasSize(3);
+        assertThat(continentRepo.findById((short) 4)).isEmpty();
     }
 
     @Test

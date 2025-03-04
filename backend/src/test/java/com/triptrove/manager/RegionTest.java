@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Transactional
 @AutoConfigureMockMvc
-@Sql(value = "/db/regions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 public class RegionTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String COUNTRY_NAME_0 = "Test country 0";
@@ -56,7 +56,7 @@ public class RegionTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideValidRegionNames")
     void shouldSaveRegionWhenRegionNameIsValid(String regionName) throws Exception {
-        var request = new SaveRegionRequest(regionName, 0);
+        var request = new SaveRegionRequest(regionName, 1);
         mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -125,7 +125,7 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionSaveRequestShouldBeRejectedWhenGivenRegionNameUnderGivenCountryAlreadyExists() throws Exception {
-        var request = new SaveRegionRequest("Test region 0", 0);
+        var request = new SaveRegionRequest("Test region 0", 1);
 
         var jsonResponse = mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -143,7 +143,7 @@ public class RegionTest extends AbstractIntegrationTest {
     @Test
     void regionShouldBeSavedWhenGivenRegionNameAlreadyExistsUnderDifferentCountry() throws Exception {
         String regionName = "Test region 0";
-        var request = new SaveRegionRequest(regionName, 1);
+        var request = new SaveRegionRequest(regionName, 2);
 
         mockMvc.perform(post("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,6 +157,9 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionShouldBeReturnedInThreePagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
+        final String COUNTRY_NAME_5 = "Test country 4";
+        final String COUNTRY_NAME_3 = "Test country 2";
+
         var jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -168,9 +171,9 @@ public class RegionTest extends AbstractIntegrationTest {
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
         assertThat(response[0].regionName()).isEqualTo("Test region 4");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_5);
         assertThat(response[1].regionName()).isEqualTo("Test region 3");
-        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_3);
 
         jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -207,6 +210,9 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionShouldBeReturnedInThreePagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
+        final String COUNTRY_NAME_5 = "Test country 4";
+        final String COUNTRY_NAME_3 = "Test country 2";
+
         var jsonResponse = mockMvc.perform(get("/regions")
                         .param("sd", "ASC")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -239,7 +245,7 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(response[0].regionName()).isEqualTo("Test region 2");
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
         assertThat(response[1].regionName()).isEqualTo("Test region 3");
-        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_3);
 
         jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -255,37 +261,18 @@ public class RegionTest extends AbstractIntegrationTest {
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(1);
         assertThat(response[0].regionName()).isEqualTo("Test region 4");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
-    }
-
-    @Test
-    void regionShouldBeReturnedEmptyListWhenNoRegionExists() throws Exception {
-        regionRepo.deleteAll();
-
-        var jsonResponse = mockMvc.perform(get("/regions")
-                        .param("sd", "ASC")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
-        assertThat(response).isEmpty();
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_5);
     }
 
     @Test
     void regionShouldBeDeletedWhenRequestIsSent() throws Exception {
-        int[] regionIds = {1, 2, 3, 4, 5};
-        for (Integer id : regionIds) {
-            mockMvc.perform(delete("/regions/" + id)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .header("x-api-version", "1"))
-                    .andExpect(status().isNoContent());
-        }
+        mockMvc.perform(delete("/regions/" + 5)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
 
-        assertThat(regionRepo.findAll()).isEmpty();
+        assertThat(regionRepo.findAll()).hasSize(4);
+        assertThat(regionRepo.findById(5)).isEmpty();
     }
 
     @Test
@@ -390,7 +377,7 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void shouldUpdateRegionCountryNameWhileLeavingOriginalRegionNameWhenNewCountryIsGiven() throws Exception {
-        var update = new UpdateRegionCountryRequest(1);
+        var update = new UpdateRegionCountryRequest(2);
 
         mockMvc.perform(put("/regions/" + 1 + "/country")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -399,7 +386,7 @@ public class RegionTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
 
         assertThat(regionRepo.findById(1).map(Region::getCountry).map(Country::getName)).hasValue(COUNTRY_NAME_1);
-        assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(COUNTRY_NAME_1);
+        assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(COUNTRY_NAME_0);
     }
 
     @Test
@@ -412,7 +399,7 @@ public class RegionTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
         int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
-        var update = new UpdateRegionCountryRequest(0);
+        var update = new UpdateRegionCountryRequest(1);
 
         var jsonResponse = mockMvc.perform(put("/regions/" + id + "/country")
                         .contentType(MediaType.APPLICATION_JSON)

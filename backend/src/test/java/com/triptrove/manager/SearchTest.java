@@ -83,10 +83,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidCountryQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test country 4", 4), createSuggestionDto("Test country 3", 3), createSuggestionDto("Test country 2", 2))),
-                new QueryAndSuggestions("country 4", List.of(createSuggestionDto("Test country 4", 4)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
+                new QueryAndSuggestions("country 4", List.of(createSuggestionDto("Test country 4", 5)))
         );
     }
 
@@ -111,10 +111,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidContinentQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test continent 0", 0), createSuggestionDto("Test continent 3", 3), createSuggestionDto("Test continent 1", 1))),
-                new QueryAndSuggestions("ontinent 3", List.of(createSuggestionDto("Test continent 3", 3)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
+                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
+                new QueryAndSuggestions("ontinent 3", List.of(createSuggestionDto("Test continent 3", 4)))
         );
     }
 

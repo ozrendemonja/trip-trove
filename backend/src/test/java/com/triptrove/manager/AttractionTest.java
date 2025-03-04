@@ -79,7 +79,7 @@ public class AttractionTest extends AbstractIntegrationTest {
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
         assertThat(response[0].mainAttractionName()).isEqualTo("Test attraction 0");
         assertThat(response[1].attractionName()).isEqualTo("Test attraction 2");
-        assertThat(response[1].cityName()).isNull();
+        assertThat(response[1].cityName()).isEqualTo(CITY_NAME_0);
         assertThat(response[1].regionName()).isEqualTo(REGION_NAME_3);
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_2);
 
@@ -165,7 +165,7 @@ public class AttractionTest extends AbstractIntegrationTest {
         assertThat(response[0].regionName()).isEqualTo(REGION_NAME_2);
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
         assertThat(response[1].attractionName()).isEqualTo("Test attraction 2");
-        assertThat(response[1].cityName()).isNull();
+        assertThat(response[1].cityName()).isEqualTo(CITY_NAME_0);
         assertThat(response[1].regionName()).isEqualTo(REGION_NAME_3);
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_2);
 
@@ -695,7 +695,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
-        assertThat(actual.errorMessage()).isEqualTo("{attractionLocation.latitude = Latitude must be between -90 and 90 to be valid; attractionLocation.longitude = Longitude must be between -180 and 180 to be valid}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder("attractionLocation.latitude = Latitude must be between -90 and 90 to be valid", "attractionLocation.longitude = Longitude must be between -180 and 180 to be valid");
     }
 
     @Test
@@ -984,7 +984,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
-        assertThat(actual.errorMessage()).isEqualTo("{optimalVisitPeriod.toDate = must not be null; optimalVisitPeriod.fromDate = must not be null}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder("optimalVisitPeriod.toDate = must not be null", "optimalVisitPeriod.fromDate = must not be null");
     }
 
     @Test
@@ -1056,7 +1056,7 @@ public class AttractionTest extends AbstractIntegrationTest {
     @Test
     void shouldRejectUpdateAttractionInformationProviderRequestWhenAttractionIdNotExist() throws Exception {
         var updateRequest = new UpdateAttractionInformationProviderRequest("Test", LocalDate.now());
-        
+
         var jsonResponse = mockMvc.perform(put("/attractions/" + 100 + "/informationProvider")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")

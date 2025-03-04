@@ -11,6 +11,7 @@ public enum ErrorCodeResponse {
             case DUPLICATE_NAME -> NAME_CONFLICT;
             case HAS_CHILDREN -> CASCADE_DELETE_ERROR;
             case OBJECT_NOT_FOUND -> OBJECT_NOT_FOUND;
+            case CONSTRAINT_VIOLATION -> BAD_REQUEST;
             case null -> BAD_REQUEST;
         };
     }

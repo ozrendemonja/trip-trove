@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Getter
@@ -27,9 +28,14 @@ public class Region {
     @Column(name = "name", length = 256, nullable = false)
     private String name;
 
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "country_id")
     private Country country;
+
+    @OneToMany(
+            mappedBy = "region",
+            cascade = CascadeType.PERSIST)
+    private List<Attraction> attractions;
 
     @PrePersist
     protected void onCreate() {

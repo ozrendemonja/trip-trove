@@ -27,7 +27,9 @@ public interface ContinentRepo extends JpaRepository<Continent, Short> {
     Optional<Continent> findByName(String name);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, CAST(c.id AS int)) FROM Continent c WHERE c.name LIKE %:query%
+            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, CAST(c.id AS int)) 
+            FROM Continent c 
+            WHERE c.name LIKE %:query%
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

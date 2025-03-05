@@ -8,7 +8,8 @@ public class BaseApiException extends RuntimeException {
         GENERAL,
         DUPLICATE_NAME(409),
         HAS_CHILDREN(409),
-        OBJECT_NOT_FOUND(404);
+        OBJECT_NOT_FOUND(404),
+        CONSTRAINT_VIOLATION(400);
 
         public final int statusCode;
 

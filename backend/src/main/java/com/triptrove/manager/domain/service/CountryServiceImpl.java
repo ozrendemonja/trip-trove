@@ -78,6 +78,10 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public void deleteCountry(Integer id) {
         log.atInfo().log("Deleting country");
+        if (countryRepo.hasRegionsUnder(id)) {
+            throw new BaseApiException("Country has regions under", ErrorCode.HAS_CHILDREN);
+        }
+
         countryRepo.deleteById(id);
         log.atInfo().log("Country deleted");
     }

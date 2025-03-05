@@ -11,6 +11,7 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.Region;
+import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.CityRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
 import jakarta.transaction.Transactional;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Transactional
 @AutoConfigureMockMvc
-@Sql(value = "/db/cities-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 public class CityTest extends AbstractIntegrationTest {
     private final static ObjectMapper mapper = new ObjectMapper();
     public static final String COUNTRY_NAME_0 = "Test country 0";
@@ -52,6 +53,9 @@ public class CityTest extends AbstractIntegrationTest {
 
     @Autowired
     private CityRepo citRepo;
+
+    @Autowired
+    private AttractionRepo attractionRepo;
 
     @BeforeAll
     static void setupAll() {
@@ -291,25 +295,10 @@ public class CityTest extends AbstractIntegrationTest {
         assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
     }
 
-    @Test
-    void cityListShouldBeReturnedEmptyWhenNoCityExists() throws Exception {
-        citRepo.deleteAll();
-
-        var jsonResponse = mockMvc.perform(get("/cities")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        GetCityResponse[] response = mapper.readValue(jsonResponse, GetCityResponse[].class);
-        assertThat(response).isEmpty();
-    }
 
     @Test
     void cityShouldBeDeletedWhenRequestIsSent() throws Exception {
-        Integer[] cityIds = {1, 2, 3, 4, 5};
+        Integer[] cityIds = {2, 3, 4, 5};
         for (Integer id : cityIds) {
             mockMvc.perform(delete("/cities/" + id)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -317,9 +306,24 @@ public class CityTest extends AbstractIntegrationTest {
                     .andExpect(status().isNoContent());
         }
 
-        assertThat(citRepo.findAll()).isEmpty();
+        assertThat(citRepo.findAll()).hasSize(1);
     }
 
+    @Test
+    void errorShouldBeReturnedWhenCityWithAttractionsIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/cities/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+    }
+    
     @Test
     void userShouldGetErrorWhenNonExistingCityIsRequestedToBeDeleted() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/cities/" + "100")

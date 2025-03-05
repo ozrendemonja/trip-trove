@@ -46,7 +46,7 @@ public class SearchServiceImpl implements SearchService {
             log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.ATTRACTION)) {
             log.atInfo().log("Search for a attraction name");
-            result = attractionRepo.search(query, properties.suggestionLimit());
+            result = attractionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(properties.suggestionLimit()));
             log.atInfo().log(foundMessage, result.size());
         }
         return result;

@@ -7,6 +7,7 @@ import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -24,62 +25,92 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, Attraction attraction) {
         log.atInfo().log("Processing save attraction request for attraction '{}'", attraction.getName());
-
-        if (cityId != null) {
-            log.atInfo().log("Adding attraction under city");
-            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            if (attractionRepo.findByNameAndCityId(attraction.getName(), cityId).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            if (attractionRepo.findByNameAndRegionId(attraction.getName(), city.getRegion().getId()).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), city.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            attraction.setCity(city);
-        } else {
-            log.atInfo().log("Adding attraction under region");
-            var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            if (attractionRepo.findByNameAndRegionId(attraction.getName(), regionId).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            attraction.setRegion(region);
-        }
-
-        if (mainAttractionId != null) {
-            var mainAttraction = attractionRepo.findById(mainAttractionId).orElseThrow(() -> new BaseApiException("Main attraction not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            if (attractionRepo.findByNameAndMainAttractionId(attraction.getName(), mainAttractionId).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' main attraction already exists in the database.".formatted(attraction.getName(), mainAttraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            attraction.setMain(mainAttraction);
-        }
+        assignAttractionTo(attraction, regionId, cityId);
+        addAttractionUnder(attraction, mainAttractionId);
 
         var result = attractionRepo.save(attraction);
         log.atInfo().log("Attraction '{}' successfully saved", result.getName());
         return result;
     }
 
-    @Override
-    public List<Attraction> getAttractions(SortDirection sortDirection) {
-        log.atInfo().log("Getting the first page of attractions, ordered in {} order", sortDirection);
-
-        if (sortDirection == SortDirection.ASCENDING) {
-            return attractionRepo.findTopOldest(managerProperties.pageSize());
+    private void addAttractionUnder(Attraction attraction, Long mainAttractionId) {
+        if (mainAttractionId == null) {
+            attraction.setMain(null);
+            return;
         }
-        return attractionRepo.findTopNewest(managerProperties.pageSize());
+
+        if (attractionRepo.existsByNameAndMainId(attraction.getName(), mainAttractionId)) {
+            throw new BaseApiException("Attraction '%s' already exists under given main attraction.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        }
+
+        var mainAttraction = attractionRepo.findById(mainAttractionId).orElseThrow(() -> new BaseApiException("Main attraction not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        if (!attraction.isUnderContinent(mainAttraction.getCountry().getContinent())) {
+            throw new BaseApiException("Attraction '%s' is in different continent then '%s' main attraction.".formatted(attraction.getName(), mainAttraction.getName()), BaseApiException.ErrorCode.CONSTRAINT_VIOLATION);
+        }
+        attraction.setMain(mainAttraction);
+    }
+
+    private void assignAttractionTo(Attraction attraction, Integer regionId, Integer cityId) {
+        if (cityId != null) {
+            if (attractionRepo.existsByNameAndCityId(attraction.getName(), cityId)) {
+                throw new BaseApiException("Attraction '%s' already exists under given city.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+
+            log.atInfo().log("Adding attraction under city");
+            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+            attraction.underCity(city);
+        } else {
+            if (attractionRepo.existsByNameAndRegionId(attraction.getName(), regionId)) {
+                throw new BaseApiException("Attraction '%s' already exists under given region.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            }
+
+            log.atInfo().log("Adding attraction under region");
+            var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+            attraction.underRegion(region);
+        }
     }
 
     @Override
     public List<Attraction> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection) {
-        log.atInfo().log("Getting a list of attractions ordered in {} order, updated before {}", sortDirection, afterAttraction.updatedOn());
-
         if (sortDirection == SortDirection.ASCENDING) {
-            return attractionRepo.findNextOldest(managerProperties.pageSize(), afterAttraction);
+            return getAttractionsAfter(afterAttraction);
         }
-        return attractionRepo.findNextNewest(managerProperties.pageSize(), afterAttraction);
+        return getAttractionsBefore(afterAttraction);
+    }
+
+    private List<Attraction> getAttractionsAfter(ScrollPosition attraction) {
+        if (attraction == null) {
+            log.atInfo().log("Getting a list of first {} oldest attractions", managerProperties.pageSize());
+            List<Attraction> result = attractionRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} attractions", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of oldest attractions, updated after {}", attraction.updatedOn());
+        List<Attraction> result = attractionRepo.findOldestAfter(attraction, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} attractions", result.size());
+        return result;
+    }
+
+    private List<Attraction> getAttractionsBefore(ScrollPosition attraction) {
+        if (attraction == null) {
+            log.atInfo().log("Getting a list of first {} newest attractions", managerProperties.pageSize());
+            List<Attraction> result = attractionRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} attractions", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of newest attractions, updated before {}", attraction.updatedOn());
+        List<Attraction> result = attractionRepo.findNewestBefore(attraction, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} attractions", result.size());
+        return result;
     }
 
     @Override
     public void deleteAttraction(Long id) {
         log.atInfo().log("Deleting attraction");
+        if (attractionRepo.isMainAttraction(id)) {
+            throw new BaseApiException("Attraction has sub attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+        }
+
         var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         attractionRepo.delete(attraction);
         log.atInfo().log("Attraction deleted");
@@ -98,26 +129,8 @@ public class AttractionServiceImpl implements AttractionService {
         var attraction = attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
+        assignAttractionTo(attraction, regionId, cityId);
         attraction.setCountrywide(countrywide);
-        if (cityId != null) {
-            log.atInfo().log("Adding attraction to the city");
-            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            if (attractionRepo.findByNameAndCityId(attraction.getName(), cityId).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            if (attractionRepo.findByNameAndRegionId(attraction.getName(), city.getRegion().getId()).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), city.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            attraction.setCity(city);
-        } else {
-            log.atInfo().log("Adding attraction to the region");
-            var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            if (attractionRepo.findByNameAndRegionId(attraction.getName(), regionId).isPresent()) {
-                throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-            attraction.setRegion(region);
-        }
-
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
     }
@@ -128,20 +141,15 @@ public class AttractionServiceImpl implements AttractionService {
         var attraction = attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
-        if (attraction.getCity().isPresent() && attractionRepo.findByNameAndCityId(attraction.getName(), attraction.getCity().get().getId()).isPresent()) {
+        if (attraction.getCity().isPresent() && attractionRepo.existsByNameAndCityId(newAttractionName, attraction.getCity().get().getId())) {
             throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
-        if (attractionRepo.findByNameAndRegionId(newAttractionName, attraction.getRegion().getId()).isPresent()) {
+        if (attractionRepo.existsByNameAndRegionId(newAttractionName, attraction.getRegion().getId())) {
             throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), attraction.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
-
         attraction.setName(newAttractionName);
-        Attraction mainAttraction = null;
-        if (mainAttractionId != null) {
-            mainAttraction = attractionRepo.findById(mainAttractionId)
-                    .orElseThrow(() -> new BaseApiException("Main attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        }
-        attraction.setMain(mainAttraction);
+        addAttractionUnder(attraction, mainAttractionId);
+
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
     }

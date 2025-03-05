@@ -52,14 +52,8 @@ public class AttractionController {
     public List<GetAttractionResponse> getAttractions(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             AttractionParameter after) {
-        boolean isFirstPage = after == null || after.attractionId() == null;
-        if (isFirstPage) {
-            return attractionService.getAttractions(sortDirection.toSortDirection())
-                    .stream()
-                    .map(GetAttractionResponse::from)
-                    .toList();
-        }
-        return attractionService.getAttractions(after.toScrollPosition(), sortDirection.toSortDirection())
+        var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
+        return attractionService.getAttractions(afterAttraction, sortDirection.toSortDirection())
                 .stream()
                 .map(GetAttractionResponse::from)
                 .toList();

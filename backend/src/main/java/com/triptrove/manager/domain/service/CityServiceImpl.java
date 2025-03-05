@@ -76,6 +76,10 @@ public class CityServiceImpl implements CityService {
     @Override
     public void deleteCity(int id) {
         log.atInfo().log("Deleting city");
+        if (cityRepo.hasAttractionsUnder(id)) {
+            throw new BaseApiException("City has attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+        }
+
         var city = cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         cityRepo.delete(city);
         log.atInfo().log("Region city");

@@ -46,4 +46,10 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+
+    @Query("SELECT COUNT(c)>0 FROM City c INNER JOIN c.region r WHERE r.id = :id")
+    boolean hasCitiesUnder(Integer id);
+
+    @Query("SELECT COUNT(a)>0 FROM Region r INNER JOIN r.attractions a WHERE r.id = :id")
+    boolean hasAttractionsUnder(Integer id);
 }

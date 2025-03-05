@@ -48,4 +48,7 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+
+    @Query("SELECT COUNT(r)>0 FROM Region r INNER JOIN r.country c WHERE c.id = :id")
+    boolean hasRegionsUnder(Integer id);
 }

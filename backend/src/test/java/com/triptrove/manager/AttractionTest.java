@@ -189,7 +189,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
     @Test
     void attractionShouldBeDeletedWhenRequestIsSent() throws Exception {
-        Integer[] attractionIds = {1, 2, 3, 4, 5};
+        Integer[] attractionIds = {2, 3, 4, 5, 1};
 
         for (Integer id : attractionIds) {
             mockMvc.perform(delete("/attractions/" + id)
@@ -199,6 +199,21 @@ public class AttractionTest extends AbstractIntegrationTest {
         }
 
         assertThat(attractionRepo.findAll()).isEmpty();
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenAttractionWithSubAttractionsIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/attractions/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
     }
 
     @Test

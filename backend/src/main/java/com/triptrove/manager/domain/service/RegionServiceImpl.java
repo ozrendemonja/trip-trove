@@ -77,6 +77,10 @@ public class RegionServiceImpl implements RegionService {
     @Override
     public void deleteRegion(int id) {
         log.atInfo().log("Deleting region");
+        if (regionRepo.hasCitiesUnder(id) || regionRepo.hasAttractionsUnder(id)) {
+            throw new BaseApiException("Region has cities or attractions under", ErrorCode.HAS_CHILDREN);
+        }
+
         regionRepo.deleteById(id);
         log.atInfo().log("Region deleted");
     }

@@ -276,6 +276,36 @@ public class RegionTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void errorShouldBeReturnedWhenRegionWithCitiesIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenRegionWithAttractionsIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 4)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+    }
+
+    @Test
     void regionShouldBeReturnedWhenValidIdIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/regions/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)

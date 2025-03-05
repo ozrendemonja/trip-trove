@@ -107,6 +107,10 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void deleteAttraction(Long id) {
         log.atInfo().log("Deleting attraction");
+        if (attractionRepo.isMainAttraction(id)) {
+            throw new BaseApiException("Attraction has sub attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+        }
+
         var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         attractionRepo.delete(attraction);
         log.atInfo().log("Attraction deleted");

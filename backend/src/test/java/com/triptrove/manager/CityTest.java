@@ -310,6 +310,21 @@ public class CityTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void errorShouldBeReturnedWhenCityWithAttractionsIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/cities/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+    }
+    
+    @Test
     void userShouldGetErrorWhenNonExistingCityIsRequestedToBeDeleted() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/cities/" + "100")
                         .contentType(MediaType.APPLICATION_JSON)

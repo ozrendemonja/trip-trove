@@ -50,4 +50,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long> {
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+
+    @Query("SELECT COUNT(a)>0 FROM Attraction mainA INNER JOIN mainA.attractions a WHERE mainA.id = :id")
+    boolean isMainAttraction(Long id);
 }

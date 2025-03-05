@@ -257,10 +257,25 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void errorShouldBeReturnedWhenNonExistingCountryIsRequestedToBeDeleted() throws Exception {
-        mockMvc.perform(delete("/continents/" + "0")
+        mockMvc.perform(delete("/countries/" + "100")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenCountryWithRegionsIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/countries/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
     }
 
     @ParameterizedTest

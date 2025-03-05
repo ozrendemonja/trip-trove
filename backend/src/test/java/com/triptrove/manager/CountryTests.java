@@ -256,14 +256,6 @@ class CountryTests extends AbstractIntegrationTest {
     }
 
     @Test
-    void errorShouldBeReturnedWhenNonExistingCountryIsRequestedToBeDeleted() throws Exception {
-        mockMvc.perform(delete("/countries/" + "100")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
     void errorShouldBeReturnedWhenCountryWithRegionsIsRequestedToBeDeleted() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/countries/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)

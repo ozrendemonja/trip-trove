@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
+import com.triptrove.manager.application.dto.search.StrategyApiType;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
 import com.triptrove.manager.domain.repo.*;
 import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -114,7 +116,7 @@ public class SearchTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"CONTINENT", "COUNTRY", "REGION", "CITY", "ATTRACTION"})
+    @ValueSource(strings = {"CONTINENT", "COUNTRY", "REGION", "CITY", "ATTRACTION", "MAIN_ATTRACTION"})
     void returnEmptyListOfSuggestionsWhenGivenSearchStringIsNotSubstringOfAnyName(String searchIn) throws Exception {
         String input = "Not valid";
 
@@ -261,6 +263,23 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.prefix()).isEqualTo(input.query());
         assertThat(response.suggestions()).hasSize(input.suggestedNames().size());
         assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
+    }
+
+    @Test
+    void onlyMainAttractionNamesWhichGivenSearchStringIsSubstringOfAreReturnedWhenOnlyMainIsSetInSearchByAttractionName() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "Tes")
+                        .param("i", "MAIN_ATTRACTION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo("Tes");
+        assertThat(response.suggestions()).containsExactlyInAnyOrder(new SuggestionDto("Test attraction 0", 1, StrategyApiType.RANK));
     }
 
     private static Stream<QueryAndSuggestions> provideValidAttractionQueries() {

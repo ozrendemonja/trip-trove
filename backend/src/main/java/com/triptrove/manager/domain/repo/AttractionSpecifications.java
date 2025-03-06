@@ -112,7 +112,7 @@ public class AttractionSpecifications {
             result = result.and(filterCategory(filters.category()));
         }
         if (filters.query() != null) {
-            log.atInfo().log("Search by query '{}'", filters.query());
+            log.atDebug().log("Search by query '{}'", filters.query());
             Specification<Attraction> searchSpec = searchSourceName(filters.query()).or(searchName(filters.query())).or(searchTip(filters.query()));
             result = result.and(searchSpec);
         }

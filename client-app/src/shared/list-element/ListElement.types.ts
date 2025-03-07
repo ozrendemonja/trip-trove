@@ -1,6 +1,7 @@
 import { IColumn, Selection } from "@fluentui/react";
 import { AddRowOptionsProps } from "./ui/delete-dialog/DeleteDialog.types";
 import { ListHeaderProps } from "./ui/list-header/ListHeader.types";
+import { AttractionRow } from "../../features/continent/pages/list-attraction/ListAttraction.types";
 
 export interface ListElementProps<T> {
   /**
@@ -28,6 +29,25 @@ export interface ListElementProps<T> {
   ) => JSX.Element | string | number;
 
   selectedItemName: (selection: Selection) => string;
+}
+
+export interface ListElementUserProps {
+  /**
+   * Items to be displayed
+   */
+  items: AttractionRow[];
+
+  columns: IColumn[];
+
+  listHeader: ListHeaderProps;
+
+  onRenderMissingItem: (index?: number) => null;
+
+  onRenderItemColumn: (
+    item?: AttractionRow,
+    index?: number,
+    column?: IColumn
+  ) => JSX.Element | string | number;
 }
 
 export abstract class ListElementCustomizer<T> {

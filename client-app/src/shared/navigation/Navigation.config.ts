@@ -5,7 +5,7 @@ export const navLinkGroups = (expandLinks: boolean): INavLinkGroup[] => [
     links: [
       {
         name: "Search",
-        url: "#",
+        url: "/",
         icon: "Search",
         target: "_blank"
       },

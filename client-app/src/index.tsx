@@ -12,6 +12,7 @@ import CityList from "./features/continent/pages/list-city/ListCity";
 import AddCity from "./features/continent/pages/add-city/AddCity";
 import AttractionList from "./features/continent/pages/list-attraction/ListAttraction";
 import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
+import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -56,6 +57,10 @@ root.render(
         <Route path="/cities" element={<CityList />} />
         <Route path="/add-city" element={<AddCity />} />
         <Route path="/attractions" element={<AttractionList />} />
+        <Route
+          path="/search/:whereToSearch/:id/attractions"
+          element={<AttractionListUser />}
+        />
         <Route path="/add-attraction" element={<AddAttraction />} />
       </Routes>
     </BrowserRouter>

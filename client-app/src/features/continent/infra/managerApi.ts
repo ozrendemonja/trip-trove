@@ -49,6 +49,7 @@ import managerClient from "../../../config/ClientsApiConfig";
 import {
   Attraction,
   AttractionAddress,
+  AttractionFilter,
   AttractionType,
   CategoryType,
   LastReadAttraction,
@@ -1134,7 +1135,8 @@ export const searchContinent = async (query: string): Promise<Suggestion[]> => {
 
 export const getPagedAttractionsByContinentName = async (
   name: string,
-  lastReadAttraction?: LastReadAttraction
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
 ): Promise<Attraction[]> => {
   const { data, error } = await getContinentAttractions({
     headers: {
@@ -1145,7 +1147,13 @@ export const getPagedAttractionsByContinentName = async (
     },
     query: {
       attractionId: lastReadAttraction?.id,
-      updatedOn: lastReadAttraction?.updatedOn
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
     }
   });
 

@@ -23,9 +23,10 @@ import {
   getPagedAttractionsByRegionId
 } from "../../infra/ManagerApi";
 import { onRenderWhenNoMoreItems } from "../list-attraction/ListAttraction.config";
-import { useClasses } from "../list-attraction/ListAttraction.styles";
 import { AttractionRow } from "../list-attraction/ListAttraction.types";
 import { toLastReadAttraction } from "../list-attraction/ListAttraction.util";
+import { useClasses } from "./ListAttractionUser.styles";
+import { Filter } from "./ui/Filter";
 
 initializeIcons();
 
@@ -121,9 +122,9 @@ export const AttractionListUser: React.FunctionComponent = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { whereToSearch, id } = useParams();
 
-  // Add query
-  //   searchParams.get("__firebase_request_key")
-  searchParams.forEach((i) => console.log(i));
+  function stringToBoolean(str: string | null): boolean | undefined {
+    return str !== null ? str.toLowerCase() === "true" : undefined;
+  }
 
   // Repeated
   const continent = "continent";
@@ -137,7 +138,15 @@ export const AttractionListUser: React.FunctionComponent = () => {
     if (whereToSearch == continent) {
       return getPagedAttractionsByContinentName(
         id as string,
-        lastReadAttraction
+        lastReadAttraction,
+        {
+          category: searchParams.get("category") ?? undefined,
+          isCountrywide: stringToBoolean(searchParams.get("isCountrywide")),
+          isTraditional: stringToBoolean(searchParams.get("isTraditional")),
+          mustVisit: stringToBoolean(searchParams.get("mustVisit")),
+          q: searchParams.get("q"),
+          type: searchParams.get("type") ?? undefined
+        }
       );
     }
     if (whereToSearch == country) {
@@ -196,6 +205,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
               France
             </Text>
           </Stack>
+          <Filter></Filter>
           <ListElementUser
             items={items}
             columns={columns}

@@ -2,7 +2,8 @@ import {
   Attraction,
   AttractionAddress,
   AttractionInfoFrom,
-  AttractionOptimalVisitPeriod
+  AttractionOptimalVisitPeriod,
+  AttractionType
 } from "../../domain/Attraction.types";
 
 export class AttractionRow implements Omit<Attraction, "updatedOn"> {
@@ -12,7 +13,7 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
     public readonly destination: Attraction["destination"],
     public readonly address: Attraction["address"],
     public readonly category: Attraction["category"],
-    public readonly type: Attraction["type"],
+    public readonly type: AttractionType,
     public readonly mustVisit: boolean,
     public readonly isTraditional: boolean,
     public readonly infoFrom: Attraction["infoFrom"],
@@ -34,6 +35,17 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
       attraction.optimalVisitPeriod,
       attraction.tip
     );
+  }
+
+  public needsBellIcon(): boolean {
+    return (
+      this.type == AttractionType.IMMINENT_CHANGE ||
+      this.type == AttractionType.POTENTIAL_CHANGE
+    );
+  }
+
+  public willChangeSoon(): boolean {
+    return this.type == AttractionType.IMMINENT_CHANGE;
   }
 }
 

@@ -787,6 +787,25 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 600 }
       );
+
+      this.get(
+        "/search/attraction/:mainAttractionId/attractions",
+        (schema, request) => {
+          const attractionId = request.queryParams.attractionId;
+          let result = schema.db.attractions.sort() as GetAttractionResponse[];
+
+          if (attractionId) {
+            result = result.slice(
+              result.findIndex(
+                (attraction) =>
+                  attraction.attractionId == (attractionId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.slice(0, 2);
+        },
+        { timing: 400 }
+      );
     }
   });
 }

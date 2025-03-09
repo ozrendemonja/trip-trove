@@ -12,8 +12,13 @@ import {
   getAttraction,
   getAttractions,
   getCity,
+  getCityAttractions,
+  getContinentAttractions,
   getCountry,
+  getCountryAttractions,
+  getMainAttractionAttractions,
   getRegion,
+  getRegionAttractions,
   getSearchedElements,
   saveAttraction,
   saveCity,
@@ -44,6 +49,7 @@ import managerClient from "../../../config/ClientsApiConfig";
 import {
   Attraction,
   AttractionAddress,
+  AttractionFilter,
   AttractionType,
   CategoryType,
   LastReadAttraction,
@@ -1079,4 +1085,495 @@ export const changeAttractionType = async (
   if (error) {
     throw new Error("Error while updating attraction type", error);
   }
+};
+
+export const searchMainAttraction = async (
+  query: string
+): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "MAIN_ATTRACTION"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for attraction", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
+};
+
+export const searchContinent = async (query: string): Promise<Suggestion[]> => {
+  const { data, error } = await getAllContinents({
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (!data || data?.find((continent) => !continent.continentName)) {
+    throw new Error("Invalid continent name");
+  }
+
+  return data.map((continent) => {
+    return {
+      value: continent.continentName,
+      id: continent.continentName
+    } as Suggestion;
+  });
+};
+
+export const getPagedAttractionsByContinentName = async (
+  name: string,
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
+): Promise<Attraction[]> => {
+  const { data, error } = await getContinentAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    path: {
+      name: name
+    },
+    query: {
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
+};
+
+export const getPagedAttractionsByCountryId = async (
+  id: number,
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
+): Promise<Attraction[]> => {
+  const { data, error } = await getCountryAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    path: {
+      countryId: id
+    },
+    query: {
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
+};
+
+export const getPagedAttractionsByRegionId = async (
+  id: number,
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
+): Promise<Attraction[]> => {
+  const { data, error } = await getRegionAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    path: {
+      regionId: id
+    },
+    query: {
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
+};
+
+export const getPagedAttractionsByCityId = async (
+  id: number,
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
+): Promise<Attraction[]> => {
+  const { data, error } = await getCityAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    path: {
+      cityId: id
+    },
+    query: {
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
+};
+
+export const getPagedAttractionsByMainAttractionId = async (
+  id: number,
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
+): Promise<Attraction[]> => {
+  const { data, error } = await getMainAttractionAttractions({
+    headers: {
+      "x-api-version": "1"
+    },
+    path: {
+      mainAttractionId: id
+    },
+    query: {
+      attractionId: lastReadAttraction?.id,
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting data", error);
+  }
+  if (
+    !data ||
+    data?.find(
+      (attraction) =>
+        attraction.attractionId == undefined ||
+        !attraction.attractionName ||
+        !attraction.regionName ||
+        attraction.isCountrywide == undefined ||
+        !attraction.attractionCategory ||
+        !attraction.attractionType ||
+        attraction.mustVisit == undefined ||
+        attraction.isTraditional == undefined ||
+        !attraction.infoFrom ||
+        !attraction.infoRecorded ||
+        !attraction.changedOn
+    )
+  ) {
+    throw new Error("Invalid attraction data");
+  }
+
+  return data.map((attraction) => {
+    return {
+      id: attraction.attractionId!,
+      name: {
+        name: attraction.attractionName!,
+        mainAttractionName: attraction.mainAttractionName
+      },
+      destination: {
+        cityName: attraction.cityName,
+        regionName: attraction.regionName,
+        countryName: attraction.countryName,
+        isCountrywide: attraction.isCountrywide
+      },
+      address: {
+        streetAddress: attraction.attractionAddress,
+        location: attraction.attractionLocation
+          ? {
+              latitude: attraction.attractionLocation.latitude,
+              longitude: attraction.attractionLocation.longitude
+            }
+          : undefined
+      },
+      category: attraction.attractionCategory,
+      type: attraction.attractionType,
+      mustVisit: attraction.mustVisit,
+      isTraditional: attraction.isTraditional,
+      tip: attraction.tip,
+      infoFrom: {
+        source: attraction.infoFrom,
+        recorded: attraction.infoRecorded
+      },
+      optimalVisitPeriod: attraction.optimalVisitPeriod
+        ? {
+            fromDate: attraction.optimalVisitPeriod.fromDate,
+            toDate: attraction.optimalVisitPeriod.toDate
+          }
+        : undefined,
+      updatedOn: attraction.changedOn
+    };
+  });
 };

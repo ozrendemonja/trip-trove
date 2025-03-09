@@ -6,13 +6,14 @@ const config: StorybookConfig = {
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
     "@storybook/addon-interactions",
+    "storybook-addon-remix-react-router"
   ],
   framework: {
     name: "@storybook/react-webpack5",
     options: {
       fsCache: true,
       lazyCompilation: true
-    },
-  },
+    }
+  }
 };
 export default config;

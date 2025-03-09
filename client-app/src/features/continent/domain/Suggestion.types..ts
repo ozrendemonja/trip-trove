@@ -1,4 +1,4 @@
 export type Suggestion{
     value: string,
-    id: number
+    id: number | string
   }

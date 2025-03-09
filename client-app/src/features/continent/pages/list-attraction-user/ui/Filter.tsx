@@ -1,19 +1,15 @@
 import {
   ContextualMenu,
   DefaultButton,
-  FontWeights,
-  getTheme,
-  IButtonStyles,
   IconButton,
   IDragOptions,
-  IIconProps,
-  mergeStyleSets,
   Modal,
   Separator,
   Stack,
   Text
 } from "@fluentui/react";
 import { useBoolean, useId } from "@fluentui/react-hooks";
+import { useClasses } from "./Filter.styles";
 import { FilterProps } from "./Filter.types";
 import { FilterElement } from "./FilterElement";
 
@@ -25,60 +21,10 @@ const dragOptions: IDragOptions = {
   keepInBounds: false,
   dragHandleSelector: ".ms-Modal-scrollableContent > div:first-child"
 };
-const theme = getTheme();
-
-const cancelIcon: IIconProps = { iconName: "Cancel" };
-
-const contentStyles = mergeStyleSets({
-  container: {
-    display: "flex",
-    flexFlow: "column nowrap",
-    alignItems: "stretch"
-  },
-  header: [
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    theme.fonts.xLargePlus,
-    {
-      flex: "1 1 auto",
-      borderTop: `4px solid ${theme.palette.themePrimary}`,
-      color: theme.palette.neutralPrimary,
-      display: "flex",
-      alignItems: "center",
-      fontWeight: FontWeights.semibold,
-      padding: "12px 12px 14px 24px"
-    }
-  ],
-  heading: {
-    // color: theme.palette.neutralPrimary,
-    fontWeight: FontWeights.semibold,
-    fontSize: "inherit",
-    margin: "0"
-  },
-  body: {
-    flex: "4 4 auto",
-    padding: "0 24px 24px 24px",
-    overflowY: "hidden",
-    selectors: {
-      p: { margin: "14px 0" },
-      "p:first-child": { marginTop: 0 },
-      "p:last-child": { marginBottom: 0 }
-    }
-  }
-});
-
-const iconButtonStyles: Partial<IButtonStyles> = {
-  root: {
-    color: theme.palette.neutralPrimary,
-    marginLeft: "auto",
-    marginTop: "4px",
-    marginRight: "2px"
-  },
-  rootHovered: {
-    color: theme.palette.neutralDark
-  }
-};
 
 export const Filter: React.FunctionComponent<FilterProps> = (props) => {
+  const classes = useClasses();
+
   const titleId = useId("attraction-list-user-filter");
   const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] =
     useBoolean(false);
@@ -129,40 +75,28 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
         onClick={showModal}
         text="Filters"
         iconProps={{ iconName: "Equalizer" }}
-        styles={{ root: { borderRadius: "25px" } }}
+        className={classes.filterButton}
       />
       <Modal
         titleAriaId={titleId}
         isOpen={isModalOpen}
         onDismiss={hideModal}
         isBlocking={false}
-        containerClassName={contentStyles.container}
+        containerClassName={classes.container}
         dragOptions={dragOptions}
       >
-        <div className={contentStyles.header}>
-          <Text as="h2" className={contentStyles.heading} id={titleId}>
-            Search filters
-          </Text>
+        <div className={classes.header}>
+          <Text as="h2">Search filters</Text>
           <IconButton
-            styles={iconButtonStyles}
-            iconProps={cancelIcon}
+            className={classes.closeButton}
+            iconProps={{ iconName: "Cancel" }}
             ariaLabel="Close attraction filter modal"
             onClick={hideModal}
           />
         </div>
-        <Stack
-          horizontal
-          tokens={{ childrenGap: 48 }}
-          styles={{ root: { marginRight: 40 } }}
-        >
-          <Stack
-            styles={{
-              root: { marginLeft: 15, ".ms-Link": { marginTop: 10 } }
-            }}
-          >
-            <Text styles={{ root: { fontWeight: 600 } }}>
-              Geographical Scope
-            </Text>
+        <Stack horizontal tokens={{ childrenGap: 48 }} className={classes.body}>
+          <Stack>
+            <Text as={"h3"}>Geographical Scope</Text>
             <Separator></Separator>
             <FilterElement
               onClick={() => {
@@ -183,12 +117,8 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
               Local
             </FilterElement>
           </Stack>
-          <Stack
-            styles={{
-              root: { marginLeft: 15, ".ms-Link": { marginTop: 10 } }
-            }}
-          >
-            <Text styles={{ root: { fontWeight: 600 } }}>Must visit</Text>
+          <Stack>
+            <Text as={"h3"}>Must visit</Text>
             <Separator></Separator>
             <FilterElement
               onClick={() => {
@@ -209,12 +139,8 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
               Skip-Worthy Spots
             </FilterElement>
           </Stack>
-          <Stack
-            styles={{
-              root: { marginLeft: 15, ".ms-Link": { marginTop: 10 } }
-            }}
-          >
-            <Text styles={{ root: { fontWeight: 600 } }}>Historic</Text>
+          <Stack>
+            <Text as={"h3"}>Historic</Text>
             <Separator></Separator>
             <FilterElement
               onClick={() => {
@@ -235,12 +161,8 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
               Modern
             </FilterElement>
           </Stack>
-          <Stack
-            styles={{
-              root: { marginLeft: 15, ".ms-Link": { marginTop: 10 } }
-            }}
-          >
-            <Text styles={{ root: { fontWeight: 600 } }}>Category</Text>
+          <Stack>
+            <Text as={"h3"}>Category</Text>
             <Separator></Separator>
             {categories.map((text, index) => (
               <FilterElement
@@ -255,12 +177,8 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
               </FilterElement>
             ))}
           </Stack>
-          <Stack
-            styles={{
-              root: { marginLeft: 15, ".ms-FilterElement": { marginTop: 10 } }
-            }}
-          >
-            <Text styles={{ root: { fontWeight: 600 } }}>Type</Text>
+          <Stack>
+            <Text as={"h3"}>Type</Text>
             <Separator></Separator>
             {types.map((text, index) => (
               <FilterElement

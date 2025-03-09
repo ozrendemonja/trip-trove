@@ -14,19 +14,17 @@ import { ListElementUser } from "../../../../shared/list-element/ListElementUser
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { Attraction, LastReadAttraction } from "../../domain/Attraction.types";
+import { LastReadAttraction } from "../../domain/Attraction.types";
 import { AttractionListCustomizerUser } from "../../domain/AttractionListCustomizerUser";
-import {
-  getPagedAttractionsByCityId,
-  getPagedAttractionsByContinentName,
-  getPagedAttractionsByCountryId,
-  getPagedAttractionsByMainAttractionId,
-  getPagedAttractionsByRegionId
-} from "../../infra/ManagerApi";
 import { onRenderWhenNoMoreItems } from "../list-attraction/ListAttraction.config";
 import { AttractionRow } from "../list-attraction/ListAttraction.types";
 import { toLastReadAttraction } from "../list-attraction/ListAttraction.util";
 import { useClasses } from "./ListAttractionUser.styles";
+import {
+  createGetPagedAttractions,
+  stringToBoolean,
+  toggleQueryParam
+} from "./ListAttractionUser.utils";
 import { Filter } from "./ui/Filter";
 
 initializeIcons();
@@ -120,51 +118,8 @@ const onRenderItemColumn = (
 
 export const AttractionListUser: React.FunctionComponent = () => {
   const classes = useClasses();
+
   const [searchParams, setSearchParams] = useSearchParams();
-  const { whereToSearch, id } = useParams();
-
-  function stringToBoolean(str: string | null): boolean | undefined {
-    return str !== null ? str.toLowerCase() === "true" : undefined;
-  }
-
-  // Repeated
-  const continent = "continent";
-  const country = "country";
-  const region = "region";
-  const city = "city";
-  const getPagedAttractions = async (
-    id: string | number,
-    lastReadAttraction?: LastReadAttraction
-  ): Promise<Attraction[]> => {
-    if (whereToSearch == continent) {
-      return getPagedAttractionsByContinentName(
-        id as string,
-        lastReadAttraction,
-        {
-          category: searchParams.get("category") ?? undefined,
-          isCountrywide: stringToBoolean(searchParams.get("isCountrywide")),
-          isTraditional: stringToBoolean(searchParams.get("isTraditional")),
-          mustVisit: stringToBoolean(searchParams.get("mustVisit")),
-          q: searchParams.get("q"),
-          type: searchParams.get("type") ?? undefined
-        }
-      );
-    }
-    if (whereToSearch == country) {
-      return getPagedAttractionsByCountryId(id as number, lastReadAttraction);
-    }
-    if (whereToSearch == region) {
-      return getPagedAttractionsByRegionId(id as number, lastReadAttraction);
-    }
-    if (whereToSearch == city) {
-      return getPagedAttractionsByCityId(id as number, lastReadAttraction);
-    }
-    return getPagedAttractionsByMainAttractionId(
-      id as number,
-      lastReadAttraction
-    );
-  };
-
   const [items, setItems] = useState<AttractionRow[]>([]);
   const [columns, setColumns] = useState<IColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
@@ -177,8 +132,19 @@ export const AttractionListUser: React.FunctionComponent = () => {
     new AttractionListCustomizerUser(setItems, setColumns)
   );
 
+  const { whereToSearch, id } = useParams();
+  const getPagedAttractions = (lastAttraction?: LastReadAttraction) =>
+    createGetPagedAttractions(whereToSearch)(id, lastAttraction, {
+      category: searchParams.get("category") ?? undefined,
+      isCountrywide: stringToBoolean(searchParams.get("isCountrywide")),
+      isTraditional: stringToBoolean(searchParams.get("isTraditional")),
+      mustVisit: stringToBoolean(searchParams.get("mustVisit")),
+      q: searchParams.get("q"),
+      type: searchParams.get("type") ?? undefined
+    });
+
   useEffect(() => {
-    getPagedAttractions(id, lastElement).then((data) => {
+    getPagedAttractions(lastElement).then((data) => {
       setLoading();
       setLastElement(toLastReadAttraction(data));
       const attractionRows = data.map(AttractionRow.from);
@@ -190,20 +156,11 @@ export const AttractionListUser: React.FunctionComponent = () => {
     });
   }, [reloadData]);
 
-  //---------------------------
-  const toggleQueryParam = (parameter: string, value: string) => {
-    if (searchParams.has(parameter) && searchParams.get(parameter) === value) {
-      searchParams.delete(parameter);
-    } else {
-      searchParams.set(parameter, value);
-    }
-    setSearchParams(searchParams);
-  };
   const createFilter = (param: string) => ({
     has: (value: string) =>
       searchParams.has(param) && searchParams.get(param) === value,
     onClick: (filterValue: string) => {
-      toggleQueryParam(param, filterValue);
+      toggleQueryParam(param, filterValue, searchParams, setSearchParams);
       setAttractionCustomizer(
         new AttractionListCustomizerUser(setItems, setColumns)
       );
@@ -241,7 +198,6 @@ export const AttractionListUser: React.FunctionComponent = () => {
               }}
             />
             <Filter
-              className={classes.filter}
               countrywide={createFilter("isCountrywide")}
               mustVisit={createFilter("mustVisit")}
               traditional={createFilter("isTraditional")}

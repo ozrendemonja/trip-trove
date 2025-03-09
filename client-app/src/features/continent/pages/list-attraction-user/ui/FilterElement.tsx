@@ -17,7 +17,7 @@ export const FilterElement: React.FunctionComponent<FilterElementProps> = (
     >
       {props.children}
       {props.isSelected && (
-        <Icon styles={{ root: { marginLeft: 10 } }} iconName="Clear" />
+        <Icon className={classes.filterElementClearIcon} iconName="Clear" />
       )}
     </Link>
   );

@@ -1304,10 +1304,10 @@
     "@fluentui/set-version" "^8.2.23"
     tslib "^2.1.0"
 
-"@hey-api/client-fetch@0.5.4":
-  version "0.5.4"
-  resolved "https://registry.yarnpkg.com/@hey-api/client-fetch/-/client-fetch-0.5.4.tgz#48103972ba187affd74884e898b12d1a94732e65"
-  integrity sha512-e3Vbodpl6yUee+y6HlDgexMIMtm4UqI8V9GyoCMVgmkZz6bAqZn4nkQfcnIUb44L+vKt3nyQWnsZ7PtSv2bkHw==
+"@hey-api/client-fetch@^0.5.7":
+  version "0.5.7"
+  resolved "https://registry.yarnpkg.com/@hey-api/client-fetch/-/client-fetch-0.5.7.tgz#4f15daf01f8ed23c0cfe199edcef0a7d14cf7aed"
+  integrity sha512-hLpID6NCs8+stbz935UyvyGOXY44oLBSOy7ZEpwXxj977A/0U41iihDQllDoCJrxtbe06DnDgwPOn6/xnRJ71w==
 
 "@hey-api/openapi-ts@^0.59.0":
   version "0.59.2"
@@ -1632,6 +1632,25 @@
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/@miragejs/pretender-node-polyfill/-/pretender-node-polyfill-0.1.2.tgz#d26b6b7483fb70cd62189d05c95d2f67153e43f2"
   integrity sha512-M/BexG/p05C5lFfMunxo/QcgIJnMT2vDVCd00wNqK2ImZONIlEETZwWJu1QtLxtmYlSHlCFl3JNzp0tLe7OJ5g==
+
+"@mjackson/form-data-parser@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@mjackson/form-data-parser/-/form-data-parser-0.4.0.tgz#429dcd41a71c9f9e4d6873ef0dfa097110187a34"
+  integrity sha512-zDQ0sFfXqn2bJaZ/ypXfGUe0lUjCzXybBHYEoyWaO2w1dZ0nOM9nRER8tVVv3a8ZIgO/zF6p2I5ieWJAUOzt3w==
+  dependencies:
+    "@mjackson/multipart-parser" "^0.6.1"
+
+"@mjackson/headers@^0.5.0":
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/@mjackson/headers/-/headers-0.5.1.tgz#2d01fdd8909737b88438825b25ce21a14bfed182"
+  integrity sha512-sJpFgecPT/zJvwk3GRNVWNs8EkwaJoUNU2D0VMlp+gDJs6cuSTm1q/aCZi3ZtuV6CgDEQ4l2ZjUG3A9JrQlbNA==
+
+"@mjackson/multipart-parser@^0.6.1":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@mjackson/multipart-parser/-/multipart-parser-0.6.3.tgz#17648f42c44147b45b53ef0c8d76d24fd444ae82"
+  integrity sha512-aQhySnM6OpAYMMG+m7LEygYye99hB1md/Cy1AFE0yD5hfNW+X4JDu7oNVY9Gc6IW8PZ45D1rjFLDIUdnkXmwrA==
+  dependencies:
+    "@mjackson/headers" "^0.5.0"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -1995,6 +2014,11 @@
   version "8.4.7"
   resolved "https://registry.yarnpkg.com/@storybook/theming/-/theming-8.4.7.tgz#c308f6a883999bd35e87826738ab8a76515932b5"
   integrity sha512-99rgLEjf7iwfSEmdqlHkSG3AyLcK0sfExcr0jnc6rLiAkBhzuIsvcHjjUwkR210SOCgXqBPW0ZA6uhnuyppHLw==
+
+"@storybook/theming@^8.0.0":
+  version "8.6.4"
+  resolved "https://registry.yarnpkg.com/@storybook/theming/-/theming-8.6.4.tgz#d16f65320ad6e35db6cd3455b4d36cae58a87d2f"
+  integrity sha512-g9Ns4uenC9oAWETaJ/tEKEIPMdS+CqjNWZz5Wbw1bLNhXwADZgKrVqawzZi64+bYYtQ+i8VCTjPoFa6s2eHiDQ==
 
 "@swc/helpers@^0.5.1":
   version "0.5.15"
@@ -3366,6 +3390,11 @@ commondir@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/commondir/-/commondir-1.0.1.tgz#ddd800da0c66127393cca5950ea968a3aaf1253b"
   integrity sha512-W9pAhw0ja1Edb5GVdIF1mjZw/ASI0AlShXM83UUGe2DVr5TdAPEA1OA8m/g8zWp9x6On7gqufY+FatDbC3MDQg==
+
+compare-versions@^6.0.0:
+  version "6.1.1"
+  resolved "https://registry.yarnpkg.com/compare-versions/-/compare-versions-6.1.1.tgz#7af3cc1099ba37d244b3145a9af5201b629148a9"
+  integrity sha512-4hm4VPpIecmlg59CHXnRDnqGplJFrbLG4aFEl5vl6cK1u76ws3LLvX7ikFnTDl5vo39sjWD6AaDPYodJp/NNHg==
 
 compressible@~2.0.18:
   version "2.0.18"
@@ -4990,6 +5019,11 @@ hyperdyperid@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/hyperdyperid/-/hyperdyperid-1.2.0.tgz#59668d323ada92228d2a869d3e474d5a33b69e6b"
   integrity sha512-Y93lCzHYgGWdrJ66yIktxiaGULYc6oGiABxhcO5AufBeOyoIdZF7bIfLaOrbM0iGIOXQQgxxRrFEnb+Y6w1n4A==
+
+i@^0.3.7:
+  version "0.3.7"
+  resolved "https://registry.yarnpkg.com/i/-/i-0.3.7.tgz#2a7437a923d59c14b17243dc63a549af24d85799"
+  integrity sha512-FYz4wlXgkQwIPqhzC5TdNMLSE5+GS1IIDJZY/1ZiEPCT2S3COUVZeT5OW4BmW4r5LHLQuOosSwsvnroG9GR59Q==
 
 iconv-lite@0.4.24:
   version "0.4.24"
@@ -6940,6 +6974,11 @@ react-docgen@^7.0.0:
     loose-envify "^1.1.0"
     scheduler "^0.23.2"
 
+react-inspector@6.0.2:
+  version "6.0.2"
+  resolved "https://registry.yarnpkg.com/react-inspector/-/react-inspector-6.0.2.tgz#aa3028803550cb6dbd7344816d5c80bf39d07e9d"
+  integrity sha512-x+b7LxhmHXjHoU/VrFAzw5iutsILRoYyDq97EDYdFpPLcvqtEzk4ZSZSQjnFPbr5T57tLXnHcqFYoN1pI6u8uQ==
+
 react-is@^16.13.1:
   version "16.13.1"
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
@@ -7556,6 +7595,16 @@ statuses@2.0.1:
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/statuses/-/statuses-1.5.0.tgz#161c7dac177659fd9811f43771fa99381478628c"
   integrity sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==
+
+storybook-addon-remix-react-router@4:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/storybook-addon-remix-react-router/-/storybook-addon-remix-react-router-4.0.1.tgz#8b77181ac64faf43fd28e7809a38577be3660808"
+  integrity sha512-Plhul9kInTKdOhoHumiJ0KRmuIVYhT5WBCnAlNt9MlsmDGEuuiimh8msyj5LPWnGD51/t38i14xI8gmmTyu1ow==
+  dependencies:
+    "@mjackson/form-data-parser" "^0.4.0"
+    "@storybook/theming" "^8.0.0"
+    compare-versions "^6.0.0"
+    react-inspector "6.0.2"
 
 storybook@8.4.7:
   version "8.4.7"

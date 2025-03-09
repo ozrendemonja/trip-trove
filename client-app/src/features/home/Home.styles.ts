@@ -19,6 +19,10 @@ export const useClasses = () => {
       ":focus, :active": {
         color: "black"
       }
+    },
+    searchContiner: {
+      position: "absolute",
+      left: "50%"
     }
   });
 };

@@ -60,10 +60,7 @@ export const Home: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
-      <Stack
-        tokens={{ childrenGap: 0 }}
-        styles={{ root: { position: "absolute", left: "50%" } }}
-      >
+      <Stack tokens={{ childrenGap: 0 }} className={classes.searchContiner}>
         <OverflowSet
           aria-label="Search options"
           items={searchOptions.map((option) => ({

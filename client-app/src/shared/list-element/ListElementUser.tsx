@@ -1,4 +1,4 @@
-import { initializeIcons, Stack, Text } from "@fluentui/react";
+import { initializeIcons } from "@fluentui/react";
 import {
   CheckboxVisibility,
   ConstrainMode,
@@ -20,31 +20,21 @@ export const ListElementUser: React.FunctionComponent<ListElementUserProps> = (
   const columns = props.columns;
 
   return (
-    <>
-      <Stack className={classes.root}>
-        <Text
-          as="h1"
-          // className={classes.header}
-        >
-          {props.listHeader.text}
-        </Text>
-      </Stack>
-      <DetailsList
-        className={classes.listBody}
-        setKey={`Attractions-DetailsList`}
-        items={sortedItems ?? []}
-        columns={columns}
-        checkboxVisibility={CheckboxVisibility.hidden}
-        layoutMode={DetailsListLayoutMode.justified}
-        isHeaderVisible={true}
-        selectionMode={SelectionMode.none}
-        constrainMode={ConstrainMode.horizontalConstrained}
-        ariaLabelForListHeader="Column headers. Click to sort."
-        onRenderMissingItem={props.onRenderMissingItem}
-        onRenderItemColumn={props.onRenderItemColumn}
-        ariaLabelForGrid="Item details"
-      />
-    </>
+    <DetailsList
+      className={classes.listBody}
+      setKey={`Attractions-DetailsList`}
+      items={sortedItems ?? []}
+      columns={columns}
+      checkboxVisibility={CheckboxVisibility.hidden}
+      layoutMode={DetailsListLayoutMode.justified}
+      isHeaderVisible={true}
+      selectionMode={SelectionMode.none}
+      constrainMode={ConstrainMode.horizontalConstrained}
+      ariaLabelForListHeader="Column headers. Click to sort."
+      onRenderMissingItem={props.onRenderMissingItem}
+      onRenderItemColumn={props.onRenderItemColumn}
+      ariaLabelForGrid="Item details"
+    />
   );
 };
 

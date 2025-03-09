@@ -4,11 +4,9 @@ import {
   FontWeights,
   getTheme,
   IButtonStyles,
-  Icon,
   IconButton,
   IDragOptions,
   IIconProps,
-  Link,
   mergeStyleSets,
   Modal,
   Separator,
@@ -16,8 +14,8 @@ import {
   Text
 } from "@fluentui/react";
 import { useBoolean, useId } from "@fluentui/react-hooks";
-import { useSearchParams } from "react-router";
-import { useClasses } from "./Filter.styles";
+import { FilterProps } from "./Filter.types";
+import { FilterElement } from "./FilterElement";
 
 // Normally the drag options would be in a constant, but here the toggle can modify keepInBounds
 const dragOptions: IDragOptions = {
@@ -80,29 +78,53 @@ const iconButtonStyles: Partial<IButtonStyles> = {
   }
 };
 
-export const Filter: React.FunctionComponent = () => {
-  const classes = useClasses();
-
-  // Use useId() to ensure that the IDs are unique on the page.
-  // (It's also okay to use plain strings and manually ensure uniqueness.)
+export const Filter: React.FunctionComponent<FilterProps> = (props) => {
   const titleId = useId("attraction-list-user-filter");
   const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] =
     useBoolean(false);
 
-  //--------------------------------
-  const [searchParams, setSearchParams] = useSearchParams();
-  const toggleQueryParam = (parameter: string, value: string) => {
-    if (searchParams.has(parameter) && searchParams.get(parameter) === value) {
-      searchParams.delete(parameter);
-    } else {
-      searchParams.set(parameter, value);
-    }
-    setSearchParams(searchParams);
-  };
-  //--------------------------------
+  const categories = [
+    "POINT_OF_INTEREST_AND_LANDMARK",
+    "HISTORIC_SITE",
+    "RELIGIOUS_SITE",
+    "ARENA_AND_STADIUM",
+    "OTHER_LANDMARK",
+    "SPECIALITY_MUSEUM",
+    "ART_MUSEUM",
+    "HISTORY_MUSEUM",
+    "SCIENCE_MUSEUM",
+    "OTHER_MUSEUM",
+    "PARK",
+    "NATURE_AND_WILDLIFE_AREA",
+    "OTHER_NATURE_AND_PARK",
+    "LAND_BASED_ACTIVITY",
+    "AIR_BASED_ACTIVITY",
+    "WATER_BASED_ACTIVITY",
+    "OTHER_OUTDOOR_ACTIVITY",
+    "SPORTING_EVENT",
+    "CULTURAL_EVENT",
+    "THEATRE_EVENT",
+    "OTHER_EVENT",
+    "SHOPPING",
+    "ZOO_AND_AQUARIUM",
+    "NIGHTLIFE",
+    "FOOD",
+    "DRINK",
+    "WILDLIFE_TOUR",
+    "EXTREME_SPORT_TOUR",
+    "OTHER_TOUR",
+    "WATER_AND_AMUSEMENT_PARK",
+    "FILM_AND_TV_TOUR",
+    "CLASS_AND_WORKSHOP",
+    "OTHER_FUN_AND_GAME",
+    "SPA_AND_WELLNESS",
+    "EATERY",
+    "BEVERAGE_SPOT"
+  ];
+  const types = ["IMMINENT_CHANGE", "POTENTIAL_CHANGE", "STABLE"];
 
   return (
-    <div>
+    <div className={props.className}>
       <DefaultButton
         onClick={showModal}
         text="Filters"
@@ -124,7 +146,7 @@ export const Filter: React.FunctionComponent = () => {
           <IconButton
             styles={iconButtonStyles}
             iconProps={cancelIcon}
-            ariaLabel="Close popup modal"
+            ariaLabel="Close attraction filter modal"
             onClick={hideModal}
           />
         </div>
@@ -142,56 +164,24 @@ export const Filter: React.FunctionComponent = () => {
               Geographical Scope
             </Text>
             <Separator></Separator>
-            <Link
-              className={
-                searchParams.has("isCountrywide") &&
-                searchParams.get("isCountrywide") === "true"
-                  ? classes.filterElementSelected
-                  : classes.filterElementNotSelected
-              }
+            <FilterElement
               onClick={() => {
-                toggleQueryParam("isCountrywide", "true");
-                // setAttractionCustomizer(
-                //   new AttractionListCustomizerUser(setItems, setColumns)
-                // );
-                // toggleReloadData();
+                props.countrywide.onClick("true");
                 hideModal();
               }}
+              isSelected={props.countrywide.has("true")}
             >
-              Countrywide{" "}
-              {searchParams.has("isCountrywide") &&
-                searchParams.get("isCountrywide") === "true" && (
-                  <Icon
-                    styles={{ root: { marginLeft: 10 } }}
-                    iconName="Clear"
-                  />
-                )}
-            </Link>
-            <Link
-              className={
-                searchParams.has("isCountrywide") &&
-                searchParams.get("isCountrywide") === "false"
-                  ? classes.filterElementSelected
-                  : classes.filterElementNotSelected
-              }
+              Countrywide
+            </FilterElement>
+            <FilterElement
               onClick={() => {
-                toggleQueryParam("isCountrywide", "false");
-                // setAttractionCustomizer(
-                //   new AttractionListCustomizerUser(setItems, setColumns)
-                // );
-                // toggleReloadData();
+                props.countrywide.onClick("false");
                 hideModal();
               }}
+              isSelected={props.countrywide.has("false")}
             >
               Local
-              {searchParams.has("isCountrywide") &&
-                searchParams.get("isCountrywide") === "false" && (
-                  <Icon
-                    styles={{ root: { marginLeft: 10 } }}
-                    iconName="Clear"
-                  />
-                )}
-            </Link>
+            </FilterElement>
           </Stack>
           <Stack
             styles={{
@@ -200,20 +190,24 @@ export const Filter: React.FunctionComponent = () => {
           >
             <Text styles={{ root: { fontWeight: 600 } }}>Must visit</Text>
             <Separator></Separator>
-            <Link
-              styles={{
-                root: { color: "grey" }
+            <FilterElement
+              onClick={() => {
+                props.mustVisit.onClick("true");
+                hideModal();
               }}
+              isSelected={props.mustVisit.has("true")}
             >
               Must visit
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
+            </FilterElement>
+            <FilterElement
+              onClick={() => {
+                props.mustVisit.onClick("false");
+                hideModal();
               }}
+              isSelected={props.mustVisit.has("false")}
             >
               Skip-Worthy Spots
-            </Link>
+            </FilterElement>
           </Stack>
           <Stack
             styles={{
@@ -222,20 +216,24 @@ export const Filter: React.FunctionComponent = () => {
           >
             <Text styles={{ root: { fontWeight: 600 } }}>Historic</Text>
             <Separator></Separator>
-            <Link
-              styles={{
-                root: { color: "grey" }
+            <FilterElement
+              onClick={() => {
+                props.traditional.onClick("true");
+                hideModal();
               }}
+              isSelected={props.traditional.has("true")}
             >
               Traditional
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
+            </FilterElement>
+            <FilterElement
+              onClick={() => {
+                props.traditional.onClick("false");
+                hideModal();
               }}
+              isSelected={props.traditional.has("false")}
             >
               Modern
-            </Link>
+            </FilterElement>
           </Stack>
           <Stack
             styles={{
@@ -244,287 +242,38 @@ export const Filter: React.FunctionComponent = () => {
           >
             <Text styles={{ root: { fontWeight: 600 } }}>Category</Text>
             <Separator></Separator>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              POINT_OF_INTEREST_AND_LANDMARK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              HISTORIC_SITE
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              RELIGIOUS_SITE
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              ARENA_AND_STADIUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_LANDMARK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              SPECIALITY_MUSEUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              ART_MUSEUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              HISTORY_MUSEUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              SCIENCE_MUSEUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_MUSEUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              PARK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              NATURE_AND_WILDLIFE_AREA
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_NATURE_AND_PARK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              LAND_BASED_ACTIVITY
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              AIR_BASED_ACTIVITY
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              WATER_BASED_ACTIVITY
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_OUTDOOR_ACTIVITY
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              SPORTING_EVENT
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              CULTURAL_EVENT
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              THEATRE_EVENT
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_EVENT
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              SHOPPING
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              ZOO_AND_AQUARIUM
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              NIGHTLIFE
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              FOOD
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              DRINK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              WILDLIFE_TOUR
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              EXTREME_SPORT_TOUR
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_TOUR
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              WATER_AND_AMUSEMENT_PARK
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              FILM_AND_TV_TOUR
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              CLASS_AND_WORKSHOP
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              OTHER_FUN_AND_GAME
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              SPA_AND_WELLNESS
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              EATERY
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              BEVERAGE_SPOT
-            </Link>
+            {categories.map((text, index) => (
+              <FilterElement
+                key={text}
+                onClick={() => {
+                  props.category.onClick(text);
+                  hideModal();
+                }}
+                isSelected={props.category.has(text)}
+              >
+                {text}
+              </FilterElement>
+            ))}
           </Stack>
           <Stack
             styles={{
-              root: { marginLeft: 15, ".ms-Link": { marginTop: 10 } }
+              root: { marginLeft: 15, ".ms-FilterElement": { marginTop: 10 } }
             }}
           >
             <Text styles={{ root: { fontWeight: 600 } }}>Type</Text>
             <Separator></Separator>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              IMMINENT_CHANGE
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              POTENTIAL_CHANGE
-            </Link>
-            <Link
-              styles={{
-                root: { color: "grey" }
-              }}
-            >
-              STABLE
-            </Link>
+            {types.map((text, index) => (
+              <FilterElement
+                key={text}
+                onClick={() => {
+                  props.type.onClick(text);
+                  hideModal();
+                }}
+                isSelected={props.type.has(text)}
+              >
+                {text}
+              </FilterElement>
+            ))}
           </Stack>
         </Stack>
       </Modal>

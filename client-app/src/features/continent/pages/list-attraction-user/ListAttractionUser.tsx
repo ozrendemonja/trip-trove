@@ -3,6 +3,7 @@ import {
   Icon,
   initializeIcons,
   Link,
+  SearchBox,
   Stack,
   Text
 } from "@fluentui/react";
@@ -189,6 +190,27 @@ export const AttractionListUser: React.FunctionComponent = () => {
     });
   }, [reloadData]);
 
+  //---------------------------
+  const toggleQueryParam = (parameter: string, value: string) => {
+    if (searchParams.has(parameter) && searchParams.get(parameter) === value) {
+      searchParams.delete(parameter);
+    } else {
+      searchParams.set(parameter, value);
+    }
+    setSearchParams(searchParams);
+  };
+  const createFilter = (param: string) => ({
+    has: (value: string) =>
+      searchParams.has(param) && searchParams.get(param) === value,
+    onClick: (filterValue: string) => {
+      toggleQueryParam(param, filterValue);
+      setAttractionCustomizer(
+        new AttractionListCustomizerUser(setItems, setColumns)
+      );
+      toggleReloadData();
+    }
+  });
+
   return (
     <>
       <Navigation />
@@ -205,13 +227,31 @@ export const AttractionListUser: React.FunctionComponent = () => {
               France
             </Text>
           </Stack>
-          <Filter></Filter>
+          <Stack horizontal className={classes.root}>
+            <Text as="h1">Attractions</Text>
+            <SearchBox
+              placeholder="Search for name, source or tip"
+              value={searchParams.get("q") ?? undefined}
+              onSearch={(newValue) => {
+                createFilter("q").onClick(newValue);
+              }}
+              onClear={() => {
+                const filter = createFilter("q");
+                searchParams.has("q") && filter.onClick(searchParams.get("q")!);
+              }}
+            />
+            <Filter
+              className={classes.filter}
+              countrywide={createFilter("isCountrywide")}
+              mustVisit={createFilter("mustVisit")}
+              traditional={createFilter("isTraditional")}
+              category={createFilter("category")}
+              type={createFilter("type")}
+            ></Filter>
+          </Stack>
           <ListElementUser
             items={items}
             columns={columns}
-            listHeader={{
-              text: "Attractions"
-            }}
             onRenderMissingItem={(_index: number | undefined) =>
               onRenderWhenNoMoreItems(toggleReloadData)
             }

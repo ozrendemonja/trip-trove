@@ -1224,7 +1224,8 @@ export const getPagedAttractionsByContinentName = async (
 
 export const getPagedAttractionsByCountryId = async (
   id: number,
-  lastReadAttraction?: LastReadAttraction
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
 ): Promise<Attraction[]> => {
   const { data, error } = await getCountryAttractions({
     headers: {
@@ -1235,7 +1236,13 @@ export const getPagedAttractionsByCountryId = async (
     },
     query: {
       attractionId: lastReadAttraction?.id,
-      updatedOn: lastReadAttraction?.updatedOn
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
     }
   });
 
@@ -1306,7 +1313,8 @@ export const getPagedAttractionsByCountryId = async (
 
 export const getPagedAttractionsByRegionId = async (
   id: number,
-  lastReadAttraction?: LastReadAttraction
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
 ): Promise<Attraction[]> => {
   const { data, error } = await getRegionAttractions({
     headers: {
@@ -1317,7 +1325,13 @@ export const getPagedAttractionsByRegionId = async (
     },
     query: {
       attractionId: lastReadAttraction?.id,
-      updatedOn: lastReadAttraction?.updatedOn
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
     }
   });
 
@@ -1388,7 +1402,8 @@ export const getPagedAttractionsByRegionId = async (
 
 export const getPagedAttractionsByCityId = async (
   id: number,
-  lastReadAttraction?: LastReadAttraction
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
 ): Promise<Attraction[]> => {
   const { data, error } = await getCityAttractions({
     headers: {
@@ -1399,7 +1414,13 @@ export const getPagedAttractionsByCityId = async (
     },
     query: {
       attractionId: lastReadAttraction?.id,
-      updatedOn: lastReadAttraction?.updatedOn
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
     }
   });
 
@@ -1470,7 +1491,8 @@ export const getPagedAttractionsByCityId = async (
 
 export const getPagedAttractionsByMainAttractionId = async (
   id: number,
-  lastReadAttraction?: LastReadAttraction
+  lastReadAttraction?: LastReadAttraction,
+  filters?: AttractionFilter
 ): Promise<Attraction[]> => {
   const { data, error } = await getMainAttractionAttractions({
     headers: {
@@ -1481,7 +1503,13 @@ export const getPagedAttractionsByMainAttractionId = async (
     },
     query: {
       attractionId: lastReadAttraction?.id,
-      updatedOn: lastReadAttraction?.updatedOn
+      updatedOn: lastReadAttraction?.updatedOn,
+      category: filters?.category,
+      isCountrywide: filters?.isCountrywide,
+      isTraditional: filters?.isTraditional,
+      mustVisit: filters?.mustVisit,
+      q: filters?.q,
+      type: filters?.type
     }
   });
 

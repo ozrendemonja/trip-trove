@@ -3,6 +3,8 @@ package com.triptrove.manager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.triptrove.manager.application.dto.GetAttractionResponse;
+import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
+import com.triptrove.manager.application.dto.error.ErrorResponse;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,6 +92,39 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @MethodSource("provideInvalidQueries")
+    void shouldReturnErrorWhenQueryingAttractionWithTooShortQuery(InvalidQuery query) throws Exception {
+        var jsonResponse = mockMvc.perform(get(query.url())
+                        .param("q", query.query)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    private record InvalidQuery(String url, String query) {
+    }
+
+    private static final List<String> urls = List.of("/search/continent/a/attractions", "/search/country/100/attractions", "/search/region/100/attractions", "/search/city/100/attractions", "/search/attraction/100/attractions");
+
+    private static List<InvalidQuery> provideInvalidQueries() {
+        List<String> invalidQueries = List.of("", " ", "       ", "T", "Te");
+
+        return urls.stream()
+                .flatMap(url -> invalidQueries.stream().map(query -> new InvalidQuery(url, query)))
+                .toList();
+    }
+
+    private static List<String> provideAttractionUris() {
+        return urls;
+    }
+
+    @ParameterizedTest
     @MethodSource("provideAttractionFilterValues")
     void shouldReturnContinentAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenContinent(FilteredAttraction filters) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
@@ -140,10 +176,6 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(5L, null, null, null, null, null, "attraction 3"),
                 new FilteredAttraction(4L, null, null, null, null, null, "tip n")
         );
-    }
-
-    private static Stream<String> provideAttractionUris() {
-        return Stream.of("/search/continent/a/attractions", "/search/country/100/attractions", "/search/region/100/attractions", "/search/city/100/attractions", "/search/attraction/100/attractions");
     }
 
     @Test
@@ -380,7 +412,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(7L, false, null, null, null, true, null),
                 new FilteredAttraction(3L, null, "ART_MUSEUM", null, null, null, null),
                 new FilteredAttraction(6L, null, null, "POTENTIAL_CHANGE", false, false, null),
-                new FilteredAttraction(6L, null, null, null, false, false, "3"),
+                new FilteredAttraction(6L, null, null, null, false, false, "t 3 "),
                 new FilteredAttraction(7L, null, null, null, null, null, "ction 5"),
                 new FilteredAttraction(6L, null, null, null, null, null, "st t")
         );

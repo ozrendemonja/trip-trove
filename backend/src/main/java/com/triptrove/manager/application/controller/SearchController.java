@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -60,7 +61,7 @@ public class SearchController {
                                                                @RequestParam(name = "type", required = false) AttractionTypeDTO type,
                                                                @RequestParam(name = "mustVisit", required = false) Boolean mustVisit,
                                                                @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
-                                                               @RequestParam(name = "q", required = false) String query
+                                                               @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
         var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
@@ -89,7 +90,7 @@ public class SearchController {
                                                              @RequestParam(name = "type", required = false) AttractionTypeDTO type,
                                                              @RequestParam(name = "mustVisit", required = false) Boolean mustVisit,
                                                              @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
-                                                             @RequestParam(name = "q", required = false) String query
+                                                             @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
         var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
@@ -118,7 +119,7 @@ public class SearchController {
                                                             @RequestParam(name = "type", required = false) AttractionTypeDTO type,
                                                             @RequestParam(name = "mustVisit", required = false) Boolean mustVisit,
                                                             @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
-                                                            @RequestParam(name = "q", required = false) String query
+                                                            @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
         var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
@@ -147,7 +148,7 @@ public class SearchController {
                                                           @RequestParam(name = "type", required = false) AttractionTypeDTO type,
                                                           @RequestParam(name = "mustVisit", required = false) Boolean mustVisit,
                                                           @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
-                                                          @RequestParam(name = "q", required = false) String query
+                                                          @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
         var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
@@ -176,7 +177,7 @@ public class SearchController {
                                                                     @RequestParam(name = "type", required = false) AttractionTypeDTO type,
                                                                     @RequestParam(name = "mustVisit", required = false) Boolean mustVisit,
                                                                     @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
-                                                                    @RequestParam(name = "q", required = false) String query
+                                                                    @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
         var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
         var categoryFilter = category != null ? category.toAttractionCategory() : null;

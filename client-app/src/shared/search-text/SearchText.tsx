@@ -6,7 +6,7 @@ import {
   TextField
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import { LegacyRef, useEffect, useState } from "react";
+import { LegacyRef, useEffect, useRef, useState } from "react";
 import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
 import { positionSuggestionDropdown, useClasses } from "./SearchText.styles";
 import { SearchTextProps } from "./SearchText.types";
@@ -42,9 +42,17 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
     }
   };
 
+  const focusZoneRef = useRef(null);
+  const handleTextFieldKeyDown = (event) => {
+    if (event.key === "ArrowDown") {
+      focusZoneRef.current!.focus();
+    }
+  };
+
   return (
     <div ref={getBottomPosition}>
       <TextField
+        onKeyDown={handleTextFieldKeyDown}
         label={props.label}
         placeholder={props.placeholder}
         required={props.required}
@@ -60,6 +68,7 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
         onGetErrorMessage={props.onGetErrorMessage}
       />
       <FocusZone
+        componentRef={focusZoneRef}
         direction={FocusZoneDirection.vertical}
         isCircularNavigation={true}
         role="grid"
@@ -70,6 +79,7 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
             key={`${item.value}-${item.id}`}
             role="menuitem"
             className={classes.button}
+            onFocus={() => setQuery(item.value)}
             ariaLabel={item.value}
             onClick={(_event) => {
               setQuery(item.value);

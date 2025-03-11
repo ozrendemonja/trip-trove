@@ -17,9 +17,11 @@ import { useCountryFormField } from "./AddCountry.config";
 import { useClasses } from "./AddCountry.styles";
 
 const createOptions = (continents: Continent[]): IDropdownOption[] => {
-  return continents.map((continent) => {
-    return { key: continent.name, text: continent.name } as IDropdownOption;
-  });
+  return continents
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((continent) => {
+      return { key: continent.name, text: continent.name } as IDropdownOption;
+    });
 };
 
 export const AddCountry: React.FunctionComponent = () => {

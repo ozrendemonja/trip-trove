@@ -214,8 +214,8 @@ export const AddAttraction: React.FunctionComponent = () => {
 
               const newAttraction: SaveAttraction = {
                 isCountrywide: isCountrywide,
-                regionId: formFields.regionId?.value,
-                cityId: formFields.cityId?.value,
+                regionId: isReginal ? formFields.regionId?.value : undefined,
+                cityId: !isReginal ? formFields.cityId?.value : undefined,
                 attractionName: formFields.name.value!,
                 mainAttractionId: formFields.mainAttractionId?.value,
                 attractionAddress: formFields.address?.value,

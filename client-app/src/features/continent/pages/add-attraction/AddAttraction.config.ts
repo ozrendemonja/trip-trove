@@ -2,6 +2,9 @@ import {
   addMonths,
   addYears,
   defaultDatePickerStrings,
+  IComboBox,
+  IComboBoxOption,
+  IComboBoxProps,
   IDatePickerProps,
   IDatePickerStrings,
   IDropdownOption,
@@ -172,22 +175,24 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     required: false
   };
 
-  const categoryDropdown: Omit<IDropdownProps, "options"> & {
+  const categoryDropdown: Omit<IComboBoxProps, "options"> & {
     value: CategoryType;
   } = {
     placeholder: "Attraction category",
     label: "Attraction category",
     required: true,
     value: values.category,
+    autoComplete: "on",
     onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+      _event: React.FormEvent<IComboBox>,
+      option?: IComboBoxOption,
+      _index?: number,
+      value?: string
     ) => {
       setTouched({ ...touched, category: true });
       setValues({
         ...values,
-        category: option?.key ? CategoryType[option.key] : undefined
+        category: value ? CategoryType[value] : undefined
       });
     }
   };

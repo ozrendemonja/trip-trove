@@ -1,10 +1,9 @@
 import {
   Checkbox,
+  ComboBox,
   DatePicker,
   DefaultButton,
   Dropdown,
-  IDropdownStyles,
-  mergeStyleSets,
   PrimaryButton,
   Separator,
   Stack,
@@ -29,6 +28,7 @@ import { searchOverride, useClasses } from "./AddAttraction.styles";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
+  .sort((a, b) => a.localeCompare(b))
   .map((category) => ({
     key: category,
     text: category
@@ -36,6 +36,7 @@ const categoryOptions = Object.values(CategoryType)
 
 const typeOptions = Object.values(AttractionType)
   .filter((x) => typeof x !== "number")
+  .sort((a, b) => a.localeCompare(b))
   .map((category) => ({
     key: category,
     text: category
@@ -144,7 +145,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           horizontal={true}
           className={classes.row}
         >
-          <Dropdown
+          <ComboBox
             {...formFields.category}
             options={categoryOptions}
             className={classes.dropdowns}

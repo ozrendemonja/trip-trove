@@ -5,7 +5,7 @@ import {
   SearchBox,
   Stack
 } from "@fluentui/react";
-import { LegacyRef, useState } from "react";
+import { LegacyRef, useRef, useState } from "react";
 import { useClasses } from "./Search.styles";
 import { SearchProps } from "./Search.types";
 
@@ -23,9 +23,17 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
     }
   };
 
+  const focusZoneRef = useRef(null);
+  const handleTextFieldKeyDown = (event) => {
+    if (event.key === "ArrowDown") {
+      focusZoneRef.current!.focus();
+    }
+  };
+
   return (
     <Stack verticalAlign={"center"}>
       <SearchBox
+        onKeyDown={handleTextFieldKeyDown}
         placeholder="Search"
         ref={getBottomPosition}
         onClear={() => {
@@ -44,6 +52,7 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
         isCircularNavigation={true}
         role="grid"
         className={classes.dropdown}
+        componentRef={focusZoneRef}
       >
         {props.items.map((item) => (
           <DefaultButton
@@ -51,6 +60,7 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
             role="menuitem"
             className={classes.button}
             ariaLabel={item.value}
+            onFocus={() => setValue(item.value)}
             onClick={(_event) => {
               props.onFindItem(item.id);
               setValue("");

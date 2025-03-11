@@ -60,14 +60,17 @@ const onRenderItemColumn = (
     );
   } else if (column?.key === "destination") {
     return (
-      <Text>
-        {(atraction?.destination.cityName
-          ? atraction?.destination.cityName + ", "
-          : "") +
-          atraction?.destination.regionName +
-          ", " +
-          atraction?.destination.countryName}
-      </Text>
+      <Stack horizontal>
+        <Text>
+          {(atraction?.destination.cityName
+            ? atraction?.destination.cityName + ", "
+            : "") +
+            atraction?.destination.regionName +
+            ", " +
+            atraction?.destination.countryName}
+        </Text>
+        {atraction?.destination.isCountrywide && <Icon iconName="Flag" />}
+      </Stack>
     );
   } else if (column?.key === "address") {
     return (

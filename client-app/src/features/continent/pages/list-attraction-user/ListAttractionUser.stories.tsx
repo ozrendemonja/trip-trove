@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AttractionListUser from "./ListAttractionUser";
 
@@ -15,8 +15,15 @@ const meta: Meta<typeof AttractionListUser> = {
       makeServer();
       return (
         <>
-          <MemoryRouter initialEntries={["/"]}>
-            <Story />
+          <MemoryRouter
+            initialEntries={["/search/continent/Europe/attractions"]}
+          >
+            <Routes>
+              <Route
+                path="/search/:whereToSearch/:id/attractions"
+                element={<Story />}
+              />
+            </Routes>
           </MemoryRouter>
           <style>{styleOverrides}</style>
         </>

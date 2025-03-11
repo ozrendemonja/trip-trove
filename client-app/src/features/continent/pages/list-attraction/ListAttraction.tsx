@@ -1,5 +1,6 @@
 import {
   IColumn,
+  Icon,
   IDropdownOption,
   Link,
   Selection,
@@ -80,6 +81,7 @@ const onRenderItemColumn = (
             ", " +
             atraction?.destination.countryName}
         </Text>
+        {atraction?.destination.isCountrywide && <Icon iconName="Flag" />}
         <EditAttractionDestination
           attractionId={atraction!.id}
           destination={atraction!.destination}

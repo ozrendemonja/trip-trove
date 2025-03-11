@@ -17,11 +17,15 @@ import Navigation from "../../../../shared/navigation/Navigation";
 import { LastReadAttraction } from "../../domain/Attraction.types";
 import { AttractionListCustomizerUser } from "../../domain/AttractionListCustomizerUser";
 import { onRenderWhenNoMoreItems } from "../list-attraction/ListAttraction.config";
-import { AttractionRow } from "../list-attraction/ListAttraction.types";
+import {
+  AttractionRow,
+  ListAttractionPageInfo
+} from "../list-attraction/ListAttraction.types";
 import { toLastReadAttraction } from "../list-attraction/ListAttraction.util";
 import { useClasses } from "./ListAttractionUser.styles";
 import {
   createGetPagedAttractions,
+  createGetPageInfoById,
   stringToBoolean,
   toggleQueryParam
 } from "./ListAttractionUser.utils";
@@ -143,6 +147,14 @@ export const AttractionListUser: React.FunctionComponent = () => {
       type: searchParams.get("type") ?? undefined
     });
 
+  const [pageInfo, setPageInfo] = useState<ListAttractionPageInfo>({
+    name: "",
+    under: ""
+  });
+  useEffect(() => {
+    createGetPageInfoById(whereToSearch)(id!).then(setPageInfo);
+  }, []);
+
   useEffect(() => {
     getPagedAttractions(lastElement).then((data) => {
       setLoading();
@@ -179,9 +191,9 @@ export const AttractionListUser: React.FunctionComponent = () => {
             styles={{ root: { fontSize: 30, marginBottom: 46 } }}
           >
             <Icon iconName="MapPin" />
-            <Text styles={{ root: { fontSize: 30 } }}>Paris,</Text>
+            <Text styles={{ root: { fontSize: 30 } }}>{pageInfo.name}</Text>
             <Text styles={{ root: { fontSize: 30, color: "gray" } }}>
-              France
+              {pageInfo.under && `, ${pageInfo.under}`}
             </Text>
           </Stack>
           <Stack horizontal className={classes.root}>

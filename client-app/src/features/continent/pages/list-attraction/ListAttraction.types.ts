@@ -139,3 +139,8 @@ export interface EditAttractionTypeProps {
 
   onUpdateClick: () => void;
 }
+
+export type ListAttractionPageInfo = {
+  name: string;
+  under: string;
+};

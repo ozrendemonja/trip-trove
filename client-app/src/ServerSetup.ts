@@ -99,7 +99,7 @@ export default function makeServer(): ReturnType<typeof createServer> {
         cityId: 1,
         cityName: "Šiauliai",
         regionName: "Samogitia",
-        countryName: "Lithuanian",
+        countryName: "Lithuania",
         changedOn: "2024-12-23T08:01:02.0000000"
       });
       server.create("city", {
@@ -789,11 +789,20 @@ export default function makeServer(): ReturnType<typeof createServer> {
       );
 
       this.get(
-        "/search/attraction/:mainAttractionId/attractions",
+        "/search/continent/:continentName/attractions",
         (schema, request) => {
+          const continentName = request.params.continentName;
           const attractionId = request.queryParams.attractionId;
-          let result = schema.db.attractions.sort() as GetAttractionResponse[];
 
+          const countryNames = schema.db.countries
+            .filter((data) => data.continentName == continentName)
+            .map((data) => data.countryName);
+
+          let result = schema.db.attractions
+            .filter((attraction) =>
+              countryNames.includes(attraction.countryName)
+            )
+            .sort() as GetAttractionResponse[];
           if (attractionId) {
             result = result.slice(
               result.findIndex(

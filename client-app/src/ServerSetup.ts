@@ -807,9 +807,7 @@ export default function makeServer(): ReturnType<typeof createServer> {
             result = result.slice(
               result.findIndex(
                 (attraction) =>
-                  attraction.attractionId ==
-                    (attractionId as unknown as number) &&
-                  countryNames.includes(attraction.countryName)
+                  attraction.attractionId == (attractionId as unknown as number)
               ) + 1
             );
           }

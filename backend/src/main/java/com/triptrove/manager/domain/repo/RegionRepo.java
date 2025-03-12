@@ -41,8 +41,9 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
     List<Region> findNewestBefore(ScrollPosition afterRegion, Limit limit);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(r.name, r.id) FROM Region r
-            WHERE r.name LIKE %:query%
+            SELECT new com.triptrove.manager.domain.model.Suggestion(r.name, r.id)
+            FROM Region r
+            WHERE lower(r.name) LIKE lower(concat('%', :query,'%'))
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

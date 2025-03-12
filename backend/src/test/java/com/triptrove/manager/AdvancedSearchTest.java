@@ -173,7 +173,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(1L, null, null, "STABLE", null, null, null),
                 new FilteredAttraction(5L, null, null, null, null, null, "tional Test 4"),
                 new FilteredAttraction(5L, null, null, null, null, null, "attraction 3"),
-                new FilteredAttraction(5L, null, null, null, null, null, "attraction 3"),
+                new FilteredAttraction(5L, null, null, null, null, null, "test attraction 3"),
                 new FilteredAttraction(4L, null, null, null, null, null, "tip n")
         );
     }
@@ -414,7 +414,8 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(6L, null, null, "POTENTIAL_CHANGE", false, false, null),
                 new FilteredAttraction(6L, null, null, null, false, false, "t 3 "),
                 new FilteredAttraction(7L, null, null, null, null, null, "ction 5"),
-                new FilteredAttraction(6L, null, null, null, null, null, "st t")
+                new FilteredAttraction(6L, null, null, null, null, null, "st t"),
+                new FilteredAttraction(7L, null, null, null, null, null, "functional Test 5")
         );
     }
 
@@ -504,7 +505,8 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(3L, false, null, null, null, null, "Functional Test 2 n"),
                 new FilteredAttraction(5L, true, null, null, null, false, null),
                 new FilteredAttraction(5L, null, null, null, null, null, "on 3"),
-                new FilteredAttraction(4L, null, null, null, null, null, "new f")
+                new FilteredAttraction(4L, null, null, null, null, null, "new f"),
+                new FilteredAttraction(4L, null, null, null, null, null, "test tip")
         );
     }
 

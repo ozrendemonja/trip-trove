@@ -46,8 +46,9 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
     List<Attraction> findNewestBefore(ScrollPosition afterAttraction, Limit limit);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) FROM Attraction a
-            WHERE a.name LIKE %:query%
+            SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) 
+            FROM Attraction a
+            WHERE lower(a.name) LIKE lower(concat('%', :query,'%'))
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
@@ -56,7 +57,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
             SELECT new com.triptrove.manager.domain.model.Suggestion(mainA.name, CAST(mainA.id AS int))
             FROM Attraction mainA 
             INNER JOIN mainA.attractions a 
-            WHERE mainA.name LIKE %:query%
+            WHERE lower(mainA.name) LIKE lower(concat('%', :query,'%'))
             ORDER BY coalesce(mainA.updatedOn, mainA.createdOn) DESC
             """)
     List<Suggestion> findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

@@ -6,6 +6,8 @@ import jakarta.persistence.criteria.JoinType;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Locale;
+
 @Log4j2
 public class AttractionSpecifications {
 
@@ -78,15 +80,15 @@ public class AttractionSpecifications {
     }
 
     private static Specification<Attraction> searchName(String nameQuery) {
-        return (root, query, cb) -> cb.like(root.get("name"), "%" + nameQuery + "%");
+        return (root, query, cb) -> cb.like(cb.lower(root.get("name")), "%" + nameQuery.toLowerCase(Locale.ROOT) + "%");
     }
 
     private static Specification<Attraction> searchTip(String tipQuery) {
-        return (root, query, cb) -> cb.like(root.get("tip"), "%" + tipQuery + "%");
+        return (root, query, cb) -> cb.like(cb.lower(root.get("tip")), "%" + tipQuery.toLowerCase(Locale.ROOT) + "%");
     }
 
     private static Specification<Attraction> searchSourceName(String sourceNameQuery) {
-        return (root, query, cb) -> cb.like(root.get("informationProvider").get("sourceName"), "%" + sourceNameQuery + "%");
+        return (root, query, cb) -> cb.like(cb.lower(root.get("informationProvider").get("sourceName")), "%" + sourceNameQuery.toLowerCase(Locale.ROOT) + "%");
     }
 
     public static Specification<Attraction> applyFilters(AttractionFilter filters) {

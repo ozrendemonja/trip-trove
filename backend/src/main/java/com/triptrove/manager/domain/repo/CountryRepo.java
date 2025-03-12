@@ -28,14 +28,14 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
     List<Country> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
     @Query("""
-            SELECT c FROM Country c ORDER BY
-            coalesce(c.updatedOn, c.createdOn) DESC
+            SELECT c FROM Country c
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Country> findAllOrderByNewest(Limit limit);
 
     @Query("""
-            SELECT c FROM Country c ORDER BY
-            coalesce(c.updatedOn, c.createdOn) ASC
+            SELECT c FROM Country c
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 
@@ -44,7 +44,9 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
     void deleteById(Integer id);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id) FROM Country c WHERE c.name LIKE %:query%
+            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id) 
+            FROM Country c 
+            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

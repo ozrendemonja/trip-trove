@@ -81,7 +81,7 @@ public class SearchTest extends AbstractIntegrationTest {
     private static Stream<QueryAndSuggestions> provideValidCountryQueries() {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
+                new QueryAndSuggestions("test", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
                 new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test country 4", 5), createSuggestionDto("Test country 3", 4), createSuggestionDto("Test country 2", 3))),
                 new QueryAndSuggestions("country 4", List.of(createSuggestionDto("Test country 4", 5)))
         );
@@ -109,7 +109,7 @@ public class SearchTest extends AbstractIntegrationTest {
     private static Stream<QueryAndSuggestions> provideValidContinentQueries() {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
+                new QueryAndSuggestions("test", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
                 new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test continent 0", 1), createSuggestionDto("Test continent 3", 4), createSuggestionDto("Test continent 1", 2))),
                 new QueryAndSuggestions("ontinent 3", List.of(createSuggestionDto("Test continent 3", 4)))
         );
@@ -136,7 +136,7 @@ public class SearchTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideInValidQueries")
+    @MethodSource("provideInvalidQueries")
     void userShouldGetConflictResponseWhenCountryQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -152,12 +152,12 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
-    private static Stream<String> provideInValidQueries() {
+    private static Stream<String> provideInvalidQueries() {
         return Stream.of("", " ", "       ", "T", "Te");
     }
 
     @ParameterizedTest
-    @MethodSource("provideInValidQueries")
+    @MethodSource("provideInvalidQueries")
     void userShouldGetConflictResponseWhenRegionQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -196,7 +196,7 @@ public class SearchTest extends AbstractIntegrationTest {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
                 new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
-                new QueryAndSuggestions("Test r", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
+                new QueryAndSuggestions("test r", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
                 new QueryAndSuggestions("region 4", List.of(createSuggestionDto(REGION_NAME_4, 5)))
         );
     }
@@ -224,13 +224,13 @@ public class SearchTest extends AbstractIntegrationTest {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
                 new QueryAndSuggestions("Test ", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
-                new QueryAndSuggestions("Test c", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
+                new QueryAndSuggestions("test c", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5), createSuggestionDto(CITY_NAME_3, 4))),
                 new QueryAndSuggestions("city 4", List.of(createSuggestionDto(CITY_NAME_4_3, 3), createSuggestionDto(CITY_NAME_4_2, 5)))
         );
     }
 
     @ParameterizedTest
-    @MethodSource("provideInValidQueries")
+    @MethodSource("provideInvalidQueries")
     void userShouldGetConflictResponseWhenCityQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -269,7 +269,7 @@ public class SearchTest extends AbstractIntegrationTest {
     void onlyMainAttractionNamesWhichGivenSearchStringIsSubstringOfAreReturnedWhenOnlyMainIsSetInSearchByAttractionName() throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", "Tes")
+                        .param("q", "tes")
                         .param("i", "MAIN_ATTRACTION")
                         .header("x-api-version", "1"))
                 .andExpect(status().isOk())
@@ -278,21 +278,21 @@ public class SearchTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
-        assertThat(response.prefix()).isEqualTo("Tes");
+        assertThat(response.prefix()).isEqualTo("tes");
         assertThat(response.suggestions()).containsExactlyInAnyOrder(new SuggestionDto("Test attraction 0", 1, StrategyApiType.RANK));
     }
 
     private static Stream<QueryAndSuggestions> provideValidAttractionQueries() {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto("Test attraction 3", 5), createSuggestionDto("Test attraction 2", 4), createSuggestionDto("Test attraction 1", 3))),
-                new QueryAndSuggestions("Test", List.of(createSuggestionDto("Test attraction 3", 5), createSuggestionDto("Test attraction 2", 4), createSuggestionDto("Test attraction 1", 3))),
+                new QueryAndSuggestions("test", List.of(createSuggestionDto("Test attraction 3", 5), createSuggestionDto("Test attraction 2", 4), createSuggestionDto("Test attraction 1", 3))),
                 new QueryAndSuggestions("Test ", List.of(createSuggestionDto("Test attraction 3", 5), createSuggestionDto("Test attraction 2", 4), createSuggestionDto("Test attraction 1", 3))),
                 new QueryAndSuggestions("Test attraction 0", List.of(createSuggestionDto("Test attraction 0", 2), createSuggestionDto("Test attraction 0", 1)))
         );
     }
 
     @ParameterizedTest
-    @MethodSource("provideInValidQueries")
+    @MethodSource("provideInvalidQueries")
     void userShouldGetConflictResponseWhenAttractionQueryNameIsTooShort(String input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)

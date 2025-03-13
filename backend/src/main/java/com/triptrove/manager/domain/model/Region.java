@@ -15,7 +15,7 @@ import java.util.Optional;
 @Setter
 @Entity
 @Table(name = "region", uniqueConstraints =
-        {@UniqueConstraint(name = "UniqueNameAndCountry", columnNames = {"name", "country"})}
+        {@UniqueConstraint(name = "UniqueNameAndCountry", columnNames = {"name", "country_id"})}
 )
 @EntityListeners(AuditingEntityListener.class)
 public class Region {

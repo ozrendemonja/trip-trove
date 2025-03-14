@@ -54,6 +54,15 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
 
     @Query("""
+            SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) 
+            FROM Attraction a
+            WHERE lower(a.name) LIKE lower(concat('%', :query,'%'))
+            AND a.country.id = :countryId
+            ORDER BY coalesce(a.updatedOn, a.createdOn) DESC
+            """)
+    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Integer countryId, Limit limit);
+
+    @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(mainA.name, CAST(mainA.id AS int))
             FROM Attraction mainA 
             INNER JOIN mainA.attractions a 
@@ -61,6 +70,16 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
             ORDER BY coalesce(mainA.updatedOn, mainA.createdOn) DESC
             """)
     List<Suggestion> findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.Suggestion(mainA.name, CAST(mainA.id AS int))
+            FROM Attraction mainA 
+            INNER JOIN mainA.attractions a 
+            WHERE lower(mainA.name) LIKE lower(concat('%', :query,'%'))
+            AND a.country.id = :countryId
+            ORDER BY coalesce(mainA.updatedOn, mainA.createdOn) DESC
+            """)
+    List<Suggestion> findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Integer countryId, Limit limit);
 
     @Query("SELECT COUNT(a)>0 FROM Attraction mainA INNER JOIN mainA.attractions a WHERE mainA.id = :id")
     boolean isMainAttraction(Long id);

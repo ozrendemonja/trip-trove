@@ -49,6 +49,15 @@ public interface CityRepo extends JpaRepository<City, Integer> {
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
 
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id)
+            FROM City c
+            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
+            AND c.region.country.id = :countryId
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            """)
+    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Integer countryId, Limit limit);
+
     @Query("SELECT COUNT(a)>0 FROM City c INNER JOIN c.attractions a WHERE c.id = :id")
     boolean hasAttractionsUnder(Integer id);
 }

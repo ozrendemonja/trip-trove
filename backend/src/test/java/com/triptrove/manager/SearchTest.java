@@ -192,6 +192,25 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
     }
 
+    @Test
+    void listOfRegionNamesWhichGivenSearchStringIsSubstringOfUnderGivenCountryWhenSearchByRegionNameAndCountryId() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "Tes")
+                        .param("i", "REGION")
+                        .param("cid", "2")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo("Tes");
+        assertThat(response.suggestions()).hasSize(1);
+        assertThat(response.suggestions().getFirst()).isEqualTo(new SuggestionDto("Test region 2", 3, StrategyApiType.RANK));
+    }
+
     private static Stream<QueryAndSuggestions> provideValidRegionQueries() {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
@@ -218,6 +237,25 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.prefix()).isEqualTo(input.query());
         assertThat(response.suggestions()).hasSize(input.suggestedNames().size());
         assertThat(response.suggestions()).isEqualTo(input.suggestedNames());
+    }
+
+    @Test
+    void listOfCityNamesWhichGivenSearchStringIsSubstringOfUnderGivenCountryWhenSearchByCityNameAndCountryId() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "Tes")
+                        .param("i", "CITY")
+                        .param("cid", "2")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo("Tes");
+        assertThat(response.suggestions()).hasSize(1);
+        assertThat(response.suggestions().getFirst()).isEqualTo(new SuggestionDto("Test city 4", 3, StrategyApiType.RANK));
     }
 
     private static Stream<QueryAndSuggestions> provideValidCityQueries() {
@@ -266,6 +304,25 @@ public class SearchTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void listOfAttractionNamesWhichGivenSearchStringIsSubstringOfUnderGivenCountryWhenSearchByAttractionNameAndCountryId() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "Tes")
+                        .param("i", "ATTRACTION")
+                        .param("cid", "3")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo("Tes");
+        assertThat(response.suggestions()).hasSize(1);
+        assertThat(response.suggestions().getFirst()).isEqualTo(new SuggestionDto("Test attraction 2", 4, StrategyApiType.RANK));
+    }
+
+    @Test
     void onlyMainAttractionNamesWhichGivenSearchStringIsSubstringOfAreReturnedWhenOnlyMainIsSetInSearchByAttractionName() throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -306,6 +363,24 @@ public class SearchTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @Test
+    void listOfEmptyMainAttractionNamesWhenGivenSearchStringHasNoSubstringUnderGivenCountryId() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "tes")
+                        .param("i", "MAIN_ATTRACTION")
+                        .param("cid", "3")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo("tes");
+        assertThat(response.suggestions()).isEmpty();
     }
 
 }

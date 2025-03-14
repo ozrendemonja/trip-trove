@@ -420,11 +420,15 @@ export const changeRegionCountry = async (
   }
 };
 
-export const searchRegion = async (query: string): Promise<Suggestion[]> => {
+export const searchRegion = async (
+  query: string,
+  countryId?: number
+): Promise<Suggestion[]> => {
   const { data, error } = await getSearchedElements({
     query: {
       q: query,
-      i: "REGION"
+      i: "REGION",
+      cid: countryId
     },
     headers: {
       "x-api-version": "1"
@@ -580,11 +584,15 @@ export const getCityById = async (id: number): Promise<City> => {
   };
 };
 
-export const searchCity = async (query: string): Promise<Suggestion[]> => {
+export const searchCity = async (
+  query: string,
+  countryId?: number
+): Promise<Suggestion[]> => {
   const { data, error } = await getSearchedElements({
     query: {
       q: query,
-      i: "CITY"
+      i: "CITY",
+      cid: countryId
     },
     headers: {
       "x-api-version": "1"

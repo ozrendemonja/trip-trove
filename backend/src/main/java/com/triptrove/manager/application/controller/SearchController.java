@@ -33,10 +33,14 @@ public class SearchController {
     @Operation(summary = "Get name suggestions based on the query in a group, sorted by last updated time or creation time if never updated ",
             parameters = {
                     @Parameter(name = "q", description = "Parameter used for search. Query string must be at least 3 characters long"),
-                    @Parameter(name = "i", description = "Parameter used to select the group of elements for the search")
+                    @Parameter(name = "i", description = "Parameter used to select the group of elements for the search"),
+                    @Parameter(name = "cid", description = "Parameter used to specifies the country for the search. It is not used when searching for a country or continent.")
             })
-    public GetSearchResponse getSearchedElements(@RequestParam(name = "q") @NotBlank @Size(min = 3, message = "Query string must be at least {min} characters long") String query, @RequestParam(name = "i") SearchIn searchIn) {
-        var result = searchService.suggestNames(query, searchIn.toSearchInElement())
+    public GetSearchResponse getSearchedElements(@RequestParam(name = "q") @NotBlank @Size(min = 3, message = "Query string must be at least {min} characters long") String query,
+                                                 @RequestParam(name = "i") SearchIn searchIn,
+                                                 @RequestParam(name = "cid", required = false) Integer countryId
+    ) {
+        var result = searchService.suggestNames(query, searchIn.toSearchInElement(), countryId)
                 .stream()
                 .map(element -> new SuggestionDto(element.value(), element.id(), StrategyApiType.RANK))
                 .toList();

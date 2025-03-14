@@ -89,7 +89,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     },
     onGetErrorMessage: (_value: string) =>
       touched.regionId ? errorMessage?.regionIdError : undefined,
-    getSuggestions: searchRegion,
+    getSuggestions: (query: string) => searchRegion(query, values.countryId),
     value: values.regionId
   };
 
@@ -103,7 +103,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     },
     onGetErrorMessage: (_value: string) =>
       touched.cityId ? errorMessage?.cityIdError : undefined,
-    getSuggestions: searchCity,
+    getSuggestions: (query: string) => searchCity(query, values.countryId),
     value: values.cityId
   };
 

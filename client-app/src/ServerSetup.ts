@@ -313,6 +313,10 @@ export default function makeServer(): ReturnType<typeof createServer> {
       this.get("/search", (schema, request) => {
         const query = request.queryParams.q;
         const inElement = request.queryParams.i;
+        const countryId = request.queryParams.cid;
+        const underCountry = schema.db.countries.findBy((data) => {
+          return data.countryId == countryId;
+        });
 
         if (inElement == "COUNTRY") {
           let result = schema.db.countries
@@ -330,7 +334,12 @@ export default function makeServer(): ReturnType<typeof createServer> {
         } else if (inElement == "REGION") {
           let result = schema.db.regions
             .sort()
-            .filter((data) => data.regionName.includes(query))
+            .filter((region) => region.regionName.includes(query))
+            .filter(
+              (region) =>
+                underCountry == undefined ||
+                region.countryName == underCountry.countryName
+            )
             .map((region) => {
               return {
                 value: region.regionName,
@@ -344,6 +353,11 @@ export default function makeServer(): ReturnType<typeof createServer> {
           let result = schema.db.cities
             .sort()
             .filter((city) => city.cityName.includes(query))
+            .filter(
+              (city) =>
+                underCountry == undefined ||
+                city.countryName == underCountry.countryName
+            )
             .map((city) => {
               return {
                 value:
@@ -362,6 +376,24 @@ export default function makeServer(): ReturnType<typeof createServer> {
           let result = schema.db.attractions
             .sort()
             .filter((attraction) => attraction.attractionName.includes(query))
+            .map((attraction) => {
+              return {
+                value: attraction.attractionName,
+                id: attraction.attractionId,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
+        } else if (inElement == "MAIN_ATTRACTION") {
+          let result = schema.db.attractions
+            .sort()
+            .filter((attraction) => attraction.attractionName.includes(query))
+            .filter((attraction) =>
+              schema.db.attractions.findBy(
+                (child) => child.mainAttractionName == attraction.attractionName
+              )
+            )
             .map((attraction) => {
               return {
                 value: attraction.attractionName,

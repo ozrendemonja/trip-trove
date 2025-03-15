@@ -37,6 +37,8 @@ const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
         minDate={props.minDate}
         maxDate={props.maxDate}
         allowTextInput={props.allowTextInput}
+        disabled={props.disable}
+        value={props.fromDate ? new Date(props.fromDate) : undefined}
       />
       {/* <Icon iconProps={{ iconName: "ChromeBackMirrored", styles: { root: { color: "#fec703", textAlign: "centre" } } }} /> */}
       <div style={{ padding: "5px" }}>
@@ -62,6 +64,8 @@ const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
         minDate={props.minDate}
         maxDate={props.maxDate}
         allowTextInput={props.allowTextInput}
+        disabled={props.disable}
+        value={props.toDate ? new Date(props.toDate) : undefined}
       />
       {/* <IconButton iconProps={{ iconName: "Checkbox", styles: { root: { color: "#fec703", fontSize: 24 } } }} /> */}
     </Stack>

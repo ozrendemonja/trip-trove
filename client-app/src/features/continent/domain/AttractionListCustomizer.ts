@@ -15,8 +15,18 @@ export class AttractionListCustomizer extends ListElementCustomizer<AttractionRo
     const result = { ...column };
 
     result.ariaLabel = `Operations for ${column.name}`;
-    result.isMultiline = false;
-    result.minWidth = 100;
+    result.isMultiline = true;
+
+    if (column?.key === "mustVisit" || column?.key === "isTraditional") {
+      result.maxWidth = 60;
+    } else if (column?.key === "type") {
+      result.maxWidth = 140;
+    } else if (column?.key === "optimalVisitPeriod") {
+      result.minWidth = 280;
+    } else {
+      result.minWidth = 150;
+    }
+
     result.isResizable = true;
     result.isCollapsible = true;
 

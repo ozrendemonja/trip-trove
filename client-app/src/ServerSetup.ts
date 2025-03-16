@@ -10,6 +10,7 @@ import {
   UpdateAttractionDetailRequest,
   UpdateAttractionInformationProviderRequest,
   UpdateAttractionLocationRequest,
+  UpdateAttractionTipRequest,
   UpdateAttractionTraditionalRequest,
   UpdateAttractionTypeRequest,
   UpdateAttractionVisitPeriodRequest,
@@ -815,6 +816,24 @@ export default function makeServer(): ReturnType<typeof createServer> {
           );
           schema.db.attractions.update(element.id, {
             attractionType: type
+          });
+        },
+        { timing: 600 }
+      );
+
+      this.put(
+        "/attractions/:id/tip",
+        (schema, request) => {
+          const id = request.params.id;
+          const tip = (
+            JSON.parse(request.requestBody) as UpdateAttractionTipRequest
+          ).tip;
+
+          const element = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+          schema.db.attractions.update(element.id, {
+            tip: tip
           });
         },
         { timing: 600 }

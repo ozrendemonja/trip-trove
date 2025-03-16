@@ -15,7 +15,7 @@ const categoryOptions = Object.values(CategoryType)
 const EditAttractionCategory: React.FunctionComponent<
   EditAttractionCategoryProps
 > = (props) => {
-  const { formFields, isFormValid } = useAttractionCategoryFormField();
+  const { formFields, _isFormValid } = useAttractionCategoryFormField();
 
   return (
     <EditProperty
@@ -28,11 +28,12 @@ const EditAttractionCategory: React.FunctionComponent<
         );
         props.onUpdateClick();
       }}
-      isFormValid={isFormValid}
+      isFormValid={formFields.category.value != undefined}
     >
       <Dropdown
         {...formFields.category}
         options={categoryOptions}
+        styles={{ root: { width: "300px" } }}
         // className={classes.dropdowns}
       />
     </EditProperty>

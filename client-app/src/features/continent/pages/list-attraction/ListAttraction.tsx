@@ -72,7 +72,7 @@ const onRenderItemColumn = (
     );
   } else if (column?.key === "destination") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Stack tokens={{ childrenGap: 10 }} horizontal={true}>
         <Text>
           {(atraction?.destination.cityName
             ? atraction?.destination.cityName + ", "
@@ -81,7 +81,9 @@ const onRenderItemColumn = (
             ", " +
             atraction?.destination.countryName}
         </Text>
-        {atraction?.destination.isCountrywide && <Icon iconName="Flag" />}
+        {atraction?.destination.isCountrywide && (
+          <Icon iconName="Flag" styles={{ root: { color: "green" } }} />
+        )}
         <EditAttractionDestination
           attractionId={atraction!.id}
           destination={atraction!.destination}
@@ -152,7 +154,13 @@ const onRenderItemColumn = (
   } else if (column?.key === "optimalVisitPeriod") {
     return (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        {atraction?.optimalVisitPeriod && <DateRangePicker></DateRangePicker>}
+        {atraction?.optimalVisitPeriod && (
+          <DateRangePicker
+            fromDate={atraction.optimalVisitPeriod.fromDate}
+            toDate={atraction.optimalVisitPeriod.toDate}
+            disable={true}
+          ></DateRangePicker>
+        )}
         <EditAttractionVisitPeriod
           attractionId={atraction!.id}
           attractionName={atraction?.name.name!}
@@ -186,7 +194,7 @@ const onRenderItemColumn = (
     );
   } else if (column?.key === "type") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Stack tokens={{ childrenGap: 6 }} horizontal={true}>
         <Text>{atraction?.type}</Text>
         <EditAttractionType
           attractionId={atraction!.id}

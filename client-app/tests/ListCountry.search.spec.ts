@@ -33,6 +33,9 @@ test("Dropdown and search values are cleared when clicking on cancel search", as
 }) => {
   await page.getByRole("searchbox", { name: "Search" }).fill("Lit");
   await page.getByRole("button", { name: "Clear text" }).click();
+  await expect(page.getByRole("menuitem", { name: "Lithuania" })).toHaveCount(
+    0
+  );
 
   await expect(page).toHaveScreenshot();
 });

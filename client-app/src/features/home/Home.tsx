@@ -1,11 +1,14 @@
 import {
+  Icon,
   IOverflowSetItemProps,
   Link,
   OverflowSet,
-  Stack
+  Stack,
+  Text
 } from "@fluentui/react";
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
+import { configData } from "../../assets/ConfigData";
 import Navigation from "../../shared/navigation/Navigation";
 import { SearchText } from "../../shared/search-text/SearchText";
 import { SearchTextProps } from "../../shared/search-text/SearchText.types";
@@ -61,6 +64,24 @@ export const Home: React.FunctionComponent = () => {
     <>
       <Navigation />
       <Stack tokens={{ childrenGap: 0 }} className={classes.searchContiner}>
+        <Stack
+          horizontal
+          styles={{
+            root: { fontSize: 40, paddingBottom: "20px", paddingLeft: "20%" }
+          }}
+        >
+          <Icon
+            iconName="Train"
+            styles={{
+              root: {
+                paddingTop: "12%"
+              }
+            }}
+          />
+          <Text as={"h2"} styles={{ root: { fontSize: 40, marginLeft: 15 } }}>
+            {configData.APPLICATION_NAME}
+          </Text>
+        </Stack>
         <OverflowSet
           aria-label="Search options"
           items={searchOptions.map((option) => ({

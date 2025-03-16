@@ -9,4 +9,7 @@ export type DateRangePickerProps {
   minDate?: Date;
   maxDate?: Date;
   allowTextInput?: boolean;
+  fromDate?: string;
+  toDate?: string;
+  disable: boolean;
 }

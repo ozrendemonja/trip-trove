@@ -9,15 +9,20 @@ export const useClasses = () => {
   return mergeStyleSets({
     notSelectedSearchOption: {
       ...defaultSearchOption,
-      textDecoration: "underline"
+      textDecoration: "underline",
+      ":focus, :active, :hover": {
+        color: "black",
+        textDecoration: undefined
+      }
     },
     selectedSearchOption: {
       ...defaultSearchOption,
       color: "black",
       textDecoration: undefined,
       fontWeight: "bold",
-      ":focus, :active": {
-        color: "black"
+      ":focus, :active, :hover": {
+        color: "black",
+        textDecoration: undefined
       }
     },
     searchContiner: {

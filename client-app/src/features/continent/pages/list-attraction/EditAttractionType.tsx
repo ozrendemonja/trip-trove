@@ -33,6 +33,7 @@ const EditAttractionType: React.FunctionComponent<EditAttractionTypeProps> = (
       <Dropdown
         {...formFields.type}
         options={typeOptions}
+        styles={{ root: { width: "200px" } }}
         // className={classes.dropdowns}
       />
     </EditProperty>

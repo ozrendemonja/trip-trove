@@ -27,17 +27,14 @@ const EditPropertyAttractionDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Stack
-        tokens={{ childrenGap: 48 }}
-        horizontal={true}
-        // className={classes.row}
-      >
+      <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
         <TextField
           {...formFields.name}
           // className={classes.attractionName}
         />
         <Toggle
           //   className={classes.inputToggle}
+          styles={{ root: { marginBottom: "-2.8%" } }}
           label="Part of attraction"
           inlineLabel
           onChange={togglePartOfAttraction}

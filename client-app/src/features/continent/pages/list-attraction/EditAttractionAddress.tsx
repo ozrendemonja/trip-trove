@@ -28,17 +28,15 @@ const EditAttractionAddress: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Stack
-        tokens={{ childrenGap: 48 }}
-        horizontal={true}
-        // className={classes.row}
-      >
-        <TextField
-          {...formFields.address}
-          // className={classes.attractionName}
-        />
-        <TextField {...formFields.geoLocation} />
-      </Stack>
+      <TextField
+        {...formFields.address}
+        styles={{ root: { width: "100%" } }}
+        // className={classes.attractionName}
+      />
+      <TextField
+        {...formFields.geoLocation}
+        styles={{ root: { width: "200px" } }}
+      />
     </EditProperty>
   );
 };

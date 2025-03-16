@@ -1,4 +1,4 @@
-import { Stack, Text, Toggle } from "@fluentui/react";
+import { Separator, Stack, Text, Toggle } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { SearchText } from "../../../../shared/search-text/SearchText";
@@ -13,9 +13,7 @@ const EditAttractionDestination: React.FunctionComponent<
   const [isCountrywide, { toggle: toggleIsCountrywide }] = useBoolean(
     props.destination.isCountrywide
   );
-  const [isReginal, { toggle: toggleReginal }] = useBoolean(
-    props.destination.regionName != undefined
-  );
+  const [isReginal, { toggle: toggleReginal }] = useBoolean(true);
 
   return (
     <EditProperty
@@ -32,9 +30,11 @@ const EditAttractionDestination: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+      <Separator></Separator>
+      <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
         <Text
-          as="h1"
+          as="h2"
+          styles={{ root: { textAlign: "end", fontSize: "20px" } }}
           // className={classes.subHeader}
         >
           Country
@@ -44,12 +44,17 @@ const EditAttractionDestination: React.FunctionComponent<
           label="Nationally Recognized Attraction"
           inlineLabel
           onChange={toggleIsCountrywide}
+          styles={{
+            root: { textAlign: "end", marginBottom: 0, fontSize: "14px" }
+          }}
         />
       </Stack>
       <SearchText {...formFields.countryId} />
-      <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+      <Separator></Separator>
+      <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
         <Text
           as="h2"
+          styles={{ root: { textAlign: "end", fontSize: "20px" } }}
           // className={classes.subHeader}
         >
           {isReginal ? "Region" : "City"}
@@ -58,7 +63,11 @@ const EditAttractionDestination: React.FunctionComponent<
           //   className={classes.checkbox}
           label="Attraction is region level"
           inlineLabel
+          defaultChecked={isReginal}
           onChange={toggleReginal}
+          styles={{
+            root: { textAlign: "end", marginBottom: 0, fontSize: "14px" }
+          }}
         />
       </Stack>
       {isReginal && <SearchText {...formFields.regionId} />}

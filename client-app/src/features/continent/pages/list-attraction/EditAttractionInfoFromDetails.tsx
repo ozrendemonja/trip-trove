@@ -1,4 +1,4 @@
-import { DatePicker, Stack, Text, TextField } from "@fluentui/react";
+import { DatePicker, Stack, TextField } from "@fluentui/react";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeAttractionInfoFrom } from "../../infra/ManagerApi";
 import { useAttractionInfoFromFormField } from "../add-attraction/AddAttraction.config";
@@ -29,15 +29,7 @@ const EditAttractionInfoFromDetails: React.FunctionComponent<
         // className={classes.tip}
       >
         <TextField {...formFields.source} />
-        <Stack>
-          <Text
-            as="label"
-            // className={classes.checkbox}
-          >
-            When information comes from?
-          </Text>
-          <DatePicker {...formFields.sourceFrom} />
-        </Stack>
+        <DatePicker {...formFields.sourceFrom} />
       </Stack>
     </EditProperty>
   );

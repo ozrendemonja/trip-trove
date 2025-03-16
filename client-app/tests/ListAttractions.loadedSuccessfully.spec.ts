@@ -195,7 +195,8 @@ test("List should contain updated values when new update attraction name dialog 
 
   await page.getByRole("button", { name: "Update" }).click();
 
-  await expect(page.getByText("Vilnius Old Town new")).toHaveCount(1);
+  await expect(page.getByText("Casino of Monte-Carlo")).toHaveCount(1);
+  await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
   await expect(page).toHaveScreenshot();
 });
 
@@ -212,5 +213,464 @@ test("List should contain updated values without main attraction when only new a
   await page.getByRole("button", { name: "Update" }).click();
 
   await expect(page.getByText("Casino of Monte-Carlo new")).toHaveCount(1);
+  await expect(page.getByText("Casino of Monte-Carlo new")).toBeVisible();
+  await expect(page).toHaveScreenshot();
+});
+
+test("Display the edit attraction destination dialog prepopulated with existing data when the edit button in the destination column is clicked", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is disabled and error message is shown when region is not selected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Nationally Recognized Attraction").click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is disabled and error message is shown when country is not selected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is disabled and error message is shown when region is selected then deselected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Nationally Recognized Attraction").click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByLabel("Select a region").fill("Monac");
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is disabled and error message is shown when country is selected then deselected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Nationally Recognized Attraction").click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a country").fill("Lithuan");
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is disabled when city is not selected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Attraction is region level").click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is enabled when both country and city are selected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Attraction is region level").click();
+  await page.getByLabel("Select a city").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco, Monaco, Monaco" }).click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction destination dialog is enabled when both country and region are selected", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List is shown unchanged when update attraction destination is closed without action", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Vilnius Old Town$/ })
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot();
+});
+
+test("All buttons on the the update attraction destination dialog are disabled when the update is taking place", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated values when new update attraction destination dialog closes", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Select a region").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco" }).click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Monaco, Monaco/ })
+  ).toHaveCount(4);
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated values when new update attraction destination dialog closes with new city", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction destination from Lithuania"
+    })
+    .click();
+  await page.getByLabel("Select a country").fill("Lith");
+  await page.getByRole("menuitem", { name: "Lithuania" }).click();
+  await page.getByLabel("Attraction is region level").click();
+  await page.getByLabel("Select a city").fill("Mon");
+  await page.getByRole("menuitem", { name: "Monaco, Monaco, Monaco" }).click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Monaco, Monaco, Monaco/ })
+  ).toHaveCount(2);
+  await expect(page).toHaveScreenshot();
+});
+
+test("Display the edit attraction address dialog prepopulated with existing data when the edit button in the address column is clicked", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction address dialog is disabled and error message is shown when address is too long", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+  await page.getByLabel(/Attraction address$/).fill("A".repeat(513));
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("Update button on the edit attraction address dialog is disabled and error message is shown when geo location doesnt provide both long and lat", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+  await page.getByLabel("Geo location").fill("11.223432");
+  await page.getByRole("button", { name: "Cancel" }).focus();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List is shown unchanged when update attraction address is closed without action", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+  await page.getByLabel(/Attraction address$/).fill("Test address 123");
+  await page.getByLabel("Geo location").fill("11.223432, -12.32342");
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Vilnius Old Town$/ })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("All buttons on the the update attraction address dialog are disabled when the update is taking place", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+  await page.getByLabel(/Attraction address$/).fill("Test address 123");
+  await page.getByLabel("Geo location").fill("11.223432, -12.32342");
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain no address when update attraction address dialog closes with empty values", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from Pl. du Casino, 98000 Monaco"
+    })
+    .nth(1)
+    .click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page.getByText("Modifying")).toHaveCount(0);
+  await expect(page.getByText("Pl. du Casino, 98000 Monaco")).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated attraction address when new address is given", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction address from not provide"
+    })
+    .click();
+  await page.getByLabel(/Attraction address$/).fill("Test address 123");
+  await page.getByLabel("Geo location").fill("11.223432, -12.32342");
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: "Test address 123" })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("Display the edit attraction category dialog prepopulated with existing data when the edit button in the category column is clicked", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction category from HISTORIC_SITE"
+    })
+    .click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List is shown unchanged when update attraction category is closed without action", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction category from HISTORIC_SITE"
+    })
+    .click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Vilnius Old Town$/ })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated values when new attraction category dialog closes", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction category from HISTORIC_SITE"
+    })
+    .click();
+  await page.getByRole("combobox", { name: "Attraction category" }).click();
+  await page.getByRole("option", { name: "OTHER_LANDMARK" }).click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /OTHER_LANDMARK$/ })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("Display the edit attraction type dialog when the edit button in the type column is clicked", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction type from POTENTIAL_CHANGE"
+    })
+    .click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List is shown unchanged when update attraction type is closed without action", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction type from POTENTIAL_CHANGE"
+    })
+    .click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Vilnius Old Town$/ })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated values when new attraction type dialog closes", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction type from POTENTIAL_CHANGE"
+    })
+    .click();
+  await page.getByRole("combobox", { name: "Attraction type" }).click();
+  await page.getByRole("option", { name: "IMMINENT_CHANGE" }).click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page.getByText("Modifying")).toHaveCount(0);
+  await expect(page.getByText("IMMINENT_CHANGE")).toHaveCount(1);
+  await expect(page.getByText("IMMINENT_CHANGE")).toBeVisible();
+  await expect(page).toHaveScreenshot();
+});
+
+test("Display the edit attraction must visit dialog when the edit button in the type column is clicked", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction visit preferences for Larvotto Beach to must visit"
+    })
+    .click();
+
+  await expect(page).toHaveScreenshot();
+});
+
+test("List is shown unchanged when update attraction must visit is closed without action", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction visit preferences for Larvotto Beach to must visit"
+    })
+    .click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(
+    page.getByRole("gridcell", { name: /Vilnius Old Town$/ })
+  ).toHaveCount(1);
+  await expect(page).toHaveScreenshot();
+});
+
+test("List should contain updated values when new attraction must visit dialog closes", async ({
+  page
+}) => {
+  await page
+    .getByRole("button", {
+      name: "Change attraction visit preferences for Larvotto Beach to must visit"
+    })
+    .click();
+  await page.getByRole("button", { name: "Update" }).click();
+
+  await expect(page.getByText("Modifying")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Change attraction visit preferences for Larvotto Beach to must visit"
+    })
+  ).toHaveCount(0);
+  await expect(page.getByText("Casino of Monte-Carlo")).toHaveCount(1);
+  await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
   await expect(page).toHaveScreenshot();
 });

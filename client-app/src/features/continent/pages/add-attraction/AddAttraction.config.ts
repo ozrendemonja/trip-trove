@@ -256,6 +256,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
   const sourceFromField: IDatePickerProps = {
     placeholder: "Select recorded date...",
     ariaLabel: "Select recorded date...",
+    label: "Date of information recording",
     onSelectDate: (date: Date | null | undefined): void => {
       setTouched({ ...touched, sourceFrom: true });
       setValues({ ...values, sourceFrom: date });

@@ -54,8 +54,14 @@ const onRenderItemColumn = (
             <div>(part of {atraction?.name.mainAttractionName})</div>
           )}
         </Link>
-        {atraction?.mustVisit && <Icon iconName="Pinned" />}
-        {atraction?.isTraditional && <Icon iconName="Cotton" />}
+        <Stack tokens={{ childrenGap: 2 }} horizontal>
+          {atraction?.mustVisit && (
+            <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
+          )}
+          {atraction?.isTraditional && (
+            <Icon iconName="Cotton" styles={{ root: { color: "#fec703" } }} />
+          )}
+        </Stack>
       </Stack>
     );
   } else if (column?.key === "destination") {
@@ -69,7 +75,9 @@ const onRenderItemColumn = (
             ", " +
             atraction?.destination.countryName}
         </Text>
-        {atraction?.destination.isCountrywide && <Icon iconName="Flag" />}
+        {atraction?.destination.isCountrywide && (
+          <Icon iconName="Flag" styles={{ root: { color: "green" } }} />
+        )}
       </Stack>
     );
   } else if (column?.key === "address") {
@@ -91,15 +99,21 @@ const onRenderItemColumn = (
     );
   } else if (column?.key === "infoFrom") {
     return (
-      <>
+      <Stack styles={{ root: { color: "black" } }}>
         <div>{atraction?.infoFrom.source}</div>
         <div>({atraction?.infoFrom.recorded})</div>
-      </>
+      </Stack>
     );
   } else if (column?.key === "optimalVisitPeriod") {
     return (
       <Stack>
-        {atraction?.optimalVisitPeriod && <DateRangePicker></DateRangePicker>}
+        {atraction?.optimalVisitPeriod && (
+          <DateRangePicker
+            fromDate={atraction.optimalVisitPeriod.fromDate}
+            toDate={atraction.optimalVisitPeriod.toDate}
+            disable={true}
+          ></DateRangePicker>
+        )}
       </Stack>
     );
   } else if (column?.key === "tip") {
@@ -200,7 +214,9 @@ export const AttractionListUser: React.FunctionComponent = () => {
             </Text>
           </Stack>
           <Stack horizontal className={classes.root}>
-            <Text as="h1">Attractions</Text>
+            <Text as="h1" styles={{ root: { fontSize: 30, paddingLeft: 10 } }}>
+              Attractions
+            </Text>
             <SearchBox
               placeholder="Search for name, source or tip"
               value={searchParams.get("q") ?? undefined}
@@ -211,6 +227,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
                 const filter = createFilter("q");
                 searchParams.has("q") && filter.onClick(searchParams.get("q")!);
               }}
+              styles={{ root: { marginTop: 30, width: "400px" } }}
             />
             <Filter
               countrywide={createFilter("isCountrywide")}

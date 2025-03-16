@@ -15,8 +15,21 @@ export class AttractionListCustomizerUser extends ListElementCustomizer<Attracti
     const result = { ...column };
 
     result.ariaLabel = `Operations for ${column.name}`;
-    result.isMultiline = false;
-    result.maxWidth = 100;
+    result.isMultiline = true;
+
+    if (column?.key === "infoFrom") {
+      result.maxWidth = 150;
+    } else if (column?.key === "address") {
+      result.maxWidth = 200;
+    } else if (column?.key === "destination") {
+      result.maxWidth = 250;
+    } else if (column?.key === "category") {
+      result.maxWidth = 260;
+    } else if (column?.key === "optimalVisitPeriod") {
+      result.maxWidth = 230;
+    } else {
+      result.minWidth = 100;
+    }
     result.isResizable = true;
     result.isCollapsible = true;
 

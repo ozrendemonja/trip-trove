@@ -63,126 +63,130 @@ export const AddAttraction: React.FunctionComponent = () => {
           </Text>
         </Stack>
         <Separator></Separator>
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
-          <Text as="h1" className={classes.subHeader}>
-            Country
-          </Text>
-          <Toggle
-            className={classes.checkbox}
-            label="Nationally Recognized Attraction"
-            inlineLabel
-            onChange={toggleIsCountrywide}
-          />
-        </Stack>
-        <SearchText {...formFields.countryId} className={searchOverride} />
-        <Separator></Separator>
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
-          <Text as="h2" className={classes.subHeader}>
-            {isReginal ? "Region" : "City"}
-          </Text>
-          <Toggle
-            className={classes.checkbox}
-            label="Attraction is region level"
-            inlineLabel
-            onChange={toggleReginal}
-          />
-        </Stack>
-        {isReginal && (
-          <>
-            <SearchText {...formFields.regionId} className={searchOverride} />
-            <Separator></Separator>
-          </>
-        )}
-        {!isReginal && (
-          <>
-            <SearchText {...formFields.cityId} className={searchOverride} />
-            <Separator></Separator>
-          </>
-        )}
-        <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
-          <Text as="h2" className={classes.subHeader}>
-            Attraction
-          </Text>
-          <Checkbox
-            className={classes.checkbox}
-            label="Must visit"
-            checked={mustVisit}
-            onChange={toggleMustVisit}
-          />
-        </Stack>
-        <Stack
-          tokens={{ childrenGap: 48 }}
-          horizontal={true}
-          className={classes.row}
-        >
-          <TextField {...formFields.name} className={classes.attractionName} />
-          <Toggle
-            className={classes.inputToggle}
-            label="Part of attraction"
-            inlineLabel
-            onChange={togglePartOfAttraction}
-          />
-        </Stack>
-        {isPartOfAttraction && (
-          <SearchText
-            {...formFields.mainAttractionId}
-            className={searchOverride}
-          />
-        )}
-        <Stack
-          tokens={{ childrenGap: 48 }}
-          horizontal={true}
-          className={classes.row}
-        >
-          <TextField
-            {...formFields.address}
-            className={classes.attractionName}
-          />
-          <TextField {...formFields.geoLocation} />
-        </Stack>
-        <Stack
-          tokens={{ childrenGap: 48 }}
-          horizontal={true}
-          className={classes.row}
-        >
-          <ComboBox
-            {...formFields.category}
-            options={categoryOptions}
-            className={classes.dropdowns}
-          />
-          <Dropdown
-            {...formFields.type}
-            options={typeOptions}
-            className={classes.dropdowns}
-          />
-        </Stack>
-        <Stack
-          tokens={{ childrenGap: 48 }}
-          horizontal={true}
-          className={classes.whereToVisit}
-        >
-          <Stack>
-            <Text as="label">Where to visit</Text>
-            <DateRangePicker {...formFields.optimalVisitPeriod} />
-          </Stack>
-          <Checkbox
-            label="Traditional"
-            checked={isTraditional}
-            onChange={toggleIsTraditional}
-            className={classes.checkbox}
-          />
-        </Stack>
-        <TextField {...formFields.tip} className={classes.tip} />
-        <Stack
-          tokens={{ childrenGap: 48 }}
-          horizontal={true}
-          className={classes.tip}
-        >
-          <TextField {...formFields.source} />
-          <Stack>
-            <Text as="label" className={classes.checkbox}>
-              When information comes from?
+        <Stack styles={{ root: { marginLeft: "25px" } }}>
+          <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+            <Text as="h1" className={classes.subHeader}>
+              Country
             </Text>
+            <Toggle
+              className={classes.checkbox}
+              label="Nationally Recognized Attraction"
+              inlineLabel
+              onChange={toggleIsCountrywide}
+              styles={{ root: { marginTop: 10 } }}
+            />
+          </Stack>
+          <SearchText {...formFields.countryId} className={searchOverride} />
+          <Separator></Separator>
+          <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+            <Text as="h2" className={classes.subHeader}>
+              {isReginal ? "Region" : "City"}
+            </Text>
+            <Toggle
+              className={classes.checkbox}
+              label="Attraction is region level"
+              inlineLabel
+              onChange={toggleReginal}
+              styles={{ root: { marginTop: 5 } }}
+            />
+          </Stack>
+          {isReginal && (
+            <>
+              <SearchText {...formFields.regionId} className={searchOverride} />
+              <Separator></Separator>
+            </>
+          )}
+          {!isReginal && (
+            <>
+              <SearchText {...formFields.cityId} className={searchOverride} />
+              <Separator></Separator>
+            </>
+          )}
+
+          <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+            <Text as="h2" className={classes.subHeader}>
+              Attraction
+            </Text>
+            <Checkbox
+              className={classes.checkbox}
+              label="Must visit"
+              checked={mustVisit}
+              onChange={toggleMustVisit}
+            />
+          </Stack>
+          <Stack
+            tokens={{ childrenGap: 48 }}
+            horizontal={true}
+            className={classes.row}
+          >
+            <TextField
+              {...formFields.name}
+              className={classes.attractionName}
+            />
+            <Toggle
+              className={classes.inputToggle}
+              label="Part of attraction"
+              inlineLabel
+              onChange={togglePartOfAttraction}
+            />
+          </Stack>
+          {isPartOfAttraction && (
+            <SearchText
+              {...formFields.mainAttractionId}
+              className={searchOverride}
+            />
+          )}
+          <Stack
+            tokens={{ childrenGap: 48 }}
+            horizontal={true}
+            className={classes.row}
+          >
+            <TextField
+              {...formFields.address}
+              className={classes.attractionName}
+            />
+            <TextField {...formFields.geoLocation} />
+          </Stack>
+          <Stack
+            tokens={{ childrenGap: 48 }}
+            horizontal={true}
+            className={classes.row}
+          >
+            <ComboBox
+              {...formFields.category}
+              options={categoryOptions}
+              className={classes.dropdowns}
+            />
+            <Dropdown
+              {...formFields.type}
+              options={typeOptions}
+              className={classes.dropdowns}
+            />
+          </Stack>
+          <Stack
+            tokens={{ childrenGap: 48 }}
+            horizontal={true}
+            className={classes.whereToVisit}
+          >
+            <Stack>
+              <Text as="label">Where to visit</Text>
+              <DateRangePicker {...formFields.optimalVisitPeriod} />
+            </Stack>
+            <Checkbox
+              label="Traditional"
+              checked={isTraditional}
+              onChange={toggleIsTraditional}
+              className={classes.checkbox}
+              styles={{ root: { marginTop: "24px" } }}
+            />
+          </Stack>
+          <TextField {...formFields.tip} className={classes.tip} />
+          <Stack
+            tokens={{ childrenGap: 48 }}
+            horizontal={true}
+            className={classes.tip}
+          >
+            <TextField {...formFields.source} />
             <DatePicker {...formFields.sourceFrom} />
           </Stack>
         </Stack>

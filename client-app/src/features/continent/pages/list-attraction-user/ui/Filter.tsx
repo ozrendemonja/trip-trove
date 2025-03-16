@@ -76,6 +76,7 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
         text="Filters"
         iconProps={{ iconName: "Equalizer" }}
         className={classes.filterButton}
+        styles={{ root: { marginTop: 30 } }}
       />
       <Modal
         titleAriaId={titleId}

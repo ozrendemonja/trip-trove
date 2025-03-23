@@ -206,9 +206,9 @@ class AttractionSaveTest extends AbstractIntegrationTest {
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(2).getId()));
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
 
-        Long id = attractionRepo.findByName(attractionName).get(2).getId();
+        Long id = attractionRepo.findByName(attractionName).get(1).getId();
         assertThat(attractionRepo.findById(id).map(Attraction::getName)).hasValue(attractionName);
         assertThat(attractionRepo.findById(id).map(Attraction::isCountrywide)).hasValue(false);
         assertThat(attractionRepo.findById(id).map(Attraction::getRegion).map(Region::getId)).hasValue(cityRepo.findById(2).orElseThrow().getRegion().getId());
@@ -269,7 +269,7 @@ class AttractionSaveTest extends AbstractIntegrationTest {
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(2).getId()));
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
     }
 
     @Test

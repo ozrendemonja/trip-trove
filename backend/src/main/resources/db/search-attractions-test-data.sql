@@ -5,6 +5,7 @@ DELETE FROM region;
 DELETE FROM country;
 DELETE FROM continent;
 
+ALTER SEQUENCE continent_id_seq RESTART 1;
 ALTER SEQUENCE country_id_seq RESTART 1;
 ALTER SEQUENCE region_id_seq RESTART 1;
 ALTER SEQUENCE city_id_seq RESTART 1;
@@ -13,7 +14,8 @@ ALTER SEQUENCE attraction_id_seq RESTART 1;
 INSERT INTO continent (created_on, name, updated_on)
  	VALUES
  	 ('2025-01-01T20:04:59', 'Test continent 0', '2025-02-01T10:00:00'),
- 	 ('2025-01-15T08:00:05', 'Test continent 1', null);
+ 	 ('2025-01-15T08:00:05', 'Test continent 1', null)
+ 	 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO country (created_on, name, updated_on, continent_id)
     VALUES

@@ -1,2 +1,2 @@
 # misc
-env.local
+.env*

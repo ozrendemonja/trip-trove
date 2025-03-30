@@ -21,6 +21,27 @@ services:
     volumes:
       - postgresql:/var/lib/postgresql
       - postgresql_data:/var/lib/postgresql/data
+  backend:
+    build:
+      dockerfile: Dockerfile
+      context: ../backend
+    ports:
+      - "8080:8080"
+    env_file:
+     - ./.env.dev
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    volumes:
+      - backend:/logs
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      context: ../client-app
+    ports:
+      - "8085:8085"
 
 volumes:
   sonarqube_data:
@@ -28,3 +49,4 @@ volumes:
   sonarqube_logs:
   postgresql:
   postgresql_data:
+  backend:

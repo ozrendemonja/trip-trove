@@ -63,4 +63,5 @@ type AllFormFields = EnsureAllKeys<AddAttractionFormElements, FormFields>;
 export interface AttractionFormFieldProps {
   formFields: AllFormFields;
   isFormValid: boolean;
+  prepareForNextSubimssion: () => void;
 }

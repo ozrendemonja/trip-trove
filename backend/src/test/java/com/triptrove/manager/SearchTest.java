@@ -213,10 +213,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<QueryAndSuggestions> provideValidRegionQueries() {
         return Stream.of(
-                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
-                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
-                new QueryAndSuggestions("test r", List.of(createSuggestionDto(REGION_NAME_2, 3), createSuggestionDto(REGION_NAME_4, 5), createSuggestionDto(REGION_NAME_3, 4))),
-                new QueryAndSuggestions("region 4", List.of(createSuggestionDto(REGION_NAME_4, 5)))
+                new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2 + ", Test country 1", 3), createSuggestionDto(REGION_NAME_4 + ", Test country 4", 5), createSuggestionDto(REGION_NAME_3 + ", Test country 2", 4))),
+                new QueryAndSuggestions("Test ", List.of(createSuggestionDto(REGION_NAME_2 + ", Test country 1", 3), createSuggestionDto(REGION_NAME_4 + ", Test country 4", 5), createSuggestionDto(REGION_NAME_3 + ", Test country 2", 4))),
+                new QueryAndSuggestions("test r", List.of(createSuggestionDto(REGION_NAME_2 + ", Test country 1", 3), createSuggestionDto(REGION_NAME_4 + ", Test country 4", 5), createSuggestionDto(REGION_NAME_3 + ", Test country 2", 4))),
+                new QueryAndSuggestions("region 4", List.of(createSuggestionDto(REGION_NAME_4 + ", Test country 4", 5)))
         );
     }
 

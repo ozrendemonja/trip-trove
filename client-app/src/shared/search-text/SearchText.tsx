@@ -79,13 +79,12 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
             key={`${item.value}-${item.id}`}
             role="menuitem"
             className={classes.button}
-            onFocus={() => setQuery(item.value)}
             ariaLabel={item.value}
             onClick={(_event) => {
+              selectSuggestion();
               setQuery(item.value);
               props.onSelectItem(item.id);
               setSuggestions([]);
-              selectSuggestion();
             }}
           >
             {item.value}

@@ -12,7 +12,7 @@ import {
   Toggle
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -44,14 +44,27 @@ const typeOptions = Object.values(AttractionType)
 
 export const AddAttraction: React.FunctionComponent = () => {
   const classes = useClasses();
-  const { formFields, isFormValid } = useAttractionFormField();
+  const { formFields, isFormValid, prepareForNextSubimssion } =
+    useAttractionFormField();
   const navigate = useNavigate();
-  const [isCountrywide, { toggle: toggleIsCountrywide }] = useBoolean(false);
-  const [isReginal, { toggle: toggleReginal }] = useBoolean(false);
-  const [mustVisit, { toggle: toggleMustVisit }] = useBoolean(false);
-  const [isPartOfAttraction, { toggle: togglePartOfAttraction }] =
+  const [isMultipleSubmissions, { toggle: toggleMultipleSubmissions }] =
     useBoolean(false);
-  const [isTraditional, { toggle: toggleIsTraditional }] = useBoolean(false);
+  const [
+    isCountrywide,
+    { setFalse: setNotCountrywide, toggle: toggleIsCountrywide }
+  ] = useBoolean(false);
+  const [isReginal, { toggle: toggleReginal }] = useBoolean(false);
+  const [mustVisit, { setFalse: setOptionalVisit, toggle: toggleMustVisit }] =
+    useBoolean(false);
+  const [
+    isPartOfAttraction,
+    { setFalse: setNotPartOfAttraction, toggle: togglePartOfAttraction }
+  ] = useBoolean(false);
+  const [
+    isTraditional,
+    { setFalse: setNonTraditional, toggle: toggleIsTraditional }
+  ] = useBoolean(false);
+  const [iteration, setIteration] = useState<number>(0);
 
   return (
     <>
@@ -61,6 +74,17 @@ export const AddAttraction: React.FunctionComponent = () => {
           <Text as="h1" className={classes.header}>
             Add Attraction
           </Text>
+          <Toggle
+            className={classes.checkbox}
+            label={
+              isMultipleSubmissions
+                ? "add series of attractions"
+                : "add one attraction"
+            }
+            inlineLabel
+            onChange={toggleMultipleSubmissions}
+            styles={{ root: { marginTop: 5 } }}
+          />
         </Stack>
         <Separator></Separator>
         <Stack styles={{ root: { marginLeft: "25px" } }}>
@@ -74,6 +98,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               inlineLabel
               onChange={toggleIsCountrywide}
               styles={{ root: { marginTop: 10 } }}
+              checked={isCountrywide}
             />
           </Stack>
           <SearchText {...formFields.countryId} className={searchOverride} />
@@ -128,6 +153,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               label="Part of attraction"
               inlineLabel
               onChange={togglePartOfAttraction}
+              checked={isPartOfAttraction}
             />
           </Stack>
           {isPartOfAttraction && (
@@ -156,11 +182,15 @@ export const AddAttraction: React.FunctionComponent = () => {
               {...formFields.category}
               options={categoryOptions}
               className={classes.dropdowns}
+              autoComplete={"on"}
+              key={`Category-${iteration}`}
             />
             <Dropdown
               {...formFields.type}
               options={typeOptions}
               className={classes.dropdowns}
+              defaultSelectedKeys={undefined}
+              key={`Type-${iteration}`}
             />
           </Stack>
           <Stack
@@ -170,7 +200,10 @@ export const AddAttraction: React.FunctionComponent = () => {
           >
             <Stack>
               <Text as="label">Where to visit</Text>
-              <DateRangePicker {...formFields.optimalVisitPeriod} />
+              <DateRangePicker
+                key={`DateRangePicker-${iteration}`}
+                {...formFields.optimalVisitPeriod}
+              />
             </Stack>
             <Checkbox
               label="Traditional"
@@ -221,21 +254,37 @@ export const AddAttraction: React.FunctionComponent = () => {
                 isCountrywide: isCountrywide,
                 regionId: isReginal ? formFields.regionId?.value : undefined,
                 cityId: !isReginal ? formFields.cityId?.value : undefined,
-                attractionName: formFields.name.value!,
+                attractionName: formFields.name.value!.trimStart(),
                 mainAttractionId: formFields.mainAttractionId?.value,
-                attractionAddress: formFields.address?.value,
+                attractionAddress:
+                  formFields.address?.value?.trimStart() === ""
+                    ? undefined
+                    : formFields.address?.value,
                 attractionLocation: attractionLocation,
                 attractionCategory: formFields.category?.value,
                 attractionType: formFields.type.value,
                 mustVisit: mustVisit,
                 isTraditional: isTraditional,
-                tip: formFields.tip?.value,
+                tip:
+                  formFields.tip?.value?.trimStart() === ""
+                    ? undefined
+                    : formFields.tip?.value,
                 infoFrom: formFields.source.value!,
                 infoRecorded: formFields.sourceFrom.value!.toISOString(),
                 optimalVisitPeriod: optimalVisitPeriod
               };
               saveNewAttraction(newAttraction);
-              navigate(-1);
+
+              if (!isMultipleSubmissions) {
+                navigate(-1);
+              } else {
+                prepareForNextSubimssion();
+                setNotPartOfAttraction();
+                setNotCountrywide();
+                setOptionalVisit();
+                setNonTraditional();
+                setIteration(iteration + 1); // Hack to force empty values to clear state
+              }
             }}
             disabled={!isFormValid}
             text="Save"

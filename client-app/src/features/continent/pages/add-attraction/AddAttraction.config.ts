@@ -50,11 +50,11 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     cityId: undefined,
     name: undefined,
     mainAttractionId: undefined,
-    address: undefined,
+    address: "",
     geoLocation: undefined,
     category: undefined,
     type: undefined,
-    tip: undefined,
+    tip: "",
     source: undefined,
     sourceFrom: undefined,
     optimalVisitPeriod: undefined
@@ -141,6 +141,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
   const attractionAddressField: ITextFieldProps = {
     name: "name",
     label: "Attraction address",
+    placeholder: "Attraction address",
     value: values.address,
     onChange: (_event, value: string | undefined): void => {
       setTouched({ ...touched, address: true });
@@ -300,6 +301,31 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     allowTextInput: false
   };
 
+  const prepareForNextSubimssion = (): void => {
+    setTouched({
+      ...touched,
+      name: false,
+      mainAttractionId: false,
+      address: false,
+      geoLocation: false,
+      category: false,
+      type: false,
+      tip: false,
+      optimalVisitPeriod: false
+    });
+    setValues({
+      ...values,
+      name: "",
+      mainAttractionId: undefined,
+      address: "",
+      geoLocation: "",
+      category: "",
+      type: "",
+      tip: "",
+      optimalVisitPeriod: undefined
+    });
+  };
+
   return {
     formFields: {
       countryId: countryIdSearchText,
@@ -316,7 +342,8 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       sourceFrom: sourceFromField,
       optimalVisitPeriod: optimalVisitPeriodField
     },
-    isFormValid: isValid
+    isFormValid: isValid,
+    prepareForNextSubimssion: prepareForNextSubimssion
   };
 };
 

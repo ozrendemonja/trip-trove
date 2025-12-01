@@ -1,0 +1,58 @@
+.attraction-board-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  background: #f7f7f7;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin: 10px 10px 0;
+}
+
+.attraction-board {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch; /* ensure all columns share tallest height */
+}
+
+.city-group {
+  margin: 16px 10px 8px;
+  padding: 4px 4px 10px;
+  border: 2px solid #e2e2e2;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.city-title {
+  margin: 4px 0 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.attraction-board-column {
+  border: 1px solid #cccccc;
+  border-radius: 5px;
+  margin: 10px;
+  padding: 10px;
+  flex: 1;
+  min-width: 220px;
+  background: #fff;
+  display: flex;           /* allow internal vertical layout */
+  flex-direction: column;  /* stack header and list */
+}
+
+.attraction-board-column h2 {
+  text-align: center;
+  margin-top: 0;
+}
+
+@media (width < 600px) {
+  .attraction-board { flex-direction: column; }
+}

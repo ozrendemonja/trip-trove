@@ -1,0 +1,25 @@
+.attractions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.attraction {
+  background-color: #f9f9f9;
+  border: 1px solid #eeeeee;
+  border-radius: 3px;
+  padding: 8px;
+  cursor: grab;
+}
+
+.attraction:active { cursor: grabbing; }
+
+.placeholder {
+  box-sizing: border-box;
+  border: 1px solid #d9d9d9; /* light solid border */
+  border-radius: 3px;
+  background-color: #f5f8ff;
+  width: 100%;
+}

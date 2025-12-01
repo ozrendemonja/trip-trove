@@ -11,7 +11,7 @@ export const navLinkGroups = (expandLinks: boolean): INavLinkGroup[] => [
       },
       {
         name: "My trips",
-        url: "#",
+        url: "/my-trips",
         key: "my-trips-key",
         icon: "AirTickets",
         target: "_blank"

@@ -2,7 +2,6 @@ import {
   IOverflowSetItemProps,
   Link,
   OverflowSet,
-  OverflowSetBase,
   Stack
 } from "@fluentui/react";
 import {
@@ -67,7 +66,8 @@ const SearchAttractionsModal: React.FunctionComponent<
 
   return (
     <EditProperty
-      editIconAriaLabel={""}
+      editIconAriaLabel={"Search"}
+      editIconName={"Search"}
       text={props.text}
       onUpdateClick={async () => {
         props.onUpdateClick({ whereToSearch: selected, id: selectedId ?? -1 });

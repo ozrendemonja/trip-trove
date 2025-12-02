@@ -7,6 +7,7 @@ interface AttractionItemProps {
   placeholderHeight?: number;
   columnId?: string; // not used directly but reserved
   index?: number; // not used directly but reserved
+  locationHint?: string; // city name or region name for search
   onUpdateNote?: (newNote: string) => void;
   onUpdateWorkingHours?: (newHours: string) => void;
   onUpdateVisitTime?: (newVisit: string) => void;
@@ -14,7 +15,7 @@ interface AttractionItemProps {
   readOnly?: boolean;
 }
 
-const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly }) => {
+const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly }) => {
   const nameClasses = [
     'attraction-name',
     attraction.mustVisit ? 'must-visit' : '',
@@ -87,7 +88,42 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, onUpdateNot
   return (
     <div className="attraction-item">
       <div className="attraction-line">
-        <span className={nameClasses}>{attraction.name}{attraction.isCountrywide ? ' 🏳️' : ''}</span>
+        <button
+          type="button"
+          className="copy-name-btn"
+          onClick={() => {
+            const text = attraction.name;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).catch(() => {});
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand('copy'); } catch {}
+              document.body.removeChild(ta);
+            }
+          }}
+          title="Copy attraction name"
+          aria-label="Copy attraction name"
+        >
+          📋
+        </button>
+        {(() => {
+          const query = locationHint ? `${attraction.name} ${locationHint}` : attraction.name;
+          const href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+          return (
+            <a
+              className={nameClasses}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Search on Google"
+            >
+              {attraction.name}{attraction.isCountrywide ? ' 🏳️' : ''}
+            </a>
+          );
+        })()}
         {onToggleMustVisit && !readOnly && (
           <button
             type="button"

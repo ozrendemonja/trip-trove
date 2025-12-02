@@ -9,7 +9,7 @@ function toStableFlag(type: AttractionType): boolean {
   return type === AttractionType.STABLE;
 }
 
-function mapAttractionToBoardTask(a: Attraction): BoardAttraction {
+export function mapAttractionToBoardTask(a: Attraction): BoardAttraction {
   return {
     id: a.id,
     mustVisit: a.mustVisit,

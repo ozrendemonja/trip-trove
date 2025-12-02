@@ -1,5 +1,7 @@
 .attraction-item { display: flex; flex-direction: column; gap: 4px; }
 .attraction-line { font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.copy-name-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; line-height: 1.2; }
+.copy-name-btn:hover { background: #e2e8f0; }
 .attraction-address-line { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.7rem; color: #555; margin-top: -2px; }
 .attraction-address-text { font-style: normal; }
 .attraction-category-text { font-style: italic; }

@@ -25,6 +25,7 @@ interface AttractionListProps {
   placeholderHeight?: number;
   onDragStart: (taskIndex: number) => (e: React.DragEvent) => void;
   columnId: string;
+  locationHint?: string; // city name or region name
   onUpdateNote: (columnId: string, index: number, newNote: string) => void;
   onUpdateWorkingHours?: (columnId: string, index: number, newHours: string) => void;
   onUpdateVisitTime?: (columnId: string, index: number, newVisit: string) => void;
@@ -41,6 +42,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
   placeholderHeight,
   onDragStart,
   columnId,
+  locationHint,
   onUpdateNote,
   onUpdateWorkingHours,
   onUpdateVisitTime,
@@ -63,6 +65,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
           >
             <AttractionItem
               attraction={attraction}
+              locationHint={locationHint}
               columnId={columnId}
               index={idx}
               onUpdateNote={!readOnly ? (newNote) => onUpdateNote(columnId, idx, newNote) : undefined}

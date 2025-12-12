@@ -29,11 +29,28 @@
   background: #fafafa;
 }
 
+.city-header { display: flex; align-items: center; gap: 8px; }
 .city-title {
   margin: 4px 0 10px;
   font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: 0.5px;
+}
+.city-collapse-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.8rem; cursor: pointer; line-height: 1.2; }
+.city-collapse-btn:hover { background: #e2e8f0; }
+
+/* Gray out collapsed cities where all attractions are in excluded column */
+.city-group.all-excluded {
+  background: #e5e5e5;
+  border-color: #ccc;
+}
+.city-group.all-excluded .city-title {
+  color: #888;
+}
+.city-group.all-excluded .city-collapse-btn {
+  background: #d0d0d0;
+  border-color: #aaa;
+  color: #666;
 }
 
 .attraction-board-column {

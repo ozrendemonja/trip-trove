@@ -29,13 +29,15 @@ interface DragUIState {
 
 interface BoardProps {
   initialCities?: TouristDestination[]; // optional; defaults to empty
+  onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
 }
 
-const Board: React.FC<BoardProps> = ({ initialCities }) => {
+const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
   const [cities, setCities] = useState<TouristDestination[]>(initialCities ?? []);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragUI, setDragUI] = useState<DragUIState>({ overColumnId: null, insertionIndex: -1 });
   const [readOnly, setReadOnly] = useState<boolean>(false);
+  const [collapsedByCity, setCollapsedByCity] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
     'POINT_OF_INTEREST_AND_LANDMARK',
@@ -111,11 +113,12 @@ const Board: React.FC<BoardProps> = ({ initialCities }) => {
           setCities(imported);
           setDragState(null);
           setDragUI({ overColumnId: null, insertionIndex: -1 });
+          onCitiesLoaded?.(imported);
         }
       })
       .catch((err: unknown) => console.error('Failed to import JSON', err))
       .finally(() => { e.target.value = ''; });
-  }, []);
+  }, [onCitiesLoaded]);
 
   const onDragStart = useCallback((colId: string, taskIndex: number) => (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -265,12 +268,24 @@ const Board: React.FC<BoardProps> = ({ initialCities }) => {
 
     // Sync internal state when initialCities prop changes
     useEffect(() => {
-      if (initialCities) {
-        setCities(initialCities);
-        setDragState(null);
-        setDragUI({ overColumnId: null, insertionIndex: -1 });
-      }
+      // Always sync to prop, even when it's an empty array initially
+      const next = initialCities ?? [];
+      setCities(next);
+      setDragState(null);
+      setDragUI({ overColumnId: null, insertionIndex: -1 });
+      // Preserve existing collapse states; initialize new city keys to false
+      setCollapsedByCity(prev => {
+        const merged: Record<string, boolean> = { ...prev };
+        for (const c of next) {
+          if (!(c.name in merged)) merged[c.name] = false;
+        }
+        return merged;
+      });
     }, [initialCities]);
+
+    const toggleCityCollapse = useCallback((cityName: string) => {
+      setCollapsedByCity(prev => ({ ...prev, [cityName]: !prev[cityName] }));
+    }, []);
 
   return (
     <div className="attraction-board-wrapper">
@@ -326,9 +341,30 @@ const Board: React.FC<BoardProps> = ({ initialCities }) => {
             <button type="button" onClick={resetFilters}>Reset Filters</button>
         </div>
       </div>
-      {cities.map(city => (
-        <div key={city.name} className="city-group">
-          <h1 className="city-title">{city.name}</h1>
+      {cities.map(city => {
+        // Check if all attractions are in the excluded column (last column)
+        const excludedColumn = city.columns.find(col => col.title === 'Excluded Attractions');
+        const nonExcludedColumns = city.columns.filter(col => col.title !== 'Excluded Attractions');
+        const allInExcluded = nonExcludedColumns.every(col => col.tasks.length === 0) && 
+                              excludedColumn && excludedColumn.tasks.length > 0;
+        const isCollapsed = collapsedByCity[city.name];
+        const showGray = isCollapsed && allInExcluded;
+        
+        return (
+        <div key={city.name} className={`city-group${showGray ? ' all-excluded' : ''}`}>
+          <div className="city-header">
+            <button
+              type="button"
+              className="city-collapse-btn"
+              onClick={() => toggleCityCollapse(city.name)}
+              aria-label={isCollapsed ? `Expand ${city.name}` : `Collapse ${city.name}`}
+              title={isCollapsed ? 'Expand' : 'Collapse'}
+            >
+              {isCollapsed ? '▶' : '▼'}
+            </button>
+            <h1 className="city-title">{city.name}</h1>
+          </div>
+          {!collapsedByCity[city.name] && (
           <div className="attraction-board">
             {city.columns.map(col => {
               const showPlaceholder = dragState && dragUI.overColumnId === col.id;
@@ -380,8 +416,10 @@ const Board: React.FC<BoardProps> = ({ initialCities }) => {
               );
             })}
           </div>
+          )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

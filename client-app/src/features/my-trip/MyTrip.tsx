@@ -1,7 +1,10 @@
 import { Stack, Text } from "@fluentui/react";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Navigation from "../../shared/navigation/Navigation";
-import Board, { TouristDestination } from "../AI-table/components/Board";
+import Board, {
+  TouristDestination,
+  Column
+} from "../AI-table/components/Board";
 import { mapServerResponseToTouristDestinations } from "../AI-table/utils/mapper";
 import {
   Attraction,
@@ -10,9 +13,100 @@ import {
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 
-export const MyTrip: React.FunctionComponent = () => {
-  const [attractions, setAttractions] = useState<TouristDestination[]>([]);
+// Helper function to merge cities by name and combine their attractions
+function mergeCities(
+  baseCities: TouristDestination[],
+  newCities: TouristDestination[]
+): TouristDestination[] {
+  const cityMap = new Map<string, TouristDestination>();
+
+  // Collect all existing attraction IDs from baseCities (across all columns)
+  const existingAttractionIds = new Set<number>();
+  for (const city of baseCities) {
+    for (const col of city.columns) {
+      for (const task of col.tasks) {
+        existingAttractionIds.add(task.id);
+      }
+    }
+  }
+
+  // Add base cities first
+  for (const city of baseCities) {
+    cityMap.set(city.name, {
+      ...city,
+      columns: city.columns.map((col: Column) => ({
+        ...col,
+        tasks: [...col.tasks]
+      }))
+    });
+  }
+
+  // Merge new cities, but skip attractions that already exist anywhere in baseCities
+  for (const newCity of newCities) {
+    const existingCity = cityMap.get(newCity.name);
+    if (existingCity) {
+      // Merge columns by matching column titles
+      for (const newCol of newCity.columns) {
+        const existingCol = existingCity.columns.find(
+          (c: Column) => c.title === newCol.title
+        );
+        if (existingCol) {
+          // Merge tasks, avoiding duplicates by id (check against ALL existing attractions)
+          for (const task of newCol.tasks) {
+            if (!existingAttractionIds.has(task.id)) {
+              existingCol.tasks.push(task);
+              existingAttractionIds.add(task.id); // Mark as added
+            }
+          }
+        } else {
+          // Add new column, but only with non-duplicate tasks
+          const filteredTasks = newCol.tasks.filter(
+            (task: { id: number }) => !existingAttractionIds.has(task.id)
+          );
+          if (filteredTasks.length > 0) {
+            existingCity.columns.push({ ...newCol, tasks: filteredTasks });
+            filteredTasks.forEach((task: { id: number }) =>
+              existingAttractionIds.add(task.id)
+            );
+          }
+        }
+      }
+    } else {
+      // Add new city, but filter out any attractions that exist in other cities
+      const filteredColumns = newCity.columns.map((col: Column) => ({
+        ...col,
+        tasks: col.tasks.filter(
+          (task: { id: number }) => !existingAttractionIds.has(task.id)
+        )
+      }));
+      // Mark these as added
+      for (const col of filteredColumns) {
+        for (const task of col.tasks) {
+          existingAttractionIds.add(task.id);
+        }
+      }
+      cityMap.set(newCity.name, {
+        ...newCity,
+        columns: filteredColumns
+      });
+    }
+  }
+
+  return Array.from(cityMap.values());
+}
+
+export const MyTrip: React.FC = () => {
+  // Source of truth: all attractions from server responses
   const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
+  // Loaded cities from JSON file (already in display format, preserved separately)
+  const [loadedCities, setLoadedCities] = useState<TouristDestination[]>([]);
+
+  // Derive display attractions from allAttractions, then merge with loadedCities
+  const attractions = useMemo(() => {
+    const fromServer = mapServerResponseToTouristDestinations(allAttractions);
+    return mergeCities(loadedCities, fromServer);
+  }, [allAttractions, loadedCities]);
+
   const handleUpdate = async (value: SearchTarget) => {
     const newAttractions = await loadAllAttractionsUnder(
       value.whereToSearch,
@@ -29,10 +123,13 @@ export const MyTrip: React.FunctionComponent = () => {
     // sort it to be in order
     mergedAttractions = sortAttractions(mergedAttractions);
     setAllAttractions(mergedAttractions);
+    // attractions will be automatically recomputed via useMemo
+  };
 
-    // transform to the TouristDestination
-    const result = mapServerResponseToTouristDestinations(mergedAttractions);
-    setAttractions(result);
+  // Callback when cities are loaded from JSON file in Board
+  const handleCitiesLoaded = (cities: TouristDestination[]) => {
+    setLoadedCities(cities);
+    // attractions will be automatically recomputed via useMemo
   };
 
   return (
@@ -50,7 +147,7 @@ export const MyTrip: React.FunctionComponent = () => {
           onUpdateClick={handleUpdate}
         />
       </Stack>
-      <Board initialCities={attractions} />
+      <Board initialCities={attractions} onCitiesLoaded={handleCitiesLoaded} />
     </>
   );
 };

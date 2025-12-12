@@ -15,7 +15,7 @@ interface AttractionItemProps {
   readOnly?: boolean;
 }
 
-const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly }) => {
+const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly }) => {
   const nameClasses = [
     'attraction-name',
     attraction.mustVisit ? 'must-visit' : '',
@@ -93,7 +93,30 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, locationHin
           className="copy-name-btn"
           onClick={() => {
             const text = attraction.name;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
+            const isSecondarySpots = columnId?.includes('_secondary');
+            const isTopAttractions = columnId?.includes('_top');
+            // Top Attractions: mustVisit → ★ Bold, not mustVisit → Bold
+            // Secondary Spots: mustVisit → Normal, not mustVisit → Italic
+            let htmlContent: string | null = null;
+            if (isTopAttractions) {
+              htmlContent = attraction.mustVisit ? `<b>★ ${text}</b>` : `<b>${text}</b>`;
+            } else if (isSecondarySpots) {
+              htmlContent = attraction.mustVisit ? null : `<i>${text}</i>`;
+            }
+            
+            if (htmlContent && navigator.clipboard && navigator.clipboard.write) {
+              const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+              const textBlob = new Blob([text], { type: 'text/plain' });
+              navigator.clipboard.write([
+                new ClipboardItem({
+                  'text/html': htmlBlob,
+                  'text/plain': textBlob
+                })
+              ]).catch(() => {
+                // Fallback to plain text
+                navigator.clipboard.writeText(text).catch(() => {});
+              });
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(text).catch(() => {});
             } else {
               const ta = document.createElement('textarea');

@@ -1,0 +1,52 @@
+.attraction-item { display: flex; flex-direction: column; gap: 4px; }
+.attraction-line { font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.copy-name-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; line-height: 1.2; }
+.copy-name-btn:hover { background: #e2e8f0; }
+.attraction-address-line { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.7rem; color: #555; margin-top: -2px; }
+.attraction-address-text { font-style: normal; }
+.attraction-category-text { font-style: italic; }
+.mustvisit-toggle-btn { background: #fef9c3; border: 1px solid #eab308; color: #b45309; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
+.mustvisit-toggle-btn:hover { background: #fde68a; }
+.attraction-name { font-weight: 500; }
+.attraction-name.must-visit::before { content: "★"; margin-right: 4px; color: #eab308; }
+.attraction-name.traditional::after { content: "●"; margin-left: 4px; font-size: 0.6rem; color: #555; }
+.attraction-name.unstable { color: #d97706; }
+.attraction-meta { color: #555; font-size: 0.7rem; }
+.attraction-hours { font-size: 0.7rem; color: #333; }
+.attraction-hours { font-size: 0.7rem; color: #333; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hours-segment { display: inline-flex; align-items: center; gap: 4px; }
+.hours-text { display: inline-block; }
+.hours-separator { color: #555; }
+.visit-time-segment { display: inline-block; }
+.visit-time-text { display: inline-block; }
+.visit-edit-btn, .visit-add-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; margin-left: 4px; }
+.visit-edit-btn:hover, .visit-add-btn:hover { background: #e2e8f0; }
+.visit-edit-wrap { display: inline-flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.visit-input { font-size: 0.65rem; padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 3px; background: #ffffff; }
+.visit-edit-actions { display: flex; gap: 4px; margin-top: 4px; }
+.visit-save-btn, .visit-cancel-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 2px 6px; font-size: 0.6rem; cursor: pointer; }
+.visit-save-btn:hover { background: #dbe0e6; }
+.visit-cancel-btn:hover { background: #f8fafc; }
+.hours-edit-btn, .hours-add-btn { margin-left: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
+.hours-edit-btn, .hours-add-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
+.sticky-note { background: #fff8c2; border: 1px solid #e3d27a; border-radius: 4px; padding: 6px 8px; font-size: 0.7rem; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: pre-line; }
+.sticky-note:before { content: ""; position: absolute; top:0; left:0; right:0; height:6px; background: repeating-linear-gradient(-45deg,#ffe690,#ffe690 6px,#ffd86b 6px,#ffd86b 12px); border-top-left-radius:4px; border-top-right-radius:4px; }
+.attraction-info-from { font-size: 0.6rem; color: #666; margin-top: 2px; }
+.note-add-btn, .note-edit-btn { position: absolute; top: 4px; right: 4px; background: #fff3a6; border: 1px solid #d6c15b; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
+.note-add-btn:hover, .note-edit-btn:hover { background: #ffe067; }
+.note-edit-wrap { display: flex; flex-direction: column; gap: 4px; }
+.note-textarea { width: 100%; font-size: 0.65rem; padding: 4px; border: 1px solid #d6c15b; border-radius: 3px; background: #fffef0; resize: vertical; }
+.note-edit-actions { display: flex; gap: 6px; }
+.note-save-btn, .note-cancel-btn { background: #fff3a6; border: 1px solid #d6c15b; border-radius: 3px; padding: 2px 8px; font-size: 0.6rem; cursor: pointer; }
+.note-save-btn:hover { background: #ffd952; }
+.note-cancel-btn:hover { background: #ffeed2; }
+.note-add-inline-btn { margin-top: 4px; background: #fff8c2; border: 1px dashed #d6c15b; border-radius: 3px; padding: 3px 8px; font-size: 0.6rem; cursor: pointer; }
+.note-add-inline-btn:hover { background: #ffe067; }
+.hours-edit-btn, .hours-add-btn { margin-left: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
+.hours-edit-btn:hover, .hours-add-btn:hover { background: #e2e8f0; }
+.hours-edit-wrap { display: inline-flex; flex-direction: column; gap: 4px; }
+.hours-input { font-size: 0.65rem; padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 3px; background: #ffffff; }
+.hours-edit-actions { display: flex; gap: 4px; margin-top: 4px; }
+.hours-save-btn, .hours-cancel-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 2px 6px; font-size: 0.6rem; cursor: pointer; }
+.hours-save-btn:hover { background: #dbe0e6; }
+.hours-cancel-btn:hover { background: #f8fafc; }

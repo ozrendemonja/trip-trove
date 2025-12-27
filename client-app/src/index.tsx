@@ -13,6 +13,7 @@ import AddCity from "./features/continent/pages/add-city/AddCity";
 import AttractionList from "./features/continent/pages/list-attraction/ListAttraction";
 import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
 import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
+import MyTrip from "./features/my-trip/MyTrip";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -48,6 +49,7 @@ root.render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/my-trips" element={<MyTrip />} />
         <Route path="/continents" element={<ContinentList />} />
         <Route path="/add-continent" element={<AddContinent />} />
         <Route path="/countries" element={<CountryList />} />

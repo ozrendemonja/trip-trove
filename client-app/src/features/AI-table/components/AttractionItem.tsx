@@ -13,9 +13,11 @@ interface AttractionItemProps {
   onUpdateVisitTime?: (newVisit: string) => void;
   onToggleMustVisit?: () => void;
   readOnly?: boolean;
+  inItinerary?: boolean;
+  onToggleInItinerary?: () => void;
 }
 
-const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly }) => {
+const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary }) => {
   const nameClasses = [
     'attraction-name',
     attraction.mustVisit ? 'must-visit' : '',
@@ -85,8 +87,13 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
     }
   }, [readOnly, editing, editingHours, editingVisit]);
 
+  const containerClasses = [
+    'attraction-item',
+    inItinerary ? 'in-itinerary' : ''
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className="attraction-item">
+    <div className={containerClasses}>
       <div className="attraction-line">
         <button
           type="button"
@@ -156,6 +163,16 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
           >
             {attraction.mustVisit ? '★' : '☆'}
           </button>
+        )}
+        {readOnly && onToggleInItinerary && (
+          <label className="itinerary-checkbox" title="Mark as already planned in itinerary">
+            <input
+              type="checkbox"
+              checked={!!inItinerary}
+              onChange={onToggleInItinerary}
+            />
+            <span className="itinerary-checkbox-box">{inItinerary ? '✓' : ''}</span>
+          </label>
         )}
       </div>
       {(attraction.address || attraction.category) && (

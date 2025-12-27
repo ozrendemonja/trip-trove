@@ -38,6 +38,7 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
   const [dragUI, setDragUI] = useState<DragUIState>({ overColumnId: null, insertionIndex: -1 });
   const [readOnly, setReadOnly] = useState<boolean>(false);
   const [collapsedByCity, setCollapsedByCity] = useState<Record<string, boolean>>({});
+  const [itinerarySelection, setItinerarySelection] = useState<Record<number, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
     'POINT_OF_INTEREST_AND_LANDMARK',
@@ -273,6 +274,8 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
       setCities(next);
       setDragState(null);
       setDragUI({ overColumnId: null, insertionIndex: -1 });
+      // Clear any existing itinerary checkmarks when a new dataset is loaded
+      setItinerarySelection({});
       // Preserve existing collapse states; initialize new city keys to false
       setCollapsedByCity(prev => {
         const merged: Record<string, boolean> = { ...prev };
@@ -285,6 +288,13 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
 
     const toggleCityCollapse = useCallback((cityName: string) => {
       setCollapsedByCity(prev => ({ ...prev, [cityName]: !prev[cityName] }));
+    }, []);
+
+    const toggleItinerarySelection = useCallback((attractionId: number) => {
+      setItinerarySelection(prev => ({
+        ...prev,
+        [attractionId]: !prev[attractionId]
+      }));
     }, []);
 
   return (
@@ -349,9 +359,20 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
                               excludedColumn && excludedColumn.tasks.length > 0;
         const isCollapsed = collapsedByCity[city.name];
         const showGray = isCollapsed && allInExcluded;
+
+        // Check if all attractions under "Top Attractions" and "Secondary Spots" are marked in the itinerary
+        const topAndSecondaryTasks = city.columns
+          .filter(col => col.title === 'Top Attractions' || col.title === 'Secondary Spots')
+          .flatMap(col => col.tasks);
+        const allTopAndSecondaryPlanned = isCollapsed &&
+          topAndSecondaryTasks.length > 0 &&
+          topAndSecondaryTasks.every(t => itinerarySelection[t.id]);
         
         return (
-        <div key={city.name} className={`city-group${showGray ? ' all-excluded' : ''}`}>
+        <div
+          key={city.name}
+          className={`city-group${showGray ? ' all-excluded' : ''}${allTopAndSecondaryPlanned ? ' all-planned' : ''}`}
+        >
           <div className="city-header">
             <button
               type="button"
@@ -410,6 +431,8 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
                     onToggleMustVisit={toggleAttractionMustVisit}
                     updateById={updateAttractionById}
                     upsertAttractions={upsertAttractions}
+                    isInItinerary={(id) => !!itinerarySelection[id]}
+                    onToggleItinerary={toggleItinerarySelection}
                     readOnly={readOnly}
                   />
                 </div>

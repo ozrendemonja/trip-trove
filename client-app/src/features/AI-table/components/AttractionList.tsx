@@ -33,6 +33,8 @@ interface AttractionListProps {
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
   readOnly?: boolean;
+  isInItinerary?: (attractionId: number) => boolean;
+  onToggleItinerary?: (attractionId: number) => void;
 }
 
 const AttractionList: React.FC<AttractionListProps> = ({
@@ -47,7 +49,9 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onUpdateWorkingHours,
   onUpdateVisitTime,
   onToggleMustVisit,
-  readOnly
+  readOnly,
+  isInItinerary,
+  onToggleItinerary
 }) => {
   return (
     <ul className="attractions">
@@ -72,6 +76,8 @@ const AttractionList: React.FC<AttractionListProps> = ({
               onUpdateWorkingHours={!readOnly && onUpdateWorkingHours ? (newHours: string) => onUpdateWorkingHours(columnId, idx, newHours) : undefined}
               onUpdateVisitTime={!readOnly && onUpdateVisitTime ? (newVisit: string) => onUpdateVisitTime(columnId, idx, newVisit) : undefined}
               onToggleMustVisit={!readOnly && onToggleMustVisit ? () => onToggleMustVisit(columnId, idx) : undefined}
+              inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}
+              onToggleInItinerary={onToggleItinerary ? () => onToggleItinerary(attraction.id) : undefined}
               readOnly={readOnly}
             />
           </li>

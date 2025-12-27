@@ -53,6 +53,20 @@
   color: #666;
 }
 
+/* Highlight cities where all Top/Secondary attractions are already in the itinerary when collapsed */
+.city-group.all-planned {
+  background: #fff4cf;
+  border-color: rgb(254, 199, 3);
+}
+.city-group.all-planned .city-title {
+  color: #8a5a00;
+}
+.city-group.all-planned .city-collapse-btn {
+  background: #ffe9a6;
+  border-color: rgb(254, 199, 3);
+  color: #8a5a00;
+}
+
 .attraction-board-column {
   border: 1px solid #cccccc;
   border-radius: 5px;

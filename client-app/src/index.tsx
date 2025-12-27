@@ -14,7 +14,6 @@ import AttractionList from "./features/continent/pages/list-attraction/ListAttra
 import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
 import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
 import MyTrip from "./features/my-trip/MyTrip";
-import Board from "./features/AI-table/components/Board";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement

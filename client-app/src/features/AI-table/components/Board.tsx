@@ -114,6 +114,16 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
           setCities(imported);
           setDragState(null);
           setDragUI({ overColumnId: null, insertionIndex: -1 });
+          // Initialize itinerary selection from imported data
+          const selection: Record<number, boolean> = {};
+          for (const city of imported) {
+            for (const col of city.columns) {
+              for (const t of col.tasks) {
+                if (t.inItinerary) selection[t.id] = true;
+              }
+            }
+          }
+          setItinerarySelection(selection);
           onCitiesLoaded?.(imported);
         }
       })
@@ -274,8 +284,16 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
       setCities(next);
       setDragState(null);
       setDragUI({ overColumnId: null, insertionIndex: -1 });
-      // Clear any existing itinerary checkmarks when a new dataset is loaded
-      setItinerarySelection({});
+      // Rebuild itinerary selection map from attractions that have inItinerary set
+      const selection: Record<number, boolean> = {};
+      for (const city of next) {
+        for (const col of city.columns) {
+          for (const t of col.tasks) {
+            if (t.inItinerary) selection[t.id] = true;
+          }
+        }
+      }
+      setItinerarySelection(selection);
       // Preserve existing collapse states; initialize new city keys to false
       setCollapsedByCity(prev => {
         const merged: Record<string, boolean> = { ...prev };
@@ -291,10 +309,26 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
     }, []);
 
     const toggleItinerarySelection = useCallback((attractionId: number) => {
-      setItinerarySelection(prev => ({
-        ...prev,
-        [attractionId]: !prev[attractionId]
-      }));
+      setItinerarySelection(prev => {
+        const isCurrentlyIn = !!prev[attractionId];
+        const nextValue = !isCurrentlyIn;
+
+        // Mirror this onto the underlying attraction objects so it is persisted in JSON
+        setCities(prevCities => prevCities.map(city => ({
+          ...city,
+          columns: city.columns.map(col => ({
+            ...col,
+            tasks: col.tasks.map(t =>
+              t.id === attractionId ? { ...t, inItinerary: nextValue } : t
+            )
+          }))
+        })));
+
+        return {
+          ...prev,
+          [attractionId]: nextValue
+        };
+      });
     }, []);
 
     // Keyboard shortcuts:

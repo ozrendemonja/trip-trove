@@ -8,6 +8,7 @@ export interface Attraction {
   stable: boolean;
   isTraditional: boolean;
   isCountrywide: boolean; // new flag
+  inItinerary?: boolean;
   name: string;
   address: string;
   category: string;

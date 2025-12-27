@@ -14,6 +14,7 @@ function sanitizeAttraction(raw: any): Attraction {
     stable: !!raw.stable,
     isTraditional: !!raw.isTraditional,
     isCountrywide: !!raw.isCountrywide,
+    inItinerary: !!raw.inItinerary,
     name: String(raw.name || ''),
     address: String(raw.address || ''),
     category: String(raw.category || ''),

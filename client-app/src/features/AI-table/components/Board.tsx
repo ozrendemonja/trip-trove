@@ -297,6 +297,33 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
       }));
     }, []);
 
+    // Keyboard shortcuts:
+    //  - Ctrl+V toggles read-only view
+    //  - Ctrl+S triggers "Save JSON" export
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (!e.ctrlKey || e.altKey || e.metaKey) return;
+
+        const target = e.target as HTMLElement | null;
+        if (target) {
+          const tag = target.tagName;
+          if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+        }
+
+        const key = e.key.toLowerCase();
+        if (key === 'v') {
+          e.preventDefault();
+          setReadOnly(prev => !prev);
+        } else if (key === 's') {
+          e.preventDefault();
+          handleExportJSON();
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleExportJSON]);
+
   return (
     <div className="attraction-board-wrapper">
       <div className="board-toolbar">

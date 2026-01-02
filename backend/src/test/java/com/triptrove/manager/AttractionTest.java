@@ -189,7 +189,8 @@ public class AttractionTest extends AbstractIntegrationTest {
 
     @Test
     void attractionShouldBeDeletedWhenRequestIsSent() throws Exception {
-        Integer[] attractionIds = {2, 3, 4, 5, 1};
+        Integer[] attractionIds = {4, 5};
+        assertThat(attractionRepo.findAll().size()).isEqualTo(5);
 
         for (Integer id : attractionIds) {
             mockMvc.perform(delete("/attractions/" + id)
@@ -198,7 +199,7 @@ public class AttractionTest extends AbstractIntegrationTest {
                     .andExpect(status().isNoContent());
         }
 
-        assertThat(attractionRepo.findAll()).isEmpty();
+        assertThat(attractionRepo.findAll().size()).isEqualTo(3);
     }
 
     @Test

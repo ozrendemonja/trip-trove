@@ -1,3 +1,5 @@
+DELETE FROM visited_attraction;
+DELETE FROM trip;
 DELETE FROM attraction WHERE id = 5;
 DELETE FROM attraction;
 DELETE FROM city;
@@ -5,6 +7,8 @@ DELETE FROM region;
 DELETE FROM country;
 DELETE FROM continent;
 
+ALTER SEQUENCE visited_attraction_id_seq RESTART 1;
+ALTER SEQUENCE trip_id_seq RESTART 1;
 ALTER SEQUENCE continent_id_seq RESTART 1;
 ALTER SEQUENCE country_id_seq RESTART 1;
 ALTER SEQUENCE region_id_seq RESTART 1;
@@ -53,4 +57,20 @@ INSERT INTO attraction(address, latitude, longitude, category, created_on, sourc
     (null, null, null, 'ART_MUSEUM', '2024-09-14T10:10:47', 'Functional Test', '2024-09-01T07:18:25', false, false, false, 'Test attraction 1', null, null, null, 'STABLE', null, null, 2, null, 3),
     (null, -0.7610531,-90.336817, 'NATURE_AND_WILDLIFE_AREA', '2025-01-10T23:08:41', 'Functional Test 3', '2020-01-10T07:12:00', false, false, false, 'Test attraction 2', null, null, null, 'POTENTIAL_CHANGE', null, 1, 3, null, 4),
     (null, null, null, 'WILDLIFE_TOUR', '2025-02-23T08:12:43', 'Functional Test 3', '2024-08-23T08:12:43', true, true, true, 'Test attraction 3', null, null, null, 'IMMINENT_CHANGE', null, null, 1, 1, 1)
+     ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO trip(name, trip_start_date, trip_end_date, created_on)
+	VALUES
+	('Test trip name 1', '2024-08-20T22:32:11', '2024-09-02T23:12:34', '2025-01-01T20:04:59'),
+    ('Test trip name 2', '2025-09-10T08:12:43', '2025-09-19T08:12:43', '2025-11-01T06:05:48'),
+    ('Test trip name 3', '2025-09-12T08:12:43', '2025-09-23T08:12:43', '2025-11-01T06:05:49'),
+    ('Test trip name 2', '2025-10-14T09:47:23', '2025-10-19T17:41:12', '2025-11-02T04:17:21')
+     ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO visited_attraction(id, created_on, attraction_id, trip_id, rating, note)
+	VALUES
+	(1, '2024-08-20T22:32:11', 1, 1, 'EXCELLENT', null),
+    (2, '2025-09-10T08:12:43', 2, 1, 'AVERAGE', null),
+    (3, '2025-09-12T08:12:43', 3, 1, 'EXCELLENT', 'test note'),
+    (4, '2025-10-14T09:47:23', 1, 2, 'VERY_GOOD', null)
      ON CONFLICT (id) DO NOTHING;

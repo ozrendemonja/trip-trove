@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -45,4 +46,17 @@ public class Trip {
             orphanRemoval = true
     )
     private List<VisitedAttraction> visitedAttractions = new ArrayList<>();
+
+    public void attachAttraction(Attraction attraction, Rating rating, String note) {
+        Objects.requireNonNull(attraction, "attraction must not be null");
+        Objects.requireNonNull(rating, "rating must not be null");
+
+        VisitedAttraction visited = new VisitedAttraction();
+        visited.setAttraction(attraction);
+        visited.setTrip(this);
+        visited.setRating(rating);
+        visited.setNote(note);
+        visitedAttractions.add(visited);
+    }
+
 }

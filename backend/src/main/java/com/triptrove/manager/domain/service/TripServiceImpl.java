@@ -1,8 +1,11 @@
 package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.Trip;
+import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
+import com.triptrove.manager.domain.repo.VisitedAttractionRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,8 @@ import java.time.LocalDate;
 @Log4j2
 public class TripServiceImpl implements TripService {
     private final TripRepo tripRepo;
+    private final AttractionRepo attractionRepo;
+    private final VisitedAttractionRepo visitedAttractionRepo;
 
     @Override
     public Trip saveTrip(String tripName, LocalDate from, LocalDate to) {
@@ -80,5 +85,22 @@ public class TripServiceImpl implements TripService {
 
         tripRepo.delete(trip);
         log.atInfo().log("Trip deleted");
+    }
+
+    @Override
+    public void attachAttraction(Long tripId, Long attractionId, Rating rating, String note) {
+        log.atInfo().log("Add attraction under trip for trip '{}'", tripId);
+        if (visitedAttractionRepo.existsByTripIdAndAttractionId(tripId, attractionId)) {
+            throw new BaseApiException("Attraction '%d' already exists under the trip in the database".formatted(attractionId), BaseApiException.ErrorCode.ATTRACTION_ALREADY_ADDED_TO_TRIP);
+        }
+        var trip = tripRepo.findById(tripId)
+                .orElseThrow(() -> new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+
+        trip.attachAttraction(attraction, rating, note);
+        tripRepo.save(trip);
+
+        log.atInfo().log("Attraction '{}' added under the trip", attraction.getName());
     }
 }

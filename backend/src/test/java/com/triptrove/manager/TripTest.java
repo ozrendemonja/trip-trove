@@ -2,12 +2,10 @@ package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.triptrove.manager.application.dto.GetTripResponse;
-import com.triptrove.manager.application.dto.SaveTripRequest;
-import com.triptrove.manager.application.dto.UpdateTripNameRequest;
-import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.repo.TripRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
@@ -368,5 +366,112 @@ public class TripTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+    }
+
+    @Test
+    void attractionShouldBeAddedUnderTripWhenValidRequestIsSent() throws Exception {
+        var request = new AddAttractionUnderTripRequest(RatingDTO.VERY_GOOD, "Test note");
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 4)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        tripRepo.findById(1L).get().getVisitedAttractions().forEach(System.out::println);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions()).hasSize(4);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getAttraction().getId()).isEqualTo(4);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getRating()).isEqualTo(Rating.VERY_GOOD);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getNote()).isEqualTo("Test note");
+    }
+
+    @Test
+    void attractionShouldNotBeAddedUnderTripWhenInvalidTripIdIsSent() throws Exception {
+        var request = new AddAttractionUnderTripRequest(RatingDTO.VERY_GOOD, "Test note");
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 100 + "/attractions/" + 4)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @Test
+    void attractionShouldNotBeAddedUnderTripWhenInvalidAttractionIdIsSent() throws Exception {
+        var request = new AddAttractionUnderTripRequest(RatingDTO.VERY_GOOD, "Test note");
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 100)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @Test
+    void attractionShouldNotBeAddedUnderTripWhenItsAlreadyThere() throws Exception {
+        var request = new AddAttractionUnderTripRequest(RatingDTO.VERY_GOOD, "Test note");
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.ATTRACTION_ALREADY_ADDED_TO_TRIP);
+        assertThat(actual.errorMessage()).isEqualTo("This attraction has already been added to the trip");
+    }
+
+    @Test
+    void attractionShouldNotBeAddedWhenNoIdIsGiven() throws Exception {
+        var request = new AddAttractionUnderTripRequest(null, null);
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{rating = must not be null}");
+    }
+
+    @Test
+    void attractionShouldNotBeAddedWhenNoTooLongRatingIsGiven() throws Exception {
+        var request = new AddAttractionUnderTripRequest(RatingDTO.EXCELLENT, "abcd".repeat(128) + "e");
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{note = Note may not be longer then 512}");
     }
 }

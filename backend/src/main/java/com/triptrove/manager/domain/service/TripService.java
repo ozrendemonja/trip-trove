@@ -1,5 +1,6 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.Trip;
 
 import java.time.LocalDate;
@@ -14,4 +15,6 @@ public interface TripService {
     void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip);
 
     void deleteTrip(Long id);
+
+    void attachAttraction(Long tripId, Long attractionId, Rating rating, String note);
 }

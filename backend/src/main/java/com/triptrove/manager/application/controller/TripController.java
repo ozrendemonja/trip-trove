@@ -1,9 +1,6 @@
 package com.triptrove.manager.application.controller;
 
-import com.triptrove.manager.application.dto.GetTripResponse;
-import com.triptrove.manager.application.dto.SaveTripRequest;
-import com.triptrove.manager.application.dto.UpdateTripNameRequest;
-import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -80,4 +77,15 @@ public class TripController {
         tripService.deleteTrip(id);
     }
 
+    @PostMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Add new attractions under trip", responses = {
+            @ApiResponse(description = "Attractions added successfully", responseCode = "204"),
+            @ApiResponse(description = "Attractions already added under the given trip", responseCode = "409", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void attachAttraction(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid AddAttractionUnderTripRequest attraction) {
+        tripService.attachAttraction(id, attractionId, attraction.rating().toRating(), attraction.note());
+    }
 }

@@ -67,10 +67,10 @@ INSERT INTO trip(name, trip_start_date, trip_end_date, created_on)
     ('Test trip name 2', '2025-10-14T09:47:23', '2025-10-19T17:41:12', '2025-11-02T04:17:21')
      ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO visited_attraction(id, created_on, attraction_id, trip_id, rating, note)
+INSERT INTO visited_attraction(created_on, attraction_id, trip_id, rating, note)
 	VALUES
-	(1, '2024-08-20T22:32:11', 1, 1, 'EXCELLENT', null),
-    (2, '2025-09-10T08:12:43', 2, 1, 'AVERAGE', null),
-    (3, '2025-09-12T08:12:43', 3, 1, 'EXCELLENT', 'test note'),
-    (4, '2025-10-14T09:47:23', 1, 2, 'VERY_GOOD', null)
+	('2024-08-20T22:32:11', 1, 1, 'EXCELLENT', null),
+    ('2025-09-10T08:12:43', 2, 1, 'AVERAGE', null),
+    ('2025-09-12T08:12:43', 3, 1, 'EXCELLENT', 'test note'),
+    ('2025-10-14T09:47:23', 1, 2, 'VERY_GOOD', null)
      ON CONFLICT (id) DO NOTHING;

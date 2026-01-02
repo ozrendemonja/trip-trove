@@ -12,7 +12,14 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "visited_attraction")
+@Table(name = "visited_attraction",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_trip_attraction",
+                        columnNames = {"trip_id", "attraction_id"}
+                )
+        }
+)
 @EntityListeners(AuditingEntityListener.class)
 public class VisitedAttraction {
     @Id

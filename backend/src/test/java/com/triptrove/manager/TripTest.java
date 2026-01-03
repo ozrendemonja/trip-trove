@@ -474,4 +474,38 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
         assertThat(actual.errorMessage()).isEqualTo("{note = Note may not be longer then 512}");
     }
+
+    @Test
+    void attractionShouldBeDeletedFromTripWhenValidRequestIsSent() throws Exception {
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions()).hasSize(3);
+
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 3)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions()).hasSize(2);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getAttraction().getId()).isEqualTo(2);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getRating()).isEqualTo(Rating.AVERAGE);
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions().getLast().getNote()).isNull();
+    }
+
+    @Test
+    void attractionShouldNotBeDeletedFromTripWhenAttractionIdDoestExist() throws Exception {
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions()).hasSize(3);
+
+        var jsonResponse = mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 10)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(tripRepo.findById(1L).get().getVisitedAttractions()).hasSize(3);
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
 }

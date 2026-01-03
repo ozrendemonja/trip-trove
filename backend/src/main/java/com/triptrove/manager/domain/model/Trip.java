@@ -58,5 +58,4 @@ public class Trip {
         visited.setNote(note);
         visitedAttractions.add(visited);
     }
-
 }

@@ -8,6 +8,8 @@ public record ManagerProperties(
         @Size(max = 100)
         int pageSize,
         @Size(max = 20)
-        int suggestionLimit
+        int suggestionLimit,
+        @Size(max = 200)
+        int totalCountries
 ) {
 }

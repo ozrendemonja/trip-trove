@@ -97,4 +97,14 @@ public class TripController {
     public void deleteTrip(@PathVariable Long id, @PathVariable Long attractionId) {
         tripService.deleteAttractionFromTrip(attractionId, id);
     }
+
+    @GetMapping("/countries/summary")
+    @Operation(summary = "Countries summary for trips", responses = {
+            @ApiResponse(description = "Countries summary", responseCode = "204"),
+    })
+    public GetCountriesSummaryResponse getCountriesSummary() {
+        var countriesSummary = tripService.getCountriesSummary();
+        return GetCountriesSummaryResponse.from(countriesSummary);
+    }
+
 }

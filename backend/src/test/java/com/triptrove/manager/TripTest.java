@@ -508,4 +508,19 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
     }
 
+    @Test
+    void countriesSummaryShouldCountAllCountriesWhenAtLeastOneMustVisitAttractionIsVisited() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/trips/countries/summary")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
+        assertThat(response.visitedCount()).isEqualTo(1);
+        assertThat(response.totalCount()).isEqualTo(195);
+    }
+
 }

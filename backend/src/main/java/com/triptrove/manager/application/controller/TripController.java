@@ -88,4 +88,23 @@ public class TripController {
     public void attachAttraction(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid AddAttractionUnderTripRequest attraction) {
         tripService.attachAttraction(id, attractionId, attraction.rating().toRating(), attraction.note());
     }
+
+    @DeleteMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove attraction from trip", responses = {
+            @ApiResponse(description = "Attraction removed from trip", responseCode = "204"),
+    })
+    public void deleteTrip(@PathVariable Long id, @PathVariable Long attractionId) {
+        tripService.deleteAttractionFromTrip(attractionId, id);
+    }
+
+    @GetMapping("/countries/summary")
+    @Operation(summary = "Countries summary for trips", responses = {
+            @ApiResponse(description = "Countries summary", responseCode = "204"),
+    })
+    public GetCountriesSummaryResponse getCountriesSummary() {
+        var countriesSummary = tripService.getCountriesSummary();
+        return GetCountriesSummaryResponse.from(countriesSummary);
+    }
+
 }

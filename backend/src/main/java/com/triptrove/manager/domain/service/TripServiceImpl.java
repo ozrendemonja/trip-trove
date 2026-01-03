@@ -1,11 +1,13 @@
 package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.CountriesSummary;
 import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.Trip;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.domain.repo.VisitedAttractionRepo;
+import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Log4j2
 public class TripServiceImpl implements TripService {
+    private final ManagerProperties managerProperties;
     private final TripRepo tripRepo;
     private final AttractionRepo attractionRepo;
     private final VisitedAttractionRepo visitedAttractionRepo;
@@ -102,5 +105,23 @@ public class TripServiceImpl implements TripService {
         tripRepo.save(trip);
 
         log.atInfo().log("Attraction '{}' added under the trip", attraction.getName());
+    }
+
+    @Override
+    public void deleteAttractionFromTrip(Long attractionId, Long tripId) {
+        log.atInfo().log("Removing attraction from trip");
+        if (tripRepo.deleteVisitedAttraction(tripId, attractionId) < 1) {
+            throw new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+        }
+
+        log.atInfo().log("Attraction removed");
+    }
+
+    @Override
+    public CountriesSummary getCountriesSummary() {
+        log.atInfo().log("Getting country summary");
+        int visitedCountries = visitedAttractionRepo.countDistinctVisitedCountries();
+        log.atInfo().log("Country summary created");
+        return new CountriesSummary(visitedCountries, managerProperties.totalCountries());
     }
 }

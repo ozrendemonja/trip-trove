@@ -1,5 +1,6 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.model.CountriesSummary;
 import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.Trip;
 
@@ -17,4 +18,8 @@ public interface TripService {
     void deleteTrip(Long id);
 
     void attachAttraction(Long tripId, Long attractionId, Rating rating, String note);
+
+    void deleteAttractionFromTrip(Long attractionId, Long tripId);
+
+    CountriesSummary getCountriesSummary();
 }

@@ -73,7 +73,7 @@ public class TripController {
     @Operation(summary = "Delete trip by its id", responses = {
             @ApiResponse(description = "Deleted trip by its id", responseCode = "204"),
     })
-    public void deleteTrip(@PathVariable Long id) {
+    public void detachAttraction(@PathVariable Long id) {
         tripService.deleteTrip(id);
     }
 
@@ -94,8 +94,8 @@ public class TripController {
     @Operation(summary = "Remove attraction from trip", responses = {
             @ApiResponse(description = "Attraction removed from trip", responseCode = "204"),
     })
-    public void deleteTrip(@PathVariable Long id, @PathVariable Long attractionId) {
-        tripService.deleteAttractionFromTrip(attractionId, id);
+    public void detachAttraction(@PathVariable Long id, @PathVariable Long attractionId) {
+        tripService.detachAttraction(id, attractionId);
     }
 
     @GetMapping("/countries/summary")

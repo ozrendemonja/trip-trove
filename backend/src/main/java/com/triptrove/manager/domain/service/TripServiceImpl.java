@@ -108,7 +108,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public void deleteAttractionFromTrip(Long attractionId, Long tripId) {
+    public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
         if (tripRepo.deleteVisitedAttraction(tripId, attractionId) < 1) {
             throw new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);

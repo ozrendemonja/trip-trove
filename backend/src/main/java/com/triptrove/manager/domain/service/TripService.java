@@ -19,7 +19,7 @@ public interface TripService {
 
     void attachAttraction(Long tripId, Long attractionId, Rating rating, String note);
 
-    void deleteAttractionFromTrip(Long attractionId, Long tripId);
+    void detachAttraction(Long tripId, Long attractionId);
 
     CountriesSummary getCountriesSummary();
 }

@@ -14,6 +14,7 @@ import AttractionList from "./features/continent/pages/list-attraction/ListAttra
 import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
 import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
 import MyTrip from "./features/my-trip/MyTrip";
+import MyTripList from "./features/my-trip/MyTripList";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -21,11 +22,25 @@ const root = ReactDOM.createRoot(
 
 const appTheme: PartialTheme = {
   palette: {
-    orange: "#fec703"
+    orange: "#fec703",
+    themePrimary: "#fec703",
+    themeDark: "#d4a600",
+    themeDarker: "#a88200",
+    themeLight: "#fff0a8",
+    themeLighter: "#fff7d4",
+    themeLighterAlt: "#fffdf5",
+    tealLight: "#61A9B4",
+    tealDark: "#3d7f8a",
+    greenLight: "#e6f4ea",
+    greenDark: "#2e7d32"
   },
   semanticColors: {
     bodyBackground: "transparent",
-    inputBackgroundChecked: "#FEC703"
+    inputBackgroundChecked: "#FEC703",
+    buttonText: "#323130",
+    primaryButtonText: "#323130",
+    primaryButtonTextHovered: "#323130",
+    primaryButtonTextPressed: "#323130"
   },
   components: {
     Nav: {
@@ -49,7 +64,8 @@ root.render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/my-trips" element={<MyTrip />} />
+        <Route path="/my-trips" element={<MyTripList />} />
+        <Route path="/my-trips/:tripId" element={<MyTrip />} />
         <Route path="/continents" element={<ContinentList />} />
         <Route path="/add-continent" element={<AddContinent />} />
         <Route path="/countries" element={<CountryList />} />

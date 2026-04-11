@@ -4,6 +4,7 @@ import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/trips", headers = "x-api-version=1")
@@ -39,6 +41,22 @@ public class TripController {
                 .buildAndExpand(trip.getId())
                 .toUri();
         return ResponseEntity.created(location).build();
+    }
+
+    @GetMapping()
+    @Operation(summary = "List paginable trips, sorted by their last updated time. If the trip was never updated, sort by the creation time. " +
+            "Order by the given sort direction, or ascending if none is provided.", parameters = {
+            @Parameter(name = "sd", description = "Direction of ordering trips using last updated time, or by creation time if not updated."),
+            @Parameter(name = "after", description = "Last trip retrieved on the previous page. Leave empty if this is the first page.")
+    })
+    public List<GetTripResponse> getTrips(
+            @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
+            TripParameter after) {
+        var afterTrip = after.tripId() != null ? after.toScrollPosition() : null;
+        return tripService.getTrips(afterTrip, sortDirection.toSortDirection())
+                .stream()
+                .map(GetTripResponse::from)
+                .toList();
     }
 
     @GetMapping("/{id:\\d+}")

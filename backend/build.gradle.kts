@@ -44,3 +44,7 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+openApi {
+    apiDocsUrl = "http://localhost:8080/api-docs"
+}

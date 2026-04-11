@@ -1,7 +1,9 @@
 package com.triptrove.manager.domain.repo;
 
+import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Trip;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -33,4 +35,31 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
                   AND va.attraction.id = :attractionId
             """)
     int deleteVisitedAttraction(Long tripId, Long attractionId);
+
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE t.id > :#{#afterTrip.elementId} AND t.createdOn >= :#{#afterTrip.updatedOn}
+            ORDER BY t.createdOn ASC
+            """)
+    List<Trip> findOldestAfter(ScrollPosition afterTrip, Limit limit);
+
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE t.id < :#{#beforeTrip.elementId} AND t.createdOn <= :#{#beforeTrip.updatedOn}
+            ORDER BY t.createdOn DESC
+            """)
+    List<Trip> findNewestBefore(ScrollPosition beforeTrip, Limit limit);
+
+    @Query("""
+            SELECT t FROM Trip t
+            ORDER BY t.createdOn ASC
+            """)
+    List<Trip> findAllOrderByOldest(Limit limit);
+
+    @Query("""
+            SELECT t FROM Trip t
+            ORDER BY t.createdOn DESC
+            """)
+    List<Trip> findAllOrderByNewest(Limit limit);
+
 }

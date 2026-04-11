@@ -19,30 +19,44 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }
   ] = useBoolean(false);
 
+  const isControlled = props.isOpen !== undefined;
+  const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
+
+  const handleClose = () => {
+    if (isControlled) {
+      props.onDismiss?.();
+    } else {
+      toggleHideDialog();
+      enableDiaglogButtons();
+    }
+  };
+
   return (
     <>
-      <IconButton
-        iconProps={{ iconName: props.editIconName ?? "Edit" }}
-        ariaLabel={props.editIconAriaLabel}
-        className={classes.editIcon}
-        onClick={toggleHideDialog}
-      />
+      {!isControlled && (
+        <IconButton
+          iconProps={{ iconName: props.editIconName ?? "Edit" }}
+          ariaLabel={props.editIconAriaLabel}
+          className={classes.editIcon}
+          onClick={toggleHideDialog}
+        />
+      )}
       <Modal
-        isOpen={!hideDialog}
-        onDismiss={toggleHideDialog}
+        isOpen={isModalOpen}
+        onDismiss={handleClose}
         isBlocking={true}
         containerClassName={classes.modalContainer}
         dragOptions={useDragOptions()}
       >
         <Stack horizontal={true} className={classes.header}>
           <Text as="h1" className={classes.heading}>
-            Modifying {props.text}
+            {props.title ?? `Modifying ${props.text}`}
           </Text>
           <IconButton
             className={classes.closeIcon}
             iconProps={{ iconName: "Cancel" }}
             ariaLabel="Close modify popup"
-            onClick={toggleHideDialog}
+            onClick={handleClose}
           />
         </Stack>
         <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
@@ -59,17 +73,14 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
             onClick={async () => {
               disableDiaglogButtons();
               await props.onUpdateClick();
-              toggleHideDialog();
+              handleClose();
               enableDiaglogButtons();
             }}
             text="Update"
             disabled={blockButton || !props.isFormValid}
           />
           <DefaultButton
-            onClick={() => {
-              toggleHideDialog();
-              enableDiaglogButtons();
-            }}
+            onClick={handleClose}
             text="Cancel"
             disabled={blockButton}
           />

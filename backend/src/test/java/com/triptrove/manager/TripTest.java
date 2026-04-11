@@ -58,6 +58,120 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void tripShouldBeReturnedInThreePagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2025, Month.DECEMBER, 14));
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2025, Month.DECEMBER, 17));
+        assertThat(response[1].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 14));
+        assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 19));
+
+        jsonResponse = mockMvc.perform(get("/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("tripId", response[1].tripId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 10));
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 19));
+        assertThat(response[1].tripName()).isEqualTo("Test trip name 3");
+        assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 23));
+        assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 12));
+
+        jsonResponse = mockMvc.perform(get("/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("tripId", response[1].tripId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 1");
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2024, Month.SEPTEMBER, 2));
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2024, Month.AUGUST, 20));
+    }
+
+    @Test
+    void tripShouldBeReturnedInThreePagesInAscendingOrderWhenASCOrderIsSent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/trips")
+                        .param("sd", "ASC")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 1");
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2024, Month.SEPTEMBER, 2));
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2024, Month.AUGUST, 20));
+        assertThat(response[1].tripName()).isEqualTo("Test trip name 3");
+        assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 23));
+        assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 12));
+
+
+        jsonResponse = mockMvc.perform(get("/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .param("tripId", response[1].tripId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(2);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 10));
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 19));
+        assertThat(response[1].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 14));
+        assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 19));
+
+        jsonResponse = mockMvc.perform(get("/trips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("sd", "ASC")
+                        .param("tripId", response[1].tripId().toString())
+                        .param("updatedOn", response[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].tripName()).isEqualTo("Test trip name 2");
+        assertThat(response[0].fromDate()).isEqualTo(LocalDate.of(2025, Month.DECEMBER, 14));
+        assertThat(response[0].toDate()).isEqualTo(LocalDate.of(2025, Month.DECEMBER, 17));
+    }
+
+    @Test
     void tripShouldBeSuccessfullySavedWhenNameAndRangeIsNotPresent() throws Exception {
         String tripName = "Test trip name";
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());

@@ -4,4 +4,5 @@ export interface TripCardProps {
   trip: Trip;
   onClick: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }

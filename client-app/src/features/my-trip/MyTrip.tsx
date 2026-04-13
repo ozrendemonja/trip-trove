@@ -14,6 +14,7 @@ import {
 } from "../continent/domain/Attraction.types";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
+import { useClasses } from "./MyTrip.styles";
 
 // Helper function to merge cities by name and combine their attractions
 function mergeCities(
@@ -100,6 +101,7 @@ function mergeCities(
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
+  const classes = useClasses();
   const [tripName, setTripName] = useState("Trip Planner");
 
   useEffect(() => {
@@ -152,14 +154,11 @@ export const MyTrip: React.FC = () => {
         <ActionButton
           iconProps={{ iconName: "Back" }}
           onClick={() => navigate("/my-trips")}
-          styles={{ root: { marginLeft: 4 } }}
+          className={classes.backButton}
         >
           My Trips
         </ActionButton>
-        <Text
-          as="h1"
-          styles={{ root: { fontSize: 30, paddingLeft: 10, paddingRight: 10 } }}
-        >
+        <Text as="h1" className={classes.tripName}>
           {tripName}
         </Text>
         <SearchAttractionsModal

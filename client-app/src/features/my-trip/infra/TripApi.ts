@@ -3,6 +3,8 @@ import {
   getTrip,
   getTrips,
   saveTrip,
+  updateTripDetail,
+  updateTripRange,
   TripParameter
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
@@ -97,4 +99,35 @@ export const fetchTripById = async (id: number): Promise<Trip | undefined> => {
     updatedOn: data.changedOn,
     status: data.toDate ? computeStatus(data.toDate) : "active"
   };
+};
+
+export const updateTripName = async (
+  id: number,
+  name: string
+): Promise<void> => {
+  const { error } = await updateTripDetail({
+    path: { id },
+    body: { tripName: name },
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while updating trip name", error);
+  }
+};
+
+export const updateTripDates = async (
+  id: number,
+  startDate: string,
+  endDate: string
+): Promise<void> => {
+  const { error } = await updateTripRange({
+    path: { id },
+    body: { fromDate: startDate, toDate: endDate },
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while updating trip dates", error);
+  }
 };

@@ -7,9 +7,10 @@ import { TripCardProps } from "./TripCard.types";
 export const TripCard: React.FC<TripCardProps> = ({
   trip,
   onClick,
-  onDelete
+  onDelete,
+  onEdit
 }) => {
-  const { deleteBtn, ...classes } = useTripCardClasses(trip.status);
+  const { deleteBtn, editBtn, ...classes } = useTripCardClasses(trip.status);
 
   const formatDate = (iso?: string): string =>
     iso
@@ -41,6 +42,16 @@ export const TripCard: React.FC<TripCardProps> = ({
         horizontalAlign="center"
       >
         <Icon iconName="AirTickets" className={classes.bannerIcon} />
+        <IconButton
+          iconProps={{ iconName: "Edit" }}
+          title="Edit trip"
+          ariaLabel="Edit trip"
+          styles={editBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        />
         <IconButton
           iconProps={{ iconName: "Delete" }}
           title="Delete trip"

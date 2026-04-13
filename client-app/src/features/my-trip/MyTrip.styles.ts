@@ -28,6 +28,14 @@ export const useClasses = () => {
     searchContiner: {
       position: "absolute",
       left: "50%"
+    },
+    backButton: {
+      marginLeft: 4
+    },
+    tripName: {
+      fontSize: 30,
+      paddingLeft: 10,
+      paddingRight: 10
     }
   });
 };

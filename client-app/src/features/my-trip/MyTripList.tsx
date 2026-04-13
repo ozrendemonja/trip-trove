@@ -17,6 +17,8 @@ import { Trip, TripStatus } from "./domain/Trip.types";
 import { deleteTripById, fetchTrips, saveTripToApi } from "./infra/TripApi";
 import { useMyTripListClasses } from "./MyTripList.styles";
 import TripCard from "./TripCard";
+import ConfirmDeleteDialog from "../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
+import EditTripDetails from "./EditTripDetails";
 
 interface TabConfig {
   status: TripStatus;
@@ -59,12 +61,16 @@ export const MyTripList: React.FC = () => {
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBoolean(true);
   const [reloadData, { toggle: toggleReloadData }] = useBoolean(false);
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
+  const [tripToEdit, setTripToEdit] = useState<Trip | null>(null);
+  const [
+    hideDeleteDialog,
+    { setTrue: closeDeleteDialog, setFalse: openDeleteDialog }
+  ] = useBoolean(true);
 
   useEffect(() => {
     setLoading();
-    fetchTrips(undefined, "DESC")
-      .then(setTrips)
-      .finally(setNotLoading);
+    fetchTrips(undefined, "DESC").then(setTrips).finally(setNotLoading);
   }, [reloadData]);
 
   const handleCreateTrip = async (): Promise<void> => {
@@ -72,8 +78,22 @@ export const MyTripList: React.FC = () => {
     toggleReloadData();
   };
 
-  const handleDelete = (id: number) => {
-    deleteTripById(id).then(toggleReloadData);
+  const handleDeleteRequest = (trip: Trip): void => {
+    setTripToDelete(trip);
+    openDeleteDialog();
+  };
+
+  const handleDeleteConfirm = async (): Promise<void> => {
+    if (!tripToDelete) return;
+    await deleteTripById(tripToDelete.id);
+    toggleReloadData();
+    closeDeleteDialog();
+    setTripToDelete(null);
+  };
+
+  const handleDeleteDismiss = (): void => {
+    closeDeleteDialog();
+    setTripToDelete(null);
   };
 
   const handleDialogDismiss = () => {
@@ -109,7 +129,8 @@ export const MyTripList: React.FC = () => {
             <Pivot
               selectedKey={activeTab}
               onLinkClick={(item) =>
-                item?.props.itemKey && setActiveTab(item.props.itemKey as TripStatus)
+                item?.props.itemKey &&
+                setActiveTab(item.props.itemKey as TripStatus)
               }
               styles={{ root: { marginBottom: 24 } }}
             >
@@ -131,7 +152,8 @@ export const MyTripList: React.FC = () => {
                 <Text className={classes.emptyText}>
                   {TAB_CONFIG.find((t) => t.status === activeTab)?.emptyMessage}
                 </Text>
-                {TAB_CONFIG.find((t) => t.status === activeTab)?.showCreateButton && (
+                {TAB_CONFIG.find((t) => t.status === activeTab)
+                  ?.showCreateButton && (
                   <PrimaryButton
                     iconProps={{ iconName: "Add" }}
                     text="Create Trip"
@@ -146,7 +168,8 @@ export const MyTripList: React.FC = () => {
                     key={trip.id}
                     trip={trip}
                     onClick={() => navigate(`/my-trips/${trip.id}`)}
-                    onDelete={() => handleDelete(trip.id)}
+                    onDelete={() => handleDeleteRequest(trip)}
+                    onEdit={() => setTripToEdit(trip)}
                   />
                 ))}
               </Stack>
@@ -161,6 +184,7 @@ export const MyTripList: React.FC = () => {
             onDismiss={handleDialogDismiss}
             isFormValid={!!newTripName.trim() && !!newStartDate && !!newEndDate}
             onUpdateClick={handleCreateTrip}
+            submitText="Create"
           >
             <Stack tokens={{ childrenGap: 16 }}>
               <TextField
@@ -175,7 +199,7 @@ export const MyTripList: React.FC = () => {
                   type="date"
                   value={newStartDate}
                   onChange={(_e, val) => setNewStartDate(val ?? "")}
-                  styles={{ root: { flex: 1 } }}
+                  className={classes.dateField}
                 />
                 <Text className={classes.dateArrow}>{"\u2192"}</Text>
                 <TextField
@@ -183,11 +207,30 @@ export const MyTripList: React.FC = () => {
                   type="date"
                   value={newEndDate}
                   onChange={(_e, val) => setNewEndDate(val ?? "")}
-                  styles={{ root: { flex: 1 } }}
+                  className={classes.dateField}
                 />
               </Stack>
             </Stack>
           </EditProperty>
+
+          <ConfirmDeleteDialog
+            name={tripToDelete?.name ?? "trip"}
+            hidden={hideDeleteDialog}
+            onConfirm={handleDeleteConfirm}
+            onDismiss={handleDeleteDismiss}
+          />
+
+          {tripToEdit && (
+            <EditTripDetails
+              trip={tripToEdit}
+              isOpen={true}
+              onDismiss={() => setTripToEdit(null)}
+              onUpdateClick={() => {
+                setTripToEdit(null);
+                toggleReloadData();
+              }}
+            />
+          )}
         </>
       )}
     </>

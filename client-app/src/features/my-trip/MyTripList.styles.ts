@@ -47,6 +47,9 @@ export const useMyTripListClasses = () => {
       userSelect: "none" as const,
       alignSelf: "flex-end",
       paddingBottom: 6
+    },
+    dateField: {
+      flex: 1
     }
   });
 

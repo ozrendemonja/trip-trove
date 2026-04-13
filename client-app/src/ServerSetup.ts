@@ -6,6 +6,7 @@ import {
   GetCountryResponse,
   GetRegionResponse,
   GetTripResponse,
+  GetTripResponse,
   UpdateAttractionCategoryRequest,
   UpdateAttractionDestinationRequest,
   UpdateAttractionDetailRequest,
@@ -22,7 +23,9 @@ import {
   UpdateCountryContinentRequest,
   UpdateRegionCountryRequest,
   UpdateRegionDetailResponse,
-  UpdateRegionDetailsRequest
+  UpdateRegionDetailsRequest,
+  UpdateTripNameRequest,
+  UpdateTripRangeRequest
 } from "./clients/manager";
 
 export default function makeServer(): ReturnType<typeof createServer> {
@@ -241,8 +244,11 @@ export default function makeServer(): ReturnType<typeof createServer> {
         "/trips",
         (schema, request) => {
           const body = JSON.parse(request.requestBody);
-          const existingIds = (schema.db.trips as GetTripResponse[]).map((t) => t.tripId ?? 0);
-          const newId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+          const existingIds = (schema.db.trips as GetTripResponse[]).map(
+            (t) => t.tripId ?? 0
+          );
+          const newId =
+            existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
           schema.db.trips.insert({
             tripId: newId,
             tripName: body.tripName,
@@ -260,6 +266,39 @@ export default function makeServer(): ReturnType<typeof createServer> {
           const id = Number(request.params.id);
           const element = schema.db.trips.findBy((t) => t.tripId === id);
           if (element) schema.db.trips.remove(element);
+        },
+        { timing: 400 }
+      );
+
+      this.put(
+        "/trips/:id/name",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const body = JSON.parse(request.requestBody) as UpdateTripNameRequest;
+          const element = schema.db.trips.findBy((t) => t.tripId === id);
+          if (element) {
+            schema.db.trips.update(element.id, {
+              tripName: body.tripName
+            });
+          }
+        },
+        { timing: 400 }
+      );
+
+      this.put(
+        "/trips/:id/range",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateTripRangeRequest;
+          const element = schema.db.trips.findBy((t) => t.tripId === id);
+          if (element) {
+            schema.db.trips.update(element.id, {
+              fromDate: body.fromDate,
+              toDate: body.toDate
+            });
+          }
         },
         { timing: 400 }
       );

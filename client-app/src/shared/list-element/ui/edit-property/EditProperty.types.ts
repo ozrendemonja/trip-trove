@@ -28,4 +28,9 @@ export interface EditPropertyProps {
    * Custom modal title. Defaults to "Modifying {text}".
    */
   title?: string;
+
+  /**
+   * Custom submit button text. Defaults to "Update".
+   */
+  submitText?: string;
 }

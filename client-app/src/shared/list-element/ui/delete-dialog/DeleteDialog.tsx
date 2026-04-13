@@ -1,12 +1,6 @@
 import {
   CommandBar,
-  ContextualMenu,
-  DefaultButton,
-  Dialog,
-  DialogFooter,
-  DialogType,
-  IContextualMenuItem,
-  PrimaryButton
+  IContextualMenuItem
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
 import {
@@ -14,6 +8,7 @@ import {
   DeleteDialogProps,
   DeleteRowOptionsProps
 } from "./DeleteDialog.types";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 const getCommandItems = (
   haveSelectedItem: boolean,
@@ -38,22 +33,7 @@ const getCommandItems = (
 };
 
 const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
-  const dragOptions = {
-    moveMenuItemText: "Move",
-    closeMenuItemText: "Close",
-    menu: ContextualMenu
-  };
-  const dialogContentProps = {
-    type: DialogType.normal,
-    title: `Delete ${props.selectedItem.name}`,
-    subText: `Are you sure you want to delete ${props.selectedItem.name}?`
-  };
-
   const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
-  const [
-    blockButton,
-    { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }
-  ] = useBoolean(false);
   const deleteRowOptions: DeleteRowOptionsProps = {
     text: props.deleteRowOptions.text,
     onDeleteRow: toggleHideDialog
@@ -68,39 +48,15 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
           deleteRowOptions
         )}
       />
-      <Dialog
+      <ConfirmDeleteDialog
+        name={props.selectedItem.name}
         hidden={hideDialog}
-        onDismiss={() => {
-          enableDiaglogButtons();
+        onConfirm={async () => {
+          await props.deleteRowOptions.onDeleteRow();
           toggleHideDialog();
         }}
-        dialogContentProps={dialogContentProps}
-        modalProps={{
-          isBlocking: true,
-          dragOptions: dragOptions
-        }}
-      >
-        <DialogFooter>
-          <PrimaryButton
-            onClick={async () => {
-              disableDiaglogButtons();
-              await props.deleteRowOptions.onDeleteRow();
-              toggleHideDialog();
-              enableDiaglogButtons();
-            }}
-            text="Delete"
-            disabled={blockButton}
-          />
-          <DefaultButton
-            onClick={() => {
-              toggleHideDialog();
-              enableDiaglogButtons();
-            }}
-            text="Cancel"
-            disabled={blockButton}
-          />
-        </DialogFooter>
-      </Dialog>
+        onDismiss={toggleHideDialog}
+      />
     </>
   );
 };

@@ -76,7 +76,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
               handleClose();
               enableDiaglogButtons();
             }}
-            text="Update"
+            text={props.submitText ?? "Update"}
             disabled={blockButton || !props.isFormValid}
           />
           <DefaultButton

@@ -394,7 +394,7 @@ public class TripTest extends AbstractIntegrationTest {
         LocalDate toDate = LocalDate.of(2025, Month.OCTOBER, 21);
         var request = new UpdateTripRangeRequest(fromDate, toDate);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 2 + "/range")
+        var jsonResponse = mockMvc.perform(put("/trips/" + 3 + "/range")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))

@@ -91,7 +91,7 @@ public class TripController {
     @Operation(summary = "Delete trip by its id", responses = {
             @ApiResponse(description = "Deleted trip by its id", responseCode = "204"),
     })
-    public void detachAttraction(@PathVariable Long id) {
+    public void deleteTrip(@PathVariable Long id) {
         tripService.deleteTrip(id);
     }
 

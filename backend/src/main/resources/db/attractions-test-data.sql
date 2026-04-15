@@ -62,9 +62,10 @@ INSERT INTO attraction(address, latitude, longitude, category, created_on, sourc
 INSERT INTO trip(name, trip_start_date, trip_end_date, created_on)
 	VALUES
 	('Test trip name 1', '2024-08-20T22:32:11', '2024-09-02T23:12:34', '2025-01-01T20:04:59'),
+    ('Test trip name 3', '2025-09-12T08:12:43', '2025-09-23T08:12:43', '2025-11-01T06:05:47'),
     ('Test trip name 2', '2025-09-10T08:12:43', '2025-09-19T08:12:43', '2025-11-01T06:05:48'),
-    ('Test trip name 3', '2025-09-12T08:12:43', '2025-09-23T08:12:43', '2025-11-01T06:05:49'),
-    ('Test trip name 2', '2025-10-14T09:47:23', '2025-10-19T17:41:12', '2025-11-02T04:17:21')
+    ('Test trip name 2', '2025-10-14T09:47:23', '2025-10-19T17:41:12', '2025-11-02T04:17:21'),
+    ('Test trip name 2', '2025-12-14T09:47:23', '2025-12-17T23:11:32', '2025-11-02T04:17:22')
      ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO visited_attraction(created_on, attraction_id, trip_id, rating, note)

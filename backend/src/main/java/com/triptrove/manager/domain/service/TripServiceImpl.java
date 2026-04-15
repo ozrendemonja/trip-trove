@@ -1,18 +1,17 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.CountriesSummary;
-import com.triptrove.manager.domain.model.Rating;
-import com.triptrove.manager.domain.model.Trip;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.domain.repo.VisitedAttractionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -123,5 +122,39 @@ public class TripServiceImpl implements TripService {
         int visitedCountries = visitedAttractionRepo.countDistinctVisitedCountries();
         log.atInfo().log("Country summary created");
         return new CountriesSummary(visitedCountries, managerProperties.totalCountries());
+    }
+
+    @Override
+    public List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection) {
+        if (sortDirection == SortDirection.ASCENDING) {
+            return getTripAfter(afterTrip);
+        }
+        return getTripBefore(afterTrip);
+    }
+
+    private List<Trip> getTripAfter(ScrollPosition trip) {
+        if (trip == null) {
+            log.atInfo().log("Getting a list of first {} oldest trips", managerProperties.pageSize());
+            List<Trip> result = tripRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} trips", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of oldest trips, updated after {}", trip.updatedOn());
+        List<Trip> result = tripRepo.findOldestAfter(trip, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} trips", result.size());
+        return result;
+    }
+
+    private List<Trip> getTripBefore(ScrollPosition trip) {
+        if (trip == null) {
+            log.atInfo().log("Getting a list of first {} newest trips", managerProperties.pageSize());
+            List<Trip> result = tripRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            log.atInfo().log("Found {} trips", result.size());
+            return result;
+        }
+        log.atInfo().log("Getting a list of newest trips, updated before {}", trip.updatedOn());
+        List<Trip> result = tripRepo.findNewestBefore(trip, Limit.of(managerProperties.pageSize()));
+        log.atInfo().log("Found {} trips", result.size());
+        return result;
     }
 }

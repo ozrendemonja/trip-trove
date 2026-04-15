@@ -5,6 +5,8 @@ import {
   GetContinentResponse,
   GetCountryResponse,
   GetRegionResponse,
+  GetTripResponse,
+  GetTripResponse,
   UpdateAttractionCategoryRequest,
   UpdateAttractionDestinationRequest,
   UpdateAttractionDetailRequest,
@@ -21,7 +23,9 @@ import {
   UpdateCountryContinentRequest,
   UpdateRegionCountryRequest,
   UpdateRegionDetailResponse,
-  UpdateRegionDetailsRequest
+  UpdateRegionDetailsRequest,
+  UpdateTripNameRequest,
+  UpdateTripRangeRequest
 } from "./clients/manager";
 
 export default function makeServer(): ReturnType<typeof createServer> {
@@ -31,7 +35,8 @@ export default function makeServer(): ReturnType<typeof createServer> {
       country: Model.extend<GetCountryResponse>({}),
       region: Model.extend<GetRegionResponse>({}),
       city: Model.extend<GetCityResponse>({}),
-      attraction: Model.extend<GetAttractionResponse>({})
+      attraction: Model.extend<GetAttractionResponse>({}),
+      trip: Model.extend<GetTripResponse>({})
     },
 
     seeds(server) {
@@ -186,10 +191,118 @@ export default function makeServer(): ReturnType<typeof createServer> {
         infoRecorded: "2024-08-04",
         changedOn: "2024-12-26T08:01:02.0000000"
       });
+
+      server.create("trip", {
+        tripId: 1,
+        tripName: "Italy",
+        fromDate: "2026-06-10",
+        toDate: "2026-06-24",
+        changedOn: "2026-03-01T10:00:00.0000000"
+      });
+      server.create("trip", {
+        tripId: 2,
+        tripName: "Japan 2026",
+        fromDate: "2026-10-01",
+        toDate: "2026-10-14",
+        changedOn: "2026-04-05T08:30:00.0000000"
+      });
+      server.create("trip", {
+        tripId: 3,
+        tripName: "Road Trip USA",
+        fromDate: "2025-07-04",
+        toDate: "2025-07-20",
+        changedOn: "2025-08-10T14:00:00.0000000"
+      });
     },
 
     routes() {
       this.urlPrefix = "http://localhost:8080";
+
+      this.get(
+        "/trips",
+        (schema, request) => {
+          const sortDirection = request.queryParams.sd;
+          let result = schema.db.trips.sort() as GetTripResponse[];
+          if (sortDirection !== "ASC") {
+            result = result.toReversed();
+          }
+          return result;
+        },
+        { timing: 600 }
+      );
+
+      this.get(
+        "/trips/:id",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          return schema.db.trips.findBy((t) => t.tripId === id);
+        },
+        { timing: 400 }
+      );
+
+      this.post(
+        "/trips",
+        (schema, request) => {
+          const body = JSON.parse(request.requestBody);
+          const existingIds = (schema.db.trips as GetTripResponse[]).map(
+            (t) => t.tripId ?? 0
+          );
+          const newId =
+            existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+          schema.db.trips.insert({
+            tripId: newId,
+            tripName: body.tripName,
+            fromDate: body.fromDate,
+            toDate: body.toDate,
+            changedOn: new Date().toISOString()
+          });
+        },
+        { timing: 400 }
+      );
+
+      this.delete(
+        "/trips/:id",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const element = schema.db.trips.findBy((t) => t.tripId === id);
+          if (element) schema.db.trips.remove(element);
+        },
+        { timing: 400 }
+      );
+
+      this.put(
+        "/trips/:id/name",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const body = JSON.parse(request.requestBody) as UpdateTripNameRequest;
+          const element = schema.db.trips.findBy((t) => t.tripId === id);
+          if (element) {
+            schema.db.trips.update(element.id, {
+              tripName: body.tripName
+            });
+          }
+        },
+        { timing: 400 }
+      );
+
+      this.put(
+        "/trips/:id/range",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateTripRangeRequest;
+          const element = schema.db.trips.findBy((t) => t.tripId === id);
+          if (element) {
+            schema.db.trips.update(element.id, {
+              fromDate: body.fromDate,
+              toDate: body.toDate
+            });
+          }
+        },
+        { timing: 400 }
+      );
+
       this.get(
         "/continents",
         (schema, request) => {

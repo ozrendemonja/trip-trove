@@ -30,7 +30,6 @@ export const useClasses = () => {
       marginRight: "16px"
     },
     closeIcon: {
-      color: "blue",
       marginLeft: "auto",
       marginTop: "4px",
       marginRight: "2px"

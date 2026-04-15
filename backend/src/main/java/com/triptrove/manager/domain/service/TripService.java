@@ -1,10 +1,9 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.CountriesSummary;
-import com.triptrove.manager.domain.model.Rating;
-import com.triptrove.manager.domain.model.Trip;
+import com.triptrove.manager.domain.model.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface TripService {
     Trip saveTrip(String tripName, LocalDate from, LocalDate to);
@@ -22,4 +21,6 @@ public interface TripService {
     void detachAttraction(Long tripId, Long attractionId);
 
     CountriesSummary getCountriesSummary();
+
+    List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection);
 }

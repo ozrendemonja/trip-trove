@@ -1,5 +1,6 @@
 export type TripStatus = "active" | "past" | "archived";
 
+<<<<<<< HEAD
 export type Rating =
   | "DISLIKED"
   | "BELOW_AVERAGE"
@@ -7,6 +8,8 @@ export type Rating =
   | "VERY_GOOD"
   | "EXCELLENT";
 
+=======
+>>>>>>> main
 export interface Trip {
   id: number;
   name: string;

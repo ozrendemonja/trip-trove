@@ -96,6 +96,7 @@ export const LongName: Story = {
     onEdit: () => {}
   }
 };
+<<<<<<< HEAD
 
 export const ClickDelete: Story = {
   args: {
@@ -112,3 +113,5 @@ export const ClickDelete: Story = {
     await expect(args.onClick).not.toHaveBeenCalled();
   }
 };
+=======
+>>>>>>> main

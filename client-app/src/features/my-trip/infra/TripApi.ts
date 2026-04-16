@@ -1,6 +1,9 @@
 import {
+<<<<<<< HEAD
   attachAttraction,
   detachAttraction,
+=======
+>>>>>>> main
   detachAttraction1,
   getTrip,
   getTrips,
@@ -10,7 +13,11 @@ import {
   TripParameter
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
+<<<<<<< HEAD
 import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
+=======
+import { LastReadTrip, Trip, TripStatus } from "../domain/Trip.types";
+>>>>>>> main
 
 managerClient();
 
@@ -133,6 +140,7 @@ export const updateTripDates = async (
     throw new Error("Error while updating trip dates", error);
   }
 };
+<<<<<<< HEAD
 
 export const attachAttractionToTrip = async (
   tripId: number,
@@ -164,3 +172,5 @@ export const removeAttractionFromTrip = async (
     throw new Error("Error while removing attraction from trip", error);
   }
 };
+=======
+>>>>>>> main

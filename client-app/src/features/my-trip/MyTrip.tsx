@@ -1,6 +1,9 @@
 import { ActionButton, Stack, Text } from "@fluentui/react";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
+import { ActionButton, Stack, Text } from "@fluentui/react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
 import { fetchTripById } from "./infra/TripApi";
 import Board from "../AI-table/components/Board";
@@ -15,6 +18,7 @@ import {
 } from "../continent/domain/Attraction.types";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
+import { useClasses } from "./MyTrip.styles";
 import { useClasses } from "./MyTrip.styles";
 
 // Helper function to merge cities by name and combine their attractions
@@ -112,6 +116,18 @@ export const MyTrip: React.FC = () => {
     });
   }, [tripId]);
 
+  const { tripId } = useParams<{ tripId: string }>();
+  const navigate = useNavigate();
+  const classes = useClasses();
+  const [tripName, setTripName] = useState("Trip Planner");
+
+  useEffect(() => {
+    if (!tripId) return;
+    fetchTripById(Number(tripId)).then((trip) => {
+      if (trip) setTripName(trip.name);
+    });
+  }, [tripId]);
+
   // Source of truth: all attractions from server responses
   const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
   // Loaded cities from JSON file (already in display format, preserved separately)
@@ -156,7 +172,16 @@ export const MyTrip: React.FC = () => {
           iconProps={{ iconName: "Back" }}
           onClick={() => navigate("/my-trips")}
           className={classes.backButton}
+      <Stack horizontal verticalAlign="center">
+        <ActionButton
+          iconProps={{ iconName: "Back" }}
+          onClick={() => navigate("/my-trips")}
+          className={classes.backButton}
         >
+          My Trips
+        </ActionButton>
+        <Text as="h1" className={classes.tripName}>
+          {tripName}
           My Trips
         </ActionButton>
         <Text as="h1" className={classes.tripName}>

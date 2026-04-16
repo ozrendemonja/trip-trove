@@ -25,6 +25,9 @@ import {
   UpdateRegionDetailsRequest,
   UpdateTripNameRequest,
   UpdateTripRangeRequest
+  UpdateRegionDetailsRequest,
+  UpdateTripNameRequest,
+  UpdateTripRangeRequest
 } from "./clients/manager";
 
 export default function makeServer(): ReturnType<typeof createServer> {
@@ -34,6 +37,8 @@ export default function makeServer(): ReturnType<typeof createServer> {
       country: Model.extend<GetCountryResponse>({}),
       region: Model.extend<GetRegionResponse>({}),
       city: Model.extend<GetCityResponse>({}),
+      attraction: Model.extend<GetAttractionResponse>({}),
+      trip: Model.extend<GetTripResponse>({})
       attraction: Model.extend<GetAttractionResponse>({}),
       trip: Model.extend<GetTripResponse>({})
     },
@@ -189,6 +194,28 @@ export default function makeServer(): ReturnType<typeof createServer> {
         infoFrom: "Google reviews",
         infoRecorded: "2024-08-04",
         changedOn: "2024-12-26T08:01:02.0000000"
+      });
+
+      server.create("trip", {
+        tripId: 1,
+        tripName: "Italy",
+        fromDate: "2026-06-10",
+        toDate: "2026-06-24",
+        changedOn: "2026-03-01T10:00:00.0000000"
+      });
+      server.create("trip", {
+        tripId: 2,
+        tripName: "Japan 2026",
+        fromDate: "2026-10-01",
+        toDate: "2026-10-14",
+        changedOn: "2026-04-05T08:30:00.0000000"
+      });
+      server.create("trip", {
+        tripId: 3,
+        tripName: "Road Trip USA",
+        fromDate: "2025-07-04",
+        toDate: "2025-07-20",
+        changedOn: "2025-08-10T14:00:00.0000000"
       });
 
       server.create("trip", {

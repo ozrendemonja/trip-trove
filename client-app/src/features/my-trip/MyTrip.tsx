@@ -115,12 +115,13 @@ function mapSavedTripAttractionsToBoard(
   const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
 
   for (const item of items) {
-    const cityOrRegion =
-      item.cityName?.trim() || item.regionName.trim();
+    const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
     const cityKey = cityOrRegion || item.countryName;
     const columnTitle = item.attractionGroup
-      ? (GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots")
-      : (item.mustVisit ? "Top Attractions" : "Secondary Spots");
+      ? GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots"
+      : item.mustVisit
+        ? "Top Attractions"
+        : "Secondary Spots";
 
     if (!cityColumnMap.has(cityKey)) {
       cityColumnMap.set(cityKey, new Map());
@@ -157,7 +158,8 @@ function mapSavedTripAttractionsToBoard(
     const baseId = cityName.toLowerCase().replace(/\s+/g, "_");
     // Ensure standard columns exist
     const columnOrder = Object.values(GROUP_TO_COLUMN);
-    const columns: { id: string; title: string; tasks: BoardAttraction[] }[] = [];
+    const columns: { id: string; title: string; tasks: BoardAttraction[] }[] =
+      [];
 
     for (const title of columnOrder) {
       const colId = `${baseId}_${title.toLowerCase().replace(/\s+/g, "_")}`;
@@ -262,6 +264,11 @@ export const MyTrip: React.FC = () => {
           onUpdateClick={handleUpdate}
         />
       </Stack>
+      <Board
+        initialCities={attractions}
+        onCitiesLoaded={handleCitiesLoaded}
+        tripId={tripId ? Number(tripId) : undefined}
+      />
       <Board
         initialCities={attractions}
         onCitiesLoaded={handleCitiesLoaded}

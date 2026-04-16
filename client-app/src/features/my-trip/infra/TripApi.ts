@@ -12,6 +12,7 @@ import {
 import { client } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
+<<<<<<< HEAD
 
 export type TripAttractionStatus = "PLANNED" | "VISITED";
 export type TripAttractionGroup = "PRIMARY" | "SECONDARY" | "EXCLUDED";
@@ -38,6 +39,8 @@ export interface TripAttractionFromServer {
   note?: string;
   attractionGroup?: TripAttractionGroup;
 }
+=======
+>>>>>>> main
 
 managerClient();
 
@@ -164,6 +167,7 @@ export const updateTripDates = async (
 export const attachAttractionToTrip = async (
   tripId: number,
   attractionId: number,
+<<<<<<< HEAD
   attractionGroup?: TripAttractionGroup
 ): Promise<void> => {
   const { error } = await client.post({
@@ -191,6 +195,19 @@ export const updateTripAttraction = async (
 
   if (error) {
     console.error("Error while reviewing trip attraction", error);
+=======
+  ratingValue: Rating,
+  note?: string
+): Promise<void> => {
+  const { error } = await attachAttraction({
+    path: { id: tripId, attractionId },
+    body: { rating: ratingValue, note },
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while attaching attraction to trip", error);
+>>>>>>> main
   }
 };
 
@@ -207,6 +224,7 @@ export const removeAttractionFromTrip = async (
     throw new Error("Error while removing attraction from trip", error);
   }
 };
+<<<<<<< HEAD
 
 export const fetchTripAttractions = async (
   tripId: number
@@ -223,3 +241,5 @@ export const fetchTripAttractions = async (
 
   return (data as TripAttractionFromServer[]) ?? [];
 };
+=======
+>>>>>>> main

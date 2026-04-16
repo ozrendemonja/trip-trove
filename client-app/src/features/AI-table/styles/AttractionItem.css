@@ -63,31 +63,4 @@
 .attraction-item.in-trip { background: #e8f5e9; border-radius: 3px; box-shadow: 0 0 0 1px #66bb6a inset; }
 .attraction-item.in-trip .attraction-name { color: #2e7d32; font-weight: 600; }
 
-/* Review section */
-.review-section { margin-top: 4px; }
 
-/* Attached state – Google-style chip */
-.review-attached { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 8px 10px; font-size: 0.7rem; border-left: 3px solid #34a853; }
-.review-attached-rating { font-weight: 500; color: #202124; font-size: 0.7rem; }
-.review-attached-note { color: #5f6368; white-space: pre-line; font-size: 0.65rem; }
-.review-remove-btn { background: transparent; border: none; border-radius: 50%; padding: 4px; cursor: pointer; color: #5f6368; min-width: 0; min-height: 0; height: 24px; width: 24px; }
-.review-remove-btn .ms-Button-icon { font-size: 0.65rem; color: #5f6368; }
-.review-remove-btn:hover { background: #f1f3f4; color: #d93025; }
-.review-remove-btn:hover .ms-Button-icon { color: #d93025; }
-.review-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* Not-attached form – Google-style card */
-.review-form { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 10px; }
-.review-rating-btn { background: #fff; border: 1px solid #dadce0; border-radius: 20px; padding: 4px 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; min-width: 0; min-height: 0; height: auto; line-height: 1; }
-.review-rating-btn .ms-Button-label { font-size: 1rem; line-height: 1; padding: 0; }
-.review-rating-btn .ms-Button-textContainer { flex-grow: 0; }
-.review-rating-btn:hover { background: #f1f3f4; border-color: #bdc1c6; }
-.review-rating-active { background: #e8f0fe; border-color: #1a73e8; box-shadow: none; }
-.review-note-input .ms-TextField-fieldGroup { border: 1px solid #dadce0; border-radius: 4px; background: #fff; }
-.review-note-input .ms-TextField-fieldGroup:hover { border-color: #bdc1c6; }
-.review-note-input .ms-TextField-fieldGroup:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
-.review-note-input .ms-TextField-field { font-size: 0.7rem; padding: 6px 8px; color: #202124; }
-.review-add-btn { align-self: flex-start; background: #1a73e8; border: none; border-radius: 4px; padding: 4px 14px; font-size: 0.7rem; cursor: pointer; color: #fff; font-weight: 500; min-width: 0; min-height: 0; height: auto; }
-.review-add-btn .ms-Button-label { font-size: 0.7rem; color: #fff; }
-.review-add-btn:hover { background: #1765cc; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.review-add-btn:disabled { background: #dadce0; color: #80868b; cursor: not-allowed; }

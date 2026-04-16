@@ -3,6 +3,7 @@ import '../styles/AttractionItem.css';
 import { Rating } from '../../my-trip/domain/Trip.types';
 import { Stack, Text, TextField, PrimaryButton, DefaultButton, IconButton, Spinner, SpinnerSize } from '@fluentui/react';
 import type { AttractionItemProps } from './AttractionItem.types';
+import { useReviewStyles } from './AttractionItem.styles';
 
 const RATING_OPTIONS: { value: Rating; label: string; emoji: string }[] = [
   { value: 'DISLIKED', label: 'Disliked', emoji: '😞' },
@@ -13,6 +14,7 @@ const RATING_OPTIONS: { value: Rating; label: string; emoji: string }[] = [
 ];
 
 const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary, reviewMode, reviewData, onAttachAttraction, onDetachAttraction }) => {
+  const review = useReviewStyles();
   const nameClasses = [
     'attraction-name',
     attraction.mustVisit ? 'must-visit' : '',
@@ -321,22 +323,22 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
         </div>
       )}
       {reviewMode && (
-        <div className="review-section">
+        <div className={review.reviewSection}>
           {isAttached ? (
-            <div className="review-attached">
+            <div className={review.reviewAttached}>
               <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
                 <Stack.Item grow>
                   <Stack tokens={{ childrenGap: 2 }}>
-                    <Text className="review-attached-rating">
+                    <Text styles={review.attachedRating}>
                       {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.emoji}{' '}
                       {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.label}
                     </Text>
-                    {reviewData.note && <Text className="review-attached-note">{reviewData.note}</Text>}
+                    {reviewData.note && <Text styles={review.attachedNote}>{reviewData.note}</Text>}
                   </Stack>
                 </Stack.Item>
                 <IconButton
                   iconProps={{ iconName: 'Cancel' }}
-                  className="review-remove-btn"
+                  styles={review.removeBtn}
                   onClick={handleDetach}
                   disabled={reviewSaving}
                   title="Remove from trip"
@@ -345,13 +347,13 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
               </Stack>
             </div>
           ) : (
-            <div className="review-form">
+            <div className={review.reviewForm}>
               <Stack tokens={{ childrenGap: 6 }}>
                 <Stack horizontal tokens={{ childrenGap: 4 }}>
                   {RATING_OPTIONS.map(opt => (
                     <DefaultButton
                       key={opt.value}
-                      className={`review-rating-btn${reviewRating === opt.value ? ' review-rating-active' : ''}`}
+                      styles={review.ratingBtn(reviewRating === opt.value)}
                       onClick={() => setReviewRating(opt.value)}
                       title={opt.label}
                       ariaLabel={opt.label}
@@ -361,7 +363,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                   ))}
                 </Stack>
                 <TextField
-                  className="review-note-input"
+                  styles={review.noteInput}
                   value={reviewNote}
                   onChange={(_e, newValue) => setReviewNote((newValue ?? '').slice(0, 512))}
                   placeholder="Trip note (optional, max 512 chars)"
@@ -371,7 +373,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                   borderless
                 />
                 <PrimaryButton
-                  className="review-add-btn"
+                  styles={review.addBtn}
                   onClick={handleAttach}
                   disabled={reviewSaving}
                 >

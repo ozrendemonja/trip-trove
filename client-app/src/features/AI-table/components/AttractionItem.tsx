@@ -1,23 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Attraction } from './AttractionList';
 import '../styles/AttractionItem.css';
+import { Rating } from '../../my-trip/domain/Trip.types';
+import { Stack, Text, TextField, PrimaryButton, DefaultButton, IconButton, Spinner, SpinnerSize } from '@fluentui/react';
+import type { AttractionItemProps } from './AttractionItem.types';
 
-interface AttractionItemProps {
-  attraction: Attraction;
-  placeholderHeight?: number;
-  columnId?: string; // not used directly but reserved
-  index?: number; // not used directly but reserved
-  locationHint?: string; // city name or region name for search
-  onUpdateNote?: (newNote: string) => void;
-  onUpdateWorkingHours?: (newHours: string) => void;
-  onUpdateVisitTime?: (newVisit: string) => void;
-  onToggleMustVisit?: () => void;
-  readOnly?: boolean;
-  inItinerary?: boolean;
-  onToggleInItinerary?: () => void;
-}
+const RATING_OPTIONS: { value: Rating; label: string; emoji: string }[] = [
+  { value: 'DISLIKED', label: 'Disliked', emoji: '😞' },
+  { value: 'BELOW_AVERAGE', label: 'Below Average', emoji: '😕' },
+  { value: 'AVERAGE', label: 'Average', emoji: '😐' },
+  { value: 'VERY_GOOD', label: 'Very Good', emoji: '😊' },
+  { value: 'EXCELLENT', label: 'Excellent', emoji: '🤩' },
+];
 
-const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary }) => {
+const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary, reviewMode, reviewData, onAttachAttraction, onDetachAttraction }) => {
   const nameClasses = [
     'attraction-name',
     attraction.mustVisit ? 'must-visit' : '',
@@ -87,9 +82,38 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
     }
   }, [readOnly, editing, editingHours, editingVisit]);
 
+  // Review mode state
+  const isAttached = !!reviewData;
+  const [reviewRating, setReviewRating] = useState<Rating>('AVERAGE');
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const handleAttach = async () => {
+    if (!onAttachAttraction || reviewSaving) return;
+    setReviewSaving(true);
+    try {
+      await onAttachAttraction(attraction.id, reviewRating, reviewNote.trim());
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const handleDetach = async () => {
+    if (!onDetachAttraction || reviewSaving) return;
+    setReviewSaving(true);
+    try {
+      await onDetachAttraction(attraction.id);
+      setReviewRating('AVERAGE');
+      setReviewNote('');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
   const containerClasses = [
     'attraction-item',
-    inItinerary ? 'in-itinerary' : ''
+    inItinerary ? 'in-itinerary' : '',
+    isAttached && reviewMode ? 'in-trip' : ''
   ].filter(Boolean).join(' ');
 
   return (
@@ -254,7 +278,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
       {(attraction.note || attraction.infoFrom || editing || attraction.optimalVisitPeriod || (!readOnly && onUpdateNote)) && (
         <div>
           {(editing || attraction.note || attraction.optimalVisitPeriod) && (
-            <div className="sticky-note">
+            <div className={`sticky-note${reviewMode ? ' review-muted' : ''}`}>
               {!editing && (
                 <>
                   {attraction.note}
@@ -293,6 +317,68 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
           )}
           {attraction.infoFrom && (
             <div className="attraction-info-from">Source: {attraction.infoFrom}</div>
+          )}
+        </div>
+      )}
+      {reviewMode && (
+        <div className="review-section">
+          {isAttached ? (
+            <div className="review-attached">
+              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Stack.Item grow>
+                  <Stack tokens={{ childrenGap: 2 }}>
+                    <Text className="review-attached-rating">
+                      {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.emoji}{' '}
+                      {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.label}
+                    </Text>
+                    {reviewData.note && <Text className="review-attached-note">{reviewData.note}</Text>}
+                  </Stack>
+                </Stack.Item>
+                <IconButton
+                  iconProps={{ iconName: 'Cancel' }}
+                  className="review-remove-btn"
+                  onClick={handleDetach}
+                  disabled={reviewSaving}
+                  title="Remove from trip"
+                  ariaLabel="Remove from trip"
+                />
+              </Stack>
+            </div>
+          ) : (
+            <div className="review-form">
+              <Stack tokens={{ childrenGap: 6 }}>
+                <Stack horizontal tokens={{ childrenGap: 4 }}>
+                  {RATING_OPTIONS.map(opt => (
+                    <DefaultButton
+                      key={opt.value}
+                      className={`review-rating-btn${reviewRating === opt.value ? ' review-rating-active' : ''}`}
+                      onClick={() => setReviewRating(opt.value)}
+                      title={opt.label}
+                      ariaLabel={opt.label}
+                    >
+                      {opt.emoji}
+                    </DefaultButton>
+                  ))}
+                </Stack>
+                <TextField
+                  className="review-note-input"
+                  value={reviewNote}
+                  onChange={(_e, newValue) => setReviewNote((newValue ?? '').slice(0, 512))}
+                  placeholder="Trip note (optional, max 512 chars)"
+                  multiline
+                  rows={2}
+                  maxLength={512}
+                  borderless
+                />
+                <PrimaryButton
+                  className="review-add-btn"
+                  onClick={handleAttach}
+                  disabled={reviewSaving}
+                >
+                  {reviewSaving ? <Spinner size={SpinnerSize.xSmall} /> : '+ Add to trip'}
+                </PrimaryButton>
+              </Stack>
+            </div>
           )}
         </div>
       )}

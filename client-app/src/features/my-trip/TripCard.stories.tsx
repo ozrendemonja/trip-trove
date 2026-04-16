@@ -96,3 +96,19 @@ export const LongName: Story = {
     onEdit: () => {}
   }
 };
+
+export const ClickDelete: Story = {
+  args: {
+    trip: sampleTrip,
+    onClick: fn(),
+    onDelete: fn(),
+    onEdit: fn()
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const deleteBtn = canvas.getByRole("button", { name: /Delete trip/i });
+    await userEvent.click(deleteBtn);
+    await expect(args.onDelete).toHaveBeenCalledTimes(1);
+    await expect(args.onClick).not.toHaveBeenCalled();
+  }
+};

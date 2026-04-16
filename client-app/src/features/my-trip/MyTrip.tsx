@@ -3,10 +3,11 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
 import { fetchTripById } from "./infra/TripApi";
-import Board, {
+import Board from "../AI-table/components/Board";
+import type {
   TouristDestination,
   Column
-} from "../AI-table/components/Board";
+} from "../AI-table/components/Board.types";
 import { mapServerResponseToTouristDestinations } from "../AI-table/utils/mapper";
 import {
   Attraction,
@@ -166,7 +167,11 @@ export const MyTrip: React.FC = () => {
           onUpdateClick={handleUpdate}
         />
       </Stack>
-      <Board initialCities={attractions} onCitiesLoaded={handleCitiesLoaded} />
+      <Board
+        initialCities={attractions}
+        onCitiesLoaded={handleCitiesLoaded}
+        tripId={tripId ? Number(tripId) : undefined}
+      />
     </>
   );
 };

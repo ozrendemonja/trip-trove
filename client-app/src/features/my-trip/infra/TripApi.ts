@@ -1,4 +1,6 @@
 import {
+  attachAttraction,
+  detachAttraction,
   detachAttraction1,
   getTrip,
   getTrips,
@@ -8,7 +10,7 @@ import {
   TripParameter
 } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import { LastReadTrip, Trip, TripStatus } from "../domain/Trip.types";
+import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
 
 managerClient();
 
@@ -129,5 +131,36 @@ export const updateTripDates = async (
 
   if (error) {
     throw new Error("Error while updating trip dates", error);
+  }
+};
+
+export const attachAttractionToTrip = async (
+  tripId: number,
+  attractionId: number,
+  ratingValue: Rating,
+  note?: string
+): Promise<void> => {
+  const { error } = await attachAttraction({
+    path: { id: tripId, attractionId },
+    body: { rating: ratingValue, note },
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while attaching attraction to trip", error);
+  }
+};
+
+export const removeAttractionFromTrip = async (
+  tripId: number,
+  attractionId: number
+): Promise<void> => {
+  const { error } = await detachAttraction({
+    path: { id: tripId, attractionId },
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while removing attraction from trip", error);
   }
 };

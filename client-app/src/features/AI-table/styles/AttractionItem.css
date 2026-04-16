@@ -37,6 +37,8 @@
 .hours-edit-btn, .hours-add-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
 .sticky-note { background: #fff8c2; border: 1px solid #e3d27a; border-radius: 4px; padding: 6px 8px; font-size: 0.7rem; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: pre-line; }
 .sticky-note:before { content: ""; position: absolute; top:0; left:0; right:0; height:6px; background: repeating-linear-gradient(-45deg,#ffe690,#ffe690 6px,#ffd86b 6px,#ffd86b 12px); border-top-left-radius:4px; border-top-right-radius:4px; }
+.sticky-note.review-muted { background: #f5f5f5; border-color: #e0e0e0; opacity: 0.6; box-shadow: none; }
+.sticky-note.review-muted:before { background: none; }
 .attraction-info-from { font-size: 0.6rem; color: #666; margin-top: 2px; }
 .note-add-btn, .note-edit-btn { position: absolute; top: 4px; right: 4px; background: #fff3a6; border: 1px solid #d6c15b; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
 .note-add-btn:hover, .note-edit-btn:hover { background: #ffe067; }
@@ -56,3 +58,9 @@
 .hours-save-btn, .hours-cancel-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 2px 6px; font-size: 0.6rem; cursor: pointer; }
 .hours-save-btn:hover { background: #dbe0e6; }
 .hours-cancel-btn:hover { background: #f8fafc; }
+
+/* Review mode – "in trip" highlight */
+.attraction-item.in-trip { background: #e8f5e9; border-radius: 3px; box-shadow: 0 0 0 1px #66bb6a inset; }
+.attraction-item.in-trip .attraction-name { color: #2e7d32; font-weight: 600; }
+
+

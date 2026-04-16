@@ -1,11 +1,10 @@
-import { createServer, Model } from "miragejs";
+import { createServer, Model, Response as MirageResponse } from "miragejs";
 import {
   GetAttractionResponse,
   GetCityResponse,
   GetContinentResponse,
   GetCountryResponse,
   GetRegionResponse,
-  GetTripResponse,
   GetTripResponse,
   UpdateAttractionCategoryRequest,
   UpdateAttractionDestinationRequest,
@@ -301,6 +300,18 @@ export default function makeServer(): ReturnType<typeof createServer> {
           }
         },
         { timing: 400 }
+      );
+
+      this.post(
+        "/trips/:id/attractions/:attractionId",
+        () => new MirageResponse(204),
+        { timing: 300 }
+      );
+
+      this.delete(
+        "/trips/:id/attractions/:attractionId",
+        () => new MirageResponse(204),
+        { timing: 300 }
       );
 
       this.get(

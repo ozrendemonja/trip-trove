@@ -1,18 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { exportCities, readCitiesFromFile } from '../utils/boardPersistence';
-import AttractionList, { Attraction } from './AttractionList';
+import AttractionList from './AttractionList';
+import type { Attraction } from './AttractionList.types';
 import '../styles/Board.css';
+import { attachAttractionToTrip, removeAttractionFromTrip } from '../../my-trip/infra/TripApi';
+import { Rating } from '../../my-trip/domain/Trip.types';
+import type { Column, TouristDestination, BoardProps } from './Board.types';
 
-export interface Column {
-  id: string;
-  title: string;
-  tasks: Attraction[];
-}
-
-export interface TouristDestination {
-  name: string;
-  columns: Column[];
-}
+export type { Column, TouristDestination } from './Board.types';
 
 interface DragState {
   fromColumnId: string;
@@ -27,18 +22,18 @@ interface DragUIState {
 
 // No local sample; expect data to be passed in via props
 
-interface BoardProps {
-  initialCities?: TouristDestination[]; // optional; defaults to empty
-  onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
-}
+type BoardMode = 'edit' | 'readOnly' | 'review';
 
-const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
+const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded, tripId }) => {
   const [cities, setCities] = useState<TouristDestination[]>(initialCities ?? []);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragUI, setDragUI] = useState<DragUIState>({ overColumnId: null, insertionIndex: -1 });
-  const [readOnly, setReadOnly] = useState<boolean>(false);
+  const [boardMode, setBoardMode] = useState<BoardMode>('edit');
+  const readOnly = boardMode !== 'edit';
+  const reviewMode = boardMode === 'review';
   const [collapsedByCity, setCollapsedByCity] = useState<Record<string, boolean>>({});
   const [itinerarySelection, setItinerarySelection] = useState<Record<number, boolean>>({});
+  const [reviewSelection, setReviewSelection] = useState<Record<number, { rating: Rating; note: string }>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
     'POINT_OF_INTEREST_AND_LANDMARK',
@@ -331,6 +326,22 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
       });
     }, []);
 
+    const handleAttachAttraction = useCallback(async (attractionId: number, ratingValue: Rating, note: string) => {
+      if (!tripId) return;
+      await attachAttractionToTrip(tripId, attractionId, ratingValue, note || undefined);
+      setReviewSelection(prev => ({ ...prev, [attractionId]: { rating: ratingValue, note } }));
+    }, [tripId]);
+
+    const handleDetachAttraction = useCallback(async (attractionId: number) => {
+      if (!tripId) return;
+      await removeAttractionFromTrip(tripId, attractionId);
+      setReviewSelection(prev => {
+        const next = { ...prev };
+        delete next[attractionId];
+        return next;
+      });
+    }, [tripId]);
+
     // Keyboard shortcuts:
     //  - Ctrl+V toggles read-only view
     //  - Ctrl+S triggers "Save JSON" export
@@ -347,7 +358,7 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
         const key = e.key.toLowerCase();
         if (key === 'v') {
           e.preventDefault();
-          setReadOnly(prev => !prev);
+          setBoardMode(prev => prev === 'edit' ? 'readOnly' : prev === 'readOnly' ? 'review' : 'edit');
         } else if (key === 's') {
           e.preventDefault();
           handleExportJSON();
@@ -361,9 +372,19 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
   return (
     <div className="attraction-board-wrapper">
       <div className="board-toolbar">
-        <label className="readonly-toggle" title="Toggle read-only view (hide all editing controls)">
-          <input type="checkbox" checked={readOnly} onChange={() => setReadOnly(r => !r)} /> Read-only view
-        </label>
+        <div className="mode-selector">
+          <button type="button" className={`mode-btn${boardMode === 'edit' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('edit')} title="Edit mode – add info to attractions">
+            ✏️ Edit
+          </button>
+          <button type="button" className={`mode-btn${boardMode === 'readOnly' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('readOnly')} title="Read-only mode – plan itinerary">
+            👁️ Plan
+          </button>
+          {tripId && (
+            <button type="button" className={`mode-btn${boardMode === 'review' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('review')} title="Review mode – rate visited attractions">
+              ⭐ Review
+            </button>
+          )}
+        </div>
         <button type="button" onClick={handleExportJSON} className="export-json-btn" title="Download current board as JSON">Save JSON</button>
         <button type="button" onClick={() => fileInputRef.current?.click()} className="import-json-btn" title="Load board from JSON file">Load JSON</button>
         <input ref={fileInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={handleImportChange} />
@@ -495,6 +516,10 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
                     isInItinerary={(id) => !!itinerarySelection[id]}
                     onToggleItinerary={toggleItinerarySelection}
                     readOnly={readOnly}
+                    reviewMode={reviewMode}
+                    reviewSelection={reviewSelection}
+                    onAttachAttraction={handleAttachAttraction}
+                    onDetachAttraction={handleDetachAttraction}
                   />
                 </div>
               );

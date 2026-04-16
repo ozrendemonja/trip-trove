@@ -1,5 +1,5 @@
-import type { Column, TouristDestination } from '../components/Board';
-import type { Attraction } from '../components/AttractionList';
+import type { Column, TouristDestination } from '../components/Board.types';
+import type { Attraction } from '../components/AttractionList.types';
 
 // Single Responsibility: All persistence (serialize/parse/file IO) isolated here.
 // Open for extension: Additional versioning or schema evolution can be added without touching Board UI.

@@ -1,5 +1,5 @@
-import type { TouristDestination } from "../components/Board";
-import type { Attraction as BoardAttraction } from "../components/AttractionList";
+import type { TouristDestination } from "../components/Board.types";
+import type { Attraction as BoardAttraction } from "../components/AttractionList.types";
 import {
   Attraction,
   AttractionType

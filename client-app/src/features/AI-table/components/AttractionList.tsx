@@ -1,42 +1,9 @@
 import React from 'react';
 import AttractionItem from './AttractionItem';
 import '../styles/AttractionList.css';
+import type { Attraction, AttractionListProps } from './AttractionList.types';
 
-export interface Attraction {
-  id: number; // internal identifier, not displayed
-  mustVisit: boolean;
-  stable: boolean;
-  isTraditional: boolean;
-  isCountrywide: boolean; // new flag
-  inItinerary?: boolean;
-  name: string;
-  address: string;
-  category: string;
-  infoFrom: string;
-  note: string;
-  optimalVisitPeriod?: string;
-  workingHours?: string;
-  VisitTime: string;
-}
-
-interface AttractionListProps {
-  attractions: Attraction[];
-  showPlaceholder: boolean;
-  insertionIndex: number;
-  placeholderHeight?: number;
-  onDragStart: (taskIndex: number) => (e: React.DragEvent) => void;
-  columnId: string;
-  locationHint?: string; // city name or region name
-  onUpdateNote: (columnId: string, index: number, newNote: string) => void;
-  onUpdateWorkingHours?: (columnId: string, index: number, newHours: string) => void;
-  onUpdateVisitTime?: (columnId: string, index: number, newVisit: string) => void;
-  onToggleMustVisit?: (columnId: string, index: number) => void;
-  updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
-  upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
-  readOnly?: boolean;
-  isInItinerary?: (attractionId: number) => boolean;
-  onToggleItinerary?: (attractionId: number) => void;
-}
+export type { Attraction } from './AttractionList.types';
 
 const AttractionList: React.FC<AttractionListProps> = ({
   attractions,
@@ -52,7 +19,11 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onToggleMustVisit,
   readOnly,
   isInItinerary,
-  onToggleItinerary
+  onToggleItinerary,
+  reviewMode,
+  reviewSelection,
+  onAttachAttraction,
+  onDetachAttraction
 }) => {
   return (
     <ul className="attractions">
@@ -80,6 +51,10 @@ const AttractionList: React.FC<AttractionListProps> = ({
               inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}
               onToggleInItinerary={onToggleItinerary ? () => onToggleItinerary(attraction.id) : undefined}
               readOnly={readOnly}
+              reviewMode={reviewMode}
+              reviewData={reviewSelection?.[attraction.id]}
+              onAttachAttraction={onAttachAttraction}
+              onDetachAttraction={onDetachAttraction}
             />
           </li>
         </React.Fragment>

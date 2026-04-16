@@ -37,6 +37,8 @@
 .hours-edit-btn, .hours-add-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
 .sticky-note { background: #fff8c2; border: 1px solid #e3d27a; border-radius: 4px; padding: 6px 8px; font-size: 0.7rem; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: pre-line; }
 .sticky-note:before { content: ""; position: absolute; top:0; left:0; right:0; height:6px; background: repeating-linear-gradient(-45deg,#ffe690,#ffe690 6px,#ffd86b 6px,#ffd86b 12px); border-top-left-radius:4px; border-top-right-radius:4px; }
+.sticky-note.review-muted { background: #f5f5f5; border-color: #e0e0e0; opacity: 0.6; box-shadow: none; }
+.sticky-note.review-muted:before { background: none; }
 .attraction-info-from { font-size: 0.6rem; color: #666; margin-top: 2px; }
 .note-add-btn, .note-edit-btn { position: absolute; top: 4px; right: 4px; background: #fff3a6; border: 1px solid #d6c15b; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
 .note-add-btn:hover, .note-edit-btn:hover { background: #ffe067; }
@@ -56,3 +58,36 @@
 .hours-save-btn, .hours-cancel-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 2px 6px; font-size: 0.6rem; cursor: pointer; }
 .hours-save-btn:hover { background: #dbe0e6; }
 .hours-cancel-btn:hover { background: #f8fafc; }
+
+/* Review mode – "in trip" highlight */
+.attraction-item.in-trip { background: #e8f5e9; border-radius: 3px; box-shadow: 0 0 0 1px #66bb6a inset; }
+.attraction-item.in-trip .attraction-name { color: #2e7d32; font-weight: 600; }
+
+/* Review section */
+.review-section { margin-top: 4px; }
+
+/* Attached state – Google-style chip */
+.review-attached { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 8px 10px; font-size: 0.7rem; border-left: 3px solid #34a853; }
+.review-attached-rating { font-weight: 500; color: #202124; font-size: 0.7rem; }
+.review-attached-note { color: #5f6368; white-space: pre-line; font-size: 0.65rem; }
+.review-remove-btn { background: transparent; border: none; border-radius: 50%; padding: 4px; cursor: pointer; color: #5f6368; min-width: 0; min-height: 0; height: 24px; width: 24px; }
+.review-remove-btn .ms-Button-icon { font-size: 0.65rem; color: #5f6368; }
+.review-remove-btn:hover { background: #f1f3f4; color: #d93025; }
+.review-remove-btn:hover .ms-Button-icon { color: #d93025; }
+.review-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Not-attached form – Google-style card */
+.review-form { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 10px; }
+.review-rating-btn { background: #fff; border: 1px solid #dadce0; border-radius: 20px; padding: 4px 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; min-width: 0; min-height: 0; height: auto; line-height: 1; }
+.review-rating-btn .ms-Button-label { font-size: 1rem; line-height: 1; padding: 0; }
+.review-rating-btn .ms-Button-textContainer { flex-grow: 0; }
+.review-rating-btn:hover { background: #f1f3f4; border-color: #bdc1c6; }
+.review-rating-active { background: #e8f0fe; border-color: #1a73e8; box-shadow: none; }
+.review-note-input .ms-TextField-fieldGroup { border: 1px solid #dadce0; border-radius: 4px; background: #fff; }
+.review-note-input .ms-TextField-fieldGroup:hover { border-color: #bdc1c6; }
+.review-note-input .ms-TextField-fieldGroup:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
+.review-note-input .ms-TextField-field { font-size: 0.7rem; padding: 6px 8px; color: #202124; }
+.review-add-btn { align-self: flex-start; background: #1a73e8; border: none; border-radius: 4px; padding: 4px 14px; font-size: 0.7rem; cursor: pointer; color: #fff; font-weight: 500; min-width: 0; min-height: 0; height: auto; }
+.review-add-btn .ms-Button-label { font-size: 0.7rem; color: #fff; }
+.review-add-btn:hover { background: #1765cc; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.review-add-btn:disabled { background: #dadce0; color: #80868b; cursor: not-allowed; }

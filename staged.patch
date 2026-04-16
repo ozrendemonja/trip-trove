@@ -1,0 +1,1214 @@
+diff --git a/client-app/src/ServerSetup.ts b/client-app/src/ServerSetup.ts
+index 74b041e..1c1514d 100644
+--- a/client-app/src/ServerSetup.ts
++++ b/client-app/src/ServerSetup.ts
+@@ -1,4 +1,4 @@
+-import { createServer, Model } from "miragejs";
++import { createServer, Model, Response as MirageResponse } from "miragejs";
+ import {
+   GetAttractionResponse,
+   GetCityResponse,
+@@ -6,7 +6,6 @@ import {
+   GetCountryResponse,
+   GetRegionResponse,
+   GetTripResponse,
+-  GetTripResponse,
+   UpdateAttractionCategoryRequest,
+   UpdateAttractionDestinationRequest,
+   UpdateAttractionDetailRequest,
+@@ -303,6 +302,18 @@ export default function makeServer(): ReturnType<typeof createServer> {
+         { timing: 400 }
+       );
+ 
++      this.post(
++        "/trips/:id/attractions/:attractionId",
++        () => new MirageResponse(204),
++        { timing: 300 }
++      );
++
++      this.delete(
++        "/trips/:id/attractions/:attractionId",
++        () => new MirageResponse(204),
++        { timing: 300 }
++      );
++
+       this.get(
+         "/continents",
+         (schema, request) => {
+diff --git a/client-app/src/features/AI-table/components/AttractionItem.tsx b/client-app/src/features/AI-table/components/AttractionItem.tsx
+index 476d5b3..8730275 100644
+--- a/client-app/src/features/AI-table/components/AttractionItem.tsx
++++ b/client-app/src/features/AI-table/components/AttractionItem.tsx
+@@ -1,23 +1,18 @@
+ import React, { useState, useRef, useEffect } from 'react';
+-import { Attraction } from './AttractionList';
+ import '../styles/AttractionItem.css';
++import { Rating } from '../../my-trip/domain/Trip.types';
++import { Stack, Text, TextField, PrimaryButton, DefaultButton, IconButton, Spinner, SpinnerSize } from '@fluentui/react';
++import type { AttractionItemProps } from './AttractionItem.types';
+ 
+-interface AttractionItemProps {
+-  attraction: Attraction;
+-  placeholderHeight?: number;
+-  columnId?: string; // not used directly but reserved
+-  index?: number; // not used directly but reserved
+-  locationHint?: string; // city name or region name for search
+-  onUpdateNote?: (newNote: string) => void;
+-  onUpdateWorkingHours?: (newHours: string) => void;
+-  onUpdateVisitTime?: (newVisit: string) => void;
+-  onToggleMustVisit?: () => void;
+-  readOnly?: boolean;
+-  inItinerary?: boolean;
+-  onToggleInItinerary?: () => void;
+-}
++const RATING_OPTIONS: { value: Rating; label: string; emoji: string }[] = [
++  { value: 'DISLIKED', label: 'Disliked', emoji: '😞' },
++  { value: 'BELOW_AVERAGE', label: 'Below Average', emoji: '😕' },
++  { value: 'AVERAGE', label: 'Average', emoji: '😐' },
++  { value: 'VERY_GOOD', label: 'Very Good', emoji: '😊' },
++  { value: 'EXCELLENT', label: 'Excellent', emoji: '🤩' },
++];
+ 
+-const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary }) => {
++const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, locationHint, onUpdateNote, onUpdateWorkingHours, onUpdateVisitTime, onToggleMustVisit, readOnly, inItinerary, onToggleInItinerary, reviewMode, reviewData, onAttachAttraction, onDetachAttraction }) => {
+   const nameClasses = [
+     'attraction-name',
+     attraction.mustVisit ? 'must-visit' : '',
+@@ -87,9 +82,38 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
+     }
+   }, [readOnly, editing, editingHours, editingVisit]);
+ 
++  // Review mode state
++  const isAttached = !!reviewData;
++  const [reviewRating, setReviewRating] = useState<Rating>('AVERAGE');
++  const [reviewNote, setReviewNote] = useState('');
++  const [reviewSaving, setReviewSaving] = useState(false);
++
++  const handleAttach = async () => {
++    if (!onAttachAttraction || reviewSaving) return;
++    setReviewSaving(true);
++    try {
++      await onAttachAttraction(attraction.id, reviewRating, reviewNote.trim());
++    } finally {
++      setReviewSaving(false);
++    }
++  };
++
++  const handleDetach = async () => {
++    if (!onDetachAttraction || reviewSaving) return;
++    setReviewSaving(true);
++    try {
++      await onDetachAttraction(attraction.id);
++      setReviewRating('AVERAGE');
++      setReviewNote('');
++    } finally {
++      setReviewSaving(false);
++    }
++  };
++
+   const containerClasses = [
+     'attraction-item',
+-    inItinerary ? 'in-itinerary' : ''
++    inItinerary ? 'in-itinerary' : '',
++    isAttached && reviewMode ? 'in-trip' : ''
+   ].filter(Boolean).join(' ');
+ 
+   return (
+@@ -254,7 +278,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
+       {(attraction.note || attraction.infoFrom || editing || attraction.optimalVisitPeriod || (!readOnly && onUpdateNote)) && (
+         <div>
+           {(editing || attraction.note || attraction.optimalVisitPeriod) && (
+-            <div className="sticky-note">
++            <div className={`sticky-note${reviewMode ? ' review-muted' : ''}`}>
+               {!editing && (
+                 <>
+                   {attraction.note}
+@@ -296,6 +320,68 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
+           )}
+         </div>
+       )}
++      {reviewMode && (
++        <div className="review-section">
++          {isAttached ? (
++            <div className="review-attached">
++              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
++                <Stack.Item grow>
++                  <Stack tokens={{ childrenGap: 2 }}>
++                    <Text className="review-attached-rating">
++                      {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.emoji}{' '}
++                      {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.label}
++                    </Text>
++                    {reviewData.note && <Text className="review-attached-note">{reviewData.note}</Text>}
++                  </Stack>
++                </Stack.Item>
++                <IconButton
++                  iconProps={{ iconName: 'Cancel' }}
++                  className="review-remove-btn"
++                  onClick={handleDetach}
++                  disabled={reviewSaving}
++                  title="Remove from trip"
++                  ariaLabel="Remove from trip"
++                />
++              </Stack>
++            </div>
++          ) : (
++            <div className="review-form">
++              <Stack tokens={{ childrenGap: 6 }}>
++                <Stack horizontal tokens={{ childrenGap: 4 }}>
++                  {RATING_OPTIONS.map(opt => (
++                    <DefaultButton
++                      key={opt.value}
++                      className={`review-rating-btn${reviewRating === opt.value ? ' review-rating-active' : ''}`}
++                      onClick={() => setReviewRating(opt.value)}
++                      title={opt.label}
++                      ariaLabel={opt.label}
++                    >
++                      {opt.emoji}
++                    </DefaultButton>
++                  ))}
++                </Stack>
++                <TextField
++                  className="review-note-input"
++                  value={reviewNote}
++                  onChange={(_e, newValue) => setReviewNote((newValue ?? '').slice(0, 512))}
++                  placeholder="Trip note (optional, max 512 chars)"
++                  multiline
++                  rows={2}
++                  maxLength={512}
++                  borderless
++                />
++                <PrimaryButton
++                  className="review-add-btn"
++                  onClick={handleAttach}
++                  disabled={reviewSaving}
++                >
++                  {reviewSaving ? <Spinner size={SpinnerSize.xSmall} /> : '+ Add to trip'}
++                </PrimaryButton>
++              </Stack>
++            </div>
++          )}
++        </div>
++      )}
+     </div>
+   );
+ };
+diff --git a/client-app/src/features/AI-table/components/AttractionItem.types.ts b/client-app/src/features/AI-table/components/AttractionItem.types.ts
+new file mode 100644
+index 0000000..b4417fa
+--- /dev/null
++++ b/client-app/src/features/AI-table/components/AttractionItem.types.ts
+@@ -0,0 +1,21 @@
++import { Rating } from "../../my-trip/domain/Trip.types";
++import { Attraction } from "./AttractionList.types";
++
++export interface AttractionItemProps {
++  attraction: Attraction;
++  placeholderHeight?: number;
++  columnId?: string; // not used directly but reserved
++  index?: number; // not used directly but reserved
++  locationHint?: string; // city name or region name for search
++  onUpdateNote?: (newNote: string) => void;
++  onUpdateWorkingHours?: (newHours: string) => void;
++  onUpdateVisitTime?: (newVisit: string) => void;
++  onToggleMustVisit?: () => void;
++  readOnly?: boolean;
++  inItinerary?: boolean;
++  onToggleInItinerary?: () => void;
++  reviewMode?: boolean;
++  reviewData?: { rating: Rating; note: string };
++  onAttachAttraction?: (attractionId: number, ratingValue: Rating, note: string) => Promise<void>;
++  onDetachAttraction?: (attractionId: number) => Promise<void>;
++}
+diff --git a/client-app/src/features/AI-table/components/AttractionList.tsx b/client-app/src/features/AI-table/components/AttractionList.tsx
+index df45937..6e3fcdc 100644
+--- a/client-app/src/features/AI-table/components/AttractionList.tsx
++++ b/client-app/src/features/AI-table/components/AttractionList.tsx
+@@ -1,42 +1,9 @@
+ import React from 'react';
+ import AttractionItem from './AttractionItem';
+ import '../styles/AttractionList.css';
++import type { Attraction, AttractionListProps } from './AttractionList.types';
+ 
+-export interface Attraction {
+-  id: number; // internal identifier, not displayed
+-  mustVisit: boolean;
+-  stable: boolean;
+-  isTraditional: boolean;
+-  isCountrywide: boolean; // new flag
+-  inItinerary?: boolean;
+-  name: string;
+-  address: string;
+-  category: string;
+-  infoFrom: string;
+-  note: string;
+-  optimalVisitPeriod?: string;
+-  workingHours?: string;
+-  VisitTime: string;
+-}
+-
+-interface AttractionListProps {
+-  attractions: Attraction[];
+-  showPlaceholder: boolean;
+-  insertionIndex: number;
+-  placeholderHeight?: number;
+-  onDragStart: (taskIndex: number) => (e: React.DragEvent) => void;
+-  columnId: string;
+-  locationHint?: string; // city name or region name
+-  onUpdateNote: (columnId: string, index: number, newNote: string) => void;
+-  onUpdateWorkingHours?: (columnId: string, index: number, newHours: string) => void;
+-  onUpdateVisitTime?: (columnId: string, index: number, newVisit: string) => void;
+-  onToggleMustVisit?: (columnId: string, index: number) => void;
+-  updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
+-  upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
+-  readOnly?: boolean;
+-  isInItinerary?: (attractionId: number) => boolean;
+-  onToggleItinerary?: (attractionId: number) => void;
+-}
++export type { Attraction } from './AttractionList.types';
+ 
+ const AttractionList: React.FC<AttractionListProps> = ({
+   attractions,
+@@ -52,7 +19,11 @@ const AttractionList: React.FC<AttractionListProps> = ({
+   onToggleMustVisit,
+   readOnly,
+   isInItinerary,
+-  onToggleItinerary
++  onToggleItinerary,
++  reviewMode,
++  reviewSelection,
++  onAttachAttraction,
++  onDetachAttraction
+ }) => {
+   return (
+     <ul className="attractions">
+@@ -80,6 +51,10 @@ const AttractionList: React.FC<AttractionListProps> = ({
+               inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}
+               onToggleInItinerary={onToggleItinerary ? () => onToggleItinerary(attraction.id) : undefined}
+               readOnly={readOnly}
++              reviewMode={reviewMode}
++              reviewData={reviewSelection?.[attraction.id]}
++              onAttachAttraction={onAttachAttraction}
++              onDetachAttraction={onDetachAttraction}
+             />
+           </li>
+         </React.Fragment>
+diff --git a/client-app/src/features/AI-table/components/AttractionList.types.ts b/client-app/src/features/AI-table/components/AttractionList.types.ts
+new file mode 100644
+index 0000000..281eaea
+--- /dev/null
++++ b/client-app/src/features/AI-table/components/AttractionList.types.ts
+@@ -0,0 +1,41 @@
++import { Rating } from "../../my-trip/domain/Trip.types";
++
++export interface Attraction {
++  id: number; // internal identifier, not displayed
++  mustVisit: boolean;
++  stable: boolean;
++  isTraditional: boolean;
++  isCountrywide: boolean; // new flag
++  inItinerary?: boolean;
++  name: string;
++  address: string;
++  category: string;
++  infoFrom: string;
++  note: string;
++  optimalVisitPeriod?: string;
++  workingHours?: string;
++  VisitTime: string;
++}
++
++export interface AttractionListProps {
++  attractions: Attraction[];
++  showPlaceholder: boolean;
++  insertionIndex: number;
++  placeholderHeight?: number;
++  onDragStart: (taskIndex: number) => (e: React.DragEvent) => void;
++  columnId: string;
++  locationHint?: string; // city name or region name
++  onUpdateNote: (columnId: string, index: number, newNote: string) => void;
++  onUpdateWorkingHours?: (columnId: string, index: number, newHours: string) => void;
++  onUpdateVisitTime?: (columnId: string, index: number, newVisit: string) => void;
++  onToggleMustVisit?: (columnId: string, index: number) => void;
++  updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
++  upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
++  readOnly?: boolean;
++  isInItinerary?: (attractionId: number) => boolean;
++  onToggleItinerary?: (attractionId: number) => void;
++  reviewMode?: boolean;
++  reviewSelection?: Record<number, { rating: Rating; note: string }>;
++  onAttachAttraction?: (attractionId: number, ratingValue: Rating, note: string) => Promise<void>;
++  onDetachAttraction?: (attractionId: number) => Promise<void>;
++}
+diff --git a/client-app/src/features/AI-table/components/Board.stories.tsx b/client-app/src/features/AI-table/components/Board.stories.tsx
+new file mode 100644
+index 0000000..5aea939
+--- /dev/null
++++ b/client-app/src/features/AI-table/components/Board.stories.tsx
+@@ -0,0 +1,104 @@
++import { Meta, StoryObj } from "@storybook/react";
++import { within, userEvent } from "@storybook/test";
++import Board from "./Board";
++import type { TouristDestination } from "./Board.types";
++import { initialCities } from "../data/initialCities";
++import makeServer from "../../../ServerSetup";
++
++const styleOverrides = `
++    body {
++      background: #C3E0E7;
++    }`;
++
++const meta: Meta<typeof Board> = {
++  component: Board,
++  decorators: [
++    (Story) => (
++      <>
++        <Story />
++        <style>{styleOverrides}</style>
++      </>
++    )
++  ]
++};
++
++export default meta;
++
++type Story = StoryObj<typeof Board>;
++
++/** Step 1 – Edit mode: add info, drag-and-drop, toggle must-visit, edit notes/hours */
++export const EditMode: Story = {
++  args: {
++    initialCities
++  }
++};
++
++/** Step 2 – Plan mode: read-only with itinerary checkboxes */
++export const PlanMode: Story = {
++  args: {
++    initialCities
++  },
++  play: async ({ canvasElement }) => {
++    const canvas = within(canvasElement);
++    const planBtn = canvas.getByRole("button", { name: /Plan/i });
++    await userEvent.click(planBtn);
++  }
++};
++
++/** Step 3 – Review mode: rate visited attractions, add notes, attach/detach from trip */
++export const ReviewMode: Story = {
++  args: {
++    initialCities,
++    tripId: 1
++  },
++  decorators: [
++    (Story) => {
++      makeServer();
++      return <Story />;
++    }
++  ],
++  play: async ({ canvasElement }) => {
++    const canvas = within(canvasElement);
++    const reviewBtn = canvas.getByRole("button", { name: /Review/i });
++    await userEvent.click(reviewBtn);
++  }
++};
++
++/** Board with no attractions loaded yet */
++export const Empty: Story = {
++  args: {
++    initialCities: []
++  }
++};
++
++/** Single city board */
++export const SingleCity: Story = {
++  args: {
++    initialCities: [initialCities[0]]
++  }
++};
++
++/** Board with itinerary selections pre-set (Plan mode data) */
++const citiesWithItinerary: TouristDestination[] = initialCities.map(
++  (city) => ({
++    ...city,
++    columns: city.columns.map((col) => ({
++      ...col,
++      tasks: col.tasks.map((t) => ({
++        ...t,
++        inItinerary: t.mustVisit
++      }))
++    }))
++  })
++);
++
++export const PlanModeWithSelections: Story = {
++  args: {
++    initialCities: citiesWithItinerary
++  },
++  play: async ({ canvasElement }) => {
++    const canvas = within(canvasElement);
++    const planBtn = canvas.getByRole("button", { name: /Plan/i });
++    await userEvent.click(planBtn);
++  }
++};
+diff --git a/client-app/src/features/AI-table/components/Board.tsx b/client-app/src/features/AI-table/components/Board.tsx
+index 80dcd7a..27fa3d4 100644
+--- a/client-app/src/features/AI-table/components/Board.tsx
++++ b/client-app/src/features/AI-table/components/Board.tsx
+@@ -1,18 +1,13 @@
+ import React, { useState, useCallback, useRef, useEffect } from 'react';
+ import { exportCities, readCitiesFromFile } from '../utils/boardPersistence';
+-import AttractionList, { Attraction } from './AttractionList';
++import AttractionList from './AttractionList';
++import type { Attraction } from './AttractionList.types';
+ import '../styles/Board.css';
++import { attachAttractionToTrip, removeAttractionFromTrip } from '../../my-trip/infra/TripApi';
++import { Rating } from '../../my-trip/domain/Trip.types';
++import type { Column, TouristDestination, BoardProps } from './Board.types';
+ 
+-export interface Column {
+-  id: string;
+-  title: string;
+-  tasks: Attraction[];
+-}
+-
+-export interface TouristDestination {
+-  name: string;
+-  columns: Column[];
+-}
++export type { Column, TouristDestination } from './Board.types';
+ 
+ interface DragState {
+   fromColumnId: string;
+@@ -27,18 +22,18 @@ interface DragUIState {
+ 
+ // No local sample; expect data to be passed in via props
+ 
+-interface BoardProps {
+-  initialCities?: TouristDestination[]; // optional; defaults to empty
+-  onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
+-}
++type BoardMode = 'edit' | 'readOnly' | 'review';
+ 
+-const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
++const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded, tripId }) => {
+   const [cities, setCities] = useState<TouristDestination[]>(initialCities ?? []);
+   const [dragState, setDragState] = useState<DragState | null>(null);
+   const [dragUI, setDragUI] = useState<DragUIState>({ overColumnId: null, insertionIndex: -1 });
+-  const [readOnly, setReadOnly] = useState<boolean>(false);
++  const [boardMode, setBoardMode] = useState<BoardMode>('edit');
++  const readOnly = boardMode !== 'edit';
++  const reviewMode = boardMode === 'review';
+   const [collapsedByCity, setCollapsedByCity] = useState<Record<string, boolean>>({});
+   const [itinerarySelection, setItinerarySelection] = useState<Record<number, boolean>>({});
++  const [reviewSelection, setReviewSelection] = useState<Record<number, { rating: Rating; note: string }>>({});
+   const fileInputRef = useRef<HTMLInputElement | null>(null);
+   const categoryOptions = [
+     'POINT_OF_INTEREST_AND_LANDMARK',
+@@ -331,6 +326,22 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
+       });
+     }, []);
+ 
++    const handleAttachAttraction = useCallback(async (attractionId: number, ratingValue: Rating, note: string) => {
++      if (!tripId) return;
++      await attachAttractionToTrip(tripId, attractionId, ratingValue, note || undefined);
++      setReviewSelection(prev => ({ ...prev, [attractionId]: { rating: ratingValue, note } }));
++    }, [tripId]);
++
++    const handleDetachAttraction = useCallback(async (attractionId: number) => {
++      if (!tripId) return;
++      await removeAttractionFromTrip(tripId, attractionId);
++      setReviewSelection(prev => {
++        const next = { ...prev };
++        delete next[attractionId];
++        return next;
++      });
++    }, [tripId]);
++
+     // Keyboard shortcuts:
+     //  - Ctrl+V toggles read-only view
+     //  - Ctrl+S triggers "Save JSON" export
+@@ -347,7 +358,7 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
+         const key = e.key.toLowerCase();
+         if (key === 'v') {
+           e.preventDefault();
+-          setReadOnly(prev => !prev);
++          setBoardMode(prev => prev === 'edit' ? 'readOnly' : prev === 'readOnly' ? 'review' : 'edit');
+         } else if (key === 's') {
+           e.preventDefault();
+           handleExportJSON();
+@@ -361,9 +372,19 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
+   return (
+     <div className="attraction-board-wrapper">
+       <div className="board-toolbar">
+-        <label className="readonly-toggle" title="Toggle read-only view (hide all editing controls)">
+-          <input type="checkbox" checked={readOnly} onChange={() => setReadOnly(r => !r)} /> Read-only view
+-        </label>
++        <div className="mode-selector">
++          <button type="button" className={`mode-btn${boardMode === 'edit' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('edit')} title="Edit mode – add info to attractions">
++            ✏️ Edit
++          </button>
++          <button type="button" className={`mode-btn${boardMode === 'readOnly' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('readOnly')} title="Read-only mode – plan itinerary">
++            👁️ Plan
++          </button>
++          {tripId && (
++            <button type="button" className={`mode-btn${boardMode === 'review' ? ' mode-btn-active' : ''}`} onClick={() => setBoardMode('review')} title="Review mode – rate visited attractions">
++              ⭐ Review
++            </button>
++          )}
++        </div>
+         <button type="button" onClick={handleExportJSON} className="export-json-btn" title="Download current board as JSON">Save JSON</button>
+         <button type="button" onClick={() => fileInputRef.current?.click()} className="import-json-btn" title="Load board from JSON file">Load JSON</button>
+         <input ref={fileInputRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={handleImportChange} />
+@@ -495,6 +516,10 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded }) => {
+                     isInItinerary={(id) => !!itinerarySelection[id]}
+                     onToggleItinerary={toggleItinerarySelection}
+                     readOnly={readOnly}
++                    reviewMode={reviewMode}
++                    reviewSelection={reviewSelection}
++                    onAttachAttraction={handleAttachAttraction}
++                    onDetachAttraction={handleDetachAttraction}
+                   />
+                 </div>
+               );
+diff --git a/client-app/src/features/AI-table/components/Board.types.ts b/client-app/src/features/AI-table/components/Board.types.ts
+new file mode 100644
+index 0000000..ccf4311
+--- /dev/null
++++ b/client-app/src/features/AI-table/components/Board.types.ts
+@@ -0,0 +1,18 @@
++import type { Attraction } from "./AttractionList.types";
++
++export interface Column {
++  id: string;
++  title: string;
++  tasks: Attraction[];
++}
++
++export interface TouristDestination {
++  name: string;
++  columns: Column[];
++}
++
++export interface BoardProps {
++  initialCities?: TouristDestination[]; // optional; defaults to empty
++  onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
++  tripId?: number; // needed for review mode (attach/detach attractions)
++}
+diff --git a/client-app/src/features/AI-table/styles/AttractionItem.css b/client-app/src/features/AI-table/styles/AttractionItem.css
+index ed8a630..05ae969 100644
+--- a/client-app/src/features/AI-table/styles/AttractionItem.css
++++ b/client-app/src/features/AI-table/styles/AttractionItem.css
+@@ -37,6 +37,8 @@
+ .hours-edit-btn, .hours-add-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 6px; font-size: 0.6rem; cursor: pointer; }
+ .sticky-note { background: #fff8c2; border: 1px solid #e3d27a; border-radius: 4px; padding: 6px 8px; font-size: 0.7rem; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: pre-line; }
+ .sticky-note:before { content: ""; position: absolute; top:0; left:0; right:0; height:6px; background: repeating-linear-gradient(-45deg,#ffe690,#ffe690 6px,#ffd86b 6px,#ffd86b 12px); border-top-left-radius:4px; border-top-right-radius:4px; }
++.sticky-note.review-muted { background: #f5f5f5; border-color: #e0e0e0; opacity: 0.6; box-shadow: none; }
++.sticky-note.review-muted:before { background: none; }
+ .attraction-info-from { font-size: 0.6rem; color: #666; margin-top: 2px; }
+ .note-add-btn, .note-edit-btn { position: absolute; top: 4px; right: 4px; background: #fff3a6; border: 1px solid #d6c15b; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
+ .note-add-btn:hover, .note-edit-btn:hover { background: #ffe067; }
+@@ -56,3 +58,36 @@
+ .hours-save-btn, .hours-cancel-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 2px 6px; font-size: 0.6rem; cursor: pointer; }
+ .hours-save-btn:hover { background: #dbe0e6; }
+ .hours-cancel-btn:hover { background: #f8fafc; }
++
++/* Review mode – "in trip" highlight */
++.attraction-item.in-trip { background: #e8f5e9; border-radius: 3px; box-shadow: 0 0 0 1px #66bb6a inset; }
++.attraction-item.in-trip .attraction-name { color: #2e7d32; font-weight: 600; }
++
++/* Review section */
++.review-section { margin-top: 4px; }
++
++/* Attached state – Google-style chip */
++.review-attached { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 8px 10px; font-size: 0.7rem; border-left: 3px solid #34a853; }
++.review-attached-rating { font-weight: 500; color: #202124; font-size: 0.7rem; }
++.review-attached-note { color: #5f6368; white-space: pre-line; font-size: 0.65rem; }
++.review-remove-btn { background: transparent; border: none; border-radius: 50%; padding: 4px; cursor: pointer; color: #5f6368; min-width: 0; min-height: 0; height: 24px; width: 24px; }
++.review-remove-btn .ms-Button-icon { font-size: 0.65rem; color: #5f6368; }
++.review-remove-btn:hover { background: #f1f3f4; color: #d93025; }
++.review-remove-btn:hover .ms-Button-icon { color: #d93025; }
++.review-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
++
++/* Not-attached form – Google-style card */
++.review-form { background: #fff; border: 1px solid #dadce0; border-radius: 8px; padding: 10px; }
++.review-rating-btn { background: #fff; border: 1px solid #dadce0; border-radius: 20px; padding: 4px 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; min-width: 0; min-height: 0; height: auto; line-height: 1; }
++.review-rating-btn .ms-Button-label { font-size: 1rem; line-height: 1; padding: 0; }
++.review-rating-btn .ms-Button-textContainer { flex-grow: 0; }
++.review-rating-btn:hover { background: #f1f3f4; border-color: #bdc1c6; }
++.review-rating-active { background: #e8f0fe; border-color: #1a73e8; box-shadow: none; }
++.review-note-input .ms-TextField-fieldGroup { border: 1px solid #dadce0; border-radius: 4px; background: #fff; }
++.review-note-input .ms-TextField-fieldGroup:hover { border-color: #bdc1c6; }
++.review-note-input .ms-TextField-fieldGroup:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
++.review-note-input .ms-TextField-field { font-size: 0.7rem; padding: 6px 8px; color: #202124; }
++.review-add-btn { align-self: flex-start; background: #1a73e8; border: none; border-radius: 4px; padding: 4px 14px; font-size: 0.7rem; cursor: pointer; color: #fff; font-weight: 500; min-width: 0; min-height: 0; height: auto; }
++.review-add-btn .ms-Button-label { font-size: 0.7rem; color: #fff; }
++.review-add-btn:hover { background: #1765cc; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
++.review-add-btn:disabled { background: #dadce0; color: #80868b; cursor: not-allowed; }
+diff --git a/client-app/src/features/AI-table/styles/Board.css b/client-app/src/features/AI-table/styles/Board.css
+index cd1f656..d129252 100644
+--- a/client-app/src/features/AI-table/styles/Board.css
++++ b/client-app/src/features/AI-table/styles/Board.css
+@@ -84,6 +84,12 @@
+   margin-top: 0;
+ }
+ 
++/* Mode selector buttons */
++.mode-selector { display: flex; gap: 2px; background: #e2e8f0; border-radius: 6px; padding: 2px; }
++.mode-btn { background: transparent; border: none; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; color: #555; transition: background 0.15s, color 0.15s; }
++.mode-btn:hover { background: #f1f5f9; color: #333; }
++.mode-btn-active { background: #fff; color: #111; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
++
+ @media (width < 600px) {
+   .attraction-board { flex-direction: column; }
+ }
+diff --git a/client-app/src/features/AI-table/utils/boardPersistence.ts b/client-app/src/features/AI-table/utils/boardPersistence.ts
+index 8f0e1b6..f90a7fc 100644
+--- a/client-app/src/features/AI-table/utils/boardPersistence.ts
++++ b/client-app/src/features/AI-table/utils/boardPersistence.ts
+@@ -1,5 +1,5 @@
+-import type { Column, TouristDestination } from '../components/Board';
+-import type { Attraction } from '../components/AttractionList';
++import type { Column, TouristDestination } from '../components/Board.types';
++import type { Attraction } from '../components/AttractionList.types';
+ 
+ // Single Responsibility: All persistence (serialize/parse/file IO) isolated here.
+ // Open for extension: Additional versioning or schema evolution can be added without touching Board UI.
+diff --git a/client-app/src/features/AI-table/utils/mapper.ts b/client-app/src/features/AI-table/utils/mapper.ts
+index c9e1c96..4c499e2 100644
+--- a/client-app/src/features/AI-table/utils/mapper.ts
++++ b/client-app/src/features/AI-table/utils/mapper.ts
+@@ -1,5 +1,5 @@
+-import type { TouristDestination } from "../components/Board";
+-import type { Attraction as BoardAttraction } from "../components/AttractionList";
++import type { TouristDestination } from "../components/Board.types";
++import type { Attraction as BoardAttraction } from "../components/AttractionList.types";
+ import {
+   Attraction,
+   AttractionType
+diff --git a/client-app/src/features/my-trip/MyTrip.tsx b/client-app/src/features/my-trip/MyTrip.tsx
+index a910b9f..aa195df 100644
+--- a/client-app/src/features/my-trip/MyTrip.tsx
++++ b/client-app/src/features/my-trip/MyTrip.tsx
+@@ -3,10 +3,11 @@ import React, { useState, useMemo, useEffect } from "react";
+ import { useNavigate, useParams } from "react-router";
+ import Navigation from "../../shared/navigation/Navigation";
+ import { fetchTripById } from "./infra/TripApi";
+-import Board, {
++import Board from "../AI-table/components/Board";
++import type {
+   TouristDestination,
+   Column
+-} from "../AI-table/components/Board";
++} from "../AI-table/components/Board.types";
+ import { mapServerResponseToTouristDestinations } from "../AI-table/utils/mapper";
+ import {
+   Attraction,
+@@ -166,7 +167,11 @@ export const MyTrip: React.FC = () => {
+           onUpdateClick={handleUpdate}
+         />
+       </Stack>
+-      <Board initialCities={attractions} onCitiesLoaded={handleCitiesLoaded} />
++      <Board
++        initialCities={attractions}
++        onCitiesLoaded={handleCitiesLoaded}
++        tripId={tripId ? Number(tripId) : undefined}
++      />
+     </>
+   );
+ };
+diff --git a/client-app/src/features/my-trip/TripCard.stories.tsx b/client-app/src/features/my-trip/TripCard.stories.tsx
+index d98a3a9..e9dbeaa 100644
+--- a/client-app/src/features/my-trip/TripCard.stories.tsx
++++ b/client-app/src/features/my-trip/TripCard.stories.tsx
+@@ -96,3 +96,19 @@ export const LongName: Story = {
+     onEdit: () => {}
+   }
+ };
++
++export const ClickDelete: Story = {
++  args: {
++    trip: sampleTrip,
++    onClick: fn(),
++    onDelete: fn(),
++    onEdit: fn()
++  },
++  play: async ({ canvasElement, args }) => {
++    const canvas = within(canvasElement);
++    const deleteBtn = canvas.getByRole("button", { name: /Delete trip/i });
++    await userEvent.click(deleteBtn);
++    await expect(args.onDelete).toHaveBeenCalledTimes(1);
++    await expect(args.onClick).not.toHaveBeenCalled();
++  }
++};
+diff --git a/client-app/src/features/my-trip/domain/Trip.types.ts b/client-app/src/features/my-trip/domain/Trip.types.ts
+index 5878c4f..c86956f 100644
+--- a/client-app/src/features/my-trip/domain/Trip.types.ts
++++ b/client-app/src/features/my-trip/domain/Trip.types.ts
+@@ -1,5 +1,12 @@
+ export type TripStatus = "active" | "past" | "archived";
+ 
++export type Rating =
++  | "DISLIKED"
++  | "BELOW_AVERAGE"
++  | "AVERAGE"
++  | "VERY_GOOD"
++  | "EXCELLENT";
++
+ export interface Trip {
+   id: number;
+   name: string;
+diff --git a/client-app/src/features/my-trip/infra/TripApi.ts b/client-app/src/features/my-trip/infra/TripApi.ts
+index 90c476d..c0c5ae9 100644
+--- a/client-app/src/features/my-trip/infra/TripApi.ts
++++ b/client-app/src/features/my-trip/infra/TripApi.ts
+@@ -1,4 +1,6 @@
+ import {
++  attachAttraction,
++  detachAttraction,
+   detachAttraction1,
+   getTrip,
+   getTrips,
+@@ -8,7 +10,7 @@ import {
+   TripParameter
+ } from "../../../clients/manager";
+ import managerClient from "../../../config/ClientsApiConfig";
+-import { LastReadTrip, Trip, TripStatus } from "../domain/Trip.types";
++import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
+ 
+ managerClient();
+ 
+@@ -131,3 +133,34 @@ export const updateTripDates = async (
+     throw new Error("Error while updating trip dates", error);
+   }
+ };
++
++export const attachAttractionToTrip = async (
++  tripId: number,
++  attractionId: number,
++  ratingValue: Rating,
++  note?: string
++): Promise<void> => {
++  const { error } = await attachAttraction({
++    path: { id: tripId, attractionId },
++    body: { rating: ratingValue, note },
++    headers: { "x-api-version": "1" }
++  });
++
++  if (error) {
++    throw new Error("Error while attaching attraction to trip", error);
++  }
++};
++
++export const removeAttractionFromTrip = async (
++  tripId: number,
++  attractionId: number
++): Promise<void> => {
++  const { error } = await detachAttraction({
++    path: { id: tripId, attractionId },
++    headers: { "x-api-version": "1" }
++  });
++
++  if (error) {
++    throw new Error("Error while removing attraction from trip", error);
++  }
++};
+diff --git a/client-app/tests/Board.planMode.spec.ts b/client-app/tests/Board.planMode.spec.ts
+new file mode 100644
+index 0000000..b0a20dc
+--- /dev/null
++++ b/client-app/tests/Board.planMode.spec.ts
+@@ -0,0 +1,30 @@
++import { test, expect } from "@playwright/test";
++
++test.beforeEach(async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--plan-mode"
++  );
++
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++});
++
++test("Show board in Plan mode with itinerary checkboxes", async ({ page }) => {
++  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show board in Plan mode with pre-selected itinerary items", async ({
++  page
++}) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--plan-mode-with-selections"
++  );
++
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
+diff --git a/client-app/tests/Board.reviewMode.spec.ts b/client-app/tests/Board.reviewMode.spec.ts
+new file mode 100644
+index 0000000..959073f
+--- /dev/null
++++ b/client-app/tests/Board.reviewMode.spec.ts
+@@ -0,0 +1,92 @@
++import { test, expect } from "@playwright/test";
++
++test.beforeEach(async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--review-mode"
++  );
++
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++});
++
++test("Show board in Review mode with Review button active", async ({
++  page
++}) => {
++  await expect(page.getByRole("button", { name: /Review/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Review button is visible when tripId is provided", async ({ page }) => {
++  await expect(page.getByRole("button", { name: /Review/i })).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show review form with rating buttons and note input for each attraction", async ({
++  page
++}) => {
++  await expect(page.getByRole("button", { name: "Disliked" }).first()).toBeVisible();
++  await expect(page.getByRole("button", { name: "Below Average" }).first()).toBeVisible();
++  await expect(page.getByRole("button", { name: "Average" }).first()).toBeVisible();
++  await expect(page.getByRole("button", { name: "Very Good" }).first()).toBeVisible();
++  await expect(page.getByRole("button", { name: "Excellent" }).first()).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show Add to trip button in review form", async ({ page }) => {
++  await expect(
++    page.getByRole("button", { name: /Add to trip/i }).first()
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Select a rating in review form", async ({ page }) => {
++  await page.getByRole("button", { name: "Excellent" }).first().click();
++
++  await expect(
++    page.getByRole("button", { name: "Excellent" }).first()
++  ).toHaveClass(/review-rating-active/);
++  await expect(page).toHaveScreenshot();
++});
++
++test("Attach attraction to trip when Add to trip is clicked", async ({
++  page
++}) => {
++  await page.getByRole("button", { name: "Excellent" }).first().click();
++  await page.getByRole("button", { name: /Add to trip/i }).first().click();
++
++  await expect(page.getByText("Excellent").first()).toBeVisible();
++  await expect(
++    page.getByLabel("Remove from trip").first()
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Attach attraction with a note", async ({ page }) => {
++  await page.getByRole("button", { name: "Very Good" }).first().click();
++  await page
++    .getByPlaceholder("Trip note (optional, max 512 chars)")
++    .first()
++    .fill("Amazing view from the top");
++  await page.getByRole("button", { name: /Add to trip/i }).first().click();
++
++  await expect(page.getByText("Very Good").first()).toBeVisible();
++  await expect(page.getByText("Amazing view from the top")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Detach attraction from trip when Remove button is clicked", async ({
++  page
++}) => {
++  await page.getByRole("button", { name: "Excellent" }).first().click();
++  await page.getByRole("button", { name: /Add to trip/i }).first().click();
++
++  await expect(page.getByLabel("Remove from trip").first()).toBeVisible();
++
++  await page.getByLabel("Remove from trip").first().click();
++
++  await expect(
++    page.getByRole("button", { name: /Add to trip/i }).first()
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
+diff --git a/client-app/tests/Board.spec.ts b/client-app/tests/Board.spec.ts
+new file mode 100644
+index 0000000..427029a
+--- /dev/null
++++ b/client-app/tests/Board.spec.ts
+@@ -0,0 +1,65 @@
++import { test, expect } from "@playwright/test";
++
++test.beforeEach(async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--edit-mode"
++  );
++
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++});
++
++test("Show board in edit mode with attractions loaded", async ({ page }) => {
++  await expect(page.getByText("Paris")).toBeVisible();
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++  await expect(page.getByText("Louvre Museum")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show Edit mode button as active by default", async ({ page }) => {
++  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show Save JSON and Load JSON buttons in toolbar", async ({ page }) => {
++  await expect(
++    page.getByRole("button", { name: "Save JSON" })
++  ).toBeVisible();
++  await expect(
++    page.getByRole("button", { name: "Load JSON" })
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Switch to Plan mode when Plan button is clicked", async ({ page }) => {
++  await page.getByRole("button", { name: /Plan/i }).click();
++
++  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Switch back to Edit mode from Plan mode", async ({ page }) => {
++  await page.getByRole("button", { name: /Plan/i }).click();
++  await page.getByRole("button", { name: /Edit/i }).click();
++
++  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Review button is not visible when no tripId is provided", async ({
++  page
++}) => {
++  await expect(page.getByRole("button", { name: /Review/i })).toHaveCount(0);
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show filter dropdowns in toolbar", async ({ page }) => {
++  await expect(page.getByText("Countrywide")).toBeVisible();
++  await expect(page.getByText("Must-visit")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
+diff --git a/client-app/tests/Board.variants.spec.ts b/client-app/tests/Board.variants.spec.ts
+new file mode 100644
+index 0000000..9986011
+--- /dev/null
++++ b/client-app/tests/Board.variants.spec.ts
+@@ -0,0 +1,21 @@
++import { test, expect } from "@playwright/test";
++
++test("Show empty board when no attractions are provided", async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--empty"
++  );
++
++  await expect(page.getByRole("button", { name: /Edit/i })).toBeVisible();
++  await expect(page.getByText("Eiffel Tower")).toHaveCount(0);
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show single city board", async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-ai-table-components-board--single-city"
++  );
++
++  await expect(page.getByText("Paris")).toBeVisible();
++  await expect(page.getByText("Eiffel Tower")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
+diff --git a/client-app/tests/MyTrip.spec.ts b/client-app/tests/MyTrip.spec.ts
+new file mode 100644
+index 0000000..a99ce04
+--- /dev/null
++++ b/client-app/tests/MyTrip.spec.ts
+@@ -0,0 +1,142 @@
++import { test, expect } from "@playwright/test";
++
++test.beforeEach(async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--primary"
++  );
++
++  await expect(page.getByText("Italy")).toBeVisible();
++});
++
++test("Show trip name loaded from API", async ({ page }) => {
++  await expect(page.getByText("Italy")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show back button to navigate to My Trips", async ({ page }) => {
++  await expect(
++    page.getByRole("button", { name: "My Trips" })
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show search button for adding attractions", async ({ page }) => {
++  await expect(page.getByLabel("Search")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show Edit and Plan mode buttons on Board", async ({ page }) => {
++  await expect(page.getByRole("button", { name: /Edit/i })).toBeVisible();
++  await expect(page.getByRole("button", { name: /Plan/i })).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show Review mode button because tripId is passed to Board", async ({
++  page
++}) => {
++  await expect(
++    page.getByRole("button", { name: /Review/i })
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Switch to Review mode and show review forms", async ({ page }) => {
++  await page.getByRole("button", { name: /Review/i }).click();
++
++  await expect(page.getByRole("button", { name: /Review/i })).toHaveClass(
++    /mode-btn-active/
++  );
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show search modal when search button is clicked", async ({ page }) => {
++  await page.getByLabel("Search").click();
++
++  await expect(page.getByText("Modifying Trip Planner")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Update button is disabled when no search item is selected", async ({
++  page
++}) => {
++  await page.getByLabel("Search").click();
++
++  await expect(page.getByRole("button", { name: "Update" })).toBeDisabled();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Show search suggestions when typing in the search field", async ({
++  page
++}) => {
++  await page.getByLabel("Search").click();
++  await page.getByRole("textbox", { name: "Search" }).fill("Mon");
++
++  await expect(page.getByRole("menuitem", { name: "Monaco" })).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Attractions are loaded when search item is selected and Update is clicked", async ({
++  page
++}) => {
++  await page.getByLabel("Search").click();
++  await page.getByRole("textbox", { name: "Search" }).fill("Mon");
++  await page.getByRole("menuitem", { name: "Monaco" }).click();
++
++  await expect(page.getByRole("button", { name: "Update" })).toBeEnabled();
++  await page.getByRole("button", { name: "Update" }).click();
++
++  await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Search modal is closed when close icon is clicked", async ({ page }) => {
++  await page.getByLabel("Search").click();
++  await expect(page.getByText("Modifying Trip Planner")).toBeVisible();
++
++  await page.getByLabel("Close modify popup").click();
++
++  await expect(page.getByText("Modifying Trip Planner")).toHaveCount(0);
++  await expect(page).toHaveScreenshot();
++});
++
++test("Attach attraction in Review mode after loading attractions", async ({
++  page
++}) => {
++  await page.getByLabel("Search").click();
++  await page.getByRole("textbox", { name: "Search" }).fill("Mon");
++  await page.getByRole("menuitem", { name: "Monaco" }).click();
++  await page.getByRole("button", { name: "Update" }).click();
++
++  await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
++
++  await page.getByRole("button", { name: /Review/i }).click();
++  await page.getByRole("button", { name: "Excellent" }).first().click();
++  await page.getByRole("button", { name: /Add to trip/i }).first().click();
++
++  await expect(page.getByLabel("Remove from trip").first()).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
++
++test("Detach attraction in Review mode after attaching it", async ({
++  page
++}) => {
++  await page.getByLabel("Search").click();
++  await page.getByRole("textbox", { name: "Search" }).fill("Mon");
++  await page.getByRole("menuitem", { name: "Monaco" }).click();
++  await page.getByRole("button", { name: "Update" }).click();
++
++  await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
++
++  await page.getByRole("button", { name: /Review/i }).click();
++  await page.getByRole("button", { name: "Excellent" }).first().click();
++  await page.getByRole("button", { name: /Add to trip/i }).first().click();
++
++  await expect(page.getByLabel("Remove from trip").first()).toBeVisible();
++
++  await page.getByLabel("Remove from trip").first().click();
++
++  await expect(
++    page.getByRole("button", { name: /Add to trip/i }).first()
++  ).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});
+\ No newline at end of file
+diff --git a/client-app/tests/TripCard.clickDelete.spec.ts b/client-app/tests/TripCard.clickDelete.spec.ts
+new file mode 100644
+index 0000000..10eecdb
+--- /dev/null
++++ b/client-app/tests/TripCard.clickDelete.spec.ts
+@@ -0,0 +1,14 @@
++import { test, expect } from "@playwright/test";
++
++test.beforeEach(async ({ page }) => {
++  await page.goto(
++    "http://localhost:6006/iframe.html?id=features-my-trip-tripcard--click-delete"
++  );
++
++  await expect(page.getByText("Italy")).toBeVisible();
++});
++
++test("Show delete button on trip card", async ({ page }) => {
++  await expect(page.getByLabel("Delete trip")).toBeVisible();
++  await expect(page).toHaveScreenshot();
++});

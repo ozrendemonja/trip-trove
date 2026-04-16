@@ -45,17 +45,16 @@ public class Trip {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<VisitedAttraction> visitedAttractions = new ArrayList<>();
+    private List<TripAttraction> attractions = new ArrayList<>();
 
-    public void attachAttraction(Attraction attraction, Rating rating, String note) {
+    public void attachAttraction(Attraction attraction, TripAttractionGroup attractionGroup) {
         Objects.requireNonNull(attraction, "attraction must not be null");
-        Objects.requireNonNull(rating, "rating must not be null");
 
-        VisitedAttraction visited = new VisitedAttraction();
-        visited.setAttraction(attraction);
-        visited.setTrip(this);
-        visited.setRating(rating);
-        visited.setNote(note);
-        visitedAttractions.add(visited);
+        TripAttraction tripAttraction = new TripAttraction();
+        tripAttraction.setAttraction(attraction);
+        tripAttraction.setTrip(this);
+        tripAttraction.setStatus(TripAttractionStatus.PLANNED);
+        tripAttraction.setAttractionGroup(attractionGroup);
+        attractions.add(tripAttraction);
     }
 }

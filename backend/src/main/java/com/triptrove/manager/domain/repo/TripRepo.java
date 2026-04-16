@@ -30,11 +30,11 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-                DELETE FROM VisitedAttraction va
-                WHERE va.trip.id = :tripId
-                  AND va.attraction.id = :attractionId
+                DELETE FROM TripAttraction ta
+                WHERE ta.trip.id = :tripId
+                  AND ta.attraction.id = :attractionId
             """)
-    int deleteVisitedAttraction(Long tripId, Long attractionId);
+    int deleteTripAttraction(Long tripId, Long attractionId);
 
     @Query("""
             SELECT t FROM Trip t

@@ -2,8 +2,8 @@ package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
+import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
-import com.triptrove.manager.domain.repo.VisitedAttractionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -20,7 +20,7 @@ public class TripServiceImpl implements TripService {
     private final ManagerProperties managerProperties;
     private final TripRepo tripRepo;
     private final AttractionRepo attractionRepo;
-    private final VisitedAttractionRepo visitedAttractionRepo;
+    private final TripAttractionRepo tripAttractionRepo;
 
     @Override
     public Trip saveTrip(String tripName, LocalDate from, LocalDate to) {
@@ -81,7 +81,7 @@ public class TripServiceImpl implements TripService {
     public void deleteTrip(Long id) {
         log.atInfo().log("Deleting trip");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (!trip.getVisitedAttractions().isEmpty()) {
+        if (!trip.getAttractions().isEmpty()) {
             throw new BaseApiException("Trip has attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
         }
 
@@ -90,9 +90,9 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public void attachAttraction(Long tripId, Long attractionId, Rating rating, String note) {
+    public void attachAttraction(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Add attraction under trip for trip '{}'", tripId);
-        if (visitedAttractionRepo.existsByTripIdAndAttractionId(tripId, attractionId)) {
+        if (tripAttractionRepo.existsByTripIdAndAttractionId(tripId, attractionId)) {
             throw new BaseApiException("Attraction '%d' already exists under the trip in the database".formatted(attractionId), BaseApiException.ErrorCode.ATTRACTION_ALREADY_ADDED_TO_TRIP);
         }
         var trip = tripRepo.findById(tripId)
@@ -100,26 +100,48 @@ public class TripServiceImpl implements TripService {
         var attraction = attractionRepo.findById(attractionId)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
-        trip.attachAttraction(attraction, rating, note);
+        trip.attachAttraction(attraction, attractionGroup);
         tripRepo.save(trip);
 
         log.atInfo().log("Attraction '{}' added under the trip", attraction.getName());
     }
 
     @Override
+    public void reviewAttraction(Long tripId, Long attractionId, Rating rating, String note) {
+        log.atInfo().log("Reviewing attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setRating(rating);
+        attraction.setNote(note);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Attraction '{}' reviewed under the trip '{}'", attractionId, tripId);
+    }
+
+    @Override
     public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
-        if (tripRepo.deleteVisitedAttraction(tripId, attractionId) < 1) {
+        if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {
             throw new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
         }
 
-        log.atInfo().log("Attraction removed");
+        log.atInfo().log("Attraction '{}' removed from trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public List<TripAttraction> getAttractions(Long tripId) {
+        log.atInfo().log("Getting attractions for trip '{}'", tripId);
+        if (!tripRepo.existsById(tripId)) {
+            throw new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+        }
+        var result = tripAttractionRepo.findByTripId(tripId);
+        log.atInfo().log("Found '{}' attractions for trip", result.size());
+        return result;
     }
 
     @Override
     public CountriesSummary getCountriesSummary() {
         log.atInfo().log("Getting country summary");
-        int visitedCountries = visitedAttractionRepo.countDistinctVisitedCountries();
+        int visitedCountries = tripAttractionRepo.countDistinctVisitedCountries();
         log.atInfo().log("Country summary created");
         return new CountriesSummary(visitedCountries, managerProperties.totalCountries());
     }

@@ -3,7 +3,7 @@ import { exportCities, readCitiesFromFile } from '../utils/boardPersistence';
 import AttractionList from './AttractionList';
 import type { Attraction } from './AttractionList.types';
 import '../styles/Board.css';
-import { attachAttractionToTrip, removeAttractionFromTrip } from '../../my-trip/infra/TripApi';
+import { attachAttractionToTrip, updateTripAttraction, removeAttractionFromTrip } from '../../my-trip/infra/TripApi';
 import { Rating } from '../../my-trip/domain/Trip.types';
 import type { Column, TouristDestination, BoardProps } from './Board.types';
 
@@ -186,11 +186,12 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded, tripId }) 
         ? Math.min(dragUI.insertionIndex, targetColumn.tasks.length)
         : targetColumn.tasks.length;
       targetColumn.tasks.splice(insertionIndex, 0, attraction);
+
       return next;
     });
     setDragState(null);
     setDragUI({ overColumnId: null, insertionIndex: -1 });
-  }, [dragState, dragUI.insertionIndex, dragUI.overColumnId]);
+  }, [dragState, dragUI.insertionIndex, dragUI.overColumnId, tripId]);
 
   const updateAttractionNote = useCallback((columnId: string, index: number, newNote: string) => {
     if (readOnly) return;
@@ -299,6 +300,27 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded, tripId }) 
       });
     }, [initialCities]);
 
+    // Track which attraction IDs have already been saved to DB for this trip
+    const savedAttractionIdsRef = useRef<Set<number>>(new Set());
+
+    // Auto-save attractions to DB when cities change in edit mode with a tripId
+    useEffect(() => {
+      if (boardMode !== 'edit' || !tripId) return;
+
+      for (const city of cities) {
+        for (const col of city.columns) {
+          for (const task of col.tasks) {
+            if (!savedAttractionIdsRef.current.has(task.id)) {
+              savedAttractionIdsRef.current.add(task.id);
+              attachAttractionToTrip(tripId, task.id, COLUMN_TO_GROUP[col.title]).catch(err =>
+                console.error('Failed to auto-save attraction', task.id, err)
+              );
+            }
+          }
+        }
+      }
+    }, [cities, boardMode, tripId]);
+
     const toggleCityCollapse = useCallback((cityName: string) => {
       setCollapsedByCity(prev => ({ ...prev, [cityName]: !prev[cityName] }));
     }, []);
@@ -328,7 +350,7 @@ const Board: React.FC<BoardProps> = ({ initialCities, onCitiesLoaded, tripId }) 
 
     const handleAttachAttraction = useCallback(async (attractionId: number, ratingValue: Rating, note: string) => {
       if (!tripId) return;
-      await attachAttractionToTrip(tripId, attractionId, ratingValue, note || undefined);
+      await updateTripAttraction(tripId, attractionId, ratingValue, note || undefined);
       setReviewSelection(prev => ({ ...prev, [attractionId]: { rating: ratingValue, note } }));
     }, [tripId]);
 

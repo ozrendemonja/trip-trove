@@ -9,8 +9,35 @@ import {
   updateTripRange,
   TripParameter
 } from "../../../clients/manager";
+import { client } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
+
+export type TripAttractionStatus = "PLANNED" | "VISITED";
+export type TripAttractionGroup = "PRIMARY" | "SECONDARY" | "EXCLUDED";
+
+export interface TripAttractionFromServer {
+  attractionId: number;
+  attractionName: string;
+  cityName?: string;
+  regionName: string;
+  countryName: string;
+  isCountrywide: boolean;
+  mainAttractionName?: string;
+  attractionAddress?: string;
+  attractionCategory: string;
+  attractionType: string;
+  mustVisit: boolean;
+  isTraditional: boolean;
+  tip?: string;
+  infoFrom: string;
+  infoRecorded?: string;
+  optimalVisitPeriod?: { fromDate: string; toDate: string };
+  status: TripAttractionStatus;
+  rating?: string;
+  note?: string;
+  attractionGroup?: TripAttractionGroup;
+}
 
 managerClient();
 
@@ -137,17 +164,33 @@ export const updateTripDates = async (
 export const attachAttractionToTrip = async (
   tripId: number,
   attractionId: number,
-  ratingValue: Rating,
-  note?: string
+  attractionGroup?: TripAttractionGroup
 ): Promise<void> => {
-  const { error } = await attachAttraction({
-    path: { id: tripId, attractionId },
-    body: { rating: ratingValue, note },
-    headers: { "x-api-version": "1" }
+  const { error } = await client.post({
+    url: `/trips/${tripId}/attractions`,
+    body: { attractionId, attractionGroup },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
   });
 
   if (error) {
-    throw new Error("Error while attaching attraction to trip", error);
+    console.error("Error while attaching attraction to trip", error);
+  }
+};
+
+export const updateTripAttraction = async (
+  tripId: number,
+  attractionId: number,
+  rating: Rating,
+  note?: string
+): Promise<void> => {
+  const { error } = await client.post({
+    url: `/trips/${tripId}/attractions/${attractionId}/review`,
+    body: { rating, note },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while reviewing trip attraction", error);
   }
 };
 
@@ -163,4 +206,20 @@ export const removeAttractionFromTrip = async (
   if (error) {
     throw new Error("Error while removing attraction from trip", error);
   }
+};
+
+export const fetchTripAttractions = async (
+  tripId: number
+): Promise<TripAttractionFromServer[]> => {
+  const { data, error } = await client.get({
+    url: `/trips/${tripId}/attractions`,
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    console.error("Error while fetching trip attractions", error);
+    return [];
+  }
+
+  return (data as TripAttractionFromServer[]) ?? [];
 };

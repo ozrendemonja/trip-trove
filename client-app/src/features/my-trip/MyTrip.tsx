@@ -2,12 +2,14 @@ import { ActionButton, Stack, Text } from "@fluentui/react";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
-import { fetchTripById } from "./infra/TripApi";
+import { fetchTripById, fetchTripAttractions } from "./infra/TripApi";
+import type { TripAttractionFromServer } from "./infra/TripApi";
 import Board from "../AI-table/components/Board";
 import type {
   TouristDestination,
   Column
 } from "../AI-table/components/Board.types";
+import type { Attraction as BoardAttraction } from "../AI-table/components/AttractionList.types";
 import { mapServerResponseToTouristDestinations } from "../AI-table/utils/mapper";
 import {
   Attraction,
@@ -99,6 +101,86 @@ function mergeCities(
   return Array.from(cityMap.values());
 }
 
+// Convert saved trip attractions from the DB into TouristDestination[] using attraction group
+const GROUP_TO_COLUMN: Record<string, string> = {
+  PRIMARY: "Top Attractions",
+  SECONDARY: "Secondary Spots",
+  EXCLUDED: "Excluded Attractions"
+};
+
+function mapSavedTripAttractionsToBoard(
+  items: TripAttractionFromServer[]
+): TouristDestination[] {
+  // Group by city/region, then by column title
+  const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
+
+  for (const item of items) {
+    const cityOrRegion =
+      item.cityName?.trim() || item.regionName.trim();
+    const cityKey = cityOrRegion || item.countryName;
+    const columnTitle = item.attractionGroup
+      ? (GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots")
+      : (item.mustVisit ? "Top Attractions" : "Secondary Spots");
+
+    if (!cityColumnMap.has(cityKey)) {
+      cityColumnMap.set(cityKey, new Map());
+    }
+    const colMap = cityColumnMap.get(cityKey)!;
+    if (!colMap.has(columnTitle)) {
+      colMap.set(columnTitle, []);
+    }
+
+    const typeStr = item.attractionType || "";
+    const stable = typeStr === "STABLE";
+
+    colMap.get(columnTitle)!.push({
+      id: item.attractionId,
+      mustVisit: item.mustVisit,
+      stable,
+      isTraditional: item.isTraditional,
+      isCountrywide: item.isCountrywide,
+      name: item.attractionName,
+      address: item.attractionAddress || "",
+      category: item.attractionCategory || "",
+      infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
+      note: item.tip || "",
+      optimalVisitPeriod: item.optimalVisitPeriod
+        ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
+        : undefined,
+      workingHours: undefined,
+      VisitTime: ""
+    });
+  }
+
+  const cities: TouristDestination[] = [];
+  for (const [cityName, colMap] of Array.from(cityColumnMap.entries())) {
+    const baseId = cityName.toLowerCase().replace(/\s+/g, "_");
+    // Ensure standard columns exist
+    const columnOrder = Object.values(GROUP_TO_COLUMN);
+    const columns: { id: string; title: string; tasks: BoardAttraction[] }[] = [];
+
+    for (const title of columnOrder) {
+      const colId = `${baseId}_${title.toLowerCase().replace(/\s+/g, "_")}`;
+      columns.push({
+        id: colId,
+        title,
+        tasks: colMap.get(title) || []
+      });
+    }
+    // Add any non-standard columns
+    for (const [title, tasks] of colMap.entries()) {
+      if (!columnOrder.includes(title)) {
+        const colId = `${baseId}_${title.toLowerCase().replace(/\s+/g, "_")}`;
+        columns.push({ id: colId, title, tasks });
+      }
+    }
+
+    cities.push({ name: cityName, columns });
+  }
+
+  return cities;
+}
+
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
@@ -116,12 +198,25 @@ export const MyTrip: React.FC = () => {
   const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
   // Loaded cities from JSON file (already in display format, preserved separately)
   const [loadedCities, setLoadedCities] = useState<TouristDestination[]>([]);
+  // Cities loaded from saved trip attractions in DB
+  const [savedCities, setSavedCities] = useState<TouristDestination[]>([]);
 
-  // Derive display attractions from allAttractions, then merge with loadedCities
+  // Load saved trip attractions from DB on mount
+  useEffect(() => {
+    if (!tripId) return;
+    fetchTripAttractions(Number(tripId)).then((saved) => {
+      if (saved.length > 0) {
+        setSavedCities(mapSavedTripAttractionsToBoard(saved));
+      }
+    });
+  }, [tripId]);
+
+  // Derive display attractions from allAttractions, then merge with loadedCities and savedCities
   const attractions = useMemo(() => {
     const fromServer = mapServerResponseToTouristDestinations(allAttractions);
-    return mergeCities(loadedCities, fromServer);
-  }, [allAttractions, loadedCities]);
+    const merged = mergeCities(savedCities, fromServer);
+    return mergeCities(merged, loadedCities);
+  }, [allAttractions, loadedCities, savedCities]);
 
   const handleUpdate = async (value: SearchTarget) => {
     const newAttractions = await loadAllAttractionsUnder(

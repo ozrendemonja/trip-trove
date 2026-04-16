@@ -95,16 +95,30 @@ public class TripController {
         tripService.deleteTrip(id);
     }
 
-    @PostMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")
+    @PostMapping("/{id:\\d+}/attractions")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Add new attractions under trip", responses = {
-            @ApiResponse(description = "Attractions added successfully", responseCode = "204"),
-            @ApiResponse(description = "Attractions already added under the given trip", responseCode = "409", content =
+    @Operation(summary = "Add attraction under trip", responses = {
+            @ApiResponse(description = "Attraction added successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction already added under the given trip", responseCode = "409", content =
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void attachAttraction(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid AddAttractionUnderTripRequest attraction) {
-        tripService.attachAttraction(id, attractionId, attraction.rating().toRating(), attraction.note());
+    public void attachAttraction(@PathVariable Long id, @RequestBody @Valid AddAttractionUnderTripRequest attraction) {
+        tripService.attachAttraction(id, attraction.attractionId(), attraction.attractionGroup().toGroup());
+    }
+
+    @PostMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/review")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Review attraction under trip", responses = {
+            @ApiResponse(description = "Attraction reviewed successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void reviewAttraction(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid ReviewTripAttractionRequest request) {
+        tripService.reviewAttraction(id, attractionId,
+                request.rating().toRating(),
+                request.note());
     }
 
     @DeleteMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")
@@ -114,6 +128,17 @@ public class TripController {
     })
     public void detachAttraction(@PathVariable Long id, @PathVariable Long attractionId) {
         tripService.detachAttraction(id, attractionId);
+    }
+
+    @GetMapping("/{id:\\d+}/attractions")
+    @Operation(summary = "Get all attractions for a trip", responses = {
+            @ApiResponse(description = "List of attractions under the trip", responseCode = "200"),
+    })
+    public List<GetTripAttractionResponse> getAttractions(@PathVariable Long id) {
+        return tripService.getAttractions(id)
+                .stream()
+                .map(GetTripAttractionResponse::from)
+                .toList();
     }
 
     @GetMapping("/countries/summary")

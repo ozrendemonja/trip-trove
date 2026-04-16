@@ -1,9 +1,9 @@
-import React from 'react';
-import AttractionItem from './AttractionItem';
-import '../styles/AttractionList.css';
-import type { Attraction, AttractionListProps } from './AttractionList.types';
+import React from "react";
+import AttractionItem from "./AttractionItem";
+import "../styles/AttractionList.css";
+import type { Attraction, AttractionListProps } from "./AttractionList.types";
 
-export type { Attraction } from './AttractionList.types';
+export type { Attraction } from "./AttractionList.types";
 
 const AttractionList: React.FC<AttractionListProps> = ({
   attractions,
@@ -44,12 +44,34 @@ const AttractionList: React.FC<AttractionListProps> = ({
               locationHint={locationHint}
               columnId={columnId}
               index={idx}
-              onUpdateNote={!readOnly ? (newNote) => onUpdateNote(columnId, idx, newNote) : undefined}
-              onUpdateWorkingHours={!readOnly && onUpdateWorkingHours ? (newHours: string) => onUpdateWorkingHours(columnId, idx, newHours) : undefined}
-              onUpdateVisitTime={!readOnly && onUpdateVisitTime ? (newVisit: string) => onUpdateVisitTime(columnId, idx, newVisit) : undefined}
-              onToggleMustVisit={!readOnly && onToggleMustVisit ? () => onToggleMustVisit(columnId, idx) : undefined}
+              onUpdateNote={
+                !readOnly
+                  ? (newNote) => onUpdateNote(columnId, idx, newNote)
+                  : undefined
+              }
+              onUpdateWorkingHours={
+                !readOnly && onUpdateWorkingHours
+                  ? (newHours: string) =>
+                      onUpdateWorkingHours(columnId, idx, newHours)
+                  : undefined
+              }
+              onUpdateVisitTime={
+                !readOnly && onUpdateVisitTime
+                  ? (newVisit: string) =>
+                      onUpdateVisitTime(columnId, idx, newVisit)
+                  : undefined
+              }
+              onToggleMustVisit={
+                !readOnly && onToggleMustVisit
+                  ? () => onToggleMustVisit(columnId, idx)
+                  : undefined
+              }
               inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}
-              onToggleInItinerary={onToggleItinerary ? () => onToggleItinerary(attraction.id) : undefined}
+              onToggleInItinerary={
+                onToggleItinerary
+                  ? () => onToggleItinerary(attraction.id)
+                  : undefined
+              }
               readOnly={readOnly}
               reviewMode={reviewMode}
               reviewData={reviewSelection?.[attraction.id]}

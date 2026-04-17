@@ -37,6 +37,9 @@ export interface TripAttractionFromServer {
   rating?: string;
   note?: string;
   attractionGroup?: TripAttractionGroup;
+  planNote?: string;
+  workingHours?: string;
+  visitTime?: string;
 }
 
 managerClient();
@@ -205,6 +208,86 @@ export const removeAttractionFromTrip = async (
 
   if (error) {
     throw new Error("Error while removing attraction from trip", error);
+  }
+};
+
+export const updateAttractionGroup = async (
+  tripId: number,
+  attractionId: number,
+  attractionGroup: TripAttractionGroup
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/group`,
+    body: { attractionGroup },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating attraction group", error);
+  }
+};
+
+export const updateTripAttractionMustVisit = async (
+  tripId: number,
+  attractionId: number,
+  mustVisit: boolean
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/must-visit`,
+    body: { mustVisit },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating attraction must visit", error);
+  }
+};
+
+export const updateTripAttractionWorkingHours = async (
+  tripId: number,
+  attractionId: number,
+  workingHours?: string
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/working-hours`,
+    body: { workingHours: workingHours || null },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating attraction working hours", error);
+  }
+};
+
+export const updateTripAttractionVisitTime = async (
+  tripId: number,
+  attractionId: number,
+  visitTime?: string
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/visit-time`,
+    body: { visitTime: visitTime || null },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating attraction visit time", error);
+  }
+};
+
+export const updateTripAttractionPlanNote = async (
+  tripId: number,
+  attractionId: number,
+  planNote?: string
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/plan-note`,
+    body: { planNote: planNote || null },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating attraction plan note", error);
   }
 };
 

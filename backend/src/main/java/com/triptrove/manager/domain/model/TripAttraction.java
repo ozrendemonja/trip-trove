@@ -57,6 +57,18 @@ public class TripAttraction {
     @Column(name = "attraction_group")
     private TripAttractionGroup attractionGroup;
 
+    @Column(name = "plan_note", length = 512)
+    private String planNote;
+
+    @Column(name = "must_visit", nullable = false)
+    private boolean mustVisit;
+
+    @Column(name = "working_hours", length = 128)
+    private String workingHours;
+
+    @Column(name = "visit_time", length = 64)
+    private String visitTime;
+
     public void recordVisit(Rating rating, String note) {
         this.rating = rating;
         this.note = note;

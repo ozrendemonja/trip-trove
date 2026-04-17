@@ -145,12 +145,12 @@ function mapSavedTripAttractionsToBoard(
       address: item.attractionAddress || "",
       category: item.attractionCategory || "",
       infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
-      note: item.tip || "",
+      note: item.planNote || item.tip || "",
       optimalVisitPeriod: item.optimalVisitPeriod
         ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
         : undefined,
-      workingHours: undefined,
-      VisitTime: ""
+      workingHours: item.workingHours || undefined,
+      VisitTime: item.visitTime || ""
     });
   }
 

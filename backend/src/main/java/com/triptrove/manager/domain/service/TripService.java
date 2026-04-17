@@ -22,6 +22,16 @@ public interface TripService {
 
     void detachAttraction(Long tripId, Long attractionId);
 
+    void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
+
+    void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit);
+
+    void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours);
+
+    void updateAttractionVisitTime(Long tripId, Long attractionId, String visitTime);
+
+    void updateAttractionPlanNote(Long tripId, Long attractionId, String planNote);
+
     List<TripAttraction> getAttractions(Long tripId);
 
     CountriesSummary getCountriesSummary();

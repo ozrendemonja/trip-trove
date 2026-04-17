@@ -499,6 +499,338 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(tripRepo.findById(1L).get().getAttractions().getLast().getStatus()).isEqualTo(TripAttractionStatus.PLANNED);
         assertThat(tripRepo.findById(1L).get().getAttractions().getLast().getNote()).isNull();
         assertThat(tripRepo.findById(1L).get().getAttractions().getLast().getRating()).isNull();
+        assertThat(tripRepo.findById(1L).get().getAttractions().getLast().isMustVisit()).isEqualTo(false);
+    }
+
+    @Test
+    void shouldInheritMustVisitFromAttractionWhenAttractionIsAddedUnderTrip() throws Exception {
+        var request = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().getLast();
+        assertThat(tripAttraction.getAttraction().getId()).isEqualTo(5);
+        assertThat(tripAttraction.isMustVisit()).isEqualTo(true);
+    }
+
+    @Test
+    void shouldReturnMustVisitInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
+        var addRequest = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(addRequest)))
+                .andExpect(status().isNoContent());
+
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+        var added = java.util.Arrays.stream(response)
+                .filter(r -> r.attractionId().equals(5L))
+                .findFirst().orElseThrow();
+        assertThat(added.mustVisit()).isTrue();
+    }
+
+    @Test
+    void mustVisitShouldNotChangeWhenAttractionMustVisitIsUpdatedAfterBeingAdded() throws Exception {
+        var addRequest = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(addRequest)))
+                .andExpect(status().isNoContent());
+
+        // Update must visit to false on the trip attraction
+        var updateRequest = new UpdateTripAttractionMustVisitRequest(false);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 5 + "/must-visit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(5L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.isMustVisit()).isFalse();
+        // The base attraction should remain unchanged
+        assertThat(tripAttraction.getAttraction().isMustVisit()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidMustVisitValues")
+    void mustVisitShouldBeUpdatedWhenValidValueIsProvided(Boolean mustVisit) throws Exception {
+        var request = new UpdateTripAttractionMustVisitRequest(mustVisit);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.isMustVisit()).isEqualTo(mustVisit);
+    }
+
+    private static Stream<Arguments> provideValidMustVisitValues() {
+        return Stream.of(
+                arguments(Named.of("must visit set to true", true)),
+                arguments(Named.of("must visit set to false", false))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidMustVisitTargets")
+    void mustVisitShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionMustVisitRequest(false);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/must-visit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private static Stream<Arguments> provideInvalidMustVisitTargets() {
+        return Stream.of(
+                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
+                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
+        );
+    }
+
+    @Test
+    void mustVisitShouldNotBeUpdatedWhenValueIsNull() throws Exception {
+        var request = new UpdateTripAttractionMustVisitRequest(null);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidWorkingHoursTargets")
+    void workingHoursShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionWorkingHoursRequest("9-17");
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/working-hours")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private static Stream<Arguments> provideInvalidWorkingHoursTargets() {
+        return Stream.of(
+                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
+                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidWorkingHoursValues")
+    void workingHoursShouldBeUpdatedWhenValidValueIsProvided(String workingHours) throws Exception {
+        var request = new UpdateTripAttractionWorkingHoursRequest(workingHours);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getWorkingHours()).isEqualTo(workingHours);
+    }
+
+    private static Stream<Arguments> provideValidWorkingHoursValues() {
+        return Stream.of(
+                arguments(Named.of("presented working hours", "9-17")),
+                arguments(Named.of("null working hours", (String) null))
+        );
+    }
+
+    @Test
+    void workingHoursShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
+        var request = new UpdateTripAttractionWorkingHoursRequest("a".repeat(129));
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual2 = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual2.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidVisitTimeValues")
+    void visitTimeShouldBeUpdatedWhenValidValueIsProvided(String visitTime) throws Exception {
+        var request = new UpdateTripAttractionVisitTimeRequest(visitTime);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getVisitTime()).isEqualTo(visitTime);
+    }
+
+    private static Stream<Arguments> provideValidVisitTimeValues() {
+        return Stream.of(
+                arguments(Named.of("valid visit time", "2 hours")),
+                arguments(Named.of("null visit time", (String) null))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidVisitTimeTargets")
+    void visitTimeShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionVisitTimeRequest("2 hours");
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/visit-time")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private static Stream<Arguments> provideInvalidVisitTimeTargets() {
+        return Stream.of(
+                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
+                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
+        );
+    }
+
+    @Test
+    void visitTimeShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
+        var request = new UpdateTripAttractionVisitTimeRequest("a".repeat(65));
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidPlanNoteValues")
+    void planNoteShouldBeUpdatedWhenValidValueIsProvided(String planNote) throws Exception {
+        var request = new UpdateTripAttractionPlanNoteRequest(planNote);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/plan-note")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getPlanNote()).isEqualTo(planNote);
+    }
+
+    private static Stream<Arguments> provideValidPlanNoteValues() {
+        return Stream.of(
+                arguments(Named.of("valid plan note", "Visit in the morning")),
+                arguments(Named.of("null plan note", (String) null))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidPlanNoteTargets")
+    void planNoteShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionPlanNoteRequest("Visit in the morning");
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/plan-note")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private static Stream<Arguments> provideInvalidPlanNoteTargets() {
+        return Stream.of(
+                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
+                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
+        );
+    }
+
+    @Test
+    void planNoteShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
+        var request = new UpdateTripAttractionPlanNoteRequest("a".repeat(513));
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/plan-note")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
     @Test
@@ -833,6 +1165,82 @@ public class TripTest extends AbstractIntegrationTest {
         GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
         assertThat(response.visitedCount()).isEqualTo(0);
         assertThat(response.totalCount()).isEqualTo(195);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideAllAttractionGroupsForUpdate")
+    void attractionGroupShouldBeUpdatedWhenValidGroupIsProvided(TripAttractionGroupDTO group) throws Exception {
+        var request = new UpdateAttractionGroupRequest(group);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getAttractionGroup()).isEqualTo(TripAttractionGroup.valueOf(group.name()));
+    }
+
+    private static Stream<Arguments> provideAllAttractionGroupsForUpdate() {
+        return Stream.of(
+                arguments(Named.of("PRIMARY group", TripAttractionGroupDTO.PRIMARY)),
+                arguments(Named.of("SECONDARY group", TripAttractionGroupDTO.SECONDARY)),
+                arguments(Named.of("EXCLUDED group", TripAttractionGroupDTO.EXCLUDED))
+        );
+    }
+
+    @Test
+    void attractionGroupShouldNotBeUpdatedWhenTripIdDoesNotExist() throws Exception {
+        var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/attractions/" + 1 + "/group")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    void attractionGroupShouldNotBeUpdatedWhenAttractionIsNotUnderTrip() throws Exception {
+        var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 4 + "/group")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    void attractionGroupShouldNotBeUpdatedWhenGroupIsNull() throws Exception {
+        var request = new UpdateAttractionGroupRequest(null);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
 }

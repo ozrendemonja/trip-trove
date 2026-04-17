@@ -121,6 +121,66 @@ public class TripController {
                 request.note());
     }
 
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/group")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction group under trip", responses = {
+            @ApiResponse(description = "Attraction group updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateAttractionGroupRequest request) {
+        tripService.updateAttractionGroup(id, attractionId, request.attractionGroup().toGroup());
+    }
+
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/must-visit")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction must visit under trip", responses = {
+            @ApiResponse(description = "Attraction must visit updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionMustVisit(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionMustVisitRequest request) {
+        tripService.updateAttractionMustVisit(id, attractionId, request.mustVisit());
+    }
+
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/working-hours")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction working hours under trip", responses = {
+            @ApiResponse(description = "Attraction working hours updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionWorkingHours(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionWorkingHoursRequest request) {
+        tripService.updateAttractionWorkingHours(id, attractionId, request.workingHours());
+    }
+
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/visit-time")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction visit time under trip", responses = {
+            @ApiResponse(description = "Attraction visit time updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionVisitTime(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionVisitTimeRequest request) {
+        tripService.updateAttractionVisitTime(id, attractionId, request.visitTime());
+    }
+
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/plan-note")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction plan note under trip", responses = {
+            @ApiResponse(description = "Attraction plan note updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionPlanNote(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionPlanNoteRequest request) {
+        tripService.updateAttractionPlanNote(id, attractionId, request.planNote());
+    }
+
     @DeleteMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Remove attraction from trip", responses = {

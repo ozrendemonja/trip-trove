@@ -56,4 +56,10 @@ public class TripAttraction {
     @Enumerated(EnumType.STRING)
     @Column(name = "attraction_group")
     private TripAttractionGroup attractionGroup;
+
+    public void recordVisit(Rating rating, String note) {
+        this.rating = rating;
+        this.note = note;
+        this.status = TripAttractionStatus.VISITED;
+    }
 }

@@ -8,6 +8,7 @@ import {
   updateTripAttraction,
   removeAttractionFromTrip
 } from "../../my-trip/infra/TripApi";
+import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
 import type { Column, TouristDestination, BoardProps } from "./Board.types";
 
@@ -26,12 +27,20 @@ interface DragUIState {
 
 // No local sample; expect data to be passed in via props
 
+const COLUMN_TO_GROUP: Record<string, TripAttractionGroup> = {
+  "Top Attractions": "PRIMARY",
+  "Secondary Spots": "SECONDARY",
+  "Excluded Attractions": "EXCLUDED"
+};
+
 type BoardMode = "edit" | "readOnly" | "review";
 
 const Board: React.FC<BoardProps> = ({
   initialCities,
   onCitiesLoaded,
-  tripId
+  tripId,
+  initialReviewData,
+  initialSavedAttractionIds
 }) => {
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
@@ -52,7 +61,7 @@ const Board: React.FC<BoardProps> = ({
   >({});
   const [reviewSelection, setReviewSelection] = useState<
     Record<number, { rating: Rating; note: string }>
-  >({});
+  >(initialReviewData ?? {});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
     "POINT_OF_INTEREST_AND_LANDMARK",
@@ -417,7 +426,25 @@ const Board: React.FC<BoardProps> = ({
   }, [initialCities]);
 
   // Track which attraction IDs have already been saved to DB for this trip
-  const savedAttractionIdsRef = useRef<Set<number>>(new Set());
+  const savedAttractionIdsRef = useRef<Set<number>>(
+    new Set(initialSavedAttractionIds ?? [])
+  );
+
+  // Sync saved IDs when prop changes (e.g. after DB load)
+  useEffect(() => {
+    if (initialSavedAttractionIds) {
+      for (const id of initialSavedAttractionIds) {
+        savedAttractionIdsRef.current.add(id);
+      }
+    }
+  }, [initialSavedAttractionIds]);
+
+  // Sync review selection when initialReviewData changes
+  useEffect(() => {
+    if (initialReviewData) {
+      setReviewSelection((prev) => ({ ...prev, ...initialReviewData }));
+    }
+  }, [initialReviewData]);
 
   // Auto-save attractions to DB when cities change in edit mode with a tripId
   useEffect(() => {

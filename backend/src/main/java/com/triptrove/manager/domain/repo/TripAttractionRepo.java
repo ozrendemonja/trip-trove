@@ -18,6 +18,7 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
                 SELECT COUNT(DISTINCT ta.attraction.country)
                 FROM TripAttraction ta
                 WHERE ta.attraction.mustVisit = true
+                AND ta.status = VISITED
             """)
     int countDistinctVisitedCountries();
 }

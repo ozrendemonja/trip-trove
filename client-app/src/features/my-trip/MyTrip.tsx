@@ -15,6 +15,7 @@ import {
   Attraction,
   LastReadAttraction
 } from "../continent/domain/Attraction.types";
+import { Rating } from "./domain/Trip.types";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
@@ -202,6 +203,12 @@ export const MyTrip: React.FC = () => {
   const [loadedCities, setLoadedCities] = useState<TouristDestination[]>([]);
   // Cities loaded from saved trip attractions in DB
   const [savedCities, setSavedCities] = useState<TouristDestination[]>([]);
+  // Review data (rating + note) from DB for pre-populating review mode
+  const [savedReviewData, setSavedReviewData] = useState<
+    Record<number, { rating: Rating; note: string }>
+  >({});
+  // Attraction IDs already persisted in DB (to avoid duplicate saves)
+  const [savedAttractionIds, setSavedAttractionIds] = useState<number[]>([]);
 
   // Load saved trip attractions from DB on mount
   useEffect(() => {
@@ -209,6 +216,18 @@ export const MyTrip: React.FC = () => {
     fetchTripAttractions(Number(tripId)).then((saved) => {
       if (saved.length > 0) {
         setSavedCities(mapSavedTripAttractionsToBoard(saved));
+        setSavedAttractionIds(saved.map((s) => s.attractionId));
+
+        const reviewData: Record<number, { rating: Rating; note: string }> = {};
+        for (const item of saved) {
+          if (item.rating) {
+            reviewData[item.attractionId] = {
+              rating: item.rating as Rating,
+              note: item.note ?? ""
+            };
+          }
+        }
+        setSavedReviewData(reviewData);
       }
     });
   }, [tripId]);
@@ -268,11 +287,8 @@ export const MyTrip: React.FC = () => {
         initialCities={attractions}
         onCitiesLoaded={handleCitiesLoaded}
         tripId={tripId ? Number(tripId) : undefined}
-      />
-      <Board
-        initialCities={attractions}
-        onCitiesLoaded={handleCitiesLoaded}
-        tripId={tripId ? Number(tripId) : undefined}
+        initialReviewData={savedReviewData}
+        initialSavedAttractionIds={savedAttractionIds}
       />
     </>
   );

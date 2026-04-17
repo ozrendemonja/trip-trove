@@ -762,13 +762,15 @@ public class TripTest extends AbstractIntegrationTest {
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         assertThat(response).hasSize(3);
         assertThat(response[0].attractionId()).isEqualTo(1);
-        assertThat(response[0].attractionName()).isEqualTo("Test attraction 0");
-        assertThat(response[0].status()).isEqualTo(TripAttractionStatusDTO.VISITED);
+        assertThat(response[0].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[0].rating()).isEqualTo(RatingDTO.EXCELLENT);
         assertThat(response[0].note()).isNull();
         assertThat(response[1].attractionId()).isEqualTo(2);
+        assertThat(response[1].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[1].rating()).isEqualTo(RatingDTO.AVERAGE);
+        assertThat(response[1].note()).isNull();
         assertThat(response[2].attractionId()).isEqualTo(3);
+        assertThat(response[2].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[2].rating()).isEqualTo(RatingDTO.EXCELLENT);
         assertThat(response[2].note()).isEqualTo("test note");
     }
@@ -813,6 +815,23 @@ public class TripTest extends AbstractIntegrationTest {
 
         GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
         assertThat(response.visitedCount()).isEqualTo(1);
+        assertThat(response.totalCount()).isEqualTo(195);
+    }
+
+    @Test
+    void countriesSummaryShouldCountOnlyCountriesWhenAtLeastOneMustVisitAttractionIsVisited() throws Exception {
+        tripRepo.deleteTripAttraction(2L, 1L);
+
+        var jsonResponse = mockMvc.perform(get("/trips/countries/summary")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
+        assertThat(response.visitedCount()).isEqualTo(0);
         assertThat(response.totalCount()).isEqualTo(195);
     }
 

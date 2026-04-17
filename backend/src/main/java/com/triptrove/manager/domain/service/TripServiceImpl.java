@@ -111,8 +111,7 @@ public class TripServiceImpl implements TripService {
         log.atInfo().log("Reviewing attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        attraction.setRating(rating);
-        attraction.setNote(note);
+        attraction.recordVisit(rating, note);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Attraction '{}' reviewed under the trip '{}'", attractionId, tripId);
     }

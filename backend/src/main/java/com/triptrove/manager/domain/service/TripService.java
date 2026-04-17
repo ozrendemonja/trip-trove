@@ -16,9 +16,13 @@ public interface TripService {
 
     void deleteTrip(Long id);
 
-    void attachAttraction(Long tripId, Long attractionId, Rating rating, String note);
+    void attachAttraction(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
+
+    void reviewAttraction(Long tripId, Long attractionId, Rating rating, String note);
 
     void detachAttraction(Long tripId, Long attractionId);
+
+    List<TripAttraction> getAttractions(Long tripId);
 
     CountriesSummary getCountriesSummary();
 

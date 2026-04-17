@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "visited_attraction",
+@Table(name = "trip_attraction",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_trip_attraction",
@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
         }
 )
 @EntityListeners(AuditingEntityListener.class)
-public class VisitedAttraction {
+public class TripAttraction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -43,9 +43,23 @@ public class VisitedAttraction {
     private Trip trip;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "rating", nullable = false)
+    @Column(name = "status", nullable = false)
+    private TripAttractionStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rating")
     private Rating rating;
 
     @Column(name = "note", length = 512)
     private String note;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attraction_group")
+    private TripAttractionGroup attractionGroup;
+
+    public void recordVisit(Rating rating, String note) {
+        this.rating = rating;
+        this.note = note;
+        this.status = TripAttractionStatus.VISITED;
+    }
 }

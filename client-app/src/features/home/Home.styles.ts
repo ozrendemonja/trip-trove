@@ -28,6 +28,23 @@ export const useClasses = () => {
     searchContiner: {
       position: "absolute",
       left: "50%"
+    },
+    gaugeContainer: {
+      position: "absolute",
+      top: 10,
+      right: 24
+    },
+    headerRow: {
+      fontSize: 40,
+      paddingBottom: "20px",
+      paddingLeft: "20%"
+    },
+    headerIcon: {
+      paddingTop: "12%"
+    },
+    headerText: {
+      fontSize: 40,
+      marginLeft: 15
     }
   });
 };

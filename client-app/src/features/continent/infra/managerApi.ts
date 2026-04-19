@@ -19,6 +19,7 @@ import {
   getMainAttractionAttractions,
   getRegion,
   getRegionAttractions,
+  getCountriesSummary,
   getSearchedElements,
   saveAttraction,
   saveCity,
@@ -1584,4 +1585,26 @@ export const getPagedAttractionsByMainAttractionId = async (
       updatedOn: attraction.changedOn
     };
   });
+};
+
+export interface CountriesSummary {
+  visitedCount: number;
+  totalCount: number;
+}
+
+export const fetchCountriesSummary = async (): Promise<CountriesSummary> => {
+  const { data, error } = await getCountriesSummary({
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting countries summary", error);
+  }
+
+  return {
+    visitedCount: data?.visitedCount ?? 0,
+    totalCount: data?.totalCount ?? 0
+  };
 };

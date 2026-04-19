@@ -20,6 +20,7 @@ import {
   searchRegion
 } from "../continent/infra/ManagerApi";
 import { useClasses } from "./Home.styles";
+import CountriesVisitedGauge from "./countries-visited-gauge/CountriesVisitedGauge";
 
 const searchConfig: Omit<SearchTextProps, "getSuggestions" | "onSelectItem"> = {
   label: "",
@@ -63,22 +64,13 @@ export const Home: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
+      <div className={classes.gaugeContainer}>
+        <CountriesVisitedGauge />
+      </div>
       <Stack tokens={{ childrenGap: 0 }} className={classes.searchContiner}>
-        <Stack
-          horizontal
-          styles={{
-            root: { fontSize: 40, paddingBottom: "20px", paddingLeft: "20%" }
-          }}
-        >
-          <Icon
-            iconName="Train"
-            styles={{
-              root: {
-                paddingTop: "12%"
-              }
-            }}
-          />
-          <Text as={"h2"} styles={{ root: { fontSize: 40, marginLeft: 15 } }}>
+        <Stack horizontal className={classes.headerRow}>
+          <Icon iconName="Train" className={classes.headerIcon} />
+          <Text as={"h2"} className={classes.headerText}>
             {configData.APPLICATION_NAME}
           </Text>
         </Stack>

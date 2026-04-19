@@ -1002,6 +1002,14 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 400 }
       );
+
+      this.get(
+        "/trips/countries/summary",
+        () => {
+          return { visitedCount: 15, totalCount: 256 };
+        },
+        { timing: 300 }
+      );
     }
   });
 }

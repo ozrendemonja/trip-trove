@@ -1,6 +1,6 @@
 import { Stack, Text, useTheme } from "@fluentui/react";
 import React, { useEffect, useState } from "react";
-import { fetchCountriesSummary } from "../../continent/infra/ManagerApi";
+import { getCountriesVisitedSummary } from "../../continent/infra/ManagerApi";
 import {
   CENTER_Y,
   GAUGE_SIZE,
@@ -36,7 +36,7 @@ export const CountriesVisitedGauge: React.FunctionComponent<
 
   useEffect(() => {
     if (visitedCount !== undefined && totalCount !== undefined) return;
-    fetchCountriesSummary().then((summary) => {
+    getCountriesVisitedSummary().then((summary) => {
       setVisited(summary.visitedCount);
       setTotal(summary.totalCount);
     });

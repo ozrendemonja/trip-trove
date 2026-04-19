@@ -1592,7 +1592,7 @@ export interface CountriesSummary {
   totalCount: number;
 }
 
-export const fetchCountriesSummary = async (): Promise<CountriesSummary> => {
+export const getCountriesVisitedSummary = async (): Promise<CountriesSummary> => {
   const { data, error } = await getCountriesSummary({
     headers: {
       "x-api-version": "1"

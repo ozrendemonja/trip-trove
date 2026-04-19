@@ -24,7 +24,7 @@ public interface TripService {
 
     void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
 
-    void updateAttractionMustVisit(Long tripId, Long attractionId, Boolean mustVisit);
+    void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit);
 
     void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours);
 

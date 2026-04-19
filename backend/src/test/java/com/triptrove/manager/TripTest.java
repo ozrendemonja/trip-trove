@@ -569,6 +569,73 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(tripAttraction.getAttraction().isMustVisit()).isTrue();
     }
 
+    @Test
+    void shouldInheritNoteFromAttractionTipWhenAttractionIsAddedUnderTrip() throws Exception {
+        var request = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 3 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(3L).get().getAttractions().getLast();
+        assertThat(tripAttraction.getAttraction().getId()).isEqualTo(1);
+        assertThat(tripAttraction.getNote()).isEqualTo("Test tip");
+    }
+
+    @Test
+    void shouldReturnNoteInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
+        var addRequest = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 3 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(addRequest)))
+                .andExpect(status().isNoContent());
+
+        var jsonResponse = mockMvc.perform(get("/trips/" + 3 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+        var added = java.util.Arrays.stream(response)
+                .filter(r -> r.attractionId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(added.note()).isEqualTo("Test tip");
+    }
+
+    @Test
+    void noteShouldNotChangeAttractionTipWhenNoteIsUpdatedAfterBeingAdded() throws Exception {
+        var addRequest = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
+
+        mockMvc.perform(post("/trips/" + 3 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(addRequest)))
+                .andExpect(status().isNoContent());
+
+        // Update note on the trip attraction
+        var updateRequest = new UpdateTripAttractionNoteRequest("Custom note");
+
+        mockMvc.perform(put("/trips/" + 3 + "/attractions/" + 1 + "/note")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(3L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getNote()).isEqualTo("Custom note");
+        // The base attraction tip should remain unchanged
+        assertThat(tripAttraction.getAttraction().getTip().orElse(null)).isEqualTo("Test tip");
+    }
+
     @ParameterizedTest
     @MethodSource("provideValidMustVisitValues")
     void mustVisitShouldBeUpdatedWhenValidValueIsProvided(Boolean mustVisit) throws Exception {
@@ -768,11 +835,11 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @MethodSource("provideValidPlanNoteValues")
-    void planNoteShouldBeUpdatedWhenValidValueIsProvided(String planNote) throws Exception {
-        var request = new UpdateTripAttractionPlanNoteRequest(planNote);
+    @MethodSource("provideValidNoteValues")
+    void noteShouldBeUpdatedWhenValidValueIsProvided(String note) throws Exception {
+        var request = new UpdateTripAttractionNoteRequest(note);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/plan-note")
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
@@ -781,22 +848,22 @@ public class TripTest extends AbstractIntegrationTest {
         var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
                 .filter(ta -> ta.getAttraction().getId().equals(1L))
                 .findFirst().orElseThrow();
-        assertThat(tripAttraction.getPlanNote()).isEqualTo(planNote);
+        assertThat(tripAttraction.getNote()).isEqualTo(note);
     }
 
-    private static Stream<Arguments> provideValidPlanNoteValues() {
+    private static Stream<Arguments> provideValidNoteValues() {
         return Stream.of(
-                arguments(Named.of("valid plan note", "Visit in the morning")),
-                arguments(Named.of("null plan note", (String) null))
+                arguments(Named.of("valid note", "Visit in the morning")),
+                arguments(Named.of("null note", (String) null))
         );
     }
 
     @ParameterizedTest
-    @MethodSource("provideInvalidPlanNoteTargets")
-    void planNoteShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
-        var request = new UpdateTripAttractionPlanNoteRequest("Visit in the morning");
+    @MethodSource("provideInvalidNoteTargets")
+    void noteShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionNoteRequest("Visit in the morning");
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/plan-note")
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/note")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))
@@ -809,7 +876,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
     }
 
-    private static Stream<Arguments> provideInvalidPlanNoteTargets() {
+    private static Stream<Arguments> provideInvalidNoteTargets() {
         return Stream.of(
                 arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
                 arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
@@ -817,10 +884,10 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void planNoteShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
-        var request = new UpdateTripAttractionPlanNoteRequest("a".repeat(513));
+    void noteShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
+        var request = new UpdateTripAttractionNoteRequest("a".repeat(513));
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/plan-note")
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
                         .content(mapper.writeValueAsString(request)))

@@ -24,13 +24,13 @@ public interface TripService {
 
     void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
 
-    void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit);
+    void updateAttractionMustVisit(Long tripId, Long attractionId, Boolean mustVisit);
 
     void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours);
 
     void updateAttractionVisitTime(Long tripId, Long attractionId, String visitTime);
 
-    void updateAttractionPlanNote(Long tripId, Long attractionId, String planNote);
+    void updateAttractionNote(Long tripId, Long attractionId, String note);
 
     List<TripAttraction> getAttractions(Long tripId);
 

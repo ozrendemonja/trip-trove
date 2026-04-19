@@ -54,13 +54,10 @@ public class TripAttraction {
     private String note;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "attraction_group")
+    @Column(name = "attraction_group", nullable = false)
     private TripAttractionGroup attractionGroup;
 
-    @Column(name = "plan_note", length = 512)
-    private String planNote;
-
-    @Column(name = "must_visit", nullable = false)
+    @Column(name = "must_visit")
     private boolean mustVisit;
 
     @Column(name = "working_hours", length = 128)

@@ -169,16 +169,16 @@ public class TripController {
         tripService.updateAttractionVisitTime(id, attractionId, request.visitTime());
     }
 
-    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/plan-note")
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/note")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Update attraction plan note under trip", responses = {
-            @ApiResponse(description = "Attraction plan note updated successfully", responseCode = "204"),
+    @Operation(summary = "Update attraction note under trip", responses = {
+            @ApiResponse(description = "Attraction note updated successfully", responseCode = "204"),
             @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionPlanNote(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionPlanNoteRequest request) {
-        tripService.updateAttractionPlanNote(id, attractionId, request.planNote());
+    public void updateAttractionNote(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionNoteRequest request) {
+        tripService.updateAttractionNote(id, attractionId, request.note());
     }
 
     @DeleteMapping("/{id:\\d+}/attractions/{attractionId:\\d+}")

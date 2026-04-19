@@ -36,8 +36,7 @@ export interface TripAttractionFromServer {
   status: TripAttractionStatus;
   rating?: string;
   note?: string;
-  attractionGroup?: TripAttractionGroup;
-  planNote?: string;
+  attractionGroup: TripAttractionGroup;
   workingHours?: string;
   visitTime?: string;
 }
@@ -275,19 +274,19 @@ export const updateTripAttractionVisitTime = async (
   }
 };
 
-export const updateTripAttractionPlanNote = async (
+export const updateTripAttractionNote = async (
   tripId: number,
   attractionId: number,
-  planNote?: string
+  note?: string
 ): Promise<void> => {
   const { error } = await client.put({
-    url: `/trips/${tripId}/attractions/${attractionId}/plan-note`,
-    body: { planNote: planNote || null },
+    url: `/trips/${tripId}/attractions/${attractionId}/note`,
+    body: { note: note || null },
     headers: { "x-api-version": "1", "Content-Type": "application/json" }
   });
 
   if (error) {
-    console.error("Error while updating attraction plan note", error);
+    console.error("Error while updating attraction note", error);
   }
 };
 

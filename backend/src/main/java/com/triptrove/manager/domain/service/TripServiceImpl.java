@@ -157,13 +157,13 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public void updateAttractionPlanNote(Long tripId, Long attractionId, String planNote) {
-        log.atInfo().log("Updating plan note for attraction '{}' under trip '{}'", attractionId, tripId);
+    public void updateAttractionNote(Long tripId, Long attractionId, String note) {
+        log.atInfo().log("Updating note for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        attraction.setPlanNote(planNote);
+        attraction.setNote(note);
         tripAttractionRepo.save(attraction);
-        log.atInfo().log("Plan note updated for attraction '{}' under trip '{}'", attractionId, tripId);
+        log.atInfo().log("Note updated for attraction '{}' under trip '{}'", attractionId, tripId);
     }
 
     @Override

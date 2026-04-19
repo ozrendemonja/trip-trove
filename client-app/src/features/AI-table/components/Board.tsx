@@ -11,7 +11,7 @@ import {
   updateTripAttractionMustVisit,
   updateTripAttractionWorkingHours,
   updateTripAttractionVisitTime,
-  updateTripAttractionPlanNote
+  updateTripAttractionNote
 } from "../../my-trip/infra/TripApi";
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
@@ -308,10 +308,16 @@ const Board: React.FC<BoardProps> = ({
           })
         }));
         if (tripId) {
-          const task = prev.flatMap((c) => c.columns).find((c) => c.id === columnId)?.tasks[index];
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
           if (task) {
-            updateTripAttractionPlanNote(tripId, task.id, newNote || undefined).catch(
-              (err) => console.error("Failed to save plan note", task.id, err)
+            updateTripAttractionNote(
+              tripId,
+              task.id,
+              newNote || undefined
+            ).catch((err) =>
+              console.error("Failed to save note", task.id, err)
             );
           }
         }
@@ -336,10 +342,16 @@ const Board: React.FC<BoardProps> = ({
           })
         }));
         if (tripId) {
-          const task = prev.flatMap((c) => c.columns).find((c) => c.id === columnId)?.tasks[index];
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
           if (task) {
-            updateTripAttractionWorkingHours(tripId, task.id, newHours || undefined).catch(
-              (err) => console.error("Failed to save working hours", task.id, err)
+            updateTripAttractionWorkingHours(
+              tripId,
+              task.id,
+              newHours || undefined
+            ).catch((err) =>
+              console.error("Failed to save working hours", task.id, err)
             );
           }
         }
@@ -364,10 +376,16 @@ const Board: React.FC<BoardProps> = ({
           })
         }));
         if (tripId) {
-          const task = prev.flatMap((c) => c.columns).find((c) => c.id === columnId)?.tasks[index];
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
           if (task) {
-            updateTripAttractionVisitTime(tripId, task.id, newVisit || undefined).catch(
-              (err) => console.error("Failed to save visit time", task.id, err)
+            updateTripAttractionVisitTime(
+              tripId,
+              task.id,
+              newVisit || undefined
+            ).catch((err) =>
+              console.error("Failed to save visit time", task.id, err)
             );
           }
         }
@@ -392,10 +410,16 @@ const Board: React.FC<BoardProps> = ({
           })
         }));
         if (tripId) {
-          const task = prev.flatMap((c) => c.columns).find((c) => c.id === columnId)?.tasks[index];
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
           if (task) {
-            updateTripAttractionMustVisit(tripId, task.id, !task.mustVisit).catch(
-              (err) => console.error("Failed to save must visit", task.id, err)
+            updateTripAttractionMustVisit(
+              tripId,
+              task.id,
+              !task.mustVisit
+            ).catch((err) =>
+              console.error("Failed to save must visit", task.id, err)
             );
           }
         }

@@ -55,6 +55,8 @@ public class Trip {
         tripAttraction.setTrip(this);
         tripAttraction.setStatus(TripAttractionStatus.PLANNED);
         tripAttraction.setAttractionGroup(attractionGroup);
+        tripAttraction.setMustVisit(attraction.isMustVisit());
+        tripAttraction.setNote(attraction.getTip().orElse(null));
         attractions.add(tripAttraction);
     }
 }

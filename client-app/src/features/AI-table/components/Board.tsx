@@ -6,7 +6,12 @@ import "../styles/Board.css";
 import {
   attachAttractionToTrip,
   updateTripAttraction,
-  removeAttractionFromTrip
+  removeAttractionFromTrip,
+  updateAttractionGroup,
+  updateTripAttractionMustVisit,
+  updateTripAttractionWorkingHours,
+  updateTripAttractionVisitTime,
+  updateTripAttractionNote
 } from "../../my-trip/infra/TripApi";
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
@@ -265,6 +270,21 @@ const Board: React.FC<BoardProps> = ({
             : targetColumn.tasks.length;
         targetColumn.tasks.splice(insertionIndex, 0, attraction);
 
+        // Persist group change to backend when column changes
+        if (tripId && dragState.fromColumnId !== targetColumnId) {
+          const newGroup = COLUMN_TO_GROUP[targetColumn.title];
+          if (newGroup) {
+            updateAttractionGroup(tripId, attraction.id, newGroup).catch(
+              (err) =>
+                console.error(
+                  "Failed to update attraction group",
+                  attraction.id,
+                  err
+                )
+            );
+          }
+        }
+
         return next;
       });
       setDragState(null);
@@ -276,8 +296,8 @@ const Board: React.FC<BoardProps> = ({
   const updateAttractionNote = useCallback(
     (columnId: string, index: number, newNote: string) => {
       if (readOnly) return;
-      setCities((prev) =>
-        prev.map((city) => ({
+      setCities((prev) => {
+        const updated = prev.map((city) => ({
           ...city,
           columns: city.columns.map((col) => {
             if (col.id !== columnId) return col;
@@ -286,17 +306,32 @@ const Board: React.FC<BoardProps> = ({
             );
             return { ...col, tasks };
           })
-        }))
-      );
+        }));
+        if (tripId) {
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
+          if (task) {
+            updateTripAttractionNote(
+              tripId,
+              task.id,
+              newNote || undefined
+            ).catch((err) =>
+              console.error("Failed to save note", task.id, err)
+            );
+          }
+        }
+        return updated;
+      });
     },
-    [readOnly]
+    [readOnly, tripId]
   );
 
   const updateAttractionWorkingHours = useCallback(
     (columnId: string, index: number, newHours: string) => {
       if (readOnly) return;
-      setCities((prev) =>
-        prev.map((city) => ({
+      setCities((prev) => {
+        const updated = prev.map((city) => ({
           ...city,
           columns: city.columns.map((col) => {
             if (col.id !== columnId) return col;
@@ -305,17 +340,32 @@ const Board: React.FC<BoardProps> = ({
             );
             return { ...col, tasks };
           })
-        }))
-      );
+        }));
+        if (tripId) {
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
+          if (task) {
+            updateTripAttractionWorkingHours(
+              tripId,
+              task.id,
+              newHours || undefined
+            ).catch((err) =>
+              console.error("Failed to save working hours", task.id, err)
+            );
+          }
+        }
+        return updated;
+      });
     },
-    [readOnly]
+    [readOnly, tripId]
   );
 
   const updateAttractionVisitTime = useCallback(
     (columnId: string, index: number, newVisit: string) => {
       if (readOnly) return;
-      setCities((prev) =>
-        prev.map((city) => ({
+      setCities((prev) => {
+        const updated = prev.map((city) => ({
           ...city,
           columns: city.columns.map((col) => {
             if (col.id !== columnId) return col;
@@ -324,17 +374,32 @@ const Board: React.FC<BoardProps> = ({
             );
             return { ...col, tasks };
           })
-        }))
-      );
+        }));
+        if (tripId) {
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
+          if (task) {
+            updateTripAttractionVisitTime(
+              tripId,
+              task.id,
+              newVisit || undefined
+            ).catch((err) =>
+              console.error("Failed to save visit time", task.id, err)
+            );
+          }
+        }
+        return updated;
+      });
     },
-    [readOnly]
+    [readOnly, tripId]
   );
 
   const toggleAttractionMustVisit = useCallback(
     (columnId: string, index: number) => {
       if (readOnly) return;
-      setCities((prev) =>
-        prev.map((city) => ({
+      setCities((prev) => {
+        const updated = prev.map((city) => ({
           ...city,
           columns: city.columns.map((col) => {
             if (col.id !== columnId) return col;
@@ -343,10 +408,25 @@ const Board: React.FC<BoardProps> = ({
             );
             return { ...col, tasks };
           })
-        }))
-      );
+        }));
+        if (tripId) {
+          const task = prev
+            .flatMap((c) => c.columns)
+            .find((c) => c.id === columnId)?.tasks[index];
+          if (task) {
+            updateTripAttractionMustVisit(
+              tripId,
+              task.id,
+              !task.mustVisit
+            ).catch((err) =>
+              console.error("Failed to save must visit", task.id, err)
+            );
+          }
+        }
+        return updated;
+      });
     },
-    [readOnly]
+    [readOnly, tripId]
   );
 
   // Generic update by attraction id (hidden internal id).

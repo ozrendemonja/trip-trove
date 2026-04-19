@@ -19,7 +19,6 @@ public record GetTripAttractionResponse(Long attractionId,
                                         LocationResponse attractionLocation,
                                         AttractionCategoryResponse attractionCategory,
                                         AttractionTypeResponse attractionType,
-                                        boolean mustVisit,
                                         boolean isTraditional,
                                         String tip,
                                         String infoFrom,
@@ -29,7 +28,10 @@ public record GetTripAttractionResponse(Long attractionId,
                                         TripAttractionStatusDTO status,
                                         RatingDTO rating,
                                         String note,
-                                        TripAttractionGroupDTO attractionGroup) {
+                                        TripAttractionGroupDTO attractionGroup,
+                                        boolean mustVisit,
+                                        String workingHours,
+                                        String visitTime) {
     public static GetTripAttractionResponse from(TripAttraction tripAttraction) {
         Attraction attraction = tripAttraction.getAttraction();
         return new GetTripAttractionResponse(
@@ -44,7 +46,6 @@ public record GetTripAttractionResponse(Long attractionId,
                 attraction.getAddress().map(Address::location).map(location -> new LocationResponse(location.latitude(), location.longitude())).orElse(null),
                 AttractionCategoryResponse.from(attraction.getCategory()),
                 AttractionTypeResponse.from(attraction.getType()),
-                attraction.isMustVisit(),
                 attraction.isTraditional(),
                 attraction.getTip().orElse(null),
                 attraction.getInformationProvider().sourceName(),
@@ -53,7 +54,10 @@ public record GetTripAttractionResponse(Long attractionId,
                 TripAttractionStatusDTO.valueOf(tripAttraction.getStatus().name()),
                 tripAttraction.getRating() != null ? RatingDTO.valueOf(tripAttraction.getRating().name()) : null,
                 tripAttraction.getNote(),
-                tripAttraction.getAttractionGroup() != null ? TripAttractionGroupDTO.valueOf(tripAttraction.getAttractionGroup().name()) : null
+                TripAttractionGroupDTO.valueOf(tripAttraction.getAttractionGroup().name()),
+                tripAttraction.isMustVisit(),
+                tripAttraction.getWorkingHours(),
+                tripAttraction.getVisitTime()
         );
     }
 }

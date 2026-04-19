@@ -118,11 +118,8 @@ function mapSavedTripAttractionsToBoard(
   for (const item of items) {
     const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
     const cityKey = cityOrRegion || item.countryName;
-    const columnTitle = item.attractionGroup
-      ? GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots"
-      : item.mustVisit
-        ? "Top Attractions"
-        : "Secondary Spots";
+    const columnTitle =
+      GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots";
 
     if (!cityColumnMap.has(cityKey)) {
       cityColumnMap.set(cityKey, new Map());
@@ -145,12 +142,12 @@ function mapSavedTripAttractionsToBoard(
       address: item.attractionAddress || "",
       category: item.attractionCategory || "",
       infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
-      note: item.tip || "",
+      note: item.note || item.tip || "",
       optimalVisitPeriod: item.optimalVisitPeriod
         ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
         : undefined,
-      workingHours: undefined,
-      VisitTime: ""
+      workingHours: item.workingHours || undefined,
+      VisitTime: item.visitTime || ""
     });
   }
 

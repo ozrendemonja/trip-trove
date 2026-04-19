@@ -117,6 +117,56 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
+        log.atInfo().log("Updating attraction group for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setAttractionGroup(attractionGroup);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Attraction group updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit) {
+        log.atInfo().log("Updating must visit for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setMustVisit(mustVisit);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Must visit updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours) {
+        log.atInfo().log("Updating working hours for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setWorkingHours(workingHours);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Working hours updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public void updateAttractionVisitTime(Long tripId, Long attractionId, String visitTime) {
+        log.atInfo().log("Updating visit time for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setVisitTime(visitTime);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Visit time updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public void updateAttractionNote(Long tripId, Long attractionId, String note) {
+        log.atInfo().log("Updating note for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setNote(note);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Note updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
     public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
         if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {

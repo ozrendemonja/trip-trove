@@ -54,8 +54,17 @@ public class TripAttraction {
     private String note;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "attraction_group")
+    @Column(name = "attraction_group", nullable = false)
     private TripAttractionGroup attractionGroup;
+
+    @Column(name = "must_visit")
+    private boolean mustVisit;
+
+    @Column(name = "working_hours", length = 128)
+    private String workingHours;
+
+    @Column(name = "visit_time", length = 64)
+    private String visitTime;
 
     public void recordVisit(Rating rating, String note) {
         this.rating = rating;

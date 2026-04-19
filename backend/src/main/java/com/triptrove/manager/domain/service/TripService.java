@@ -18,7 +18,9 @@ public interface TripService {
 
     void attachAttraction(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
 
-    void reviewAttraction(Long tripId, Long attractionId, Rating rating, String note);
+    void reviewAttraction(Long tripId, Long attractionId, Rating rating, String reviewNote);
+
+    void clearReview(Long tripId, Long attractionId);
 
     void detachAttraction(Long tripId, Long attractionId);
 

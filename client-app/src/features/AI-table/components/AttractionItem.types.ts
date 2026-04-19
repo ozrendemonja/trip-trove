@@ -15,7 +15,7 @@ export interface AttractionItemProps {
   inItinerary?: boolean;
   onToggleInItinerary?: () => void;
   reviewMode?: boolean;
-  reviewData?: { rating: Rating; note: string };
-  onAttachAttraction?: (attractionId: number, ratingValue: Rating, note: string) => Promise<void>;
+  reviewData?: { rating: Rating; reviewNote: string };
+  onAttachAttraction?: (attractionId: number, ratingValue: Rating, reviewNote: string) => Promise<void>;
   onDetachAttraction?: (attractionId: number) => Promise<void>;
 }

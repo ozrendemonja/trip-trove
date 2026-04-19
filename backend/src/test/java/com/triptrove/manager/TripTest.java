@@ -969,7 +969,7 @@ public class TripTest extends AbstractIntegrationTest {
                 .filter(ta -> ta.getAttraction().getId().equals(1L))
                 .findFirst().orElseThrow();
         assertThat(tripAttraction.getRating()).isEqualTo(Rating.VERY_GOOD);
-        assertThat(tripAttraction.getNote()).isEqualTo(updatedNote);
+        assertThat(tripAttraction.getReviewNote()).isEqualTo(updatedNote);
         assertThat(tripAttraction.getStatus()).isEqualTo(TripAttractionStatus.VISITED);
     }
 
@@ -988,7 +988,7 @@ public class TripTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
-        assertThat(actual.errorMessage()).isEqualTo("{note = Note may not be longer then 512}");
+        assertThat(actual.errorMessage()).isEqualTo("{reviewNote = Review note may not be longer then 512}");
     }
 
     @Test
@@ -1039,6 +1039,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(tripAttraction.getAttractionGroup()).isEqualTo(TripAttractionGroup.valueOf(group.name()));
         assertThat(tripAttraction.getRating()).isNull();
         assertThat(tripAttraction.getNote()).isNull();
+        assertThat(tripAttraction.getReviewNote()).isNull();
     }
 
     private static Stream<Arguments> provideAllAttractionGroups() {
@@ -1086,7 +1087,7 @@ public class TripTest extends AbstractIntegrationTest {
                 .filter(ta -> ta.getAttraction().getId().equals(3L))
                 .findFirst().orElseThrow();
         assertThat(tripAttraction.getRating()).isEqualTo(Rating.DISLIKED);
-        assertThat(tripAttraction.getNote()).isNull();
+        assertThat(tripAttraction.getReviewNote()).isNull();
     }
 
     @Test
@@ -1135,6 +1136,74 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void reviewNoteShouldNotAffectAttractionNoteWhenAttractionIsReviewed() throws Exception {
+        var request = new ReviewTripAttractionRequest(RatingDTO.EXCELLENT, "Amazing place");
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 3 + "/review")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(3L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getReviewNote()).isEqualTo("Amazing place");
+        assertThat(tripAttraction.getNote()).isEqualTo("test note");
+    }
+
+    @Test
+    void reviewNoteShouldBeReturnedInResponseWhenAttractionHasBeenReviewed() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/trips/" + 2 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].attractionId()).isEqualTo(1);
+        assertThat(response[0].status()).isEqualTo(TripAttractionStatusDTO.VISITED);
+        assertThat(response[0].rating()).isEqualTo(RatingDTO.VERY_GOOD);
+        assertThat(response[0].reviewNote()).isEqualTo("Great experience");
+    }
+
+    @Test
+    void clearReviewShouldKeepAttractionInTrip() throws Exception {
+        assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
+
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getStatus()).isEqualTo(TripAttractionStatus.PLANNED);
+        assertThat(tripAttraction.getRating()).isNull();
+        assertThat(tripAttraction.getReviewNote()).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidReviewTargets")
+    void clearReviewShouldReturnNotFoundWhenTripOrAttractionDoesNotExist(InvalidReviewTarget input) throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/review")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
     void attractionShouldNotBeDeletedFromTripWhenTripIdDoesNotExist() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/trips/" + 100 + "/attractions/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1164,14 +1233,17 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[0].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[0].rating()).isEqualTo(RatingDTO.EXCELLENT);
         assertThat(response[0].note()).isNull();
+        assertThat(response[0].reviewNote()).isNull();
         assertThat(response[1].attractionId()).isEqualTo(2);
         assertThat(response[1].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[1].rating()).isEqualTo(RatingDTO.AVERAGE);
         assertThat(response[1].note()).isNull();
+        assertThat(response[1].reviewNote()).isNull();
         assertThat(response[2].attractionId()).isEqualTo(3);
         assertThat(response[2].status()).isEqualTo(TripAttractionStatusDTO.PLANNED);
         assertThat(response[2].rating()).isEqualTo(RatingDTO.EXCELLENT);
         assertThat(response[2].note()).isEqualTo("test note");
+        assertThat(response[2].reviewNote()).isNull();
     }
 
     @Test

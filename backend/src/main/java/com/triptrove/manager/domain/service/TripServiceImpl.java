@@ -107,13 +107,23 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public void reviewAttraction(Long tripId, Long attractionId, Rating rating, String note) {
+    public void reviewAttraction(Long tripId, Long attractionId, Rating rating, String reviewNote) {
         log.atInfo().log("Reviewing attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        attraction.recordVisit(rating, note);
+        attraction.recordVisit(rating, reviewNote);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Attraction '{}' reviewed under the trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    public void clearReview(Long tripId, Long attractionId) {
+        log.atInfo().log("Clearing review for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.clearReview();
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Review cleared for attraction '{}' under trip '{}'", attractionId, tripId);
     }
 
     @Override

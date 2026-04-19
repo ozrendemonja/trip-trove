@@ -308,6 +308,18 @@ export default function makeServer(): ReturnType<typeof createServer> {
         { timing: 300 }
       );
 
+      this.post(
+        "/trips/:id/attractions/:attractionId/review",
+        () => new MirageResponse(204),
+        { timing: 300 }
+      );
+
+      this.delete(
+        "/trips/:id/attractions/:attractionId/review",
+        () => new MirageResponse(204),
+        { timing: 300 }
+      );
+
       this.delete(
         "/trips/:id/attractions/:attractionId",
         () => new MirageResponse(204),

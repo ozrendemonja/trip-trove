@@ -6,6 +6,7 @@ import "../styles/Board.css";
 import {
   attachAttractionToTrip,
   updateTripAttraction,
+  clearTripAttractionReview,
   removeAttractionFromTrip,
   updateAttractionGroup,
   updateTripAttractionMustVisit,
@@ -65,7 +66,7 @@ const Board: React.FC<BoardProps> = ({
     Record<number, boolean>
   >({});
   const [reviewSelection, setReviewSelection] = useState<
-    Record<number, { rating: Rating; note: string }>
+    Record<number, { rating: Rating; reviewNote: string }>
   >(initialReviewData ?? {});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
@@ -578,18 +579,22 @@ const Board: React.FC<BoardProps> = ({
   }, []);
 
   const handleAttachAttraction = useCallback(
-    async (attractionId: number, ratingValue: Rating, note: string) => {
+    async (attractionId: number, ratingValue: Rating, reviewNote: string) => {
       if (!tripId) return;
-      await updateTripAttraction(
-        tripId,
-        attractionId,
-        ratingValue,
-        note || undefined
-      );
-      setReviewSelection((prev) => ({
-        ...prev,
-        [attractionId]: { rating: ratingValue, note }
-      }));
+      try {
+        await updateTripAttraction(
+          tripId,
+          attractionId,
+          ratingValue,
+          reviewNote || undefined
+        );
+        setReviewSelection((prev) => ({
+          ...prev,
+          [attractionId]: { rating: ratingValue, reviewNote }
+        }));
+      } catch (err) {
+        console.error("Failed to save review", attractionId, err);
+      }
     },
     [tripId]
   );
@@ -597,7 +602,7 @@ const Board: React.FC<BoardProps> = ({
   const handleDetachAttraction = useCallback(
     async (attractionId: number) => {
       if (!tripId) return;
-      await removeAttractionFromTrip(tripId, attractionId);
+      await clearTripAttractionReview(tripId, attractionId);
       setReviewSelection((prev) => {
         const next = { ...prev };
         delete next[attractionId];

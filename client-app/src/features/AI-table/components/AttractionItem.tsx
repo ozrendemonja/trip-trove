@@ -86,9 +86,17 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
 
   // Review mode state
   const isAttached = !!reviewData;
-  const [reviewRating, setReviewRating] = useState<Rating>('AVERAGE');
-  const [reviewNote, setReviewNote] = useState('');
+  const [reviewRating, setReviewRating] = useState<Rating>(reviewData?.rating ?? 'AVERAGE');
+  const [reviewNote, setReviewNote] = useState(reviewData?.reviewNote ?? '');
   const [reviewSaving, setReviewSaving] = useState(false);
+
+  // Sync local review form state when reviewData arrives asynchronously (e.g. loaded from DB)
+  useEffect(() => {
+    if (reviewData) {
+      setReviewRating(reviewData.rating);
+      setReviewNote(reviewData.reviewNote);
+    }
+  }, [reviewData]);
 
   const handleAttach = async () => {
     if (!onAttachAttraction || reviewSaving) return;
@@ -333,7 +341,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                       {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.emoji}{' '}
                       {RATING_OPTIONS.find(r => r.value === reviewData.rating)?.label}
                     </Text>
-                    {reviewData.note && <Text styles={review.attachedNote}>{reviewData.note}</Text>}
+                    {reviewData.reviewNote && <Text styles={review.attachedNote}>{reviewData.reviewNote}</Text>}
                   </Stack>
                 </Stack.Item>
                 <IconButton

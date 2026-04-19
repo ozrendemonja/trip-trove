@@ -53,6 +53,9 @@ public class TripAttraction {
     @Column(name = "note", length = 512)
     private String note;
 
+    @Column(name = "review_note", length = 512)
+    private String reviewNote;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "attraction_group", nullable = false)
     private TripAttractionGroup attractionGroup;
@@ -66,9 +69,15 @@ public class TripAttraction {
     @Column(name = "visit_time", length = 64)
     private String visitTime;
 
-    public void recordVisit(Rating rating, String note) {
+    public void recordVisit(Rating rating, String reviewNote) {
         this.rating = rating;
-        this.note = note;
+        this.reviewNote = reviewNote;
         this.status = TripAttractionStatus.VISITED;
+    }
+
+    public void clearReview() {
+        this.rating = null;
+        this.reviewNote = null;
+        this.status = TripAttractionStatus.PLANNED;
     }
 }

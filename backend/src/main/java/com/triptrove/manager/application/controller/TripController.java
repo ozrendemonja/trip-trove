@@ -118,7 +118,19 @@ public class TripController {
     public void reviewAttraction(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid ReviewTripAttractionRequest request) {
         tripService.reviewAttraction(id, attractionId,
                 request.rating().toRating(),
-                request.note());
+                request.reviewNote());
+    }
+
+    @DeleteMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/review")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Clear review for attraction under trip", responses = {
+            @ApiResponse(description = "Attraction review cleared successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void clearReview(@PathVariable Long id, @PathVariable Long attractionId) {
+        tripService.clearReview(id, attractionId);
     }
 
     @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/group")

@@ -36,6 +36,7 @@ export interface TripAttractionFromServer {
   status: TripAttractionStatus;
   rating?: string;
   note?: string;
+  reviewNote?: string;
   attractionGroup: TripAttractionGroup;
   workingHours?: string;
   visitTime?: string;
@@ -183,16 +184,30 @@ export const updateTripAttraction = async (
   tripId: number,
   attractionId: number,
   rating: Rating,
-  note?: string
+  reviewNote?: string
 ): Promise<void> => {
   const { error } = await client.post({
     url: `/trips/${tripId}/attractions/${attractionId}/review`,
-    body: { rating, note },
+    body: { rating, reviewNote },
     headers: { "x-api-version": "1", "Content-Type": "application/json" }
   });
 
   if (error) {
-    console.error("Error while reviewing trip attraction", error);
+    throw new Error("Error while reviewing trip attraction");
+  }
+};
+
+export const clearTripAttractionReview = async (
+  tripId: number,
+  attractionId: number
+): Promise<void> => {
+  const { error } = await client.delete({
+    url: `/trips/${tripId}/attractions/${attractionId}/review`,
+    headers: { "x-api-version": "1" }
+  });
+
+  if (error) {
+    throw new Error("Error while clearing attraction review");
   }
 };
 

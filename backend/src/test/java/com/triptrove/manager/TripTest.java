@@ -1169,7 +1169,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[0].rating()).isEqualTo(RatingDTO.VERY_GOOD);
         assertThat(response[0].reviewNote()).isEqualTo("Great experience");
     }
-    
+
     @Test
     void clearReviewShouldKeepAttractionInTrip() throws Exception {
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
@@ -1180,6 +1180,12 @@ public class TripTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.getStatus()).isEqualTo(TripAttractionStatus.PLANNED);
+        assertThat(tripAttraction.getRating()).isNull();
+        assertThat(tripAttraction.getReviewNote()).isNull();
     }
 
     @ParameterizedTest

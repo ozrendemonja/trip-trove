@@ -448,6 +448,30 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.suggestions()).isEmpty();
     }
 
+    @Test
+    void shouldFindRegionWhenSearchQueryUsesAsciiEquivalentOfDiacritics() throws Exception {
+        Region region = new Region();
+        region.setName("Šumadija");
+        region.setCountry(countryRepo.findByName("Test country 0").get(0));
+        regionRepo.saveAndFlush(region);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "sumad")
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.suggestions())
+                .extracting(SuggestionDto::value)
+                .last()
+                .isEqualTo("Šumadija, Test country 0");
+    }
+
     @ParameterizedTest
     @MethodSource("provideDiacriticEntitySearchCases")
     void shouldFindEntityWhenSearchQueryUsesAsciiEquivalentOfDiacritics(DiacriticEntityCase testCase) throws Exception {
@@ -478,12 +502,6 @@ public class SearchTest extends AbstractIntegrationTest {
 
     private static Stream<DiacriticEntityCase> provideDiacriticEntitySearchCases() {
         return Stream.of(
-                new DiacriticEntityCase("REGION", "Šumadija", "sumad", t -> {
-                    Region region = new Region();
-                    region.setName("Šumadija");
-                    region.setCountry(t.countryRepo.findByName("Test country 0").get(0));
-                    t.regionRepo.saveAndFlush(region);
-                }),
                 new DiacriticEntityCase("CITY", "Čačak", "cacak", t -> {
                     City city = new City();
                     city.setName("Čačak");

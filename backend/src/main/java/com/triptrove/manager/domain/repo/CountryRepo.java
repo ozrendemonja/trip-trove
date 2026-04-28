@@ -39,7 +39,16 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 
-    boolean existsByNameAndContinentName(String countryName, String continentName);
+    @Query("SELECT COUNT(c) > 0 FROM Country c WHERE c.name = :countryName AND c.continent.name = :continentName AND (:excludeId IS NULL OR c.id <> :excludeId)")
+    boolean isNameAlreadyUsedInContinent(String countryName, String continentName, Integer excludeId);
+
+    default boolean isNameAlreadyUsedInContinent(String countryName, String continentName) {
+        return isNameAlreadyUsedInContinent(countryName, continentName, null);
+    }
+
+    default boolean isNameAlreadyUsedInContinent(Country country, String continentName) {
+        return isNameAlreadyUsedInContinent(country.getName(), continentName, country.getId());
+    }
 
     void deleteById(Integer id);
 

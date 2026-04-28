@@ -26,7 +26,7 @@ public class CityServiceImpl implements CityService {
     public City saveCity(String name, int regionId) {
         log.atInfo().log("Processing save city request for city '{}'", name);
         var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (cityRepo.existsByNameAndRegionId(name, regionId)) {
+        if (cityRepo.isNameAlreadyUsedInRegion(name, regionId)) {
             throw new BaseApiException("City '%s' in '%s' region already exists in the database.".formatted(name, region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
 
@@ -97,7 +97,7 @@ public class CityServiceImpl implements CityService {
         log.atInfo().log("Updating the city name to '{}'", newCityName);
         var city = cityRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (cityRepo.existsByNameAndRegionId(newCityName, city.getRegion().getId())) {
+        if (cityRepo.isNameAlreadyUsedInRegion(newCityName, city.getRegion().getId())) {
             throw new BaseApiException("Cannot change the city to '%s' as it already exists in the database".formatted(city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
         city.setName(newCityName);
@@ -112,7 +112,7 @@ public class CityServiceImpl implements CityService {
                 .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         var newRegion = regionRepo.findById(regionId)
                 .orElseThrow(() -> new BaseApiException("Region is not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (cityRepo.existsByNameAndRegionId(city.getName(), regionId)) {
+        if (cityRepo.isNameAlreadyUsedInRegion(city, regionId)) {
             throw new BaseApiException("Cannot change the region to '%s' as it already exists in the database".formatted(newRegion.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
         city.setRegion(newRegion);

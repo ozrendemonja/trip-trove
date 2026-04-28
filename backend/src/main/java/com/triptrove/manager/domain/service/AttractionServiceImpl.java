@@ -39,7 +39,7 @@ public class AttractionServiceImpl implements AttractionService {
             return;
         }
 
-        if (attractionRepo.existsByNameAndMainId(attraction.getName(), mainAttractionId)) {
+        if (attractionRepo.isNameAlreadyUsedUnderMain(attraction, mainAttractionId)) {
             throw new BaseApiException("Attraction '%s' already exists under given main attraction.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
 
@@ -52,7 +52,7 @@ public class AttractionServiceImpl implements AttractionService {
 
     private void assignAttractionTo(Attraction attraction, Integer regionId, Integer cityId) {
         if (cityId != null) {
-            if (attractionRepo.existsByNameAndCityId(attraction.getName(), cityId)) {
+            if (attractionRepo.isNameAlreadyUsedInCity(attraction, cityId)) {
                 throw new BaseApiException("Attraction '%s' already exists under given city.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
             }
 
@@ -60,7 +60,7 @@ public class AttractionServiceImpl implements AttractionService {
             var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
             attraction.underCity(city);
         } else {
-            if (attractionRepo.existsByNameAndRegionId(attraction.getName(), regionId)) {
+            if (attractionRepo.isNameAlreadyUsedInRegion(attraction, regionId)) {
                 throw new BaseApiException("Attraction '%s' already exists under given region.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
             }
 
@@ -141,10 +141,10 @@ public class AttractionServiceImpl implements AttractionService {
         var attraction = attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
-        if (attraction.getCity().isPresent() && attractionRepo.existsByNameAndCityId(newAttractionName, attraction.getCity().get().getId())) {
+        if (attraction.getCity().isPresent() && attractionRepo.isNameAlreadyUsedInCity(newAttractionName, attraction.getCity().get().getId())) {
             throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
-        if (attractionRepo.existsByNameAndRegionId(newAttractionName, attraction.getRegion().getId())) {
+        if (attractionRepo.isNameAlreadyUsedInRegion(newAttractionName, attraction.getRegion().getId())) {
             throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), attraction.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
         }
         attraction.setName(newAttractionName);

@@ -24,7 +24,7 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public Country saveCountry(String continentName, String countryName) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
-        if (countryRepo.existsByNameAndContinentName(countryName, continentName)) {
+        if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName)) {
             throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName, continentName), ErrorCode.DUPLICATE_NAME);
         }
         log.atInfo().log("Given country name is unique");
@@ -93,7 +93,7 @@ public class CountryServiceImpl implements CountryService {
         var country = countryRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
 
-        if (countryRepo.existsByNameAndContinentName(name, country.getContinent().getName())) {
+        if (countryRepo.isNameAlreadyUsedInContinent(name, country.getContinent().getName())) {
             throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(name, country.getContinent().getName()), ErrorCode.DUPLICATE_NAME);
         }
 
@@ -110,7 +110,7 @@ public class CountryServiceImpl implements CountryService {
         Country country = countryRepo.findById(countryId)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
 
-        if (countryRepo.existsByNameAndContinentName(country.getName(), continentName)) {
+        if (countryRepo.isNameAlreadyUsedInContinent(country, continentName)) {
             throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continentName), ErrorCode.DUPLICATE_NAME);
         }
         country.setContinent(newContinent);

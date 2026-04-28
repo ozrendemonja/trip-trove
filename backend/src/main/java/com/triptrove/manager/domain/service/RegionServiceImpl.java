@@ -28,7 +28,7 @@ public class RegionServiceImpl implements RegionService {
     public Region saveRegion(String name, int countryId) {
         log.atInfo().log("Processing save region request for region '{}'", name);
         var country = countryRepo.findById(countryId).orElseThrow(() -> new BaseApiException("Country not found in database", ErrorCode.OBJECT_NOT_FOUND));
-        if (regionRepo.existsByNameAndCountryId(name, countryId)) {
+        if (regionRepo.isNameAlreadyUsedInCountry(name, countryId)) {
             throw new BaseApiException("Region '%s' in '%s' country already exists in the database.".formatted(name, country.getName()), ErrorCode.DUPLICATE_NAME);
         }
         var region = new Region();
@@ -97,7 +97,7 @@ public class RegionServiceImpl implements RegionService {
         log.atInfo().log("Updating the region name to '{}'", newName);
         var region = regionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
-        if (regionRepo.existsByNameAndCountryId(newName, region.getCountry().getId())) {
+        if (regionRepo.isNameAlreadyUsedInCountry(newName, region.getCountry().getId())) {
             throw new BaseApiException("Region '%s' in '%s' country already exists in the database.".formatted(newName, region.getCountry().getName()), ErrorCode.DUPLICATE_NAME);
         }
         region.setName(newName);
@@ -112,7 +112,7 @@ public class RegionServiceImpl implements RegionService {
                 .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
         var newCountry = countryRepo.findById(countryId)
                 .orElseThrow(() -> new BaseApiException("Country is not found in the database", ErrorCode.OBJECT_NOT_FOUND));
-        if (regionRepo.existsByNameAndCountryId(region.getName(), countryId)) {
+        if (regionRepo.isNameAlreadyUsedInCountry(region, countryId)) {
             throw new BaseApiException("Cannot change the region to '%s' as it already exists in the database".formatted(newCountry.getName()), ErrorCode.DUPLICATE_NAME);
         }
         region.setCountry(newCountry);

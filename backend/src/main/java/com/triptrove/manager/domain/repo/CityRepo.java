@@ -10,7 +10,16 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface CityRepo extends JpaRepository<City, Integer> {
-    boolean existsByNameAndRegionId(String name, int regionId);
+    @Query("SELECT COUNT(c) > 0 FROM City c WHERE c.name = :name AND c.region.id = :regionId AND (:excludeId IS NULL OR c.id <> :excludeId)")
+    boolean isNameAlreadyUsedInRegion(String name, int regionId, Integer excludeId);
+
+    default boolean isNameAlreadyUsedInRegion(String name, int regionId) {
+        return isNameAlreadyUsedInRegion(name, regionId, null);
+    }
+
+    default boolean isNameAlreadyUsedInRegion(City city, int regionId) {
+        return isNameAlreadyUsedInRegion(city.getName(), regionId, city.getId());
+    }
 
     List<City> findByName(String name);
 

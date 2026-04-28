@@ -13,11 +13,38 @@ import java.util.List;
 public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpecificationExecutor<Attraction> {
     List<Attraction> findByName(String name);
 
-    boolean existsByNameAndCityId(String name, Integer cityId);
+    @Query("SELECT COUNT(a) > 0 FROM Attraction a WHERE a.name = :name AND a.city.id = :cityId AND (:excludeId IS NULL OR a.id <> :excludeId)")
+    boolean isNameAlreadyUsedInCity(String name, Integer cityId, Long excludeId);
 
-    boolean existsByNameAndRegionId(String name, Integer regionId);
+    default boolean isNameAlreadyUsedInCity(String name, Integer cityId) {
+        return isNameAlreadyUsedInCity(name, cityId, null);
+    }
 
-    boolean existsByNameAndMainId(String name, Long mainAttractionId);
+    default boolean isNameAlreadyUsedInCity(Attraction attraction, Integer cityId) {
+        return isNameAlreadyUsedInCity(attraction.getName(), cityId, attraction.getId());
+    }
+
+    @Query("SELECT COUNT(a) > 0 FROM Attraction a WHERE a.name = :name AND a.region.id = :regionId AND (:excludeId IS NULL OR a.id <> :excludeId)")
+    boolean isNameAlreadyUsedInRegion(String name, Integer regionId, Long excludeId);
+
+    default boolean isNameAlreadyUsedInRegion(String name, Integer regionId) {
+        return isNameAlreadyUsedInRegion(name, regionId, null);
+    }
+
+    default boolean isNameAlreadyUsedInRegion(Attraction attraction, Integer regionId) {
+        return isNameAlreadyUsedInRegion(attraction.getName(), regionId, attraction.getId());
+    }
+
+    @Query("SELECT COUNT(a) > 0 FROM Attraction a WHERE a.name = :name AND a.main.id = :mainAttractionId AND (:excludeId IS NULL OR a.id <> :excludeId)")
+    boolean isNameAlreadyUsedUnderMain(String name, Long mainAttractionId, Long excludeId);
+
+    default boolean isNameAlreadyUsedUnderMain(String name, Long mainAttractionId) {
+        return isNameAlreadyUsedUnderMain(name, mainAttractionId, null);
+    }
+
+    default boolean isNameAlreadyUsedUnderMain(Attraction attraction, Long mainAttractionId) {
+        return isNameAlreadyUsedUnderMain(attraction.getName(), mainAttractionId, attraction.getId());
+    }
 
     @Query("""
             SELECT a FROM Attraction a

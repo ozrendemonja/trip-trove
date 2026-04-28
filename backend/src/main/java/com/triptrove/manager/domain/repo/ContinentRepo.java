@@ -29,7 +29,7 @@ public interface ContinentRepo extends JpaRepository<Continent, Short> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, CAST(c.id AS int)) 
             FROM Continent c 
-            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', c.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

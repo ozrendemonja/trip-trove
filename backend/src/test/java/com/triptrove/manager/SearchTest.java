@@ -6,10 +6,15 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.StrategyApiType;
 import com.triptrove.manager.application.dto.search.SuggestionDto;
+import com.triptrove.manager.domain.model.Attraction;
+import com.triptrove.manager.domain.model.City;
+import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.Region;
 import com.triptrove.manager.domain.repo.*;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +24,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static com.triptrove.manager.SuggestionDtoFactory.createSuggestionDto;
@@ -211,6 +217,65 @@ public class SearchTest extends AbstractIntegrationTest {
         assertThat(response.suggestions().getFirst()).isEqualTo(new SuggestionDto("Test region 2", 3, StrategyApiType.RANK));
     }
 
+    @Test
+    void shouldFindCountryWhenSearchQueryContainsPlainAsciiLetterS() throws Exception {
+        Country country = new Country();
+        country.setName("Senegal");
+        country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow());
+        countryRepo.saveAndFlush(country);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "Sen")
+                        .param("i", "COUNTRY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.suggestions())
+                .extracting(SuggestionDto::value)
+                .contains("Senegal");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideDiacriticNormalizationCases")
+    void shouldFindCountryWhenSearchQueryUsesAsciiEquivalentOfAnyDiacritic(String storedName, String asciiQuery) throws Exception {
+        Country country = new Country();
+        country.setName(storedName);
+        country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow());
+        countryRepo.saveAndFlush(country);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", asciiQuery)
+                        .param("i", "COUNTRY")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.suggestions())
+                .as("query '%s' should match stored name '%s'", asciiQuery, storedName)
+                .extracting(SuggestionDto::value)
+                .contains(storedName);
+    }
+
+    private static Stream<Arguments> provideDiacriticNormalizationCases() {
+        return Stream.of(
+                Arguments.of("Švedska", "Svedska"),    // š -> s
+                Arguments.of("Žilina", "Zilina"),  // ž -> z
+                Arguments.of("Češka", "Ceska"),      // č -> c (and š -> s)
+                Arguments.of("Ćuprija", "Cuprija"),  // ć -> c
+                Arguments.of("Đakovo", "Djakovo"),  // đ -> dj
+                Arguments.of("Švicarska", "SVIC")     // upper case ascii query
+        );
+    }
+
     private static Stream<QueryAndSuggestions> provideValidRegionQueries() {
         return Stream.of(
                 new QueryAndSuggestions("Tes", List.of(createSuggestionDto(REGION_NAME_2 + ", Test country 1", 3), createSuggestionDto(REGION_NAME_4 + ", Test country 4", 5), createSuggestionDto(REGION_NAME_3 + ", Test country 2", 4))),
@@ -381,6 +446,62 @@ public class SearchTest extends AbstractIntegrationTest {
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
         assertThat(response.prefix()).isEqualTo("tes");
         assertThat(response.suggestions()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideDiacriticEntitySearchCases")
+    void shouldFindEntityWhenSearchQueryUsesAsciiEquivalentOfDiacritics(DiacriticEntityCase testCase) throws Exception {
+        testCase.setup.accept(this);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", testCase.asciiQuery)
+                        .param("i", testCase.searchIn)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.suggestions())
+                .as("query '%s' on '%s' should match stored value '%s'",
+                        testCase.asciiQuery, testCase.searchIn, testCase.storedValue)
+                .extracting(SuggestionDto::value)
+                .last()
+                .isEqualTo(testCase.storedValue);
+    }
+
+    private record DiacriticEntityCase(String searchIn, String storedValue, String asciiQuery,
+                                       Consumer<SearchTest> setup) {
+    }
+
+    private static Stream<DiacriticEntityCase> provideDiacriticEntitySearchCases() {
+        return Stream.of(
+                new DiacriticEntityCase("REGION", "Šumadija", "sumad", t -> {
+                    Region region = new Region();
+                    region.setName("Šumadija");
+                    region.setCountry(t.countryRepo.findByName("Test country 0").get(0));
+                    t.regionRepo.saveAndFlush(region);
+                }),
+                new DiacriticEntityCase("CITY", "Čačak", "cacak", t -> {
+                    City city = new City();
+                    city.setName("Čačak");
+                    city.setRegion(t.regionRepo.findById(1).orElseThrow());
+                    t.cityRepo.saveAndFlush(city);
+                }),
+                new DiacriticEntityCase("ATTRACTION", "Đakovački sajam", "djakovacki", t -> {
+                    Attraction attraction = t.attractionRepo.findById(4L).orElseThrow();
+                    attraction.setName("Đakovački sajam");
+                    t.attractionRepo.saveAndFlush(attraction);
+                }),
+                new DiacriticEntityCase("MAIN_ATTRACTION", "Žička crkva", "zicka", t -> {
+                    // Attraction id=1 is a main attraction (id=5 has main_attraction_id=1).
+                    Attraction main = t.attractionRepo.findById(1L).orElseThrow();
+                    main.setName("Žička crkva");
+                    t.attractionRepo.saveAndFlush(main);
+                })
+        );
     }
 
 }

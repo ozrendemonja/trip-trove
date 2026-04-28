@@ -1,16 +1,16 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.*;
+import com.triptrove.manager.domain.search.SearchTextNormalizer;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Locale;
-
 @Log4j2
 public class AttractionSpecifications {
-
     private AttractionSpecifications() {
     }
 
@@ -80,15 +80,19 @@ public class AttractionSpecifications {
     }
 
     private static Specification<Attraction> searchName(String nameQuery) {
-        return (root, query, cb) -> cb.like(cb.lower(root.get("name")), "%" + nameQuery.toLowerCase(Locale.ROOT) + "%");
+        return (root, query, cb) -> cb.like(normalizeForSearch(root.get("name"), cb), "%" + SearchTextNormalizer.normalizeForSearch(nameQuery) + "%");
     }
 
     private static Specification<Attraction> searchTip(String tipQuery) {
-        return (root, query, cb) -> cb.like(cb.lower(root.get("tip")), "%" + tipQuery.toLowerCase(Locale.ROOT) + "%");
+        return (root, query, cb) -> cb.like(normalizeForSearch(root.get("tip"), cb), "%" + SearchTextNormalizer.normalizeForSearch(tipQuery) + "%");
     }
 
     private static Specification<Attraction> searchSourceName(String sourceNameQuery) {
-        return (root, query, cb) -> cb.like(cb.lower(root.get("informationProvider").get("sourceName")), "%" + sourceNameQuery.toLowerCase(Locale.ROOT) + "%");
+        return (root, query, cb) -> cb.like(normalizeForSearch(root.get("informationProvider").get("sourceName"), cb), "%" + SearchTextNormalizer.normalizeForSearch(sourceNameQuery) + "%");
+    }
+
+    private static Expression<String> normalizeForSearch(Expression<String> value, CriteriaBuilder cb) {
+        return cb.function(SearchTextNormalizer.SQL_FUNCTION_NAME, String.class, value);
     }
 
     public static Specification<Attraction> applyFilters(AttractionFilter filters) {

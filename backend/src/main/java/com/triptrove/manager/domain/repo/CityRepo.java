@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface CityRepo extends JpaRepository<City, Integer> {
-
     boolean existsByNameAndRegionId(String name, int regionId);
 
     List<City> findByName(String name);
@@ -44,7 +43,7 @@ public interface CityRepo extends JpaRepository<City, Integer> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id)
             FROM City c
-            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', c.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
@@ -52,7 +51,7 @@ public interface CityRepo extends JpaRepository<City, Integer> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id)
             FROM City c
-            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', c.name) as string) LIKE concat('%', :query,'%')
             AND c.region.country.id = :countryId
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)

@@ -46,7 +46,7 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id) 
             FROM Country c 
-            WHERE lower(c.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', c.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);

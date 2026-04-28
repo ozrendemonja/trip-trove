@@ -44,7 +44,7 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
             SELECT new com.triptrove.manager.domain.model.Suggestion(CONCAT(r.name, ', ', c.name), r.id)
             FROM Region r
             INNER JOIN r.country c
-            WHERE lower(r.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', r.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
@@ -52,7 +52,7 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(r.name, r.id)
             FROM Region r
-            WHERE lower(r.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', r.name) as string) LIKE concat('%', :query,'%')
             AND r.country.id = :countryId
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
             """)

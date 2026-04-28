@@ -15,6 +15,11 @@ java {
     }
 }
 
+// Spring Boot 3.4.x's BOM pins testcontainers to 1.20.6, whose bundled
+// docker-java 3.4.1 default API version (1.32) is rejected by Docker Engine 29+.
+// 1.21.4 ships the upstream fix that restores compatibility.
+extra["testcontainers.version"] = "1.21.4"
+
 repositories {
     mavenCentral()
 }
@@ -35,7 +40,7 @@ dependencies {
         exclude(module = "spring-boot-starter-logging")
     }
     testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:junit-jupiter:1.20.6")
+    testImplementation("org.testcontainers:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     compileOnly("org.projectlombok:lombok:1.18.36")
     annotationProcessor("org.projectlombok:lombok:1.18.36")

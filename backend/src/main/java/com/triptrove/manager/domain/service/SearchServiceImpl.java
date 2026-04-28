@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.*;
+import com.triptrove.manager.domain.search.SearchTextNormalizer;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -29,54 +30,55 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public List<Suggestion> suggestNames(String query, SearchInElement searchIn, Integer countryId) {
         log.atInfo().log("Search using query '{}'", query);
+        String normalizedQuery = SearchTextNormalizer.normalizeForSearch(query);
         List<Suggestion> result = Collections.emptyList();
         String foundMessage = "Found '{}' names";
         if (searchIn.equals(SearchInElement.COUNTRY)) {
             log.atInfo().log("Search for a country name");
-            result = countryRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+            result = countryRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
             log.atInfo().log(foundMessage, result.size());
         } else if (searchIn.equals(SearchInElement.CONTINENT)) {
             log.atInfo().log("Search for a continent name");
-            result = continentRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+            result = continentRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
             log.atInfo().log("Found '{}' names", result.size());
         } else if (searchIn.equals(SearchInElement.REGION)) {
             if (countryId == null) {
                 log.atInfo().log("Search for a region name");
-                result = regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+                result = regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             } else {
                 log.atInfo().log("Search for a region name under given country");
-                result = regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, countryId, Limit.of(managerProperties.suggestionLimit()));
+                result = regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             }
         } else if (searchIn.equals(SearchInElement.CITY)) {
             if (countryId == null) {
                 log.atInfo().log("Search for a city name");
-                result = cityRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+                result = cityRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             } else {
                 log.atInfo().log("Search for a city name under given country");
-                result = cityRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, countryId, Limit.of(managerProperties.suggestionLimit()));
+                result = cityRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             }
         } else if (searchIn.equals(SearchInElement.ATTRACTION)) {
             if (countryId == null) {
                 log.atInfo().log("Search for a attraction name");
-                result = attractionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+                result = attractionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             } else {
                 log.atInfo().log("Search for a attraction name under given country");
-                result = attractionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, countryId, Limit.of(managerProperties.suggestionLimit()));
+                result = attractionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             }
         } else if (searchIn.equals(SearchInElement.MAIN_ATTRACTION)) {
             if (countryId == null) {
                 log.atInfo().log("Search for a main attraction name");
-                result = attractionRepo.findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, Limit.of(managerProperties.suggestionLimit()));
+                result = attractionRepo.findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             } else {
                 log.atInfo().log("Search for a main attraction name under given country");
-                result = attractionRepo.findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(query, countryId, Limit.of(managerProperties.suggestionLimit()));
+                result = attractionRepo.findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             }
         }

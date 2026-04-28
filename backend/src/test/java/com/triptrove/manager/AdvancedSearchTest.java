@@ -5,6 +5,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.triptrove.manager.application.dto.GetAttractionResponse;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.Attraction;
+import com.triptrove.manager.domain.model.InformationProvider;
+import com.triptrove.manager.domain.repo.AttractionRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -507,6 +510,82 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
                 new FilteredAttraction(5L, null, null, null, null, null, "on 3"),
                 new FilteredAttraction(4L, null, null, null, null, null, "new f"),
                 new FilteredAttraction(4L, null, null, null, null, null, "test tip")
+        );
+    }
+
+    @Autowired
+    private AttractionRepo attractionRepo;
+
+    @ParameterizedTest
+    @MethodSource("provideDiacriticNameSearchCases")
+    void shouldFindAttractionByQueryUsingAsciiEquivalentOfDiacriticInName(DiacriticSearchCase testCase) throws Exception {
+        Attraction attraction = attractionRepo.findById(5L).orElseThrow();
+        attraction.setName(testCase.storedValue);
+        attractionRepo.saveAndFlush(attraction);
+
+        assertSearchFinds(testCase, "name");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideDiacriticTipSearchCases")
+    void shouldFindAttractionByQueryUsingAsciiEquivalentOfDiacriticInTip(DiacriticSearchCase testCase) throws Exception {
+        Attraction attraction = attractionRepo.findById(5L).orElseThrow();
+        attraction.setTip(testCase.storedValue);
+        attractionRepo.saveAndFlush(attraction);
+
+        assertSearchFinds(testCase, "tip");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideDiacriticSourceNameSearchCases")
+    void shouldFindAttractionByQueryUsingAsciiEquivalentOfDiacriticInSourceName(DiacriticSearchCase testCase) throws Exception {
+        Attraction attraction = attractionRepo.findById(5L).orElseThrow();
+        InformationProvider originalSource = attraction.getInformationProvider();
+        attraction.setInformationProvider(new InformationProvider(testCase.storedValue, originalSource.recorded()));
+        attractionRepo.saveAndFlush(attraction);
+
+        assertSearchFinds(testCase, "sourceName");
+    }
+
+    private void assertSearchFinds(DiacriticSearchCase testCase, String fieldUnderTest) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", testCase.asciiQuery)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response)
+                .as("query '%s' should match attraction whose %s is '%s'",
+                        testCase.asciiQuery, fieldUnderTest, testCase.storedValue)
+                .extracting(GetAttractionResponse::attractionId)
+                .contains(5L);
+    }
+
+    private record DiacriticSearchCase(String storedValue, String asciiQuery) {
+    }
+
+    private static Stream<DiacriticSearchCase> provideDiacriticNameSearchCases() {
+        return Stream.of(
+                new DiacriticSearchCase("Šumadijski sajam", "sumadijski"),
+                new DiacriticSearchCase("Đakovački sajam", "djakovacki")
+        );
+    }
+
+    private static Stream<DiacriticSearchCase> provideDiacriticTipSearchCases() {
+        return Stream.of(
+                new DiacriticSearchCase("Žičara radi noću", "zicara"),
+                new DiacriticSearchCase("Češki kafić", "ceski kafic")
+        );
+    }
+
+    private static Stream<DiacriticSearchCase> provideDiacriticSourceNameSearchCases() {
+        return Stream.of(
+                new DiacriticSearchCase("Ćosićeva enciklopedija", "cosiceva"),
+                new DiacriticSearchCase("ŠUMADIJA portal", "sumadija") // upper-case diacritics
         );
     }
 

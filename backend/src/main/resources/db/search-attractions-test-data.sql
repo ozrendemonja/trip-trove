@@ -1,3 +1,4 @@
+DELETE FROM trip_attraction;
 DELETE FROM attraction WHERE id = 5;
 DELETE FROM attraction;
 DELETE FROM city;

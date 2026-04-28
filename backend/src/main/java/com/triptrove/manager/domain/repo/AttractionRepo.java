@@ -48,7 +48,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) 
             FROM Attraction a
-            WHERE lower(a.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', a.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC
             """)
     List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
@@ -56,7 +56,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) 
             FROM Attraction a
-            WHERE lower(a.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', a.name) as string) LIKE concat('%', :query,'%')
             AND a.country.id = :countryId
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC
             """)
@@ -66,7 +66,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
             SELECT new com.triptrove.manager.domain.model.Suggestion(mainA.name, CAST(mainA.id AS int))
             FROM Attraction mainA 
             INNER JOIN mainA.attractions a 
-            WHERE lower(mainA.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', mainA.name) as string) LIKE concat('%', :query,'%')
             ORDER BY coalesce(mainA.updatedOn, mainA.createdOn) DESC
             """)
     List<Suggestion> findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
@@ -75,7 +75,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
             SELECT new com.triptrove.manager.domain.model.Suggestion(mainA.name, CAST(mainA.id AS int))
             FROM Attraction mainA 
             INNER JOIN mainA.attractions a 
-            WHERE lower(mainA.name) LIKE lower(concat('%', :query,'%'))
+            WHERE cast(function('normalize_search_text', mainA.name) as string) LIKE concat('%', :query,'%')
             AND a.country.id = :countryId
             ORDER BY coalesce(mainA.updatedOn, mainA.createdOn) DESC
             """)

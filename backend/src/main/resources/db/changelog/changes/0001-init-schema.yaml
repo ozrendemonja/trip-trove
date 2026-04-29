@@ -1,0 +1,370 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0001-init-schema
+      author: trip-trove
+      comment: |
+        Baseline schema mirroring the Hibernate-managed tables. Uses an
+        onFail=MARK_RAN precondition so that environments where Hibernate
+        already created the schema simply mark this changeset as applied
+        instead of trying to recreate the tables.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            Tables already exist (likely created previously by
+            spring.jpa.hibernate.ddl-auto=update). Marking baseline as ran.
+          not:
+            - tableExists:
+                tableName: continent
+      changes:
+        # ---------------- continent ----------------
+        - createTable:
+            tableName: continent
+            columns:
+              - column:
+                  name: id
+                  type: SMALLINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_continent
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_continent_name
+
+        # ---------------- country ----------------
+        - createTable:
+            tableName: country
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_country
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: continent_id
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_country_continent
+                    references: continent(id)
+        - addUniqueConstraint:
+            tableName: country
+            columnNames: name, continent_id
+            constraintName: UniqueNameAndContinent
+
+        # ---------------- region ----------------
+        - createTable:
+            tableName: region
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_region
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: country_id
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_region_country
+                    references: country(id)
+        - addUniqueConstraint:
+            tableName: region
+            columnNames: name, country_id
+            constraintName: UniqueNameAndCountry
+
+        # ---------------- city ----------------
+        - createTable:
+            tableName: city
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_city
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region_id
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_city_region
+                    references: region(id)
+        - addUniqueConstraint:
+            tableName: city
+            columnNames: name, region_id
+            constraintName: UniqueNameAndRegion
+
+        # ---------------- attraction ----------------
+        - createTable:
+            tableName: attraction
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_attraction
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(2048)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: country_id
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_attraction_country
+                    references: country(id)
+              - column:
+                  name: is_countrywide
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region_id
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_attraction_region
+                    references: region(id)
+              - column:
+                  name: city_id
+                  type: INTEGER
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_attraction_city
+                    references: city(id)
+              - column:
+                  name: main_attraction_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_attraction_main_attraction
+                    references: attraction(id)
+              - column:
+                  name: address
+                  type: VARCHAR(512)
+              - column:
+                  name: latitude
+                  type: DOUBLE PRECISION
+              - column:
+                  name: longitude
+                  type: DOUBLE PRECISION
+              - column:
+                  name: category
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: must_visit
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_traditional
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tip
+                  type: VARCHAR(2048)
+              - column:
+                  name: source_name
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visit_period_from
+                  type: DATE
+              - column:
+                  name: visit_period_to
+                  type: DATE
+        - addUniqueConstraint:
+            tableName: attraction
+            columnNames: name, city_id, region_id
+            constraintName: UniqueNameCityOrRegion
+
+        # ---------------- trip ----------------
+        - createTable:
+            tableName: trip
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trip
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: trip_start_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: trip_end_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+
+        # ---------------- trip_attraction ----------------
+        - createTable:
+            tableName: trip_attraction
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trip_attraction
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: attraction_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trip_attraction_attraction
+                    references: attraction(id)
+              - column:
+                  name: trip_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trip_attraction_trip
+                    references: trip(id)
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rating
+                  type: VARCHAR(32)
+              - column:
+                  name: note
+                  type: VARCHAR(512)
+              - column:
+                  name: review_note
+                  type: VARCHAR(512)
+              - column:
+                  name: attraction_group
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: must_visit
+                  type: BOOLEAN
+              - column:
+                  name: working_hours
+                  type: VARCHAR(128)
+              - column:
+                  name: visit_time
+                  type: VARCHAR(64)
+        - addUniqueConstraint:
+            tableName: trip_attraction
+            columnNames: trip_id, attraction_id
+            constraintName: uk_trip_attraction

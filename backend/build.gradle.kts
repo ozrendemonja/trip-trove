@@ -32,6 +32,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
         exclude(module = "spring-boot-starter-logging")
     }
+    implementation("org.liquibase:liquibase-core")
     implementation("org.postgresql:postgresql:42.7.5")
     implementation("org.hibernate:hibernate-validator:8.0.1.Final")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")

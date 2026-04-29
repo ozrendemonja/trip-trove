@@ -15,6 +15,7 @@ export type ShortcutAction =
   | "board.mode.review"
   | "board.mode.cycle"
   | "board.export.json"
+  | "attraction.save"
   | "form.submit";
 
 export const SHORTCUTS: Record<ShortcutAction, string> = {
@@ -23,6 +24,7 @@ export const SHORTCUTS: Record<ShortcutAction, string> = {
   "board.mode.review": "Alt+3",
   "board.mode.cycle": "Ctrl+V",
   "board.export.json": "Ctrl+S",
+  "attraction.save": "Ctrl+S",
   // Submit a form/input via Enter. Shift+Enter is intentionally NOT mapped
   // here so multiline fields can still insert newlines.
   "form.submit": "Enter"

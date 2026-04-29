@@ -4,6 +4,7 @@ import {
   DatePicker,
   DefaultButton,
   Dropdown,
+  ITextField,
   PrimaryButton,
   Separator,
   Stack,
@@ -12,7 +13,7 @@ import {
   Toggle
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -25,6 +26,10 @@ import {
 import { saveNewAttraction } from "../../infra/ManagerApi";
 import { useAttractionFormField } from "./AddAttraction.config";
 import { searchOverride, useClasses } from "./AddAttraction.styles";
+import {
+  isShortcut,
+  keyComboFromEvent
+} from "../../../AI-table/utils/shortcuts";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
@@ -54,8 +59,8 @@ export const AddAttraction: React.FunctionComponent = () => {
     { setFalse: setNotCountrywide, toggle: toggleIsCountrywide }
   ] = useBoolean(false);
   const [isReginal, { toggle: toggleReginal }] = useBoolean(false);
-  const [mustVisit, { setFalse: setOptionalVisit, toggle: toggleMustVisit }] =
-    useBoolean(false);
+  const [mustVisit, { setTrue: setMustVisitTrue, toggle: toggleMustVisit }] =
+    useBoolean(true);
   const [
     isPartOfAttraction,
     { setFalse: setNotPartOfAttraction, toggle: togglePartOfAttraction }
@@ -65,6 +70,89 @@ export const AddAttraction: React.FunctionComponent = () => {
     { setFalse: setNonTraditional, toggle: toggleIsTraditional }
   ] = useBoolean(false);
   const [iteration, setIteration] = useState<number>(0);
+  const nameFieldRef = useRef<ITextField>(null);
+
+  const handleSave = useCallback(() => {
+    if (!isFormValid) {
+      return;
+    }
+    const attractionLocation = formFields.geoLocation?.value
+      ? {
+          latitude: Number(formFields.geoLocation.value.split(",")[0]),
+          longitude: Number(formFields.geoLocation.value.split(",")[1])
+        }
+      : undefined;
+
+    const optimalVisitPeriod = formFields.optimalVisitPeriod?.value
+      ? {
+          fromDate: formFields.optimalVisitPeriod?.value?.from,
+          toDate: formFields.optimalVisitPeriod?.value?.to
+        }
+      : undefined;
+
+    const newAttraction: SaveAttraction = {
+      isCountrywide: isCountrywide,
+      regionId: isReginal ? formFields.regionId?.value : undefined,
+      cityId: !isReginal ? formFields.cityId?.value : undefined,
+      attractionName: formFields.name.value!.trimStart(),
+      mainAttractionId: formFields.mainAttractionId?.value,
+      attractionAddress:
+        formFields.address?.value?.trimStart() === ""
+          ? undefined
+          : formFields.address?.value,
+      attractionLocation: attractionLocation,
+      attractionCategory: formFields.category?.value,
+      attractionType: formFields.type.value,
+      mustVisit: mustVisit,
+      isTraditional: isTraditional,
+      tip:
+        formFields.tip?.value?.trimStart() === ""
+          ? undefined
+          : formFields.tip?.value,
+      infoFrom: formFields.source.value!,
+      infoRecorded: formFields.sourceFrom.value!.toISOString(),
+      optimalVisitPeriod: optimalVisitPeriod
+    };
+    saveNewAttraction(newAttraction);
+
+    if (!isMultipleSubmissions) {
+      navigate(-1);
+    } else {
+      prepareForNextSubimssion();
+      setNotPartOfAttraction();
+      setNotCountrywide();
+      setMustVisitTrue();
+      setNonTraditional();
+      setIteration(iteration + 1); // Hack to force empty values to clear state
+      nameFieldRef.current?.focus();
+    }
+  }, [
+    isFormValid,
+    formFields,
+    isCountrywide,
+    isReginal,
+    mustVisit,
+    isTraditional,
+    isMultipleSubmissions,
+    iteration,
+    navigate,
+    prepareForNextSubimssion,
+    setNotPartOfAttraction,
+    setNotCountrywide,
+    setMustVisitTrue,
+    setNonTraditional
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isShortcut("attraction.save", keyComboFromEvent(event))) {
+        event.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleSave]);
 
   return (
     <>
@@ -138,6 +226,12 @@ export const AddAttraction: React.FunctionComponent = () => {
               checked={mustVisit}
               onChange={toggleMustVisit}
             />
+            <Checkbox
+              label="Traditional"
+              checked={isTraditional}
+              onChange={toggleIsTraditional}
+              className={classes.checkbox}
+            />
           </Stack>
           <Stack
             tokens={{ childrenGap: 48 }}
@@ -146,6 +240,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           >
             <TextField
               {...formFields.name}
+              componentRef={nameFieldRef}
               className={classes.attractionName}
             />
             <Toggle
@@ -205,13 +300,6 @@ export const AddAttraction: React.FunctionComponent = () => {
                 {...formFields.optimalVisitPeriod}
               />
             </Stack>
-            <Checkbox
-              label="Traditional"
-              checked={isTraditional}
-              onChange={toggleIsTraditional}
-              className={classes.checkbox}
-              styles={{ root: { marginTop: "24px" } }}
-            />
           </Stack>
           <TextField {...formFields.tip} className={classes.tip} />
           <Stack
@@ -231,61 +319,7 @@ export const AddAttraction: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={() => {
-              const attractionLocation = formFields.geoLocation?.value
-                ? {
-                    latitude: Number(
-                      formFields.geoLocation.value.split(",")[0]
-                    ),
-                    longitude: Number(
-                      formFields.geoLocation.value.split(",")[1]
-                    )
-                  }
-                : undefined;
-
-              const optimalVisitPeriod = formFields.optimalVisitPeriod?.value
-                ? {
-                    fromDate: formFields.optimalVisitPeriod?.value?.from,
-                    toDate: formFields.optimalVisitPeriod?.value?.to
-                  }
-                : undefined;
-
-              const newAttraction: SaveAttraction = {
-                isCountrywide: isCountrywide,
-                regionId: isReginal ? formFields.regionId?.value : undefined,
-                cityId: !isReginal ? formFields.cityId?.value : undefined,
-                attractionName: formFields.name.value!.trimStart(),
-                mainAttractionId: formFields.mainAttractionId?.value,
-                attractionAddress:
-                  formFields.address?.value?.trimStart() === ""
-                    ? undefined
-                    : formFields.address?.value,
-                attractionLocation: attractionLocation,
-                attractionCategory: formFields.category?.value,
-                attractionType: formFields.type.value,
-                mustVisit: mustVisit,
-                isTraditional: isTraditional,
-                tip:
-                  formFields.tip?.value?.trimStart() === ""
-                    ? undefined
-                    : formFields.tip?.value,
-                infoFrom: formFields.source.value!,
-                infoRecorded: formFields.sourceFrom.value!.toISOString(),
-                optimalVisitPeriod: optimalVisitPeriod
-              };
-              saveNewAttraction(newAttraction);
-
-              if (!isMultipleSubmissions) {
-                navigate(-1);
-              } else {
-                prepareForNextSubimssion();
-                setNotPartOfAttraction();
-                setNotCountrywide();
-                setOptionalVisit();
-                setNonTraditional();
-                setIteration(iteration + 1); // Hack to force empty values to clear state
-              }
-            }}
+            onClick={handleSave}
             disabled={!isFormValid}
             text="Save"
           />

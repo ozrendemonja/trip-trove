@@ -53,7 +53,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     address: "",
     geoLocation: undefined,
     category: undefined,
-    type: undefined,
+    type: AttractionType.STABLE,
     tip: "",
     source: undefined,
     sourceFrom: undefined,
@@ -215,7 +215,8 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
         ...values,
         type: option?.key ? AttractionType[option.key] : undefined
       });
-    }
+    },
+    selectedKey: values.type
   };
 
   const tipField: ITextFieldProps = {

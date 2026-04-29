@@ -4,6 +4,10 @@ import { Rating } from '../../my-trip/domain/Trip.types';
 import { Stack, Text, TextField, PrimaryButton, DefaultButton, IconButton, Spinner, SpinnerSize } from '@fluentui/react';
 import type { AttractionItemProps } from './AttractionItem.types';
 import { useReviewStyles } from './AttractionItem.styles';
+import { isShortcut, keyComboFromEvent } from '../utils/shortcuts';
+
+const isFormSubmit = (e: React.KeyboardEvent): boolean =>
+  isShortcut('form.submit', keyComboFromEvent(e));
 
 const RATING_OPTIONS: { value: Rating; label: string; emoji: string }[] = [
   { value: 'DISLIKED', label: 'Disliked', emoji: '😞' },
@@ -259,7 +263,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                 value={hoursDraft}
                 onChange={(e) => setHoursDraft(e.target.value)}
                 placeholder="Working hours"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditHours(); } }}
+                onKeyDown={(e) => { if (isFormSubmit(e)) { e.preventDefault(); saveEditHours(); } }}
               />
               <div className="hours-edit-actions">
                 <button type="button" onClick={saveEditHours} className="hours-save-btn">Save</button>
@@ -275,7 +279,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                 value={visitDraft}
                 onChange={(e) => setVisitDraft(e.target.value)}
                 placeholder="Visit time"
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditVisit(); } }}
+                onKeyDown={(e) => { if (isFormSubmit(e)) { e.preventDefault(); saveEditVisit(); } }}
               />
               <div className="visit-edit-actions">
                 <button type="button" onClick={saveEditVisit} className="visit-save-btn">Save</button>
@@ -312,7 +316,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                     onChange={(e) => setDraft(e.target.value)}
                     rows={3}
                     ref={textareaRef}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } }}
+                    onKeyDown={(e) => { if (isFormSubmit(e)) { e.preventDefault(); saveEdit(); } }}
                   />
                   <div className="note-edit-actions">
                     <button type="button" onClick={saveEdit} className="note-save-btn">Save</button>
@@ -379,6 +383,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
                   rows={2}
                   maxLength={512}
                   borderless
+                  onKeyDown={(e) => { if (isFormSubmit(e)) { e.preventDefault(); handleAttach(); } }}
                 />
                 <PrimaryButton
                   styles={review.addBtn}

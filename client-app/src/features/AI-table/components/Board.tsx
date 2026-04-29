@@ -17,6 +17,12 @@ import {
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
 import type { Column, TouristDestination, BoardProps } from "./Board.types";
+import {
+  getShortcut,
+  isShortcut,
+  isTypingInFormField,
+  keyComboFromEvent
+} from "../utils/shortcuts";
 
 export type { Column, TouristDestination } from "./Board.types";
 
@@ -612,27 +618,34 @@ const Board: React.FC<BoardProps> = ({
     [tripId]
   );
 
-  // Keyboard shortcuts:
-  //  - Ctrl+V toggles read-only view
-  //  - Ctrl+S triggers "Save JSON" export
+  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/shortcuts.ts to remap.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || e.altKey || e.metaKey) return;
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (isTypingInFormField(e.target)) return;
+      const combo = keyComboFromEvent(e);
+      if (!combo) return;
 
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const tag = target.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable)
-          return;
-      }
-
-      const key = e.key.toLowerCase();
-      if (key === "v") {
+      if (isShortcut("board.mode.edit", combo)) {
+        e.preventDefault();
+        setBoardMode("edit");
+      } else if (isShortcut("board.mode.plan", combo)) {
+        e.preventDefault();
+        setBoardMode("readOnly");
+      } else if (isShortcut("board.mode.review", combo) && tripId) {
+        e.preventDefault();
+        setBoardMode("review");
+      } else if (isShortcut("board.mode.cycle", combo)) {
         e.preventDefault();
         setBoardMode((prev) =>
-          prev === "edit" ? "readOnly" : prev === "readOnly" ? "review" : "edit"
+          prev === "edit"
+            ? "readOnly"
+            : prev === "readOnly"
+              ? tripId
+                ? "review"
+                : "edit"
+              : "edit"
         );
-      } else if (key === "s") {
+      } else if (isShortcut("board.export.json", combo)) {
         e.preventDefault();
         handleExportJSON();
       }
@@ -640,7 +653,7 @@ const Board: React.FC<BoardProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleExportJSON]);
+  }, [handleExportJSON, tripId]);
 
   return (
     <div className="attraction-board-wrapper">
@@ -650,7 +663,11 @@ const Board: React.FC<BoardProps> = ({
             type="button"
             className={`mode-btn${boardMode === "edit" ? " mode-btn-active" : ""}`}
             onClick={() => setBoardMode("edit")}
-            title="Edit mode – add info to attractions"
+            title={`Edit mode – add info to attractions${
+              getShortcut("board.mode.edit")
+                ? ` (${getShortcut("board.mode.edit")})`
+                : ""
+            }`}
           >
             ✏️ Edit
           </button>
@@ -658,7 +675,11 @@ const Board: React.FC<BoardProps> = ({
             type="button"
             className={`mode-btn${boardMode === "readOnly" ? " mode-btn-active" : ""}`}
             onClick={() => setBoardMode("readOnly")}
-            title="Read-only mode – plan itinerary"
+            title={`Read-only mode – plan itinerary${
+              getShortcut("board.mode.plan")
+                ? ` (${getShortcut("board.mode.plan")})`
+                : ""
+            }`}
           >
             👁️ Plan
           </button>
@@ -667,7 +688,11 @@ const Board: React.FC<BoardProps> = ({
               type="button"
               className={`mode-btn${boardMode === "review" ? " mode-btn-active" : ""}`}
               onClick={() => setBoardMode("review")}
-              title="Review mode – rate visited attractions"
+              title={`Review mode – rate visited attractions${
+                getShortcut("board.mode.review")
+                  ? ` (${getShortcut("board.mode.review")})`
+                  : ""
+              }`}
             >
               ⭐ Review
             </button>

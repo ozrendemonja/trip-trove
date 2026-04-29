@@ -49,6 +49,56 @@ test("Switch to Review mode and show review forms", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
+test("Switch to Review mode using Alt+3 keyboard shortcut", async ({
+  page
+}) => {
+  await page.keyboard.press("Alt+3");
+
+  await expect(page.getByRole("button", { name: /Review/i })).toHaveClass(
+    /mode-btn-active/
+  );
+});
+
+test("Switch to Plan mode using Alt+2 keyboard shortcut on MyTrip", async ({
+  page
+}) => {
+  await page.keyboard.press("Alt+2");
+
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
+    /mode-btn-active/
+  );
+});
+
+test("Switch back to Edit mode using Alt+1 keyboard shortcut on MyTrip", async ({
+  page
+}) => {
+  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+1");
+
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
+    /mode-btn-active/
+  );
+});
+
+test("Cycle through all modes using Ctrl+V when tripId is provided", async ({
+  page
+}) => {
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
+    /mode-btn-active/
+  );
+
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: /Review/i })).toHaveClass(
+    /mode-btn-active/
+  );
+
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
+    /mode-btn-active/
+  );
+});
+
 test("Show search modal when search button is clicked", async ({ page }) => {
   await page.getByLabel("Search").click();
 

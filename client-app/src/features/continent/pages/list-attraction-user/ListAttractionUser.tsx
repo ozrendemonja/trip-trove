@@ -42,6 +42,9 @@ const onRenderItemColumn = (
   if (column?.key === "name") {
     return (
       <Stack horizontal>
+        {atraction?.mustVisit && (
+          <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
+        )}
         <Link
           className={className}
           href={`https://www.google.com/search?q=${atraction?.name.name}`}
@@ -55,9 +58,6 @@ const onRenderItemColumn = (
           )}
         </Link>
         <Stack tokens={{ childrenGap: 2 }} horizontal>
-          {atraction?.mustVisit && (
-            <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
-          )}
           {atraction?.isTraditional && (
             <Icon iconName="Cotton" styles={{ root: { color: "#fec703" } }} />
           )}

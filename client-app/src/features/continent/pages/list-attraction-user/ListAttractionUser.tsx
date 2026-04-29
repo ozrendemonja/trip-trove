@@ -207,11 +207,11 @@ export const AttractionListUser: React.FunctionComponent = () => {
             horizontal
             styles={{ root: { fontSize: 30, marginBottom: 46 } }}
           >
-            <Icon iconName="MapPin" />
             <Text styles={{ root: { fontSize: 30 } }}>{pageInfo.name}</Text>
             <Text styles={{ root: { fontSize: 30, color: "gray" } }}>
               {pageInfo.under && `, ${pageInfo.under}`}
             </Text>
+            <Icon iconName="MapPin" />
           </Stack>
           <Stack horizontal className={classes.root}>
             <Text as="h1" styles={{ root: { fontSize: 30, paddingLeft: 10 } }}>

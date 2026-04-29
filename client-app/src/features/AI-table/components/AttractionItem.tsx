@@ -188,7 +188,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
               rel="noopener noreferrer"
               title="Search on Google"
             >
-              {attraction.name}{attraction.isCountrywide ? ' 🏳️' : ''}
+              {attraction.name}
             </a>
           );
         })()}
@@ -211,6 +211,11 @@ const AttractionItem: React.FC<AttractionItemProps> = ({ attraction, columnId, l
             />
             <span className="itinerary-checkbox-box">{inItinerary ? '✓' : ''}</span>
           </label>
+        )}
+        {attraction.isCountrywide && (
+          <span className="countrywide-icon" title="Countrywide attraction" aria-label="Countrywide attraction">
+            🏳️
+          </span>
         )}
       </div>
       {(attraction.address || attraction.category) && (

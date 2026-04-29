@@ -137,7 +137,30 @@ describe("getShortcut & isShortcut", () => {
     expect(isShortcut("board.mode.review", "Alt+3")).toBe(true);
     expect(isShortcut("board.mode.cycle", "Ctrl+V")).toBe(true);
     expect(isShortcut("board.export.json", "Ctrl+S")).toBe(true);
+    expect(isShortcut("attraction.save", "Ctrl+S")).toBe(true);
     expect(isShortcut("form.submit", "Enter")).toBe(true);
+  });
+
+  test("attraction.save matches Ctrl+S derived from a KeyboardEvent", () => {
+    const combo = keyComboFromEvent({
+      key: "s",
+      ctrlKey: true,
+      altKey: false,
+      shiftKey: false,
+      metaKey: false
+    } as KeyboardEvent);
+    expect(isShortcut("attraction.save", combo)).toBe(true);
+  });
+
+  test("attraction.save does not match plain S without modifiers", () => {
+    const combo = keyComboFromEvent({
+      key: "s",
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+      metaKey: false
+    } as KeyboardEvent);
+    expect(isShortcut("attraction.save", combo)).toBe(false);
   });
 
   test("form.submit does NOT match Shift+Enter (so multiline newlines are preserved)", () => {

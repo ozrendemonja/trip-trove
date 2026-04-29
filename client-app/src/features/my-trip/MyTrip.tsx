@@ -112,17 +112,43 @@ const GROUP_TO_COLUMN: Record<string, string> = {
 function mapSavedTripAttractionsToBoard(
   items: TripAttractionFromServer[]
 ): TouristDestination[] {
+  // Sort items by attractionId to preserve the original insertion order
+  // within each city/column (the order in which attractions were added).
+  const sortedItems = [...items].sort(
+    (a, b) => a.attractionId - b.attractionId
+  );
+
+  // Metadata per cityKey (region/country and whether it's a city or
+  // region-level entry) so we can sort cityKeys by region afterwards.
+  const cityMeta = new Map<
+    string,
+    {
+      countryName: string;
+      regionName: string;
+      cityName: string;
+      hasCity: boolean;
+    }
+  >();
+
   // Group by city/region, then by column title
   const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
 
-  for (const item of items) {
-    const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
+  for (const item of sortedItems) {
+    const cityName = item.cityName?.trim() || "";
+    const regionName = item.regionName?.trim() || "";
+    const cityOrRegion = cityName || regionName;
     const cityKey = cityOrRegion || item.countryName;
     const columnTitle =
       GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots";
 
     if (!cityColumnMap.has(cityKey)) {
       cityColumnMap.set(cityKey, new Map());
+      cityMeta.set(cityKey, {
+        countryName: item.countryName || "",
+        regionName,
+        cityName,
+        hasCity: !!cityName
+      });
     }
     const colMap = cityColumnMap.get(cityKey)!;
     if (!colMap.has(columnTitle)) {
@@ -151,8 +177,26 @@ function mapSavedTripAttractionsToBoard(
     });
   }
 
+  // Order city keys: country → region → cities-first → city name. This means
+  // within a region, all cities come first (alphabetically), then any
+  // region-level entry, and regions themselves are ordered alphabetically.
+  const orderedCityKeys = Array.from(cityColumnMap.keys()).sort((a, b) => {
+    const metaA = cityMeta.get(a)!;
+    const metaB = cityMeta.get(b)!;
+    const countryCmp = localeCmp(metaA.countryName, metaB.countryName);
+    if (countryCmp !== 0) return countryCmp;
+    const regionCmp = localeCmp(metaA.regionName, metaB.regionName);
+    if (regionCmp !== 0) return regionCmp;
+    if (metaA.hasCity !== metaB.hasCity) return metaA.hasCity ? -1 : 1;
+    return localeCmp(
+      metaA.cityName || metaA.regionName,
+      metaB.cityName || metaB.regionName
+    );
+  });
+
   const cities: TouristDestination[] = [];
-  for (const [cityName, colMap] of Array.from(cityColumnMap.entries())) {
+  for (const cityName of orderedCityKeys) {
+    const colMap = cityColumnMap.get(cityName)!;
     const baseId = cityName.toLowerCase().replace(/\s+/g, "_");
     // Ensure standard columns exist
     const columnOrder = Object.values(GROUP_TO_COLUMN);

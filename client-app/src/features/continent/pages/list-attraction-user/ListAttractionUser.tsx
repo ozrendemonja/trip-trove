@@ -42,6 +42,9 @@ const onRenderItemColumn = (
   if (column?.key === "name") {
     return (
       <Stack horizontal>
+        {atraction?.mustVisit && (
+          <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
+        )}
         <Link
           className={className}
           href={`https://www.google.com/search?q=${atraction?.name.name}`}
@@ -55,9 +58,6 @@ const onRenderItemColumn = (
           )}
         </Link>
         <Stack tokens={{ childrenGap: 2 }} horizontal>
-          {atraction?.mustVisit && (
-            <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
-          )}
           {atraction?.isTraditional && (
             <Icon iconName="Cotton" styles={{ root: { color: "#fec703" } }} />
           )}
@@ -207,11 +207,11 @@ export const AttractionListUser: React.FunctionComponent = () => {
             horizontal
             styles={{ root: { fontSize: 30, marginBottom: 46 } }}
           >
+            <Icon iconName="MapPin" />
             <Text styles={{ root: { fontSize: 30 } }}>{pageInfo.name}</Text>
             <Text styles={{ root: { fontSize: 30, color: "gray" } }}>
               {pageInfo.under && `, ${pageInfo.under}`}
             </Text>
-            <Icon iconName="MapPin" />
           </Stack>
           <Stack horizontal className={classes.root}>
             <Text as="h1" styles={{ root: { fontSize: 30, paddingLeft: 10 } }}>

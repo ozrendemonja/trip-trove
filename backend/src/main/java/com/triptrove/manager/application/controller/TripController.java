@@ -222,4 +222,14 @@ public class TripController {
         return GetCountriesSummaryResponse.from(countriesSummary);
     }
 
+    @PostMapping("/{id:\\d+}/attractions/visit-history")
+    @Operation(summary = "Get past visit history for the given attractions, excluding the current trip", responses = {
+            @ApiResponse(description = "Visit history grouped by attraction id", responseCode = "200"),
+    })
+    public List<GetAttractionVisitHistoryResponse> getAttractionVisitHistory(@PathVariable Long id,
+                                                                             @RequestBody @Valid GetVisitHistoryRequest request) {
+        var history = tripService.getVisitHistory(id, request.attractionIds());
+        return GetAttractionVisitHistoryResponse.from(history);
+    }
+
 }

@@ -1,4 +1,5 @@
 import { Rating } from "../../my-trip/domain/Trip.types";
+import type { VisitHistoryMap } from "../utils/Mapper";
 
 export interface Attraction {
   id: number; // internal identifier, not displayed
@@ -26,8 +27,16 @@ export interface AttractionListProps {
   columnId: string;
   locationHint?: string; // city name or region name
   onUpdateNote: (columnId: string, index: number, newNote: string) => void;
-  onUpdateWorkingHours?: (columnId: string, index: number, newHours: string) => void;
-  onUpdateVisitTime?: (columnId: string, index: number, newVisit: string) => void;
+  onUpdateWorkingHours?: (
+    columnId: string,
+    index: number,
+    newHours: string
+  ) => void;
+  onUpdateVisitTime?: (
+    columnId: string,
+    index: number,
+    newVisit: string
+  ) => void;
   onToggleMustVisit?: (columnId: string, index: number) => void;
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
@@ -36,6 +45,11 @@ export interface AttractionListProps {
   onToggleItinerary?: (attractionId: number) => void;
   reviewMode?: boolean;
   reviewSelection?: Record<number, { rating: Rating; reviewNote: string }>;
-  onAttachAttraction?: (attractionId: number, ratingValue: Rating, reviewNote: string) => Promise<void>;
+  onAttachAttraction?: (
+    attractionId: number,
+    ratingValue: Rating,
+    reviewNote: string
+  ) => Promise<void>;
   onDetachAttraction?: (attractionId: number) => Promise<void>;
+  visitHistory?: VisitHistoryMap;
 }

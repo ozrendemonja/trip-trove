@@ -1,5 +1,6 @@
 import { Rating } from "../../my-trip/domain/Trip.types";
 import { Attraction } from "./AttractionList.types";
+import type { VisitHistoryEntry } from "../../my-trip/domain/VisitHistory.types";
 
 export interface AttractionItemProps {
   attraction: Attraction;
@@ -18,4 +19,5 @@ export interface AttractionItemProps {
   reviewData?: { rating: Rating; reviewNote: string };
   onAttachAttraction?: (attractionId: number, ratingValue: Rating, reviewNote: string) => Promise<void>;
   onDetachAttraction?: (attractionId: number) => Promise<void>;
+  visitHistory?: VisitHistoryEntry[];
 }

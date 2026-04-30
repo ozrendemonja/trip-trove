@@ -6,7 +6,7 @@ import {
   isTypingInFormField,
   keyComboFromEvent,
   normalizeKeyCombo
-} from "../shortcuts";
+} from "../Shortcuts";
 
 describe("normalizeKeyCombo", () => {
   test("returns empty string for empty input", () => {
@@ -78,9 +78,9 @@ describe("keyComboFromEvent", () => {
 
   test("preserves named keys", () => {
     expect(keyComboFromEvent(makeEvent({ key: "Escape" }))).toBe("Escape");
-    expect(keyComboFromEvent(makeEvent({ key: "ArrowDown", altKey: true }))).toBe(
-      "Alt+ArrowDown"
-    );
+    expect(
+      keyComboFromEvent(makeEvent({ key: "ArrowDown", altKey: true }))
+    ).toBe("Alt+ArrowDown");
   });
 
   test("orders multiple modifiers Ctrl+Alt+Shift+Meta", () => {
@@ -99,10 +99,7 @@ describe("keyComboFromEvent", () => {
 });
 
 describe("isTypingInFormField", () => {
-  const makeEl = (
-    tagName: string,
-    isContentEditable = false
-  ): HTMLElement =>
+  const makeEl = (tagName: string, isContentEditable = false): HTMLElement =>
     ({ tagName, isContentEditable }) as unknown as HTMLElement;
 
   test("returns false for null target", () => {

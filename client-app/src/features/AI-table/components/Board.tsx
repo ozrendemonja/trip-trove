@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { exportCities, readCitiesFromFile } from "../utils/boardPersistence";
+import { exportCities, readCitiesFromFile } from "../utils/BoardPersistence";
 import AttractionList from "./AttractionList";
 import type { Attraction } from "./AttractionList.types";
 import "../styles/Board.css";
@@ -22,7 +22,8 @@ import {
   isShortcut,
   isTypingInFormField,
   keyComboFromEvent
-} from "../utils/shortcuts";
+} from "../utils/Shortcuts";
+import { applyVisitHistoryToCities } from "../utils/Mapper";
 
 export type { Column, TouristDestination } from "./Board.types";
 
@@ -52,7 +53,8 @@ const Board: React.FC<BoardProps> = ({
   onCitiesLoaded,
   tripId,
   initialReviewData,
-  initialSavedAttractionIds
+  initialSavedAttractionIds,
+  visitHistory
 }) => {
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
@@ -488,7 +490,7 @@ const Board: React.FC<BoardProps> = ({
   // Sync internal state when initialCities prop changes
   useEffect(() => {
     // Always sync to prop, even when it's an empty array initially
-    const next = initialCities ?? [];
+    const next = applyVisitHistoryToCities(initialCities ?? [], visitHistory);
     setCities(next);
     setDragState(null);
     setDragUI({ overColumnId: null, insertionIndex: -1 });
@@ -510,7 +512,7 @@ const Board: React.FC<BoardProps> = ({
       }
       return merged;
     });
-  }, [initialCities]);
+  }, [initialCities, visitHistory]);
 
   // Track which attraction IDs have already been saved to DB for this trip
   const savedAttractionIdsRef = useRef<Set<number>>(
@@ -902,6 +904,7 @@ const Board: React.FC<BoardProps> = ({
                         reviewSelection={reviewSelection}
                         onAttachAttraction={handleAttachAttraction}
                         onDetachAttraction={handleDetachAttraction}
+                        visitHistory={visitHistory}
                       />
                     </div>
                   );

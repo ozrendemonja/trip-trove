@@ -2,15 +2,23 @@ import { ActionButton, Stack, Text } from "@fluentui/react";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
-import { fetchTripById, fetchTripAttractions } from "./infra/TripApi";
+import {
+  fetchTripById,
+  fetchTripAttractions,
+  fetchAttractionsVisitHistory
+} from "./infra/TripApi";
 import type { TripAttractionFromServer } from "./infra/TripApi";
+import type { AttractionVisitHistory } from "./domain/VisitHistory.types";
 import Board from "../AI-table/components/Board";
 import type {
   TouristDestination,
   Column
 } from "../AI-table/components/Board.types";
 import type { Attraction as BoardAttraction } from "../AI-table/components/AttractionList.types";
-import { mapServerResponseToTouristDestinations } from "../AI-table/utils/mapper";
+import {
+  mapServerResponseToTouristDestinations,
+  buildVisitHistoryMap
+} from "../AI-table/utils/Mapper";
 import {
   Attraction,
   LastReadAttraction
@@ -206,6 +214,10 @@ export const MyTrip: React.FC = () => {
   >({});
   // Attraction IDs already persisted in DB (to avoid duplicate saves)
   const [savedAttractionIds, setSavedAttractionIds] = useState<number[]>([]);
+  // Visit history aggregated across other trips for the loaded attractions
+  const [visitHistory, setVisitHistory] = useState<AttractionVisitHistory[]>(
+    []
+  );
 
   // Load saved trip attractions from DB on mount
   useEffect(() => {
@@ -215,7 +227,10 @@ export const MyTrip: React.FC = () => {
         setSavedCities(mapSavedTripAttractionsToBoard(saved));
         setSavedAttractionIds(saved.map((s) => s.attractionId));
 
-        const reviewData: Record<number, { rating: Rating; reviewNote: string }> = {};
+        const reviewData: Record<
+          number,
+          { rating: Rating; reviewNote: string }
+        > = {};
         for (const item of saved) {
           if (item.rating) {
             reviewData[item.attractionId] = {
@@ -230,11 +245,19 @@ export const MyTrip: React.FC = () => {
   }, [tripId]);
 
   // Derive display attractions from allAttractions, then merge with loadedCities and savedCities
+  const visitHistoryMap = useMemo(
+    () => buildVisitHistoryMap(visitHistory),
+    [visitHistory]
+  );
+
   const attractions = useMemo(() => {
-    const fromServer = mapServerResponseToTouristDestinations(allAttractions);
+    const fromServer = mapServerResponseToTouristDestinations(
+      allAttractions,
+      visitHistoryMap
+    );
     const merged = mergeCities(savedCities, fromServer);
     return mergeCities(merged, loadedCities);
-  }, [allAttractions, loadedCities, savedCities]);
+  }, [allAttractions, loadedCities, savedCities, visitHistoryMap]);
 
   const handleUpdate = async (value: SearchTarget) => {
     const newAttractions = await loadAllAttractionsUnder(
@@ -252,6 +275,21 @@ export const MyTrip: React.FC = () => {
     // sort it to be in order
     mergedAttractions = sortAttractions(mergedAttractions);
     setAllAttractions(mergedAttractions);
+
+    // Fetch visit history for the new attractions (excluding current trip)
+    if (tripId) {
+      const newIds = newAttractions.map((a) => a.id);
+      const history = await fetchAttractionsVisitHistory(
+        Number(tripId),
+        newIds
+      );
+      setVisitHistory((prev) => {
+        const map = new Map<number, AttractionVisitHistory>();
+        for (const h of prev) map.set(h.attractionId, h);
+        for (const h of history) map.set(h.attractionId, h);
+        return Array.from(map.values());
+      });
+    }
     // attractions will be automatically recomputed via useMemo
   };
 
@@ -286,6 +324,7 @@ export const MyTrip: React.FC = () => {
         tripId={tripId ? Number(tripId) : undefined}
         initialReviewData={savedReviewData}
         initialSavedAttractionIds={savedAttractionIds}
+        visitHistory={visitHistoryMap}
       />
     </>
   );

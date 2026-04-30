@@ -23,7 +23,8 @@ const AttractionList: React.FC<AttractionListProps> = ({
   reviewMode,
   reviewSelection,
   onAttachAttraction,
-  onDetachAttraction
+  onDetachAttraction,
+  visitHistory
 }) => {
   return (
     <ul className="attractions">
@@ -77,6 +78,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
               reviewData={reviewSelection?.[attraction.id]}
               onAttachAttraction={onAttachAttraction}
               onDetachAttraction={onDetachAttraction}
+              visitHistory={visitHistory?.get(attraction.id)}
             />
           </li>
         </React.Fragment>

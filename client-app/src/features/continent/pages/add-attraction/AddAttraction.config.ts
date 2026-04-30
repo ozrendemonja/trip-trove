@@ -19,13 +19,15 @@ import {
   searchAttraction,
   searchCity,
   searchCountry,
+  searchInformationProvider,
   searchRegion
 } from "../../infra/ManagerApi";
 import { Validator } from "../../infra/Validator";
 import {
   AddAttractionFormElements,
   AttractionFormFieldProps,
-  ExtendedSearchTextProps
+  ExtendedSearchTextProps,
+  ValueSearchTextProps
 } from "./AddAttraction.types";
 
 export const useAttractionFormField = (): AttractionFormFieldProps => {
@@ -234,20 +236,23 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     multiline: true
   };
 
-  const sourceField: ITextFieldProps = {
-    name: "source",
+  const sourceField: ValueSearchTextProps = {
     label: "Where information comes from",
-    value: values.source,
+    placeholder: "Search or type a new source",
     required: true,
-    onChange: (_event, value: string | undefined): void => {
+    multiline: true,
+    onSelectItem: (_id: number | undefined) => {
+      // Free-text field: the value IS the displayed string;
+      // selecting a suggestion fills it via onSelectValue below.
+    },
+    onSelectValue: (value: string) => {
       setTouched({ ...touched, source: true });
-      setValues({ ...values, source: value ?? "" });
+      setValues({ ...values, source: value });
     },
     onGetErrorMessage: (_value: string) =>
       touched.source ? errorMessage?.sourceError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
-    multiline: true
+    getSuggestions: searchInformationProvider,
+    value: values.source
   };
 
   const sourceFromDataPicker: IDatePickerStrings = {
@@ -321,7 +326,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       address: "",
       geoLocation: "",
       category: "",
-      type: "",
+      type: AttractionType.STABLE,
       tip: "",
       optimalVisitPeriod: undefined
     });
@@ -549,20 +554,23 @@ export const useAttractionInfoFromFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const sourceField: ITextFieldProps = {
-    name: "source",
+  const sourceField: ValueSearchTextProps = {
     label: "Where information comes from",
-    value: values.source,
+    placeholder: "Search or type a new source",
     required: true,
-    onChange: (_event, value: string | undefined): void => {
+    multiline: true,
+    onSelectItem: (_id: number | undefined) => {
+      // Free-text field: the value IS the displayed string;
+      // selecting a suggestion fills it via onSelectValue below.
+    },
+    onSelectValue: (value: string) => {
       setTouched({ ...touched, source: true });
-      setValues({ ...values, source: value ?? "" });
+      setValues({ ...values, source: value });
     },
     onGetErrorMessage: (_value: string) =>
       touched.source ? errorMessage?.sourceError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
-    multiline: true
+    getSuggestions: searchInformationProvider,
+    value: values.source
   };
 
   const sourceFromDataPicker: IDatePickerStrings = {

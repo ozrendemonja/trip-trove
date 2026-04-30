@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.CityRepo;
+import com.triptrove.manager.domain.repo.InformationProviderRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
@@ -21,16 +22,33 @@ public class AttractionServiceImpl implements AttractionService {
     private final RegionRepo regionRepo;
     private final CityRepo cityRepo;
     private final AttractionRepo attractionRepo;
+    private final InformationProviderRepo informationProviderRepo;
 
     @Override
-    public Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, Attraction attraction) {
+    public Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, String infoFrom, Attraction attraction) {
         log.atInfo().log("Processing save attraction request for attraction '{}'", attraction.getName());
         assignAttractionTo(attraction, regionId, cityId);
         addAttractionUnder(attraction, mainAttractionId);
+        attraction.setInformationProvider(findOrCreateInformationProvider(infoFrom));
 
         var result = attractionRepo.save(attraction);
         log.atInfo().log("Attraction '{}' successfully saved", result.getName());
         return result;
+    }
+
+    private InformationProvider findOrCreateInformationProvider(String sourceName) {
+        return informationProviderRepo.findBySourceName(sourceName)
+                .orElseGet(() -> informationProviderRepo.save(new InformationProvider(sourceName)));
+    }
+
+    private void deleteInformationProviderIfOrphan(InformationProvider informationProvider) {
+        if (informationProvider == null || informationProvider.getId() == null) {
+            return;
+        }
+        if (!informationProviderRepo.isReferencedByAnyAttraction(informationProvider.getId())) {
+            log.atInfo().log("Deleting orphan information provider '{}'", informationProvider.getSourceName());
+            informationProviderRepo.delete(informationProvider);
+        }
     }
 
     private void addAttractionUnder(Attraction attraction, Long mainAttractionId) {
@@ -112,7 +130,10 @@ public class AttractionServiceImpl implements AttractionService {
         }
 
         var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var previousProvider = attraction.getInformationProvider();
         attractionRepo.delete(attraction);
+        attractionRepo.flush();
+        deleteInformationProviderIfOrphan(previousProvider);
         log.atInfo().log("Attraction deleted");
     }
 
@@ -233,8 +254,14 @@ public class AttractionServiceImpl implements AttractionService {
         log.atInfo().log("Updating the attraction information provider");
         var attraction = attractionRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        attraction.setInformationProvider(new InformationProvider(infoFrom, infoRecorded));
+        var previousProvider = attraction.getInformationProvider();
+        attraction.setInformationProvider(findOrCreateInformationProvider(infoFrom));
+        attraction.setRecorded(infoRecorded);
         attractionRepo.save(attraction);
+        attractionRepo.flush();
+        if (!previousProvider.getId().equals(attraction.getInformationProvider().getId())) {
+            deleteInformationProviderIfOrphan(previousProvider);
+        }
         log.atInfo().log("Attraction has been updated");
     }
 

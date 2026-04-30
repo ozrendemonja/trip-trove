@@ -10,7 +10,8 @@ public enum SearchIn {
     REGION("region"),
     CITY("city"),
     ATTRACTION("ATTRACTION"),
-    MAIN_ATTRACTION("MAIN_ATTRACTION");
+    MAIN_ATTRACTION("MAIN_ATTRACTION"),
+    INFORMATION_PROVIDER("INFORMATION_PROVIDER");
     private final String value;
 
     SearchIn(String in) {
@@ -35,6 +36,7 @@ public enum SearchIn {
             case CITY -> SearchInElement.CITY;
             case ATTRACTION -> SearchInElement.ATTRACTION;
             case MAIN_ATTRACTION -> SearchInElement.MAIN_ATTRACTION;
+            case INFORMATION_PROVIDER -> SearchInElement.INFORMATION_PROVIDER;
         };
     }
 }

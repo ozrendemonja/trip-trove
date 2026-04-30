@@ -72,8 +72,8 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         assertThat(attractionRepo.findById(id).map(Attraction::isMustVisit)).hasValue(attractionRequest.mustVisit());
         assertThat(attractionRepo.findById(id).map(Attraction::isTraditional)).hasValue(attractionRequest.isTraditional());
         assertThat(attractionRepo.findById(id).flatMap(Attraction::getTip).orElse(null)).isEqualTo(attractionRequest.tip());
-        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::sourceName)).hasValue(attractionRequest.infoFrom());
-        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::recorded)).hasValue(attractionRequest.infoRecorded());
+        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::getSourceName)).hasValue(attractionRequest.infoFrom());
+        assertThat(attractionRepo.findById(id).map(Attraction::getRecorded)).hasValue(attractionRequest.infoRecorded());
         assertThat(attractionRepo.findById(id).flatMap(Attraction::getOptimalVisitPeriod).map(VisitPeriod::from).orElse(null)).isEqualTo(attractionRequest.optimalVisitPeriod() != null ? attractionRequest.optimalVisitPeriod().fromDate() : null);
         assertThat(attractionRepo.findById(id).flatMap(Attraction::getOptimalVisitPeriod).map(VisitPeriod::to).orElse(null)).isEqualTo(attractionRequest.optimalVisitPeriod() != null ? attractionRequest.optimalVisitPeriod().toDate() : null);
     }
@@ -221,8 +221,8 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         assertThat(attractionRepo.findById(id).map(Attraction::isMustVisit)).hasValue(true);
         assertThat(attractionRepo.findById(id).map(Attraction::isTraditional)).hasValue(false);
         assertThat(attractionRepo.findById(id).flatMap(Attraction::getTip)).isEmpty();
-        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::sourceName)).hasValue("From test_user");
-        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::recorded)).hasValue(LocalDate.now().minusDays(23));
+        assertThat(attractionRepo.findById(id).map(Attraction::getInformationProvider).map(InformationProvider::getSourceName)).hasValue("From test_user");
+        assertThat(attractionRepo.findById(id).map(Attraction::getRecorded)).hasValue(LocalDate.now().minusDays(23));
         assertThat(attractionRepo.findById(id).flatMap(Attraction::getOptimalVisitPeriod)).isEmpty();
     }
 

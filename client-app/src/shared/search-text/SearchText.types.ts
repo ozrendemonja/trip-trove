@@ -12,6 +12,14 @@ export interface SearchTextProps {
 
   onSelectItem: (id: number | undefined) => void;
 
+  /**
+   * Optional callback fired whenever the displayed text changes
+   * (typing or picking a suggestion). Use it for free-text
+   * autocomplete fields where the value is the displayed string
+   * itself (e.g. information provider source name).
+   */
+  onSelectValue?: (value: string) => void;
+
   getSuggestions: (query: string) => Promise<Suggestion[]>;
 
   /**
@@ -30,6 +38,11 @@ export interface SearchTextProps {
   onGetErrorMessage?: (
     value: string
   ) => string | JSX.Element | PromiseLike<string | JSX.Element> | undefined;
+
+  /**
+   * When true, the underlying text field renders as a multiline textarea
+   */
+  multiline?: boolean;
 
   className?: object;
 }

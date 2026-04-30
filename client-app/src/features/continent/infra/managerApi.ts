@@ -800,6 +800,30 @@ export const searchAttraction = async (
   );
 };
 
+export const searchInformationProvider = async (
+  query: string
+): Promise<Suggestion[]> => {
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "INFORMATION_PROVIDER"
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while searching for information provider", error);
+  }
+
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
+};
+
 export const getAttractionById = async (id: number): Promise<Attraction> => {
   const { data, error } = await getAttraction({
     path: {

@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0002-extract-information-provider
+      author: trip-trove
+      comment: |
+        Extract `InformationProvider` from an `@Embeddable` value object on
+        `attraction` (columns `source_name` + `source_date`) into its own
+        `information_provider` entity table referenced by FK from `attraction`.
+        `attraction.source_date` (the per-attraction `recorded` date) is kept,
+        only `source_name` is normalized into the new table.
+
+        Migration steps (each idempotent for environments where the schema is
+        already ahead, e.g. when Hibernate previously created an FK column):
+          1. Create `information_provider` table.
+          2. Copy distinct `attraction.source_name` values into it.
+          3. Add nullable `attraction.information_provider_id`.
+          4. Backfill the FK by joining on `source_name`.
+          5. Make the FK NOT NULL and add the FK constraint.
+          6. Drop the now-redundant `attraction.source_name` column.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            information_provider table already exists - assuming the
+            extraction has already been performed; marking as ran.
+          not:
+            - tableExists:
+                tableName: information_provider
+      changes:
+        - createTable:
+            tableName: information_provider
+            columns:
+              - column:
+                  name: id
+                  type: INTEGER
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_information_provider
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_information_provider_name
+
+        - sql:
+            comment: Backfill information_provider rows from existing distinct attraction.source_name values
+            sql: >-
+              INSERT INTO information_provider (name, created_on)
+              SELECT DISTINCT source_name, COALESCE(MIN(created_on), NOW())
+              FROM attraction
+              WHERE source_name IS NOT NULL
+              GROUP BY source_name
+
+        - addColumn:
+            tableName: attraction
+            columns:
+              - column:
+                  name: information_provider_id
+                  type: INTEGER
+
+        - sql:
+            comment: Backfill attraction.information_provider_id from join on source_name
+            sql: >-
+              UPDATE attraction a
+              SET information_provider_id = ip.id
+              FROM information_provider ip
+              WHERE ip.name = a.source_name
+
+        - addNotNullConstraint:
+            tableName: attraction
+            columnName: information_provider_id
+            columnDataType: INTEGER
+
+        - addForeignKeyConstraint:
+            baseTableName: attraction
+            baseColumnNames: information_provider_id
+            constraintName: fk_attraction_information_provider
+            referencedTableName: information_provider
+            referencedColumnNames: id
+
+        - dropColumn:
+            tableName: attraction
+            columnName: source_name

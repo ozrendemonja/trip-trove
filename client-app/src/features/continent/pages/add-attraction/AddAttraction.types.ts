@@ -8,6 +8,13 @@ export interface ExtendedSearchTextProps extends SearchTextProps {
   value: number | undefined;
 }
 
+// Free-text autocomplete: the form value IS the displayed string
+// (used for fields like InformationProvider.sourceName where users may
+// type a brand-new value or pick an existing one from suggestions).
+export interface ValueSearchTextProps extends SearchTextProps {
+  value: string | undefined;
+}
+
 export type Location {
     latitude: number;
     longitude: number;
@@ -48,7 +55,7 @@ type FormFields = {
   type: Omit<IDropdownProps, "options"> & {value: AttractionType};
   optimalVisitPeriod: DateRangePickerProps;
   tip: ITextFieldProps;
-  source: ITextFieldProps;
+  source: ValueSearchTextProps;
   sourceFrom: IDatePickerProps;
 };
 

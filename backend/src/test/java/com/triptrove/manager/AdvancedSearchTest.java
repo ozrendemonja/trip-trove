@@ -540,8 +540,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @MethodSource("provideDiacriticSourceNameSearchCases")
     void shouldFindAttractionByQueryUsingAsciiEquivalentOfDiacriticInSourceName(DiacriticSearchCase testCase) throws Exception {
         Attraction attraction = attractionRepo.findById(5L).orElseThrow();
-        InformationProvider originalSource = attraction.getInformationProvider();
-        attraction.setInformationProvider(new InformationProvider(testCase.storedValue, originalSource.recorded()));
+        attraction.setInformationProvider(new InformationProvider(testCase.storedValue));
         attractionRepo.saveAndFlush(attraction);
 
         assertSearchFinds(testCase, "sourceName");

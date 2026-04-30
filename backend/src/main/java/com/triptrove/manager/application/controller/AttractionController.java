@@ -34,7 +34,7 @@ public class AttractionController {
                     @Schema(implementation = ErrorResponse.class))})
     })
     public ResponseEntity<Void> saveAttraction(@RequestBody @Valid SaveAttractionRequest attractionRequest) {
-        var attraction = attractionService.saveAttraction(attractionRequest.regionId(), attractionRequest.cityId(), attractionRequest.mainAttractionId(), attractionRequest.toAttraction());
+        var attraction = attractionService.saveAttraction(attractionRequest.regionId(), attractionRequest.cityId(), attractionRequest.mainAttractionId(), attractionRequest.infoFrom(), attractionRequest.toAttraction());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")

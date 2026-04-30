@@ -522,6 +522,25 @@ export default function makeServer(): ReturnType<typeof createServer> {
             });
 
           return { prefix: query, suggestions: result };
+        } else if (inElement == "INFORMATION_PROVIDER") {
+          const seen = new Set<string>();
+          let result = (schema.db.attractions as { infoFrom?: string }[])
+            .filter((attraction) => {
+              if (!attraction.infoFrom) return false;
+              if (!attraction.infoFrom.includes(query)) return false;
+              if (seen.has(attraction.infoFrom)) return false;
+              seen.add(attraction.infoFrom);
+              return true;
+            })
+            .map((attraction, index) => {
+              return {
+                value: attraction.infoFrom as string,
+                id: index + 1,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
         } else if (inElement == "MAIN_ATTRACTION") {
           let result = schema.db.attractions
             .sort()

@@ -2,7 +2,6 @@ package com.triptrove.manager.application.dto;
 
 import com.triptrove.manager.domain.model.Address;
 import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.InformationProvider;
 import com.triptrove.manager.domain.model.VisitPeriod;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -55,7 +54,7 @@ public record SaveAttractionRequest(@NotNull Boolean isCountrywide,
         attraction.setMustVisit(mustVisit);
         attraction.setTraditional(isTraditional);
         attraction.setTip(tip);
-        attraction.setInformationProvider(new InformationProvider(infoFrom, infoRecorded));
+        attraction.setRecorded(infoRecorded);
         if (optimalVisitPeriod != null) {
             attraction.setOptimalVisitPeriod(new VisitPeriod(optimalVisitPeriod.fromDate(), optimalVisitPeriod.toDate()));
         }

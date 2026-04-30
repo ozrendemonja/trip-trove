@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -78,8 +79,12 @@ public class Attraction {
     @Column(name = "tip", length = 2048)
     private String tip;
 
-    @Embedded
+    @ManyToOne(optional = false, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "information_provider_id", nullable = false)
     private InformationProvider informationProvider;
+
+    @Column(name = "source_date", nullable = false)
+    private LocalDate recorded;
 
     @Embedded
     private VisitPeriod optimalVisitPeriod;

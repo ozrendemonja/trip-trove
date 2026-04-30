@@ -6,6 +6,7 @@ DELETE FROM city;
 DELETE FROM region;
 DELETE FROM country;
 DELETE FROM continent;
+DELETE FROM information_provider;
 
 ALTER SEQUENCE trip_attraction_id_seq RESTART 1;
 ALTER SEQUENCE trip_id_seq RESTART 1;
@@ -14,3 +15,4 @@ ALTER SEQUENCE country_id_seq RESTART 1;
 ALTER SEQUENCE region_id_seq RESTART 1;
 ALTER SEQUENCE city_id_seq RESTART 1;
 ALTER SEQUENCE attraction_id_seq RESTART 1;
+ALTER SEQUENCE information_provider_id_seq RESTART 1;

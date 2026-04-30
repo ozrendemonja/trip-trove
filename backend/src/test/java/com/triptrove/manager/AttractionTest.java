@@ -1012,8 +1012,8 @@ public class AttractionTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
 
         assertThat(attractionRepo.findById(1L).map(Attraction::getName)).hasValue("Test attraction 0");
-        assertThat(attractionRepo.findById(1L).map(Attraction::getInformationProvider).map(InformationProvider::sourceName)).hasValue("test portal new");
-        assertThat(attractionRepo.findById(1L).map(Attraction::getInformationProvider).map(InformationProvider::recorded)).hasValue(LocalDate.now());
+        assertThat(attractionRepo.findById(1L).map(Attraction::getInformationProvider).map(InformationProvider::getSourceName)).hasValue("test portal new");
+        assertThat(attractionRepo.findById(1L).map(Attraction::getRecorded)).hasValue(LocalDate.now());
     }
 
     @Test

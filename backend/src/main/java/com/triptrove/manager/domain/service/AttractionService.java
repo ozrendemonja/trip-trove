@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface AttractionService {
-    Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, Attraction attraction);
+    Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, String infoFrom, Attraction attraction);
 
     List<Attraction> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection);
 

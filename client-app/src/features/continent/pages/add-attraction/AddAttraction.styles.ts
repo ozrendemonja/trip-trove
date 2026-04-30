@@ -79,10 +79,11 @@ export const useClasses = () => {
 
 export const searchOverride = {
   searchBox: {
-    width: "90vh",
+    width: "100%",
     maxWidth: "1200px",
-    marginTop: "10px",
-    boxShadow: "0",
-    marginLeft: "25px"
+    marginTop: 0,
+    boxShadow: "none",
+    marginLeft: 0,
+    border: "none"
   }
 };

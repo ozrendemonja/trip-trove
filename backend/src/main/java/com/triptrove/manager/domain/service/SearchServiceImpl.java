@@ -26,6 +26,7 @@ public class SearchServiceImpl implements SearchService {
     private final RegionRepo regionRepo;
     private final CityRepo cityRepo;
     private final AttractionRepo attractionRepo;
+    private final InformationProviderRepo informationProviderRepo;
 
     @Override
     public List<Suggestion> suggestNames(String query, SearchInElement searchIn, Integer countryId) {
@@ -81,6 +82,10 @@ public class SearchServiceImpl implements SearchService {
                 result = attractionRepo.findMainAttractionByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, Limit.of(managerProperties.suggestionLimit()));
                 log.atInfo().log(foundMessage, result.size());
             }
+        } else if (searchIn.equals(SearchInElement.INFORMATION_PROVIDER)) {
+            log.atInfo().log("Search for an information provider name");
+            result = informationProviderRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, Limit.of(managerProperties.suggestionLimit()));
+            log.atInfo().log(foundMessage, result.size());
         }
         return result;
     }

@@ -56,11 +56,13 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
         label={props.label}
         placeholder={props.placeholder}
         required={props.required}
+        multiline={props.multiline}
         onChange={(_event, newValue: string | undefined): void => {
           if (isSuggestionChosen) {
             props.onSelectItem(undefined);
           }
           setQuery(newValue ?? "");
+          props.onSelectValue?.(newValue ?? "");
           deselectSuggestion();
         }}
         className={classes.searchBox}
@@ -84,6 +86,7 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
               selectSuggestion();
               setQuery(item.value);
               props.onSelectItem(item.id);
+              props.onSelectValue?.(item.value);
               setSuggestions([]);
             }}
           >

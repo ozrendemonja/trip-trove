@@ -44,8 +44,8 @@ public record GetAttractionResponse(Long attractionId,
                 attraction.isMustVisit(),
                 attraction.isTraditional(),
                 attraction.getTip().orElse(null),
-                attraction.getInformationProvider().sourceName(),
-                attraction.getInformationProvider().recorded(),
+                attraction.getInformationProvider().getSourceName(),
+                attraction.getRecorded(),
                 attraction.getOptimalVisitPeriod().map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
                 attraction.getCreatedOn()
         );

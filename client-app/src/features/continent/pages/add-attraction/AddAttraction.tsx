@@ -307,7 +307,7 @@ export const AddAttraction: React.FunctionComponent = () => {
             horizontal={true}
             className={classes.tip}
           >
-            <TextField {...formFields.source} />
+            <SearchText {...formFields.source} className={searchOverride} />
             <DatePicker {...formFields.sourceFrom} />
           </Stack>
         </Stack>

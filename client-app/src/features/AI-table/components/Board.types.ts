@@ -1,5 +1,6 @@
 import type { Attraction } from "./AttractionList.types";
 import type { Rating } from "../../my-trip/domain/Trip.types";
+import type { VisitHistoryMap } from "../utils/Mapper";
 
 export interface Column {
   id: string;
@@ -18,4 +19,5 @@ export interface BoardProps {
   tripId?: number; // needed for review mode (attach/detach attractions)
   initialReviewData?: Record<number, { rating: Rating; reviewNote: string }>; // pre-populated review ratings/notes from DB
   initialSavedAttractionIds?: number[]; // attraction IDs already saved in DB (skip re-saving)
+  visitHistory?: VisitHistoryMap; // visit history per attraction id (other trips)
 }

@@ -198,6 +198,17 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    public List<AttractionVisit> getVisitHistory(Long currentTripId, List<Long> attractionIds) {
+        log.atInfo().log("Getting visit history for {} attractions, excluding trip '{}'", attractionIds.size(), currentTripId);
+        if (attractionIds.isEmpty()) {
+            return List.of();
+        }
+        var result = tripAttractionRepo.findVisitHistory(attractionIds, currentTripId);
+        log.atInfo().log("Found '{}' visit history records", result.size());
+        return result;
+    }
+
+    @Override
     public CountriesSummary getCountriesSummary() {
         log.atInfo().log("Getting country summary");
         int visitedCountries = tripAttractionRepo.countDistinctVisitedCountries();

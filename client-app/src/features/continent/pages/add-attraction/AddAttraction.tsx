@@ -29,7 +29,7 @@ import { searchOverride, useClasses } from "./AddAttraction.styles";
 import {
   isShortcut,
   keyComboFromEvent
-} from "../../../AI-table/utils/shortcuts";
+} from "../../../AI-table/utils/Shortcuts";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")

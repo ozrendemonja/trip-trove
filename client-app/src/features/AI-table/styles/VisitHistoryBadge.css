@@ -1,0 +1,22 @@
+.visit-history-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: help;
+}
+
+.visit-history-badge.good {
+  background: #e6f4ea;
+  color: #0b6a0b;
+  border: 1px solid #9bd29b;
+}
+
+.visit-history-badge.poor {
+  background: #fde7e9;
+  color: #a4262c;
+  border: 1px solid #f3b1b6;
+}

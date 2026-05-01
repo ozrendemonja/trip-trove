@@ -36,6 +36,8 @@ public interface TripService {
 
     List<TripAttraction> getAttractions(Long tripId);
 
+    List<AttractionVisit> getVisitHistory(Long currentTripId, List<Long> attractionIds);
+
     CountriesSummary getCountriesSummary();
 
     List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection);

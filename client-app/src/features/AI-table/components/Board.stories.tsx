@@ -4,6 +4,7 @@ import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import { initialCities } from "../data/initialCities";
 import makeServer from "../../../ServerSetup";
+import type { VisitHistoryMap } from "../utils/Mapper";
 
 const styleOverrides = `
     body {
@@ -79,18 +80,16 @@ export const SingleCity: Story = {
 };
 
 /** Board with itinerary selections pre-set (Plan mode data) */
-const citiesWithItinerary: TouristDestination[] = initialCities.map(
-  (city) => ({
-    ...city,
-    columns: city.columns.map((col) => ({
-      ...col,
-      tasks: col.tasks.map((t) => ({
-        ...t,
-        inItinerary: t.mustVisit
-      }))
+const citiesWithItinerary: TouristDestination[] = initialCities.map((city) => ({
+  ...city,
+  columns: city.columns.map((col) => ({
+    ...col,
+    tasks: col.tasks.map((t) => ({
+      ...t,
+      inItinerary: t.mustVisit
     }))
-  })
-);
+  }))
+}));
 
 export const PlanModeWithSelections: Story = {
   args: {
@@ -100,5 +99,77 @@ export const PlanModeWithSelections: Story = {
     const canvas = within(canvasElement);
     const planBtn = canvas.getByRole("button", { name: /Plan/i });
     await userEvent.click(planBtn);
+  }
+};
+
+/** Visit history badges – shows attractions previously visited in other trips,
+ *  with rating-based color coding (green for VERY_GOOD/EXCELLENT, red otherwise). */
+const visitHistoryDemo: VisitHistoryMap = new Map([
+  [
+    1, // Eiffel Tower – great experience, recent
+    [
+      {
+        tripId: 101,
+        tripName: "Paris Spring 2024",
+        tripFromDate: "2024-04-10",
+        tripToDate: "2024-04-17",
+        rating: "EXCELLENT",
+        reviewNote: "Magical at sunset, summit was worth the wait."
+      }
+    ]
+  ],
+  [
+    2, // Louvre – multiple past visits, latest very good
+    [
+      {
+        tripId: 102,
+        tripName: "Paris Winter 2023",
+        tripFromDate: "2023-12-20",
+        tripToDate: "2023-12-27",
+        rating: "VERY_GOOD",
+        reviewNote: "Loved the Denon wing, skipped the Mona Lisa crowd."
+      },
+      {
+        tripId: 90,
+        tripName: "Backpacking Europe 2019",
+        tripFromDate: "2019-07-01",
+        tripToDate: "2019-07-05",
+        rating: "AVERAGE",
+        reviewNote: "Too crowded in summer."
+      }
+    ]
+  ],
+  [
+    4, // Montmartre – disappointing last visit (renders red badge)
+    [
+      {
+        tripId: 103,
+        tripName: "Paris Quick Stop 2022",
+        tripFromDate: "2022-09-02",
+        tripToDate: "2022-09-04",
+        rating: "BELOW_AVERAGE",
+        reviewNote: "Tourist traps everywhere on Place du Tertre."
+      }
+    ]
+  ],
+  [
+    7, // La Défense – older visit, average rating
+    [
+      {
+        tripId: 104,
+        tripName: "Business Trip Paris 2021",
+        tripFromDate: "2021-05-11",
+        tripToDate: "2021-05-13",
+        rating: "AVERAGE",
+        reviewNote: "Quick stop between meetings."
+      }
+    ]
+  ]
+]);
+
+export const WithVisitHistoryBadges: Story = {
+  args: {
+    initialCities,
+    visitHistory: visitHistoryDemo
   }
 };

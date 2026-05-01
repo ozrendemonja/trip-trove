@@ -1616,19 +1616,20 @@ export interface CountriesSummary {
   totalCount: number;
 }
 
-export const getCountriesVisitedSummary = async (): Promise<CountriesSummary> => {
-  const { data, error } = await getCountriesSummary({
-    headers: {
-      "x-api-version": "1"
+export const getCountriesVisitedSummary =
+  async (): Promise<CountriesSummary> => {
+    const { data, error } = await getCountriesSummary({
+      headers: {
+        "x-api-version": "1"
+      }
+    });
+
+    if (error) {
+      throw new Error("Error while getting countries summary", error);
     }
-  });
 
-  if (error) {
-    throw new Error("Error while getting countries summary", error);
-  }
-
-  return {
-    visitedCount: data?.visitedCount ?? 0,
-    totalCount: data?.totalCount ?? 0
+    return {
+      visitedCount: data?.visitedCount ?? 0,
+      totalCount: data?.totalCount ?? 0
+    };
   };
-};

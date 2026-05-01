@@ -12,6 +12,8 @@ import {
 import { client } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
 import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
+import { AttractionVisitHistory } from "../domain/VisitHistory.types";
+import { chunk } from "../../../shared/utils/chunk";
 
 export type TripAttractionStatus = "PLANNED" | "VISITED";
 export type TripAttractionGroup = "PRIMARY" | "SECONDARY" | "EXCLUDED";
@@ -319,4 +321,36 @@ export const fetchTripAttractions = async (
   }
 
   return (data as TripAttractionFromServer[]) ?? [];
+};
+
+export const VISIT_HISTORY_MAX_BATCH_SIZE = 100;
+
+export const fetchAttractionsVisitHistory = async (
+  currentTripId: number,
+  attractionIds: number[]
+): Promise<AttractionVisitHistory[]> => {
+  if (attractionIds.length === 0) {
+    return [];
+  }
+
+  const batches = chunk(attractionIds, VISIT_HISTORY_MAX_BATCH_SIZE);
+
+  const responses = await Promise.all(
+    batches.map(async (batch) => {
+      const { data, error } = await client.post({
+        url: `/trips/${currentTripId}/attractions/visit-history`,
+        body: { attractionIds: batch },
+        headers: { "x-api-version": "1", "Content-Type": "application/json" }
+      });
+
+      if (error) {
+        console.error("Error while fetching attractions visit history", error);
+        return [] as AttractionVisitHistory[];
+      }
+
+      return (data as AttractionVisitHistory[]) ?? [];
+    })
+  );
+
+  return responses.flat();
 };

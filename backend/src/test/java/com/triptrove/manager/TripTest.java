@@ -1382,4 +1382,157 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
     }
 
+
+    @Test
+    void visitHistoryShouldReturnPastVisitedAttractionsFromOtherTrips() throws Exception {
+        var request = new GetVisitHistoryRequest(java.util.List.of(1L, 2L, 3L));
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].attractionId()).isEqualTo(1L);
+        assertThat(response[0].visits()).hasSize(1);
+        var visit = response[0].visits().getFirst();
+        assertThat(visit.tripId()).isEqualTo(2L);
+        assertThat(visit.tripName()).isEqualTo("Test trip name 3");
+        assertThat(visit.tripFromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 12));
+        assertThat(visit.tripToDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 23));
+        assertThat(visit.rating()).isEqualTo(RatingDTO.VERY_GOOD);
+        assertThat(visit.reviewNote()).isEqualTo("Great experience");
+    }
+
+    @Test
+    void visitHistoryShouldExcludeVisitsFromCurrentTrip() throws Exception {
+        var request = new GetVisitHistoryRequest(java.util.List.of(1L));
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 2 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void visitHistoryShouldExcludePlannedAttractions() throws Exception {
+        // Attractions 2 and 3 are only PLANNED (never VISITED) so no history should be returned.
+        var request = new GetVisitHistoryRequest(java.util.List.of(2L, 3L));
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void visitHistoryShouldReturnEmptyListWhenAttractionIdsIsEmpty() throws Exception {
+        var request = new GetVisitHistoryRequest(java.util.List.of());
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void visitHistoryShouldIgnoreUnknownAttractionIds() throws Exception {
+        var request = new GetVisitHistoryRequest(java.util.List.of(1L, 999L));
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].attractionId()).isEqualTo(1L);
+        assertThat(response[0].visits()).hasSize(1);
+        assertThat(response[0].visits().getFirst().tripId()).isEqualTo(2L);
+    }
+
+    @Test
+    void visitHistoryShouldReturnBadRequestWhenAttractionIdsIsNull() throws Exception {
+        var request = new GetVisitHistoryRequest(null);
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+
+    @Test
+    void visitHistoryShouldReturnBadRequestWhenAttractionIdsExceedsMaxSize() throws Exception {
+        var ids = new java.util.ArrayList<Long>();
+        for (long i = 1; i <= 101; i++) {
+            ids.add(i);
+        }
+        var request = new GetVisitHistoryRequest(ids);
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @Test
+    void visitHistoryShouldAcceptExactlyMaxSizeAttractionIds() throws Exception {
+        var ids = new java.util.ArrayList<Long>();
+        for (long i = 1; i <= 100; i++) {
+            ids.add(i);
+        }
+        var request = new GetVisitHistoryRequest(ids);
+
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
 }

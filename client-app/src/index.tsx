@@ -15,6 +15,7 @@ import AddAttraction from "./features/continent/pages/add-attraction/AddAttracti
 import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
 import MyTrip from "./features/my-trip/MyTrip";
 import MyTripList from "./features/my-trip/MyTripList";
+import CountriesVisitedMap from "./features/countries-map/CountriesVisitedMap";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -64,6 +65,7 @@ root.render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/countries-map" element={<CountriesVisitedMap />} />
         <Route path="/my-trips" element={<MyTripList />} />
         <Route path="/my-trips/:tripId" element={<MyTrip />} />
         <Route path="/continents" element={<ContinentList />} />

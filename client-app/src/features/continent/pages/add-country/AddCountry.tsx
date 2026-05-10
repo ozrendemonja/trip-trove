@@ -53,6 +53,9 @@ export const AddCountry: React.FunctionComponent = () => {
           <Stack.Item grow={1}>
             <TextField {...formFields.countryName} />
           </Stack.Item>
+          <Stack.Item grow={1}>
+            <Dropdown {...formFields.isoCode!} />
+          </Stack.Item>
         </Stack>
         <Stack
           horizontal
@@ -65,7 +68,8 @@ export const AddCountry: React.FunctionComponent = () => {
             onClick={() => {
               saveNewCountry(
                 formFields.countryName.value!,
-                formFields.continentName.value
+                formFields.continentName.value,
+                formFields.isoCode!.value
               );
               navigate(-1);
             }}

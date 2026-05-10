@@ -34,6 +34,9 @@ public class Country {
     @Column(name = "name", length = 256, nullable = false)
     private String name;
 
+    @Column(name = "iso_code", length = 2, nullable = false)
+    private String isoCode;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "continent_id")
     private Continent continent;

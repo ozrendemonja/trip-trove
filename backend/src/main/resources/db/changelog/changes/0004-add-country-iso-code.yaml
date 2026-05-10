@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0004-add-country-iso-code
+      author: trip-trove
+      comment: |
+        Add nullable `iso_code` column to `country` (ISO 3166-1 alpha-2,
+        lower case). New rows get the value populated by the application on
+        save; existing rows are backfilled by a one-shot startup runner that
+        resolves the code from the country name.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            country.iso_code already exists - assuming the column has already
+            been added; marking as ran.
+          not:
+            - columnExists:
+                tableName: country
+                columnName: iso_code
+      changes:
+        - addColumn:
+            tableName: country
+            columns:
+              - column:
+                  name: iso_code
+                  type: VARCHAR(2)

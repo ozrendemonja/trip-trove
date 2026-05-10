@@ -40,5 +40,7 @@ public interface TripService {
 
     CountriesSummary getCountriesSummary();
 
+    List<CountryVisitSummary> getCountryVisitSummaries();
+
     List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection);
 }

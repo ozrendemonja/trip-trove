@@ -8,9 +8,10 @@ import java.time.LocalDateTime;
 public record GetCountryResponse(Integer countryId,
                                  String continentName,
                                  String countryName,
+                                 String isoCode,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                                  LocalDateTime changedOn) {
     public static GetCountryResponse from(Country country) {
-        return new GetCountryResponse(country.getId(), country.getContinent().getName(), country.getName(), country.getUpdatedOn().orElse(country.getCreatedOn()));
+        return new GetCountryResponse(country.getId(), country.getContinent().getName(), country.getName(), country.getIsoCode(), country.getUpdatedOn().orElse(country.getCreatedOn()));
     }
 }

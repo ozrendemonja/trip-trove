@@ -32,7 +32,27 @@ export const useClasses = () => {
     gaugeContainer: {
       position: "absolute",
       top: 10,
-      right: 24
+      right: 24,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    },
+    mapIconButton: {
+      background: "transparent",
+      border: "none",
+      padding: 4,
+      cursor: "pointer",
+      borderRadius: 8,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      ":hover": {
+        background: "rgba(255,255,255,0.4)"
+      },
+      ":focus": {
+        outline: "2px solid #fec703",
+        outlineOffset: 2
+      }
     },
     headerRow: {
       fontSize: 40,

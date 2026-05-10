@@ -1029,6 +1029,135 @@ export default function makeServer(): ReturnType<typeof createServer> {
         },
         { timing: 300 }
       );
+
+      this.get(
+        "/trips/countries/visit-summary",
+        () => {
+          return [
+            {
+              countryName: "France",
+              isoCode: "fr",
+              visitedMustVisit: 5,
+              unvisitedMustVisit: 0,
+              visitedOther: 8,
+              unvisitedOther: 4
+            },
+            {
+              countryName: "Germany",
+              isoCode: "de",
+              visitedMustVisit: 2,
+              unvisitedMustVisit: 4,
+              visitedOther: 1,
+              unvisitedOther: 6
+            },
+            {
+              countryName: "Italy",
+              isoCode: "it",
+              visitedMustVisit: 0,
+              unvisitedMustVisit: 7,
+              visitedOther: 0,
+              unvisitedOther: 3
+            },
+            {
+              countryName: "Spain",
+              isoCode: "es",
+              visitedMustVisit: 3,
+              unvisitedMustVisit: 1,
+              visitedOther: 2,
+              unvisitedOther: 5
+            },
+            {
+              countryName: "Portugal",
+              isoCode: "pt",
+              visitedMustVisit: 0,
+              unvisitedMustVisit: 4,
+              visitedOther: 0,
+              unvisitedOther: 2
+            },
+            {
+              countryName: "Netherlands",
+              isoCode: "nl",
+              visitedMustVisit: 4,
+              unvisitedMustVisit: 0,
+              visitedOther: 3,
+              unvisitedOther: 1
+            },
+            {
+              countryName: "Belgium",
+              isoCode: "be",
+              visitedMustVisit: 1,
+              unvisitedMustVisit: 2,
+              visitedOther: 0,
+              unvisitedOther: 4
+            },
+            {
+              countryName: "Greece",
+              isoCode: "gr",
+              visitedMustVisit: 0,
+              unvisitedMustVisit: 6,
+              visitedOther: 0,
+              unvisitedOther: 1
+            },
+            {
+              countryName: "Norway",
+              isoCode: "no",
+              visitedMustVisit: 2,
+              unvisitedMustVisit: 1,
+              visitedOther: 1,
+              unvisitedOther: 0
+            },
+            {
+              countryName: "Sweden",
+              isoCode: "se",
+              visitedMustVisit: 3,
+              unvisitedMustVisit: 0,
+              visitedOther: 2,
+              unvisitedOther: 2
+            },
+            {
+              countryName: "Japan",
+              isoCode: "jp",
+              visitedMustVisit: 0,
+              unvisitedMustVisit: 9,
+              visitedOther: 0,
+              unvisitedOther: 5
+            },
+            {
+              countryName: "United States",
+              isoCode: "us",
+              visitedMustVisit: 6,
+              unvisitedMustVisit: 8,
+              visitedOther: 4,
+              unvisitedOther: 12
+            },
+            {
+              countryName: "Brazil",
+              isoCode: "br",
+              visitedMustVisit: 0,
+              unvisitedMustVisit: 5,
+              visitedOther: 0,
+              unvisitedOther: 3
+            },
+            {
+              countryName: "Australia",
+              isoCode: "au",
+              visitedMustVisit: 1,
+              unvisitedMustVisit: 4,
+              visitedOther: 0,
+              unvisitedOther: 6
+            },
+            {
+              countryName: "Egypt",
+              isoCode: "eg",
+              visitedMustVisit: 2,
+              unvisitedMustVisit: 0,
+              visitedOther: 1,
+              unvisitedOther: 1
+            }
+          ];
+        },
+        { timing: 300 }
+      );
     }
   });
 }

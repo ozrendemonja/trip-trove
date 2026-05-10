@@ -24,6 +24,7 @@ import {
 } from "../../infra/ManagerApi";
 import EditContinentDetails from "./EditContinentDetails";
 import EditPropertyCountryDetails from "./EditPropertyCountryDetails";
+import EditPropertyCountryIsoCode from "./EditPropertyCountryIsoCode";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
@@ -62,6 +63,17 @@ const onRenderItemColumn = (
       <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
         <Text>{country?.continent}</Text>
         <EditContinentDetails
+          countryId={country!.id}
+          text={country!.name}
+          onUpdateClick={onUpdateClick}
+        />
+      </Stack>
+    );
+  } else if (column?.key === "isoCode") {
+    return (
+      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+        <Text>{country?.isoCode?.toUpperCase()}</Text>
+        <EditPropertyCountryIsoCode
           countryId={country!.id}
           text={country!.name}
           onUpdateClick={onUpdateClick}

@@ -222,6 +222,17 @@ public class TripController {
         return GetCountriesSummaryResponse.from(countriesSummary);
     }
 
+    @GetMapping("/countries/visit-summary")
+    @Operation(summary = "Per-country visit summary based on attractions and trip statuses", responses = {
+            @ApiResponse(description = "Per-country visit summary list", responseCode = "200"),
+    })
+    public List<GetCountryVisitSummaryResponse> getCountryVisitSummaries() {
+        return tripService.getCountryVisitSummaries()
+                .stream()
+                .map(GetCountryVisitSummaryResponse::from)
+                .toList();
+    }
+
     @PostMapping("/{id:\\d+}/attractions/visit-history")
     @Operation(summary = "Get past visit history for the given attractions, excluding the current trip", responses = {
             @ApiResponse(description = "Visit history grouped by attraction id", responseCode = "200"),

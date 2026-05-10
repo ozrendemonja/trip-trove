@@ -3,11 +3,13 @@ import { IDropdownProps, ITextFieldProps } from "@fluentui/react";
 export type AddCountryFormElements {
   continentName: string;
   countryName: string;
+  isoCode: string;
 }
 
 type FormFields = {
   continentName: Omit<IDropdownProps, "options"> & {value: string};
   countryName: ITextFieldProps;
+  isoCode: Omit<IDropdownProps, "options"> & {value: string};
 };
 
 // Utility type to enforce that CountryFormFieldProps includes all keys from AddCountryFormElements
@@ -19,6 +21,6 @@ type EnsureAllKeys<T, U> = {
 type AllFormFields = EnsureAllKeys<AddCountryFormElements, FormFields>;
 
 export interface CountryFormFieldProps {
-  formFields: AllFormFields;
+  formFields: Partial<AllFormFields>;
   isFormValid: boolean;
 }

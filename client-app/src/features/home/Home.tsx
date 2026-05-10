@@ -21,6 +21,7 @@ import {
 } from "../continent/infra/ManagerApi";
 import { useClasses } from "./Home.styles";
 import CountriesVisitedGauge from "./countries-visited-gauge/CountriesVisitedGauge";
+import MapWithPinIcon from "./map-icon/MapWithPinIcon";
 
 const searchConfig: Omit<SearchTextProps, "getSuggestions" | "onSelectItem"> = {
   label: "",
@@ -65,6 +66,15 @@ export const Home: React.FunctionComponent = () => {
     <>
       <Navigation />
       <div className={classes.gaugeContainer}>
+        <button
+          type="button"
+          aria-label="Open countries visited map"
+          title="Open countries visited map"
+          className={classes.mapIconButton}
+          onClick={() => navigate("/countries-map")}
+        >
+          <MapWithPinIcon size={56} />
+        </button>
         <CountriesVisitedGauge />
       </div>
       <Stack tokens={{ childrenGap: 0 }} className={classes.searchContiner}>

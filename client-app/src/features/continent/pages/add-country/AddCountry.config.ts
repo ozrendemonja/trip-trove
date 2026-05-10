@@ -1,4 +1,9 @@
-import { IDropdownOption, ITextFieldProps } from "@fluentui/react";
+import {
+  IComboBox,
+  IComboBoxOption,
+  IDropdownOption,
+  ITextFieldProps
+} from "@fluentui/react";
 import { useState } from "react";
 import { getIsoCountryOptions } from "../../infra/IsoCountries";
 import { Validator } from "../../infra/Validator";
@@ -8,7 +13,9 @@ import {
 } from "./AddCountry.types";
 import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 
-const buildIsoCodeOptions = (): IDropdownOption[] =>
+// ComboBox uses option `text` for type-ahead. Putting the country name first
+// (e.g. "Belgium (BE)") lets users jump to it by typing the country name.
+const buildIsoCodeOptions = (): IComboBoxOption[] =>
   getIsoCountryOptions().map((c) => ({
     key: c.code,
     text: `${c.name} (${c.code.toUpperCase()})`
@@ -63,17 +70,21 @@ export const useCountryFormField = (): CountryFormFieldProps => {
 
   const isoCodeDropdown = {
     label: "ISO code",
-    placeholder: "Select an ISO code",
+    placeholder: "Search by country name or ISO code",
     ariaLabel: "Select ISO 3166-1 alpha-2 country code",
     required: true,
     value: values.isoCode,
+    selectedKey: values.isoCode || null,
     options: buildIsoCodeOptions(),
-    errorMessage:
-      touched.isoCode ? errorMessage?.isoCodeError : undefined,
+    autoComplete: "on" as const,
+    allowFreeform: false,
+    useComboBoxAsMenuWidth: true,
+    errorMessage: touched.isoCode ? errorMessage?.isoCodeError : undefined,
     onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+      _event: React.FormEvent<IComboBox>,
+      option?: IComboBoxOption,
+      _index?: number,
+      _value?: string
     ) => {
       setTouched({ ...touched, isoCode: true });
       setValues({ ...values, isoCode: (option?.key as string) ?? "" });
@@ -177,17 +188,21 @@ export const useCountryIsoCodeFormField = (): CountryFormFieldProps => {
 
   const isoCodeDropdown = {
     label: "ISO code",
-    placeholder: "Select an ISO code",
+    placeholder: "Search by country name or ISO code",
     ariaLabel: "Select ISO 3166-1 alpha-2 country code",
     required: true,
     value: values.isoCode,
+    selectedKey: values.isoCode || null,
     options: buildIsoCodeOptions(),
-    errorMessage:
-      touched.isoCode ? errorMessage?.isoCodeError : undefined,
+    autoComplete: "on" as const,
+    allowFreeform: false,
+    useComboBoxAsMenuWidth: true,
+    errorMessage: touched.isoCode ? errorMessage?.isoCodeError : undefined,
     onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+      _event: React.FormEvent<IComboBox>,
+      option?: IComboBoxOption,
+      _index?: number,
+      _value?: string
     ) => {
       setTouched({ ...touched, isoCode: true });
       setValues({ ...values, isoCode: (option?.key as string) ?? "" });

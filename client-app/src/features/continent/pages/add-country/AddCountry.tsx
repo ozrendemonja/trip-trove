@@ -1,4 +1,5 @@
 import {
+  ComboBox,
   DefaultButton,
   Dropdown,
   IDropdownOption,
@@ -54,7 +55,7 @@ export const AddCountry: React.FunctionComponent = () => {
             <TextField {...formFields.countryName} />
           </Stack.Item>
           <Stack.Item grow={1}>
-            <Dropdown {...formFields.isoCode!} />
+            <ComboBox {...formFields.isoCode!} />
           </Stack.Item>
         </Stack>
         <Stack

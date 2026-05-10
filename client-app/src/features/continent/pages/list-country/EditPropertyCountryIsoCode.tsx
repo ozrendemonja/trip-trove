@@ -1,4 +1,4 @@
-import { Dropdown } from "@fluentui/react";
+import { ComboBox } from "@fluentui/react";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeCountryIsoCode } from "../../infra/ManagerApi";
 import { useCountryIsoCodeFormField } from "../add-country/AddCountry.config";
@@ -22,7 +22,7 @@ const EditPropertyCountryIsoCode: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Dropdown {...formFields.isoCode!} />
+      <ComboBox {...formFields.isoCode!} />
     </EditProperty>
   );
 };

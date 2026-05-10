@@ -1,4 +1,4 @@
-import { IDropdownProps, ITextFieldProps } from "@fluentui/react";
+import { IComboBoxProps, IDropdownProps, ITextFieldProps } from "@fluentui/react";
 
 export type AddCountryFormElements {
   continentName: string;
@@ -9,7 +9,7 @@ export type AddCountryFormElements {
 type FormFields = {
   continentName: Omit<IDropdownProps, "options"> & {value: string};
   countryName: ITextFieldProps;
-  isoCode: Omit<IDropdownProps, "options"> & {value: string};
+  isoCode: Omit<IComboBoxProps, "options"> & {value: string};
 };
 
 // Utility type to enforce that CountryFormFieldProps includes all keys from AddCountryFormElements

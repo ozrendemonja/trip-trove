@@ -2,10 +2,7 @@ package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.triptrove.manager.application.dto.GetCountryResponse;
-import com.triptrove.manager.application.dto.SaveCountryRequest;
-import com.triptrove.manager.application.dto.UpdateCountryContinentRequest;
-import com.triptrove.manager.application.dto.UpdateCountryDetailsRequest;
+import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Continent;
@@ -58,7 +55,7 @@ class CountryTests extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideValidCountryNames")
     void countryShouldBeSavedWhenValidNameIsSent(String countryName) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, countryName, "us");
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +74,7 @@ class CountryTests extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideTooLongCountryNames")
     void countrySaveRequestShouldFailWhenInvalidNameIsSent(InvalidCountryName input) throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.countryName);
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, input.countryName, "us");
 
         var jsonResponse = mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +107,7 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void countrySaveRequestShouldFailWithConflictResponseWhenCountryNameUnderGivenContinentAlreadyExists() throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0");
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 0", "us");
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -121,7 +118,7 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void countryShouldBeSavedWhenGivenCountryNameAlreadyExistsUnderDifferentContinent() throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0");
+        var request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0", "us");
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -136,7 +133,7 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void userShouldGetNotFoundExceptionWhenNonExistingContinentNameIsSend() throws Exception {
-        var request = new SaveCountryRequest("Invalid continent", "Test country");
+        var request = new SaveCountryRequest("Invalid continent", "Test country", "us");
 
         mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -348,7 +345,7 @@ class CountryTests extends AbstractIntegrationTest {
 
     @Test
     void errorShouldBeReturnedWhenCurrentCountryNameAlreadyExistsUnderNewContinentName() throws Exception {
-        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 4");
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country 4", "us");
         var mvcResult = mockMvc.perform(post("/countries")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1")
@@ -427,5 +424,165 @@ class CountryTests extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void countrySaveRequestShouldFailWhenIsoCodeIsNull() throws Exception {
+        // Arrange
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country", null);
+
+        // Act
+        var jsonResponse = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        // Assert
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code may not be null or empty}");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidIsoCodes")
+    void countrySaveRequestShouldFailWhenIsoCodeFormatIsInvalid(String invalidIsoCode) throws Exception {
+        // Arrange
+        var request = new SaveCountryRequest(CONTINENT_NAME_0, "Test country", invalidIsoCode);
+
+        // Act
+        var jsonResponse = mockMvc.perform(post("/countries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        // Assert
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code must be a 2-letter ISO 3166-1 alpha-2 code}");
+    }
+
+    private static Stream<String> provideInvalidIsoCodes() {
+        return Stream.of("u", "usa", "u1", "1u", "12", "u_", "us!");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideValidIsoCodeUpdates")
+    void shouldUpdateCountryIsoCodeWhenNewIsoCodeIsValid(String newIsoCode, String expectedStored) throws Exception {
+        var update = new UpdateCountryIsoCodeRequest(newIsoCode);
+
+        mockMvc.perform(put("/countries/" + 2 + "/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(countryRepo.findById(2).map(Country::getIsoCode)).hasValue(expectedStored);
+    }
+
+    private static Stream<org.junit.jupiter.params.provider.Arguments> provideValidIsoCodeUpdates() {
+        return Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("us", "us"),
+                org.junit.jupiter.params.provider.Arguments.of("DE", "de"),
+                org.junit.jupiter.params.provider.Arguments.of("Fr", "fr"),
+                org.junit.jupiter.params.provider.Arguments.of("jP", "jp")
+        );
+    }
+
+    @Test
+    void countryIsoCodeUpdateShouldNotChangeOtherCountryFields() throws Exception {
+        var originalName = countryRepo.findById(1).map(Country::getName).orElseThrow();
+        var originalContinentName = countryRepo.findById(1).map(Country::getContinent).map(Continent::getName).orElseThrow();
+        var update = new UpdateCountryIsoCodeRequest("zz");
+
+        mockMvc.perform(put("/countries/" + 1 + "/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNoContent());
+
+        assertThat(countryRepo.findById(1).map(Country::getIsoCode)).hasValue("zz");
+        assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(originalName);
+        assertThat(countryRepo.findById(1).map(Country::getContinent).map(Continent::getName)).hasValue(originalContinentName);
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenNonExistingCountryIsoCodeIsRequestedToBeUpdated() throws Exception {
+        var update = new UpdateCountryIsoCodeRequest("us");
+
+        var jsonResponse = mockMvc.perform(put("/countries/123/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @Test
+    void countryIsoCodeUpdateRequestShouldFailWhenIsoCodeIsNull() throws Exception {
+        var update = new UpdateCountryIsoCodeRequest(null);
+
+        var jsonResponse = mockMvc.perform(put("/countries/" + 1 + "/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code may not be null or empty}");
+    }
+
+    @Test
+    void countryIsoCodeUpdateRequestShouldFailWhenIsoCodeIsBlank() throws Exception {
+        var update = new UpdateCountryIsoCodeRequest("");
+
+        var jsonResponse = mockMvc.perform(put("/countries/" + 1 + "/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code may not be null or empty}");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidIsoCodes")
+    void countryIsoCodeUpdateRequestShouldFailWhenIsoCodeFormatIsInvalid(String invalidIsoCode) throws Exception {
+        var update = new UpdateCountryIsoCodeRequest(invalidIsoCode);
+
+        var jsonResponse = mockMvc.perform(put("/countries/" + 1 + "/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code must be a 2-letter ISO 3166-1 alpha-2 code}");
     }
 }

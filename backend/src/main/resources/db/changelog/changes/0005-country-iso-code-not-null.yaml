@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0005-country-iso-code-not-null
+      author: trip-trove
+      comment: |
+        Enforce NOT NULL on `country.iso_code`. Existing rows that still
+        have a NULL `iso_code` (created before this column existed) are
+        backfilled with the placeholder value `xx` so the constraint can
+        be applied. Operators are expected to update those placeholder
+        codes to the correct ISO 3166-1 alpha-2 values via the application
+        afterwards.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            country.iso_code is already NOT NULL - assuming this changeset
+            has already been applied; marking as ran.
+          sqlCheck:
+            expectedResult: "1"
+            sql: >-
+              SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'country' AND column_name = 'iso_code'
+                AND is_nullable = 'YES'
+              ) THEN 1 ELSE 0 END
+      changes:
+        - sql:
+            comment: Backfill NULL iso_code values with placeholder 'xx'.
+            sql: UPDATE country SET iso_code = 'xx' WHERE iso_code IS NULL
+        - addNotNullConstraint:
+            tableName: country
+            columnName: iso_code
+            columnDataType: VARCHAR(2)

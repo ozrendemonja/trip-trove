@@ -10,7 +10,7 @@ import {
   getAllCountries,
   getAllRegions,
   getAttraction,
-  getAttractions,
+  getAttractions1,
   getCity,
   getCityAttractions,
   getContinentAttractions,
@@ -20,6 +20,7 @@ import {
   getRegion,
   getRegionAttractions,
   getCountriesSummary,
+  getCountryVisitSummaries as getCountryVisitSummariesApi,
   getSearchedElements,
   saveAttraction,
   saveCity,
@@ -43,6 +44,7 @@ import {
   updateContinent,
   updateCountryContinent,
   updateCountryDetail,
+  updateCountryIsoCode,
   updateRegionCountry,
   updateRegionDetail
 } from "../../../clients/manager";
@@ -147,12 +149,14 @@ export const changeContinentName = async (
 
 export const saveNewCountry = async (
   name: string,
-  continentName: string
+  continentName: string,
+  isoCode: string
 ): Promise<void> => {
   const { error } = await saveCountry({
     body: {
       countryName: name,
-      continentName: continentName
+      continentName: continentName,
+      isoCode: isoCode
     },
     headers: {
       "x-api-version": "1"
@@ -193,6 +197,7 @@ export const getCountries = async (
     return {
       id: country.countryId,
       name: country.countryName!,
+      isoCode: country.isoCode ?? "",
       inContinent: country.continentName!,
       updatedOn: country.changedOn
     };
@@ -226,6 +231,7 @@ export const getCountryById = async (id: number): Promise<Country> => {
   return {
     id: data.countryId,
     name: data.countryName!,
+    isoCode: data.isoCode ?? "",
     inContinent: data.continentName!,
     updatedOn: data.changedOn
   };
@@ -285,6 +291,27 @@ export const changeCountryContinent = async (
 
   if (error) {
     throw new Error("Error while updating country countinent", error);
+  }
+};
+
+export const changeCountryIsoCode = async (
+  id: string,
+  newIsoCode: string
+): Promise<void> => {
+  const { error } = await updateCountryIsoCode({
+    body: {
+      isoCode: newIsoCode
+    },
+    path: {
+      id: id
+    },
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating country ISO code", error);
   }
 };
 
@@ -657,7 +684,7 @@ export const getPagedAttractions = async (
   lastReadAttraction?: LastReadAttraction,
   orderBy?: OrderOptions
 ): Promise<Attraction[]> => {
-  const { data, error } = await getAttractions({
+  const { data, error } = await getAttractions1({
     headers: {
       "x-api-version": "1"
     },
@@ -1633,3 +1660,35 @@ export const getCountriesVisitedSummary =
       totalCount: data?.totalCount ?? 0
     };
   };
+
+export interface CountryVisitSummary {
+  countryName: string;
+  isoCode: string;
+  visitedMustVisit: number;
+  unvisitedMustVisit: number;
+  visitedOther: number;
+  unvisitedOther: number;
+}
+
+export const getCountryVisitSummaries = async (): Promise<
+  CountryVisitSummary[]
+> => {
+  const { data, error } = await getCountryVisitSummariesApi({
+    headers: {
+      "x-api-version": "1"
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while getting country visit summaries");
+  }
+
+  return (data ?? []).map((row) => ({
+    countryName: row.countryName ?? "",
+    isoCode: row.isoCode ?? "",
+    visitedMustVisit: row.visitedMustVisit ?? 0,
+    unvisitedMustVisit: row.unvisitedMustVisit ?? 0,
+    visitedOther: row.visitedOther ?? 0,
+    unvisitedOther: row.unvisitedOther ?? 0
+  }));
+};

@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Attraction;
+import com.triptrove.manager.domain.model.CountryAttractionCount;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
@@ -110,4 +111,23 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
 
     @Query("SELECT COUNT(a)>0 FROM Attraction mainA INNER JOIN mainA.attractions a WHERE mainA.id = :id")
     boolean isMainAttraction(Long id);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.CountryAttractionCount(a.country.name, a.country.isoCode, a.mustVisit, COUNT(a))
+            FROM Attraction a
+            GROUP BY a.country.name, a.country.isoCode, a.mustVisit
+            """)
+    List<CountryAttractionCount> countAttractionsGroupedByCountryAndMustVisit();
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.CountryAttractionCount(a.country.name, a.country.isoCode, a.mustVisit, COUNT(DISTINCT a.id))
+            FROM Attraction a
+            WHERE EXISTS (
+                SELECT 1 FROM TripAttraction ta
+                WHERE ta.attraction.id = a.id
+                AND ta.status = com.triptrove.manager.domain.model.TripAttractionStatus.VISITED
+            )
+            GROUP BY a.country.name, a.country.isoCode, a.mustVisit
+            """)
+    List<CountryAttractionCount> countVisitedAttractionsGroupedByCountryAndMustVisit();
 }

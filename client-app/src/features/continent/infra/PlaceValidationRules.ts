@@ -20,6 +20,15 @@ export const createPlaceValidation = () => {
         256,
         ({ max }) => `Country name may not be longer then ${max} characters`
       ),
+    isoCode: yup
+      .string()
+      .trim()
+      .ensure()
+      .required("ISO code may not be null or empty")
+      .matches(
+        /^[A-Za-z]{2}$/,
+        "ISO code must be a 2-letter ISO 3166-1 alpha-2 code"
+      ),
     regionName: yup
       .string()
       .trim()

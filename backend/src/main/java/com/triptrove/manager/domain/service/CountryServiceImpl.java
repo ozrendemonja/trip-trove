@@ -22,7 +22,7 @@ public class CountryServiceImpl implements CountryService {
     private final ManagerProperties managerProperties;
 
     @Override
-    public Country saveCountry(String continentName, String countryName) {
+    public Country saveCountry(String continentName, String countryName, String isoCode) {
         log.atInfo().log("Processing save country request for country '{}'", countryName);
         if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName)) {
             throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName, continentName), ErrorCode.DUPLICATE_NAME);
@@ -33,6 +33,7 @@ public class CountryServiceImpl implements CountryService {
 
         var country = new Country();
         country.setName(countryName);
+        country.setIsoCode(isoCode.toLowerCase());
         country.setContinent(continent);
         var result = countryRepo.save(country);
 
@@ -124,5 +125,15 @@ public class CountryServiceImpl implements CountryService {
         log.atInfo().log("Getting country with id '{}'", id);
         return countryRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+    }
+
+    @Override
+    public void updateCountryIsoCode(Integer countryId, String isoCode) {
+        log.atInfo().log("Updating ISO code for country '{}' to '{}'", countryId, isoCode);
+        var country = countryRepo.findById(countryId)
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        country.setIsoCode(isoCode.toLowerCase());
+        countryRepo.save(country);
+        log.atInfo().log("ISO code updated for country '{}'", countryId);
     }
 }

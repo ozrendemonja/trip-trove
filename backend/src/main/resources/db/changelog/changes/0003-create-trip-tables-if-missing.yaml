@@ -1,0 +1,154 @@
+databaseChangeLog:
+  # Recovery changesets for environments where the 0001 baseline was
+  # MARK_RAN (because some tables already existed via Hibernate
+  # ddl-auto=update) but `trip` and/or `trip_attraction` were never
+  # actually created. Each changeset is independently guarded so it
+  # is a no-op on databases that already have the table/constraint.
+
+  - changeSet:
+      id: 0003-create-trip-if-missing
+      author: trip-trove
+      comment: |
+        Create the `trip` table if it is missing. Mirrors the definition
+        from 0001-init-schema so environments where the baseline was
+        marked-as-ran without actually creating this table can recover.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            `trip` table already exists - skipping recovery create.
+          not:
+            - tableExists:
+                tableName: trip
+      changes:
+        - createTable:
+            tableName: trip
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trip
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: trip_start_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: trip_end_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0003-create-trip-attraction-if-missing
+      author: trip-trove
+      comment: |
+        Create the `trip_attraction` table if it is missing. Mirrors the
+        definition from 0001-init-schema.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            `trip_attraction` table already exists - skipping recovery create.
+          not:
+            - tableExists:
+                tableName: trip_attraction
+      changes:
+        - createTable:
+            tableName: trip_attraction
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trip_attraction
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: attraction_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trip_attraction_attraction
+                    references: attraction(id)
+              - column:
+                  name: trip_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_trip_attraction_trip
+                    references: trip(id)
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rating
+                  type: VARCHAR(32)
+              - column:
+                  name: note
+                  type: VARCHAR(512)
+              - column:
+                  name: review_note
+                  type: VARCHAR(512)
+              - column:
+                  name: attraction_group
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: must_visit
+                  type: BOOLEAN
+              - column:
+                  name: working_hours
+                  type: VARCHAR(128)
+              - column:
+                  name: visit_time
+                  type: VARCHAR(64)
+
+  - changeSet:
+      id: 0003-add-uk-trip-attraction-if-missing
+      author: trip-trove
+      comment: |
+        Add the unique constraint on (trip_id, attraction_id) when it
+        is missing.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            uk_trip_attraction already exists - skipping.
+          sqlCheck:
+            expectedResult: "0"
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.table_constraints
+              WHERE table_name = 'trip_attraction'
+                AND constraint_name = 'uk_trip_attraction'
+      changes:
+        - addUniqueConstraint:
+            tableName: trip_attraction
+            columnNames: trip_id, attraction_id
+            constraintName: uk_trip_attraction

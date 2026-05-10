@@ -1,5 +1,4 @@
 import {
-  attachAttraction,
   detachAttraction,
   detachAttraction1,
   getTrip,
@@ -105,7 +104,7 @@ export const saveTripToApi = async (
 };
 
 export const deleteTripById = async (id: number): Promise<void> => {
-  const { error } = await detachAttraction1({
+  const { error } = await detachAttraction({
     path: { id },
     headers: { "x-api-version": "1" }
   });
@@ -217,7 +216,7 @@ export const removeAttractionFromTrip = async (
   tripId: number,
   attractionId: number
 ): Promise<void> => {
-  const { error } = await detachAttraction({
+  const { error } = await detachAttraction1({
     path: { id: tripId, attractionId },
     headers: { "x-api-version": "1" }
   });

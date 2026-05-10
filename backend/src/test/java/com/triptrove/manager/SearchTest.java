@@ -221,6 +221,7 @@ public class SearchTest extends AbstractIntegrationTest {
     void shouldFindCountryWhenSearchQueryContainsPlainAsciiLetterS() throws Exception {
         Country country = new Country();
         country.setName("Senegal");
+        country.setIsoCode("sn");
         country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow());
         countryRepo.saveAndFlush(country);
 
@@ -245,6 +246,7 @@ public class SearchTest extends AbstractIntegrationTest {
     void shouldFindCountryWhenSearchQueryUsesAsciiEquivalentOfAnyDiacritic(String storedName, String asciiQuery) throws Exception {
         Country country = new Country();
         country.setName(storedName);
+        country.setIsoCode("zz");
         country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow());
         countryRepo.saveAndFlush(country);
 

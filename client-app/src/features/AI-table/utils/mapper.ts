@@ -40,7 +40,9 @@ export function buildVisitHistoryMap(
  * Returns the most recent visit (latest tripToDate). Backend already orders
  * DESC, so we take the first; we still defensively sort in case input is mixed.
  */
-function latestVisit(visits: VisitHistoryEntry[]): VisitHistoryEntry | undefined {
+function latestVisit(
+  visits: VisitHistoryEntry[]
+): VisitHistoryEntry | undefined {
   if (!visits || visits.length === 0) return undefined;
   return [...visits].sort((a, b) => {
     const ad = a.tripToDate || "";

@@ -29,7 +29,7 @@ public class CountryController {
             @ApiResponse(description = "Country already exists", responseCode = "409")
     })
     public ResponseEntity<Void> saveCountry(@RequestBody @Valid SaveCountryRequest countryRequest) {
-        var result = countryService.saveCountry(countryRequest.continentName(), countryRequest.countryName());
+        var result = countryService.saveCountry(countryRequest.continentName(), countryRequest.countryName(), countryRequest.isoCode());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -88,5 +88,14 @@ public class CountryController {
     })
     public void updateCountryContinent(@PathVariable String id, @RequestBody UpdateCountryContinentRequest countryContinentRequest) {
         countryService.updateCountryContinentDetails(Integer.valueOf(id), countryContinentRequest.continentName());
+    }
+
+    @PutMapping("/{id:\\d+}/iso-code")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update the ISO 3166-1 alpha-2 code of the country", responses = {
+            @ApiResponse(description = "Country ISO code is updated", responseCode = "204"),
+    })
+    public void updateCountryIsoCode(@PathVariable String id, @Valid @RequestBody UpdateCountryIsoCodeRequest countryIsoCodeRequest) {
+        countryService.updateCountryIsoCode(Integer.valueOf(id), countryIsoCodeRequest.isoCode());
     }
 }

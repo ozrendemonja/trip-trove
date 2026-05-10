@@ -20,10 +20,10 @@ INSERT INTO continent (created_on, name, updated_on)
  	 ('2025-01-15T08:00:05', 'Test continent 1', null)
  	 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO country (created_on, name, updated_on, continent_id)
+INSERT INTO country (created_on, name, updated_on, continent_id, iso_code)
     VALUES
-    ('2024-08-20T20:04:59', 'Test country 0', null, 1),
-    ('2025-02-01T20:04:59', 'Test country 1', null, 2);
+    ('2024-08-20T20:04:59', 'Test country 0', null, 1, 'aa'),
+    ('2025-02-01T20:04:59', 'Test country 1', null, 2, 'ab');
 
 INSERT INTO region(created_on, name, updated_on, country_id)
 	VALUES

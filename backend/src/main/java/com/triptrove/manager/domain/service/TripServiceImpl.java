@@ -217,6 +217,61 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    public List<CountryVisitSummary> getCountryVisitSummaries() {
+        log.atInfo().log("Getting country visit summaries");
+        var allAttractionsByCountry = attractionRepo.countAttractionsGroupedByCountryAndMustVisit();
+        var visitedAttractionsByCountry = attractionRepo.countVisitedAttractionsGroupedByCountryAndMustVisit();
+
+        var result = mergeIntoCountryVisitSummaries(allAttractionsByCountry, visitedAttractionsByCountry);
+        log.atInfo().log("Country visit summaries computed for {} countries", result.size());
+        return result;
+    }
+
+    private static List<CountryVisitSummary> mergeIntoCountryVisitSummaries(
+            List<CountryAttractionCount> allAttractionsByCountry,
+            List<CountryAttractionCount> visitedAttractionsByCountry) {
+        var totalMustVisit = sumByCountry(allAttractionsByCountry, true);
+        var totalOther = sumByCountry(allAttractionsByCountry, false);
+        var visitedMustVisit = sumByCountry(visitedAttractionsByCountry, true);
+        var visitedOther = sumByCountry(visitedAttractionsByCountry, false);
+
+        var isoByCountry = java.util.stream.Stream.of(allAttractionsByCountry, visitedAttractionsByCountry)
+                .flatMap(java.util.List::stream)
+                .filter(row -> row.isoCode() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        CountryAttractionCount::countryName,
+                        CountryAttractionCount::isoCode,
+                        (a, b) -> a));
+
+        return java.util.stream.Stream.of(totalMustVisit, totalOther, visitedMustVisit, visitedOther)
+                .flatMap(map -> map.keySet().stream())
+                .distinct()
+                .map(country -> {
+                    long visitedMv = visitedMustVisit.getOrDefault(country, 0L);
+                    long totalMv = totalMustVisit.getOrDefault(country, 0L);
+                    long visitedOt = visitedOther.getOrDefault(country, 0L);
+                    long totalOt = totalOther.getOrDefault(country, 0L);
+                    return new CountryVisitSummary(country,
+                            isoByCountry.get(country),
+                            visitedMv,
+                            Math.max(0L, totalMv - visitedMv),
+                            visitedOt,
+                            Math.max(0L, totalOt - visitedOt));
+                })
+                .toList();
+    }
+
+    private static java.util.Map<String, Long> sumByCountry(
+            List<CountryAttractionCount> rows, boolean mustVisit) {
+        return rows.stream()
+                .filter(row -> row.mustVisitAttraction() == mustVisit)
+                .collect(java.util.stream.Collectors.toMap(
+                        CountryAttractionCount::countryName,
+                        CountryAttractionCount::attractionCount,
+                        Long::sum));
+    }
+
+    @Override
     public List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getTripAfter(afterTrip);

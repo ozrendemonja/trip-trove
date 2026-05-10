@@ -169,6 +169,7 @@ class ContinentTests extends AbstractIntegrationTest {
     void errorShouldBeReturnedWhenContinentWithCountriesIsRequestedToBeDeleted() throws Exception {
         Country country = new Country();
         country.setName("Test country 10");
+        country.setIsoCode("zz");
         country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow(Exception::new));
         countryRepo.save(country);
 

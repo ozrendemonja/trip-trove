@@ -1663,7 +1663,7 @@ export const getCountriesVisitedSummary =
 
 export interface CountryVisitSummary {
   countryName: string;
-  isoCode?: string;
+  isoCode: string;
   visitedMustVisit: number;
   unvisitedMustVisit: number;
   visitedOther: number;
@@ -1685,7 +1685,7 @@ export const getCountryVisitSummaries = async (): Promise<
 
   return (data ?? []).map((row) => ({
     countryName: row.countryName ?? "",
-    isoCode: row.isoCode,
+    isoCode: row.isoCode ?? "",
     visitedMustVisit: row.visitedMustVisit ?? 0,
     unvisitedMustVisit: row.unvisitedMustVisit ?? 0,
     visitedOther: row.visitedOther ?? 0,

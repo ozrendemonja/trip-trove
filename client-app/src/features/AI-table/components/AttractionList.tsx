@@ -24,6 +24,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
   reviewSelection,
   onAttachAttraction,
   onDetachAttraction,
+  onToggleWouldVisitAgain,
   visitHistory
 }) => {
   return (
@@ -78,6 +79,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
               reviewData={reviewSelection?.[attraction.id]}
               onAttachAttraction={onAttachAttraction}
               onDetachAttraction={onDetachAttraction}
+              onToggleWouldVisitAgain={onToggleWouldVisitAgain}
               visitHistory={visitHistory?.get(attraction.id)}
             />
           </li>

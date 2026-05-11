@@ -208,9 +208,12 @@ export const MyTrip: React.FC = () => {
   const [loadedCities, setLoadedCities] = useState<TouristDestination[]>([]);
   // Cities loaded from saved trip attractions in DB
   const [savedCities, setSavedCities] = useState<TouristDestination[]>([]);
-  // Review data (rating + reviewNote) from DB for pre-populating review mode
+  // Review data (rating + reviewNote + wouldVisitAgain) from DB for pre-populating review mode
   const [savedReviewData, setSavedReviewData] = useState<
-    Record<number, { rating: Rating; reviewNote: string }>
+    Record<
+      number,
+      { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
+    >
   >({});
   // Attraction IDs already persisted in DB (to avoid duplicate saves)
   const [savedAttractionIds, setSavedAttractionIds] = useState<number[]>([]);
@@ -229,13 +232,14 @@ export const MyTrip: React.FC = () => {
 
         const reviewData: Record<
           number,
-          { rating: Rating; reviewNote: string }
+          { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
         > = {};
         for (const item of saved) {
           if (item.rating) {
             reviewData[item.attractionId] = {
               rating: item.rating as Rating,
-              reviewNote: item.reviewNote ?? ""
+              reviewNote: item.reviewNote ?? "",
+              wouldVisitAgain: item.wouldVisitAgain ?? false
             };
           }
         }

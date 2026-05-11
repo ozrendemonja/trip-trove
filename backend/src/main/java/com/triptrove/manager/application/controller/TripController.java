@@ -157,6 +157,18 @@ public class TripController {
         tripService.updateAttractionMustVisit(id, attractionId, request.mustVisit());
     }
 
+    @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/would-visit-again")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update would visit again flag for attraction under trip", responses = {
+            @ApiResponse(description = "Would visit again updated successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void updateAttractionWouldVisitAgain(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionWouldVisitAgainRequest request) {
+        tripService.updateAttractionWouldVisitAgain(id, attractionId, request.wouldVisitAgain());
+    }
+
     @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/working-hours")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update attraction working hours under trip", responses = {

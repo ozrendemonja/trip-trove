@@ -35,6 +35,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   reviewData,
   onAttachAttraction,
   onDetachAttraction,
+  onToggleWouldVisitAgain,
   visitHistory
 }) => {
   const review = useReviewStyles();
@@ -298,10 +299,10 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
             🏳️
           </span>
         )}
+        {visitHistory && visitHistory.length > 0 && (
+          <VisitHistoryBadge visits={visitHistory} />
+        )}
       </div>
-      {visitHistory && visitHistory.length > 0 && (
-        <VisitHistoryBadge visits={visitHistory} />
-      )}
       {(attraction.address || attraction.category) && (
         <div className="attraction-address-line">
           <span className="attraction-address-text">{attraction.address}</span>
@@ -574,6 +575,28 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                     {reviewData.reviewNote && (
                       <Text styles={review.attachedNote}>
                         {reviewData.reviewNote}
+                      </Text>
+                    )}
+                    {onToggleWouldVisitAgain ? (
+                      <button
+                        type="button"
+                        className={`would-visit-again-toggle${reviewData.wouldVisitAgain ? " active" : ""}`}
+                        onClick={() => onToggleWouldVisitAgain(attraction.id)}
+                        title={
+                          reviewData.wouldVisitAgain
+                            ? "Would visit again — click to unset"
+                            : "Click to mark as would visit again"
+                        }
+                      >
+                        {reviewData.wouldVisitAgain
+                          ? "🔁 Would visit again"
+                          : "Would visit again?"}
+                      </button>
+                    ) : (
+                      <Text styles={review.attachedNote}>
+                        {reviewData.wouldVisitAgain
+                          ? "🔁 Would visit again"
+                          : "🚫 Would not visit again"}
                       </Text>
                     )}
                   </Stack>

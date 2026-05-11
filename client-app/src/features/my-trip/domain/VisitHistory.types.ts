@@ -7,6 +7,7 @@ export interface VisitHistoryEntry {
   tripToDate?: string;
   rating: Rating;
   reviewNote?: string;
+  wouldVisitAgain?: boolean;
 }
 
 export interface AttractionVisitHistory {

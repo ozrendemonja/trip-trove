@@ -69,6 +69,9 @@ public class TripAttraction {
     @Column(name = "visit_time", length = 64)
     private String visitTime;
 
+    @Column(name = "would_visit_again", nullable = false)
+    private boolean wouldVisitAgain;
+
     public void recordVisit(Rating rating, String reviewNote) {
         this.rating = rating;
         this.reviewNote = reviewNote;
@@ -78,6 +81,7 @@ public class TripAttraction {
     public void clearReview() {
         this.rating = null;
         this.reviewNote = null;
+        this.wouldVisitAgain = false;
         this.status = TripAttractionStatus.PLANNED;
     }
 }

@@ -12,7 +12,8 @@ import {
   updateTripAttractionMustVisit,
   updateTripAttractionWorkingHours,
   updateTripAttractionVisitTime,
-  updateTripAttractionNote
+  updateTripAttractionNote,
+  updateTripAttractionWouldVisitAgain
 } from "../../my-trip/infra/TripApi";
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
@@ -74,7 +75,10 @@ const Board: React.FC<BoardProps> = ({
     Record<number, boolean>
   >({});
   const [reviewSelection, setReviewSelection] = useState<
-    Record<number, { rating: Rating; reviewNote: string }>
+    Record<
+      number,
+      { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
+    >
   >(initialReviewData ?? {});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
@@ -598,13 +602,36 @@ const Board: React.FC<BoardProps> = ({
         );
         setReviewSelection((prev) => ({
           ...prev,
-          [attractionId]: { rating: ratingValue, reviewNote }
+          [attractionId]: {
+            rating: ratingValue,
+            reviewNote,
+            wouldVisitAgain: prev[attractionId]?.wouldVisitAgain ?? false
+          }
         }));
       } catch (err) {
         console.error("Failed to save review", attractionId, err);
       }
     },
     [tripId]
+  );
+
+  const handleToggleWouldVisitAgain = useCallback(
+    async (attractionId: number) => {
+      if (!tripId) return;
+      const current = reviewSelection[attractionId];
+      if (!current) return;
+      const next = !current.wouldVisitAgain;
+      try {
+        await updateTripAttractionWouldVisitAgain(tripId, attractionId, next);
+        setReviewSelection((prev) => ({
+          ...prev,
+          [attractionId]: { ...prev[attractionId], wouldVisitAgain: next }
+        }));
+      } catch (err) {
+        console.error("Failed to update would visit again", attractionId, err);
+      }
+    },
+    [tripId, reviewSelection]
   );
 
   const handleDetachAttraction = useCallback(
@@ -904,6 +931,7 @@ const Board: React.FC<BoardProps> = ({
                         reviewSelection={reviewSelection}
                         onAttachAttraction={handleAttachAttraction}
                         onDetachAttraction={handleDetachAttraction}
+                        onToggleWouldVisitAgain={handleToggleWouldVisitAgain}
                         visitHistory={visitHistory}
                       />
                     </div>

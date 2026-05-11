@@ -728,13 +728,11 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void wouldVisitAgainShouldBeReturnedInGetAttractionsResponse() throws Exception {
-        var request = new UpdateTripAttractionWouldVisitAgainRequest(true);
-
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        var existing = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        existing.setWouldVisitAgain(true);
+        tripRepo.save(tripRepo.findById(1L).get());
 
         var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -795,13 +793,11 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void wouldVisitAgainShouldBeClearedWhenReviewIsCleared() throws Exception {
-        var request = new UpdateTripAttractionWouldVisitAgainRequest(true);
-
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        var existing = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        existing.setWouldVisitAgain(true);
+        tripRepo.save(tripRepo.findById(1L).get());
 
         mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review")
                         .contentType(MediaType.APPLICATION_JSON)

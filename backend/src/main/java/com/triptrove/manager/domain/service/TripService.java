@@ -22,6 +22,8 @@ public interface TripService {
 
     void clearReview(Long tripId, Long attractionId);
 
+    void updateAttractionWouldVisitAgain(Long tripId, Long attractionId, boolean wouldVisitAgain);
+
     void detachAttraction(Long tripId, Long attractionId);
 
     void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);

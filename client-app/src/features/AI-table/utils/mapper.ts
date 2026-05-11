@@ -56,10 +56,12 @@ export function pickColumnForAttraction(
   visits: VisitHistoryEntry[] | undefined
 ): "top" | "secondary" | "excluded" {
   const last = latestVisit(visits ?? []);
-  if (last && last.rating) {
-    return RATING_SCORE[last.rating] < GOOD_REVIEW_THRESHOLD
-      ? "excluded"
-      : "secondary";
+  if (last) {
+    if (last.wouldVisitAgain === false) return "excluded";
+    if (last.rating && RATING_SCORE[last.rating] < GOOD_REVIEW_THRESHOLD) {
+      return "excluded";
+    }
+    return "secondary";
   }
   return attraction.mustVisit ? "top" : "secondary";
 }
@@ -180,10 +182,13 @@ export function applyVisitHistoryToCities(
       for (const task of col.tasks) {
         const visits = visitHistoryMap.get(task.id);
         const latest = latestVisit(visits ?? []);
-        const isPoor =
+        const shouldExclude =
           latest !== undefined &&
-          RATING_SCORE[latest.rating] < GOOD_REVIEW_THRESHOLD;
-        const target: ColumnTarget = isPoor ? "excluded" : sourceTarget;
+          (latest.wouldVisitAgain === false ||
+            RATING_SCORE[latest.rating] < GOOD_REVIEW_THRESHOLD);
+        const target: ColumnTarget = shouldExclude
+          ? "excluded"
+          : sourceTarget;
         tasksByTarget[target].push(task);
         if (target !== sourceTarget) movedAny = true;
       }

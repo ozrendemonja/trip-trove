@@ -320,6 +320,12 @@ export default function makeServer(): ReturnType<typeof createServer> {
         { timing: 300 }
       );
 
+      this.put(
+        "/trips/:id/attractions/:attractionId/would-visit-again",
+        () => new MirageResponse(204),
+        { timing: 300 }
+      );
+
       this.delete(
         "/trips/:id/attractions/:attractionId",
         () => new MirageResponse(204),

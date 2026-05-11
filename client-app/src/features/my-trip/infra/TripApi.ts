@@ -41,6 +41,7 @@ export interface TripAttractionFromServer {
   attractionGroup: TripAttractionGroup;
   workingHours?: string;
   visitTime?: string;
+  wouldVisitAgain?: boolean;
 }
 
 managerClient();
@@ -255,6 +256,22 @@ export const updateTripAttractionMustVisit = async (
 
   if (error) {
     console.error("Error while updating attraction must visit", error);
+  }
+};
+
+export const updateTripAttractionWouldVisitAgain = async (
+  tripId: number,
+  attractionId: number,
+  wouldVisitAgain: boolean
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/attractions/${attractionId}/would-visit-again`,
+    body: { wouldVisitAgain },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    console.error("Error while updating would visit again", error);
   }
 };
 

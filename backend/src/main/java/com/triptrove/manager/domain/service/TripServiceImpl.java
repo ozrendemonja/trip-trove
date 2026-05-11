@@ -147,6 +147,16 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    public void updateAttractionWouldVisitAgain(Long tripId, Long attractionId, boolean wouldVisitAgain) {
+        log.atInfo().log("Updating would visit again for attraction '{}' under trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        attraction.setWouldVisitAgain(wouldVisitAgain);
+        tripAttractionRepo.save(attraction);
+        log.atInfo().log("Would visit again updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
     public void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours) {
         log.atInfo().log("Updating working hours for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)

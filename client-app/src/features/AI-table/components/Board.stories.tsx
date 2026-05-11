@@ -114,7 +114,8 @@ const visitHistoryDemo: VisitHistoryMap = new Map([
         tripFromDate: "2024-04-10",
         tripToDate: "2024-04-17",
         rating: "EXCELLENT",
-        reviewNote: "Magical at sunset, summit was worth the wait."
+        reviewNote: "Magical at sunset, summit was worth the wait.",
+        wouldVisitAgain: true
       }
     ]
   ],
@@ -127,7 +128,8 @@ const visitHistoryDemo: VisitHistoryMap = new Map([
         tripFromDate: "2023-12-20",
         tripToDate: "2023-12-27",
         rating: "VERY_GOOD",
-        reviewNote: "Loved the Denon wing, skipped the Mona Lisa crowd."
+        reviewNote: "Loved the Denon wing, skipped the Mona Lisa crowd.",
+        wouldVisitAgain: true
       },
       {
         tripId: 90,
@@ -135,7 +137,8 @@ const visitHistoryDemo: VisitHistoryMap = new Map([
         tripFromDate: "2019-07-01",
         tripToDate: "2019-07-05",
         rating: "AVERAGE",
-        reviewNote: "Too crowded in summer."
+        reviewNote: "Too crowded in summer.",
+        wouldVisitAgain: false
       }
     ]
   ],
@@ -148,7 +151,8 @@ const visitHistoryDemo: VisitHistoryMap = new Map([
         tripFromDate: "2022-09-02",
         tripToDate: "2022-09-04",
         rating: "BELOW_AVERAGE",
-        reviewNote: "Tourist traps everywhere on Place du Tertre."
+        reviewNote: "Tourist traps everywhere on Place du Tertre.",
+        wouldVisitAgain: false
       }
     ]
   ],

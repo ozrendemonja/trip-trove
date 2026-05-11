@@ -32,7 +32,8 @@ public record GetTripAttractionResponse(Long attractionId,
                                         TripAttractionGroupDTO attractionGroup,
                                         boolean mustVisit,
                                         String workingHours,
-                                        String visitTime) {
+                                        String visitTime,
+                                        boolean wouldVisitAgain) {
     public static GetTripAttractionResponse from(TripAttraction tripAttraction) {
         Attraction attraction = tripAttraction.getAttraction();
         return new GetTripAttractionResponse(
@@ -59,7 +60,8 @@ public record GetTripAttractionResponse(Long attractionId,
                 TripAttractionGroupDTO.valueOf(tripAttraction.getAttractionGroup().name()),
                 tripAttraction.isMustVisit(),
                 tripAttraction.getWorkingHours(),
-                tripAttraction.getVisitTime()
+                tripAttraction.getVisitTime(),
+                tripAttraction.isWouldVisitAgain()
         );
     }
 }

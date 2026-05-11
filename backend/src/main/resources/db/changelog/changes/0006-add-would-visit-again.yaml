@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0006-add-would-visit-again
+      author: trip-trove
+      comment: |
+        Add `would_visit_again` flag column to `trip_attraction`. The flag is
+        captured as part of an attraction review and may be edited later
+        independently (mirroring the `must_visit` toggle pattern).
+
+        Default value is FALSE so existing rows are backfilled to "would not
+        visit again".
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            trip_attraction.would_visit_again column already exists -
+            assuming the change has already been applied; marking as ran.
+          not:
+            - columnExists:
+                tableName: trip_attraction
+                columnName: would_visit_again
+      changes:
+        - addColumn:
+            tableName: trip_attraction
+            columns:
+              - column:
+                  name: would_visit_again
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

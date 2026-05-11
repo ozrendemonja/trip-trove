@@ -703,6 +703,118 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @MethodSource("provideValidWouldVisitAgainValues")
+    void wouldVisitAgainShouldBeUpdatedWhenValidValueIsProvided(Boolean wouldVisitAgain) throws Exception {
+        var request = new UpdateTripAttractionWouldVisitAgainRequest(wouldVisitAgain);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.isWouldVisitAgain()).isEqualTo(wouldVisitAgain);
+    }
+
+    private static Stream<Arguments> provideValidWouldVisitAgainValues() {
+        return Stream.of(
+                arguments(Named.of("would visit again set to true", true)),
+                arguments(Named.of("would visit again set to false", false))
+        );
+    }
+
+    @Test
+    void wouldVisitAgainShouldBeReturnedInGetAttractionsResponse() throws Exception {
+        var request = new UpdateTripAttractionWouldVisitAgainRequest(true);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+        var updated = java.util.Arrays.stream(response)
+                .filter(r -> r.attractionId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(updated.wouldVisitAgain()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidWouldVisitAgainTargets")
+    void wouldVisitAgainShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
+        var request = new UpdateTripAttractionWouldVisitAgainRequest(false);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private static Stream<Arguments> provideInvalidWouldVisitAgainTargets() {
+        return Stream.of(
+                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
+                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
+        );
+    }
+
+    @Test
+    void wouldVisitAgainShouldNotBeUpdatedWhenValueIsNull() throws Exception {
+        var request = new UpdateTripAttractionWouldVisitAgainRequest(null);
+
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+    }
+
+    @Test
+    void wouldVisitAgainShouldBeClearedWhenReviewIsCleared() throws Exception {
+        var request = new UpdateTripAttractionWouldVisitAgainRequest(true);
+
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
+                .filter(ta -> ta.getAttraction().getId().equals(1L))
+                .findFirst().orElseThrow();
+        assertThat(tripAttraction.isWouldVisitAgain()).isFalse();
+    }
+
+    @ParameterizedTest
     @MethodSource("provideInvalidWorkingHoursTargets")
     void workingHoursShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionWorkingHoursRequest("9-17");

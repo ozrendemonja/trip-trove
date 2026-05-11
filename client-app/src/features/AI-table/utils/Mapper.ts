@@ -186,9 +186,7 @@ export function applyVisitHistoryToCities(
           latest !== undefined &&
           (latest.wouldVisitAgain === false ||
             RATING_SCORE[latest.rating] < GOOD_REVIEW_THRESHOLD);
-        const target: ColumnTarget = shouldExclude
-          ? "excluded"
-          : sourceTarget;
+        const target: ColumnTarget = shouldExclude ? "excluded" : sourceTarget;
         tasksByTarget[target].push(task);
         if (target !== sourceTarget) movedAny = true;
       }

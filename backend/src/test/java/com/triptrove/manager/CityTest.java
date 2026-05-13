@@ -26,8 +26,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -195,10 +197,10 @@ public class CityTest extends AbstractIntegrationTest {
         GetCityResponse[] response = mapper.readValue(jsonResponse, GetCityResponse[].class);
         assertThat(response).hasSize(2);
         assertThat(response[0].cityName()).isEqualTo("Test city 4");
-        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_1);
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
-        assertThat(response[1].cityName()).isEqualTo("Test city 3");
-        assertThat(response[1].regionName()).isEqualTo(REGION_NAME_0);
+        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_2);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[1].cityName()).isEqualTo("Test city 4");
+        assertThat(response[1].regionName()).isEqualTo(REGION_NAME_1);
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
         jsonResponse = mockMvc.perform(get("/cities")
@@ -213,9 +215,9 @@ public class CityTest extends AbstractIntegrationTest {
 
         response = mapper.readValue(jsonResponse, GetCityResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].cityName()).isEqualTo("Test city 4");
-        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_2);
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[0].cityName()).isEqualTo("Test city 3");
+        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_0);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
         assertThat(response[1].cityName()).isEqualTo("Test city 1");
         assertThat(response[1].regionName()).isEqualTo(REGION_NAME_0);
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
@@ -270,11 +272,11 @@ public class CityTest extends AbstractIntegrationTest {
 
         response = mapper.readValue(jsonResponse, GetCityResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].cityName()).isEqualTo("Test city 4");
-        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_2);
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
-        assertThat(response[1].cityName()).isEqualTo("Test city 3");
-        assertThat(response[1].regionName()).isEqualTo(REGION_NAME_0);
+        assertThat(response[0].cityName()).isEqualTo("Test city 3");
+        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_0);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
+        assertThat(response[1].cityName()).isEqualTo("Test city 4");
+        assertThat(response[1].regionName()).isEqualTo(REGION_NAME_1);
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
         jsonResponse = mockMvc.perform(get("/cities")
@@ -291,8 +293,8 @@ public class CityTest extends AbstractIntegrationTest {
         response = mapper.readValue(jsonResponse, GetCityResponse[].class);
         assertThat(response).hasSize(1);
         assertThat(response[0].cityName()).isEqualTo("Test city 4");
-        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_1);
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_0);
+        assertThat(response[0].regionName()).isEqualTo(REGION_NAME_2);
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
     }
 
 
@@ -323,7 +325,7 @@ public class CityTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
         assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
     }
-    
+
     @Test
     void userShouldGetErrorWhenNonExistingCityIsRequestedToBeDeleted() throws Exception {
         var jsonResponse = mockMvc.perform(delete("/cities/" + "100")
@@ -529,5 +531,65 @@ public class CityTest extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
         assertThat(actual.errorMessage()).isEqualTo("{regionId = must not be null}");
+    }
+
+    @Test
+    void allCitiesShouldBeReturnedAcrossPagesInDescOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        // Update the oldest city (id=1, "Test city 0") so it jumps to the top of DESC ordering.
+        mockMvc.perform(put("/cities/1/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateCityDetailsRequest("Updated city"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<Integer>();
+        GetCityResponse[] page = fetchCitiesPage("DESC", null, null);
+        stream(page).map(GetCityResponse::cityId).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchCitiesPage("DESC", last.cityId(), last.changedOn().toString());
+            stream(page).map(GetCityResponse::cityId).forEach(collected::add);
+        }
+
+        // Expected DESC by coalesce(updatedOn, createdOn): id=1 (updated now), id=3, id=5, id=4, id=2
+        assertThat(collected).containsExactly(1, 3, 5, 4, 2);
+    }
+
+    @Test
+    void allCitiesShouldBeReturnedAcrossPagesInAscOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        mockMvc.perform(put("/cities/1/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateCityDetailsRequest("Updated city"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<Integer>();
+        GetCityResponse[] page = fetchCitiesPage("ASC", null, null);
+        stream(page).map(GetCityResponse::cityId).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchCitiesPage("ASC", last.cityId(), last.changedOn().toString());
+            stream(page).map(GetCityResponse::cityId).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(2, 4, 5, 3, 1);
+    }
+
+    private GetCityResponse[] fetchCitiesPage(String sortDirection, Integer afterCityId, String afterChangedOn) throws Exception {
+        var request = get("/cities")
+                .contentType(MediaType.APPLICATION_JSON)
+                .param("sd", sortDirection)
+                .header("x-api-version", "1");
+        if (afterCityId != null) {
+            request = request
+                    .param("cityId", afterCityId.toString())
+                    .param("updatedOn", afterChangedOn);
+        }
+        var jsonResponse = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return mapper.readValue(jsonResponse, GetCityResponse[].class);
     }
 }

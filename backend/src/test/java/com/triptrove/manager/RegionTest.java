@@ -24,8 +24,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -157,8 +159,9 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionShouldBeReturnedInThreePagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
-        final String COUNTRY_NAME_5 = "Test country 4";
+        final String COUNTRY_NAME_2 = "Test country 1";
         final String COUNTRY_NAME_3 = "Test country 2";
+        final String COUNTRY_NAME_5 = "Test country 4";
 
         var jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -170,10 +173,10 @@ public class RegionTest extends AbstractIntegrationTest {
 
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].regionName()).isEqualTo("Test region 4");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_5);
-        assertThat(response[1].regionName()).isEqualTo("Test region 3");
-        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_3);
+        assertThat(response[0].regionName()).isEqualTo("Test region 2");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_2);
+        assertThat(response[1].regionName()).isEqualTo("Test region 4");
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_5);
 
         jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -187,8 +190,8 @@ public class RegionTest extends AbstractIntegrationTest {
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].regionName()).isEqualTo("Test region 2");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
+        assertThat(response[0].regionName()).isEqualTo("Test region 3");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_3);
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
@@ -210,8 +213,9 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionShouldBeReturnedInThreePagesInAscendingOrderWhenAscOrderIsSent() throws Exception {
-        final String COUNTRY_NAME_5 = "Test country 4";
+        final String COUNTRY_NAME_2 = "Test country 1";
         final String COUNTRY_NAME_3 = "Test country 2";
+        final String COUNTRY_NAME_5 = "Test country 4";
 
         var jsonResponse = mockMvc.perform(get("/regions")
                         .param("sd", "ASC")
@@ -242,10 +246,10 @@ public class RegionTest extends AbstractIntegrationTest {
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
-        assertThat(response[0].regionName()).isEqualTo("Test region 2");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_1);
-        assertThat(response[1].regionName()).isEqualTo("Test region 3");
-        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_3);
+        assertThat(response[0].regionName()).isEqualTo("Test region 3");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_3);
+        assertThat(response[1].regionName()).isEqualTo("Test region 4");
+        assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_5);
 
         jsonResponse = mockMvc.perform(get("/regions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -260,8 +264,8 @@ public class RegionTest extends AbstractIntegrationTest {
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(1);
-        assertThat(response[0].regionName()).isEqualTo("Test region 4");
-        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_5);
+        assertThat(response[0].regionName()).isEqualTo("Test region 2");
+        assertThat(response[0].countryName()).isEqualTo(COUNTRY_NAME_2);
     }
 
     @Test
@@ -478,5 +482,74 @@ public class RegionTest extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
         assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @Test
+    void allRegionsShouldBeReturnedAcrossPagesInDescOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        // Update the oldest region (id=1, "Test region 0") so it jumps to the top of DESC ordering.
+        mockMvc.perform(put("/regions/1/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<String>();
+        GetRegionResponse[] page = fetchRegionsPage("DESC", null, null);
+        stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchRegionsPage("DESC", last.regionId(), last.changedOn().toString());
+            stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(
+                "Updated region",
+                "Test region 2",
+                "Test region 4",
+                "Test region 3",
+                "Test region 1");
+    }
+
+    @Test
+    void allRegionsShouldBeReturnedAcrossPagesInAscOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        mockMvc.perform(put("/regions/1/details")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<String>();
+        GetRegionResponse[] page = fetchRegionsPage("ASC", null, null);
+        stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchRegionsPage("ASC", last.regionId(), last.changedOn().toString());
+            stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(
+                "Test region 1",
+                "Test region 3",
+                "Test region 4",
+                "Test region 2",
+                "Updated region");
+    }
+
+    private GetRegionResponse[] fetchRegionsPage(String sortDirection, Integer afterRegionId, String afterChangedOn) throws Exception {
+        var request = get("/regions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .param("sd", sortDirection)
+                .header("x-api-version", "1");
+        if (afterRegionId != null) {
+            request = request
+                    .param("regionId", afterRegionId.toString())
+                    .param("updatedOn", afterChangedOn);
+        }
+        var jsonResponse = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return mapper.readValue(jsonResponse, GetRegionResponse[].class);
     }
 }

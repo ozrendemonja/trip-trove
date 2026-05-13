@@ -49,27 +49,29 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
 
     @Query("""
             SELECT a FROM Attraction a
-            ORDER BY a.createdOn ASC
+            ORDER BY coalesce(a.updatedOn, a.createdOn) ASC, a.id ASC
             """)
     List<Attraction> findAllOrderByOldest(Limit limit);
 
     @Query("""
             SELECT a FROM Attraction a
-            ORDER BY a.createdOn DESC
+            ORDER BY coalesce(a.updatedOn, a.createdOn) DESC, a.id DESC
             """)
     List<Attraction> findAllOrderByNewest(Limit limit);
 
     @Query("""
             SELECT a FROM Attraction a
-            WHERE a.id > :#{#afterAttraction.elementId} AND a.createdOn >= :#{#afterAttraction.updatedOn}
-            ORDER BY a.createdOn ASC
+            WHERE coalesce(a.updatedOn, a.createdOn) > :#{#afterAttraction.updatedOn}
+               OR (coalesce(a.updatedOn, a.createdOn) = :#{#afterAttraction.updatedOn} AND a.id > :#{#afterAttraction.elementId})
+            ORDER BY coalesce(a.updatedOn, a.createdOn) ASC, a.id ASC
             """)
     List<Attraction> findOldestAfter(ScrollPosition afterAttraction, Limit limit);
 
     @Query("""
             SELECT a FROM Attraction a
-            WHERE a.id < :#{#afterAttraction.elementId} AND a.createdOn <= :#{#afterAttraction.updatedOn}
-            ORDER BY a.createdOn DESC
+            WHERE coalesce(a.updatedOn, a.createdOn) < :#{#afterAttraction.updatedOn}
+               OR (coalesce(a.updatedOn, a.createdOn) = :#{#afterAttraction.updatedOn} AND a.id < :#{#afterAttraction.elementId})
+            ORDER BY coalesce(a.updatedOn, a.createdOn) DESC, a.id DESC
             """)
     List<Attraction> findNewestBefore(ScrollPosition afterAttraction, Limit limit);
 

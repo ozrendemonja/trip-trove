@@ -21,8 +21,11 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -1082,6 +1085,66 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    @Test
+    void allAttractionsShouldBeReturnedAcrossPagesInDescOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        // Update attraction id=2 (currently 4th by createdOn DESC) so it jumps to the top.
+        mockMvc.perform(put("/attractions/2/tip")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateAttractionTipRequest("Updated tip"))))
+                .andExpect(status().isNoContent());
+
+        GetAttractionResponse[] page = fetchAttractionsPage("DESC", null, null);
+        var collected = stream(page)
+                .map(GetAttractionResponse::attractionId)
+                .collect(Collectors.toCollection(ArrayList::new));
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchAttractionsPage("DESC", last.attractionId(), last.changedOn().toString());
+            stream(page).map(GetAttractionResponse::attractionId).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(2L, 5L, 4L, 3L, 1L);
+    }
+
+    @Test
+    void allAttractionsShouldBeReturnedAcrossPagesInAscOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        mockMvc.perform(put("/attractions/2/tip")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateAttractionTipRequest("Updated tip"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<Long>();
+        GetAttractionResponse[] page = fetchAttractionsPage("ASC", null, null);
+        stream(page).map(GetAttractionResponse::attractionId).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchAttractionsPage("ASC", last.attractionId(), last.changedOn().toString());
+            stream(page).map(GetAttractionResponse::attractionId).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(1L, 3L, 4L, 5L, 2L);
+    }
+
+    private GetAttractionResponse[] fetchAttractionsPage(String sortDirection, Long afterAttractionId, String afterChangedOn) throws Exception {
+        var request = get("/attractions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .param("sd", sortDirection)
+                .header("x-api-version", "1");
+        if (afterAttractionId != null) {
+            request = request
+                    .param("attractionId", afterAttractionId.toString())
+                    .param("updatedOn", afterChangedOn);
+        }
+        var jsonResponse = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return mapper.readValue(jsonResponse, GetAttractionResponse[].class);
     }
 
 }

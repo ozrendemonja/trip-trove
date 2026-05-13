@@ -25,27 +25,29 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
 
     @Query("""
             SELECT r FROM Region r
-            ORDER BY r.createdOn ASC
+            ORDER BY coalesce(r.updatedOn, r.createdOn) ASC, r.id ASC
             """)
     List<Region> findAllOrderByOldest(Limit limit);
 
     @Query("""
             SELECT r FROM Region r
-            ORDER BY r.createdOn DESC
+            ORDER BY coalesce(r.updatedOn, r.createdOn) DESC, r.id DESC
             """)
     List<Region> findAllOrderByNewest(Limit limit);
 
     @Query("""
             SELECT r FROM Region r
-            WHERE r.id > :#{#afterRegion.elementId} AND r.createdOn >= :#{#afterRegion.updatedOn}
-            ORDER BY r.createdOn ASC
+            WHERE coalesce(r.updatedOn, r.createdOn) > :#{#afterRegion.updatedOn}
+               OR (coalesce(r.updatedOn, r.createdOn) = :#{#afterRegion.updatedOn} AND r.id > :#{#afterRegion.elementId})
+            ORDER BY coalesce(r.updatedOn, r.createdOn) ASC, r.id ASC
             """)
     List<Region> findOldestAfter(ScrollPosition afterRegion, Limit limit);
 
     @Query("""
             SELECT r FROM Region r
-            WHERE r.id < :#{#afterRegion.elementId} AND r.createdOn <= :#{#afterRegion.updatedOn}
-            ORDER BY r.createdOn DESC
+            WHERE coalesce(r.updatedOn, r.createdOn) < :#{#afterRegion.updatedOn}
+               OR (coalesce(r.updatedOn, r.createdOn) = :#{#afterRegion.updatedOn} AND r.id < :#{#afterRegion.elementId})
+            ORDER BY coalesce(r.updatedOn, r.createdOn) DESC, r.id DESC
             """)
     List<Region> findNewestBefore(ScrollPosition afterRegion, Limit limit);
 

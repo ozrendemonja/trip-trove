@@ -4,7 +4,7 @@ import enLocale from "i18n-iso-countries/langs/en.json";
 countries.registerLocale(enLocale);
 
 export interface IsoCountryOption {
-  code: string; // ISO 3166-1 alpha-2 in lowercase (matches react-svg-worldmap)
+  code: string; // ISO 3166-1 alpha-2 in lowercase
   name: string;
 }
 
@@ -12,8 +12,8 @@ let cachedOptions: IsoCountryOption[] | undefined;
 
 /**
  * Returns the list of ISO 3166-1 alpha-2 country codes (lowercase) paired with
- * their English display names. The lowercase code matches what
- * `react-svg-worldmap` uses for `ctx.countryCode`.
+ * their English display names. Lowercase to match the casing used elsewhere
+ * (e.g. when looking up countries on the world map by alpha-2).
  */
 export const getIsoCountryOptions = (): IsoCountryOption[] => {
   if (cachedOptions) return cachedOptions;

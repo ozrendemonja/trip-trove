@@ -51,40 +51,19 @@ export const useClasses = () =>
       cursor: "grab",
       ":active": {
         cursor: "grabbing"
-      }
-    },
-    mapTransform: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      // Zoom is implemented by mutating the SVG's viewBox directly (vector,
-      // never rasterized). DO NOT add a CSS `transform: scale(...)` here — it
-      // promotes the SVG to a bitmap layer and makes lines blurry when zoomed.
-      // react-svg-worldmap renders <div><svg/></div>; force both to fill.
-      "& > div": {
-        width: "100% !important",
-        height: "100% !important",
-        margin: "0 !important",
-        padding: "0 !important"
       },
-      "& > div > figure": {
-        margin: "0 !important",
-        padding: "0 !important"
-      },
-      "& svg": {
-        width: "100% !important",
-        height: "100% !important",
+      // react-simple-maps renders an <svg>; force it to fill the wrapper.
+      "& > svg": {
+        width: "100%",
+        height: "100%",
         display: "block",
         shapeRendering: "geometricPrecision"
       },
-      // Keep country borders 1 screen-pixel thick at every zoom level.
-      // Without this, the user-space stroke (e.g. 0.5) gets divided by the
-      // zoom factor and rendered at a sub-pixel width, which the browser
-      // anti-aliases over several pixels and makes lines look smudged.
+      // Keep country borders 1 screen-pixel thick at every zoom level so the
+      // ZoomableGroup transform does not produce sub-pixel / blurry strokes.
       "& svg path": {
-        vectorEffect: "non-scaling-stroke"
+        vectorEffect: "non-scaling-stroke",
+        outline: "none"
       }
     },
     zoomControls: {
@@ -142,6 +121,18 @@ export const useClasses = () =>
     placeholder: {
       color: "#666",
       fontStyle: "italic"
+    },
+    tooltip: {
+      position: "fixed",
+      pointerEvents: "none",
+      zIndex: 4,
+      background: "rgba(33, 33, 33, 0.92)",
+      color: "#fff",
+      padding: "4px 8px",
+      borderRadius: 4,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+      transform: "translate(12px, 12px)"
     }
   });
 

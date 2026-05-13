@@ -17,7 +17,7 @@ let cachedOptions: IsoCountryOption[] | undefined;
  */
 export const getIsoCountryOptions = (): IsoCountryOption[] => {
   if (cachedOptions) return cachedOptions;
-  const names = countries.getNames("en", { select: "official" });
+  const names = countries.getNames("en", { select: "alias" });
   cachedOptions = Object.entries(names)
     .map(([alpha2, name]) => ({ code: alpha2.toLowerCase(), name }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -27,6 +27,7 @@ export const getIsoCountryOptions = (): IsoCountryOption[] => {
 export const isValidIsoCode = (code: string | undefined | null): boolean => {
   if (!code) return false;
   const normalized = code.trim().toLowerCase();
-  return /^[a-z]{2}$/.test(normalized) &&
-    countries.isValid(normalized.toUpperCase());
+  return (
+    /^[a-z]{2}$/.test(normalized) && countries.isValid(normalized.toUpperCase())
+  );
 };

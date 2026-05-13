@@ -21,9 +21,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -171,7 +172,7 @@ class CountryTests extends AbstractIntegrationTest {
                 .getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetCountryResponse[].class);
-        Arrays.stream(response).forEach(System.out::println);
+        stream(response).forEach(System.out::println);
         assertThat(response).hasSize(2);
         assertThat(response[0].countryName()).isEqualTo("Test country 2");
         assertThat(response[1].countryName()).isEqualTo("Test country 1");
@@ -584,5 +585,73 @@ class CountryTests extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
         assertThat(actual.errorMessage()).isEqualTo("{isoCode = ISO code must be a 2-letter ISO 3166-1 alpha-2 code}");
+    }
+
+    @Test
+    void allCountriesShouldBeReturnedAcrossPagesInDescOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        // Update the oldest country (id=1, "Test country 0") so it jumps to the top of DESC ordering.
+        mockMvc.perform(put("/countries/1/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateCountryIsoCodeRequest("zz"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<String>();
+        GetCountryResponse[] page = fetchCountriesPage("DESC", null, null);
+        stream(page).map(GetCountryResponse::countryName).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchCountriesPage("DESC", last.countryId(), last.changedOn().toString());
+            stream(page).map(GetCountryResponse::countryName).forEach(collected::add);
+        }
+        assertThat(collected).containsExactly(
+                "Test country 0",
+                "Test country 4",
+                "Test country 3",
+                "Test country 2",
+                "Test country 1");
+    }
+
+    @Test
+    void allCountriesShouldBeReturnedAcrossPagesInAscOrderAfterAnUpdateShiftsItsPosition() throws Exception {
+        mockMvc.perform(put("/countries/1/iso-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateCountryIsoCodeRequest("zz"))))
+                .andExpect(status().isNoContent());
+
+        var collected = new ArrayList<String>();
+        GetCountryResponse[] page = fetchCountriesPage("ASC", null, null);
+        stream(page).map(GetCountryResponse::countryName).forEach(collected::add);
+        while (page.length > 0) {
+            var last = page[page.length - 1];
+            page = fetchCountriesPage("ASC", last.countryId(), last.changedOn().toString());
+            stream(page).map(GetCountryResponse::countryName).forEach(collected::add);
+        }
+
+        assertThat(collected).containsExactly(
+                "Test country 1",
+                "Test country 2",
+                "Test country 3",
+                "Test country 4",
+                "Test country 0");
+    }
+
+    private GetCountryResponse[] fetchCountriesPage(String sortDirection, Integer afterCountryId, String afterChangedOn) throws Exception {
+        var request = get("/countries")
+                .contentType(MediaType.APPLICATION_JSON)
+                .param("sd", sortDirection)
+                .header("x-api-version", "1");
+        if (afterCountryId != null) {
+            request = request
+                    .param("countryId", afterCountryId.toString())
+                    .param("updatedOn", afterChangedOn);
+        }
+        var jsonResponse = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return mapper.readValue(jsonResponse, GetCountryResponse[].class);
     }
 }

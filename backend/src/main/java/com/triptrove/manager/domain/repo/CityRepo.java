@@ -25,27 +25,29 @@ public interface CityRepo extends JpaRepository<City, Integer> {
 
     @Query("""
             SELECT c FROM City c
-            ORDER BY c.createdOn ASC
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<City> findAllOrderByOldest(Limit limit);
 
     @Query("""
             SELECT c FROM City c
-            ORDER BY c.createdOn DESC
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<City> findAllOrderByNewest(Limit limit);
 
     @Query("""
             SELECT c FROM City c
-            WHERE c.id > :#{#afterCity.elementId} AND c.createdOn >= :#{#afterCity.updatedOn}
-            ORDER BY c.createdOn ASC
+            WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCity.updatedOn}
+               OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCity.updatedOn} AND c.id > :#{#afterCity.elementId})
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<City> findOldestAfter(ScrollPosition afterCity, Limit limit);
 
     @Query("""
             SELECT c FROM City c
-            WHERE c.id < :#{#afterCity.elementId} AND c.createdOn <= :#{#afterCity.updatedOn}
-            ORDER BY c.createdOn DESC
+            WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCity.updatedOn}
+               OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCity.updatedOn} AND c.id < :#{#afterCity.elementId})
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<City> findNewestBefore(ScrollPosition afterCity, Limit limit);
 

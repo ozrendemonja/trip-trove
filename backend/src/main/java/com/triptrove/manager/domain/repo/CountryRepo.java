@@ -15,27 +15,29 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
 
     @Query("""
             SELECT c FROM Country c
-            WHERE c.id > :#{#afterCountry.elementId} AND c.createdOn >= :#{#afterCountry.updatedOn}
-            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC
+            WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCountry.updatedOn}
+               OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCountry.updatedOn} AND c.id > :#{#afterCountry.elementId})
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<Country> findOldestAfter(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
     @Query("""
             SELECT c FROM Country c
-            WHERE c.id < :#{#afterCountry.elementId} AND c.createdOn <= :#{#afterCountry.updatedOn}
-            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCountry.updatedOn}
+               OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCountry.updatedOn} AND c.id < :#{#afterCountry.elementId})
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<Country> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
     @Query("""
             SELECT c FROM Country c
-            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC
+            ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<Country> findAllOrderByNewest(Limit limit);
 
     @Query("""
             SELECT c FROM Country c
-            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC
+            ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 

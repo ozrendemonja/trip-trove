@@ -11,6 +11,6 @@ public record GetRegionResponse(Integer regionId,
                                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                                 LocalDateTime changedOn) {
     public static GetRegionResponse from(Region region) {
-        return new GetRegionResponse(region.getId(), region.getName(), region.getCountry().getName(), region.getCreatedOn());
+        return new GetRegionResponse(region.getId(), region.getName(), region.getCountry().getName(), region.getUpdatedOn().orElse(region.getCreatedOn()));
     }
 }

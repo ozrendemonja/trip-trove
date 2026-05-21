@@ -5,7 +5,6 @@ import com.triptrove.manager.domain.search.SearchTextNormalizer;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -39,9 +38,8 @@ public class AttractionSpecifications {
 
     public static Specification<Attraction> newestAttractionsUnderCity(Integer cityId) {
         return (root, query, cb) -> {
-            Join<Attraction, City> subqueryCity = root.join("city", JoinType.RIGHT);
             query.orderBy(cb.desc(root.get("createdOn")));
-            return cb.and(cb.equal(subqueryCity.get("id"), cityId));
+            return cb.and(cb.equal(root.get("city").get("id"), cityId));
         };
     }
 

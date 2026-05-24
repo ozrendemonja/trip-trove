@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0007-add-trip-archived
+      author: trip-trove
+      comment: |
+        Add `archived` flag column to `trip`. A trip is archived when every
+        attraction placed in the Top Attractions (PRIMARY) or Secondary
+        Spots (SECONDARY) columns has been reviewed (has a rating).
+        Attractions in the Excluded column are ignored. A trip with no
+        PRIMARY/SECONDARY attractions is not archived.
+
+        The flag is recomputed by the application whenever a review is
+        recorded/cleared, an attraction group changes, or an attraction is
+        attached/detached, so reads (trip list) are cheap.
+
+        Default value is FALSE so existing rows are backfilled to "not
+        archived", then the post-update SQL backfills the correct value
+        based on the current attraction reviews.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            trip.archived column already exists - assuming the change has
+            already been applied; marking as ran.
+          not:
+            - columnExists:
+                tableName: trip
+                columnName: archived
+      changes:
+        - addColumn:
+            tableName: trip
+            columns:
+              - column:
+                  name: archived
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - sql:
+            comment: Backfill the archived flag for existing trips.
+            sql: |
+              UPDATE trip
+              SET archived = TRUE
+              WHERE EXISTS (
+                  SELECT 1
+                  FROM trip_attraction ta
+                  WHERE ta.trip_id = trip.id
+                    AND ta.attraction_group IN ('PRIMARY', 'SECONDARY')
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM trip_attraction ta
+                  WHERE ta.trip_id = trip.id
+                    AND ta.attraction_group IN ('PRIMARY', 'SECONDARY')
+                    AND ta.rating IS NULL
+              );

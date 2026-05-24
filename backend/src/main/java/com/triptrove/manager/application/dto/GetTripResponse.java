@@ -8,8 +8,9 @@ import java.time.LocalDateTime;
 
 public record GetTripResponse(Long tripId, String tripName, LocalDate fromDate, LocalDate toDate,
                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-                              LocalDateTime changedOn) {
+                              LocalDateTime changedOn,
+                              boolean archived) {
     public static GetTripResponse from(Trip trip) {
-        return new GetTripResponse(trip.getId(), trip.getName(), trip.getFrom(), trip.getTo(), trip.getCreatedOn());
+        return new GetTripResponse(trip.getId(), trip.getName(), trip.getFrom(), trip.getTo(), trip.getCreatedOn(), trip.isArchived());
     }
 }

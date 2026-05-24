@@ -194,11 +194,17 @@ export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
   const classes = useClasses();
   const [tripName, setTripName] = useState("Trip Planner");
+  const [tripArchived, setTripArchived] = useState<boolean | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (!tripId) return;
     fetchTripById(Number(tripId)).then((trip) => {
-      if (trip) setTripName(trip.name);
+      if (trip) {
+        setTripName(trip.name);
+        setTripArchived(trip.status === "archived");
+      }
     });
   }, [tripId]);
 
@@ -329,6 +335,7 @@ export const MyTrip: React.FC = () => {
         initialReviewData={savedReviewData}
         initialSavedAttractionIds={savedAttractionIds}
         visitHistory={visitHistoryMap}
+        archived={tripArchived}
       />
     </>
   );

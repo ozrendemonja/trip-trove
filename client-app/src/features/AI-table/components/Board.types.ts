@@ -23,4 +23,5 @@ export interface BoardProps {
   >; // pre-populated review ratings/notes/flags from DB
   initialSavedAttractionIds?: number[]; // attraction IDs already saved in DB (skip re-saving)
   visitHistory?: VisitHistoryMap; // visit history per attraction id (other trips)
+  archived?: boolean; // when true, Board defaults to review mode on first load
 }

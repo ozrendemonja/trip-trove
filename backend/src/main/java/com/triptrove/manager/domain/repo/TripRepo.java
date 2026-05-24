@@ -36,6 +36,21 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
             """)
     int deleteTripAttraction(Long tripId, Long attractionId);
 
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+                UPDATE trip
+                SET archived = COALESCE((
+                    SELECT COUNT(*) > 0
+                       AND COUNT(*) FILTER (WHERE ta.rating IS NULL) = 0
+                    FROM trip_attraction ta
+                    WHERE ta.trip_id = trip.id
+                      AND ta.attraction_group <> 'EXCLUDED'
+                ), FALSE)
+                WHERE id = :tripId
+            """, nativeQuery = true)
+    int recomputeArchived(Long tripId);
+
     @Query("""
             SELECT t FROM Trip t
             WHERE t.id > :#{#afterTrip.elementId} AND t.createdOn >= :#{#afterTrip.updatedOn}

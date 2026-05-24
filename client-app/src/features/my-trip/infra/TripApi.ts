@@ -46,7 +46,12 @@ export interface TripAttractionFromServer {
 
 managerClient();
 
-const computeStatus = (endDate: string): TripStatus => {
+const computeStatus = (
+  endDate: string | undefined,
+  archived: boolean | undefined
+): TripStatus => {
+  if (archived) return "archived";
+  if (!endDate) return "active";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return new Date(endDate) < today ? "past" : "active";
@@ -81,7 +86,7 @@ export const fetchTrips = async (
       startDate: t.fromDate,
       endDate: t.toDate,
       updatedOn: t.changedOn,
-      status: t.toDate ? computeStatus(t.toDate) : "active"
+      status: computeStatus(t.toDate, t.archived)
     }));
 };
 
@@ -131,7 +136,7 @@ export const fetchTripById = async (id: number): Promise<Trip | undefined> => {
     startDate: data.fromDate,
     endDate: data.toDate,
     updatedOn: data.changedOn,
-    status: data.toDate ? computeStatus(data.toDate) : "active"
+    status: computeStatus(data.toDate, data.archived)
   };
 };
 

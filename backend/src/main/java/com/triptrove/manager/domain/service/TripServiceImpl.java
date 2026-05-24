@@ -102,6 +102,7 @@ public class TripServiceImpl implements TripService {
 
         trip.attachAttraction(attraction, attractionGroup);
         tripRepo.save(trip);
+        tripRepo.recomputeArchived(tripId);
 
         log.atInfo().log("Attraction '{}' added under the trip", attraction.getName());
     }
@@ -113,6 +114,7 @@ public class TripServiceImpl implements TripService {
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         attraction.recordVisit(rating, reviewNote);
         tripAttractionRepo.save(attraction);
+        tripRepo.recomputeArchived(tripId);
         log.atInfo().log("Attraction '{}' reviewed under the trip '{}'", attractionId, tripId);
     }
 
@@ -123,6 +125,7 @@ public class TripServiceImpl implements TripService {
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         attraction.clearReview();
         tripAttractionRepo.save(attraction);
+        tripRepo.recomputeArchived(tripId);
         log.atInfo().log("Review cleared for attraction '{}' under trip '{}'", attractionId, tripId);
     }
 
@@ -133,6 +136,7 @@ public class TripServiceImpl implements TripService {
                 .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
         attraction.setAttractionGroup(attractionGroup);
         tripAttractionRepo.save(attraction);
+        tripRepo.recomputeArchived(tripId);
         log.atInfo().log("Attraction group updated for attraction '{}' under trip '{}'", attractionId, tripId);
     }
 
@@ -192,6 +196,7 @@ public class TripServiceImpl implements TripService {
         if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {
             throw new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
         }
+        tripRepo.recomputeArchived(tripId);
 
         log.atInfo().log("Attraction '{}' removed from trip '{}'", attractionId, tripId);
     }

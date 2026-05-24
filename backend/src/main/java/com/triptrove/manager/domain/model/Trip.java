@@ -40,6 +40,9 @@ public class Trip {
     @Column(name = "trip_end_date", nullable = false)
     LocalDate to;
 
+    @Column(name = "archived", nullable = false)
+    private boolean archived;
+
     @OneToMany(
             mappedBy = "trip",
             cascade = CascadeType.ALL,

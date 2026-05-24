@@ -55,7 +55,8 @@ const Board: React.FC<BoardProps> = ({
   tripId,
   initialReviewData,
   initialSavedAttractionIds,
-  visitHistory
+  visitHistory,
+  archived
 }) => {
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
@@ -65,7 +66,15 @@ const Board: React.FC<BoardProps> = ({
     overColumnId: null,
     insertionIndex: -1
   });
-  const [boardMode, setBoardMode] = useState<BoardMode>("edit");
+  const [boardMode, setBoardMode] = useState<BoardMode>(
+    archived ? "review" : "edit"
+  );
+  const initialModeAppliedRef = useRef(archived !== undefined);
+  useEffect(() => {
+    if (initialModeAppliedRef.current || archived === undefined) return;
+    initialModeAppliedRef.current = true;
+    if (archived) setBoardMode("review");
+  }, [archived]);
   const readOnly = boardMode !== "edit";
   const reviewMode = boardMode === "review";
   const [collapsedByCity, setCollapsedByCity] = useState<

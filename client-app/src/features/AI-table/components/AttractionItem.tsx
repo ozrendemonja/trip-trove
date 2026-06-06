@@ -28,6 +28,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onUpdateWorkingHours,
   onUpdateVisitTime,
   onToggleMustVisit,
+  onDelete,
   readOnly,
   inItinerary,
   onToggleInItinerary,
@@ -301,6 +302,17 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
         )}
         {visitHistory && visitHistory.length > 0 && (
           <VisitHistoryBadge visits={visitHistory} />
+        )}
+        {onDelete && !readOnly && (
+          <button
+            type="button"
+            className="attraction-delete-btn"
+            onClick={onDelete}
+            title="Remove attraction from trip"
+            aria-label={`Remove ${attraction.name} from trip`}
+          >
+            🗑
+          </button>
         )}
       </div>
       {(attraction.address || attraction.category) && (

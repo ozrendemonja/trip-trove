@@ -234,7 +234,8 @@ export const MyTrip: React.FC = () => {
     fetchTripAttractions(Number(tripId)).then((saved) => {
       if (saved.length > 0) {
         setSavedCities(mapSavedTripAttractionsToBoard(saved));
-        setSavedAttractionIds(saved.map((s) => s.attractionId));
+        const savedIds = saved.map((s) => s.attractionId);
+        setSavedAttractionIds(savedIds);
 
         const reviewData: Record<
           number,
@@ -250,6 +251,19 @@ export const MyTrip: React.FC = () => {
           }
         }
         setSavedReviewData(reviewData);
+
+        // Restore visit history for the saved attractions so that the
+        // "visited before" badges/details reappear after a page reload.
+        fetchAttractionsVisitHistory(Number(tripId), savedIds).then(
+          (history) => {
+            setVisitHistory((prev) => {
+              const map = new Map<number, AttractionVisitHistory>();
+              for (const h of prev) map.set(h.attractionId, h);
+              for (const h of history) map.set(h.attractionId, h);
+              return Array.from(map.values());
+            });
+          }
+        );
       }
     });
   }, [tripId]);
@@ -284,15 +298,21 @@ export const MyTrip: React.FC = () => {
 
     // sort it to be in order
     mergedAttractions = sortAttractions(mergedAttractions);
-    setAllAttractions(mergedAttractions);
 
     // Fetch visit history for the new attractions (excluding current trip)
+    // BEFORE updating state, so that the attractions and their visit history
+    // are applied in the same render. Otherwise the board would briefly show
+    // (and auto-save) the attractions without visit history, persisting the
+    // wrong column group, which then survives a page refresh.
+    let history: AttractionVisitHistory[] = [];
     if (tripId) {
       const newIds = newAttractions.map((a) => a.id);
-      const history = await fetchAttractionsVisitHistory(
-        Number(tripId),
-        newIds
-      );
+      history = await fetchAttractionsVisitHistory(Number(tripId), newIds);
+    }
+
+    setAllAttractions(mergedAttractions);
+
+    if (tripId) {
       setVisitHistory((prev) => {
         const map = new Map<number, AttractionVisitHistory>();
         for (const h of prev) map.set(h.attractionId, h);

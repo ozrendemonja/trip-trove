@@ -67,8 +67,15 @@ type EnsureAllKeys<T, U> = {
 // This will cause a TypeScript error if NewType is missing any keys from MainElements
 type AllFormFields = EnsureAllKeys<AddAttractionFormElements, FormFields>;
 
+export interface GoogleMapsImportData {
+  name?: string;
+  address?: string;
+  geoLocation: string;
+}
+
 export interface AttractionFormFieldProps {
   formFields: AllFormFields;
   isFormValid: boolean;
   prepareForNextSubimssion: () => void;
+  applyGoogleMapsData?: (data: GoogleMapsImportData) => void;
 }

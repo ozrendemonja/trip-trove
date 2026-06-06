@@ -26,6 +26,7 @@ import {
 import { saveNewAttraction } from "../../infra/ManagerApi";
 import { useAttractionFormField } from "./AddAttraction.config";
 import { searchOverride, useClasses } from "./AddAttraction.styles";
+import GoogleMapsImport, { GoogleMapsImportHandle } from "./GoogleMapsImport";
 import {
   isShortcut,
   keyComboFromEvent
@@ -49,8 +50,12 @@ const typeOptions = Object.values(AttractionType)
 
 export const AddAttraction: React.FunctionComponent = () => {
   const classes = useClasses();
-  const { formFields, isFormValid, prepareForNextSubimssion } =
-    useAttractionFormField();
+  const {
+    formFields,
+    isFormValid,
+    prepareForNextSubimssion,
+    applyGoogleMapsData
+  } = useAttractionFormField();
   const navigate = useNavigate();
   const [isMultipleSubmissions, { toggle: toggleMultipleSubmissions }] =
     useBoolean(false);
@@ -71,6 +76,8 @@ export const AddAttraction: React.FunctionComponent = () => {
   ] = useBoolean(false);
   const [iteration, setIteration] = useState<number>(0);
   const nameFieldRef = useRef<ITextField>(null);
+  const addressFieldRef = useRef<ITextField>(null);
+  const googleMapsImportRef = useRef<GoogleMapsImportHandle>(null);
 
   const handleSave = useCallback(() => {
     if (!isFormValid) {
@@ -118,13 +125,20 @@ export const AddAttraction: React.FunctionComponent = () => {
     if (!isMultipleSubmissions) {
       navigate(-1);
     } else {
+      const googleMapsHadValue =
+        googleMapsImportRef.current?.hasValue() ?? false;
       prepareForNextSubimssion();
       setNotPartOfAttraction();
       setNotCountrywide();
       setMustVisitTrue();
       setNonTraditional();
       setIteration(iteration + 1); // Hack to force empty values to clear state
-      nameFieldRef.current?.focus();
+      googleMapsImportRef.current?.clear();
+      if (googleMapsHadValue) {
+        googleMapsImportRef.current?.focus();
+      } else {
+        nameFieldRef.current?.focus();
+      }
     }
   }, [
     isFormValid,
@@ -233,6 +247,15 @@ export const AddAttraction: React.FunctionComponent = () => {
               className={classes.checkbox}
             />
           </Stack>
+          <Stack className={classes.tip}>
+            <GoogleMapsImport
+              ref={googleMapsImportRef}
+              onImport={(payload) => {
+                applyGoogleMapsData?.(payload);
+                addressFieldRef.current?.focus();
+              }}
+            />
+          </Stack>
           <Stack
             tokens={{ childrenGap: 48 }}
             horizontal={true}
@@ -264,6 +287,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           >
             <TextField
               {...formFields.address}
+              componentRef={addressFieldRef}
               className={classes.attractionName}
             />
             <TextField {...formFields.geoLocation} />

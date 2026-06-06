@@ -27,6 +27,7 @@ import {
   AddAttractionFormElements,
   AttractionFormFieldProps,
   ExtendedSearchTextProps,
+  GoogleMapsImportData,
   ValueSearchTextProps
 } from "./AddAttraction.types";
 
@@ -332,6 +333,21 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     });
   };
 
+  const applyGoogleMapsData = (data: GoogleMapsImportData): void => {
+    setTouched({
+      ...touched,
+      ...(data.name !== undefined ? { name: true } : {}),
+      ...(data.address !== undefined ? { address: true } : {}),
+      geoLocation: true
+    });
+    setValues({
+      ...values,
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.address !== undefined ? { address: data.address } : {}),
+      geoLocation: data.geoLocation
+    });
+  };
+
   return {
     formFields: {
       countryId: countryIdSearchText,
@@ -349,7 +365,8 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       optimalVisitPeriod: optimalVisitPeriodField
     },
     isFormValid: isValid,
-    prepareForNextSubimssion: prepareForNextSubimssion
+    prepareForNextSubimssion: prepareForNextSubimssion,
+    applyGoogleMapsData: applyGoogleMapsData
   };
 };
 

@@ -22,8 +22,6 @@ const RATING_SCORE: Record<Rating, number> = {
   EXCELLENT: 5
 };
 
-const GOOD_REVIEW_THRESHOLD = RATING_SCORE.VERY_GOOD;
-
 export type VisitHistoryMap = Map<number, VisitHistoryEntry[]>;
 
 export function buildVisitHistoryMap(
@@ -51,17 +49,34 @@ function latestVisit(
   })[0];
 }
 
+function latestRatingScore(visits: VisitHistoryEntry[] | undefined): number {
+  const latest = latestVisit(visits ?? []);
+  return latest?.rating ? RATING_SCORE[latest.rating] : 0;
+}
+
+/**
+ * Sorts excluded attractions by their latest visit rating, from best
+ * (EXCELLENT) to worst (DISLIKED).
+ */
+function sortExcludedByRatingDesc(
+  tasks: BoardAttraction[],
+  visitHistoryMap: VisitHistoryMap | undefined
+): void {
+  tasks.sort(
+    (a, b) =>
+      latestRatingScore(visitHistoryMap?.get(b.id)) -
+      latestRatingScore(visitHistoryMap?.get(a.id))
+  );
+}
+
 export function pickColumnForAttraction(
   attraction: BoardAttraction,
   visits: VisitHistoryEntry[] | undefined
 ): "top" | "secondary" | "excluded" {
   const last = latestVisit(visits ?? []);
   if (last) {
-    if (last.wouldVisitAgain === false) return "excluded";
-    if (last.rating && RATING_SCORE[last.rating] < GOOD_REVIEW_THRESHOLD) {
-      return "excluded";
-    }
-    return "secondary";
+    // Visited before: unless the user explicitly wants to revisit it, exclude it.
+    return last.wouldVisitAgain === true ? "secondary" : "excluded";
   }
   return attraction.mustVisit ? "top" : "secondary";
 }
@@ -115,6 +130,8 @@ export function mapServerResponseToTouristDestinations(
       else secondaryTasks.push(t);
     }
 
+    sortExcludedByRatingDesc(excludedTasks, visitHistoryMap);
+
     const baseId = cityName.toLowerCase().replace(/\s+/g, "_");
     const city: TouristDestination = {
       name: cityName,
@@ -154,9 +171,9 @@ function titleToTarget(title: string): ColumnTarget | undefined {
 
 /**
  * Re-distributes tasks across each city's three standard columns based on
- * visit history. Tasks whose latest visit rating is below VERY_GOOD move to
- * "Excluded Attractions"; tasks without history stay in their current column.
- * Non-standard columns are left untouched.
+ * visit history. A task that has been visited moves to "Excluded Attractions"
+ * unless its latest visit is flagged wouldVisitAgain === true; tasks without
+ * history stay in their current column. Non-standard columns are left untouched.
  */
 export function applyVisitHistoryToCities(
   cities: TouristDestination[],
@@ -182,10 +199,9 @@ export function applyVisitHistoryToCities(
       for (const task of col.tasks) {
         const visits = visitHistoryMap.get(task.id);
         const latest = latestVisit(visits ?? []);
+        // Visited before: unless the user explicitly wants to revisit it, exclude it.
         const shouldExclude =
-          latest !== undefined &&
-          (latest.wouldVisitAgain === false ||
-            RATING_SCORE[latest.rating] < GOOD_REVIEW_THRESHOLD);
+          latest !== undefined && latest.wouldVisitAgain !== true;
         const target: ColumnTarget = shouldExclude ? "excluded" : sourceTarget;
         tasksByTarget[target].push(task);
         if (target !== sourceTarget) movedAny = true;
@@ -193,6 +209,8 @@ export function applyVisitHistoryToCities(
     }
 
     if (!hasStandardColumn || !movedAny) return city;
+
+    sortExcludedByRatingDesc(tasksByTarget.excluded, visitHistoryMap);
 
     return {
       ...city,

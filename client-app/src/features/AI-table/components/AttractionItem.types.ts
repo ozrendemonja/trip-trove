@@ -12,6 +12,7 @@ export interface AttractionItemProps {
   onUpdateWorkingHours?: (newHours: string) => void;
   onUpdateVisitTime?: (newVisit: string) => void;
   onToggleMustVisit?: () => void;
+  onDelete?: () => void;
   readOnly?: boolean;
   inItinerary?: boolean;
   onToggleInItinerary?: () => void;

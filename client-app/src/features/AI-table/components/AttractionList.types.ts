@@ -38,6 +38,7 @@ export interface AttractionListProps {
     newVisit: string
   ) => void;
   onToggleMustVisit?: (columnId: string, index: number) => void;
+  onDeleteTask?: (attractionId: number) => void;
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
   readOnly?: boolean;

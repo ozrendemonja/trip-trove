@@ -17,6 +17,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onUpdateWorkingHours,
   onUpdateVisitTime,
   onToggleMustVisit,
+  onDeleteTask,
   readOnly,
   isInItinerary,
   onToggleItinerary,
@@ -66,6 +67,11 @@ const AttractionList: React.FC<AttractionListProps> = ({
               onToggleMustVisit={
                 !readOnly && onToggleMustVisit
                   ? () => onToggleMustVisit(columnId, idx)
+                  : undefined
+              }
+              onDelete={
+                !readOnly && onDeleteTask
+                  ? () => onDeleteTask(attraction.id)
                   : undefined
               }
               inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}

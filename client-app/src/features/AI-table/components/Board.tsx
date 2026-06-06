@@ -25,6 +25,7 @@ import {
   keyComboFromEvent
 } from "../utils/Shortcuts";
 import { applyVisitHistoryToCities } from "../utils/Mapper";
+import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
 
 export type { Column, TouristDestination } from "./Board.types";
 
@@ -80,6 +81,9 @@ const Board: React.FC<BoardProps> = ({
   const [collapsedByCity, setCollapsedByCity] = useState<
     Record<string, boolean>
   >({});
+  const [cityPendingRemoval, setCityPendingRemoval] = useState<string | null>(
+    null
+  );
   const [itinerarySelection, setItinerarySelection] = useState<
     Record<number, boolean>
   >({});
@@ -574,6 +578,57 @@ const Board: React.FC<BoardProps> = ({
     setCollapsedByCity((prev) => ({ ...prev, [cityName]: !prev[cityName] }));
   }, []);
 
+  const removeAttraction = useCallback(
+    (attractionId: number) => {
+      if (readOnly) return;
+      setCities((prev) =>
+        prev
+          .map((city) => ({
+            ...city,
+            columns: city.columns.map((col) => ({
+              ...col,
+              tasks: col.tasks.filter((t) => t.id !== attractionId)
+            }))
+          }))
+          .filter((city) => city.columns.some((col) => col.tasks.length > 0))
+      );
+      if (tripId) {
+        removeAttractionFromTrip(tripId, attractionId).catch((err) =>
+          console.error(
+            "Failed to remove attraction from trip",
+            attractionId,
+            err
+          )
+        );
+      }
+    },
+    [readOnly, tripId]
+  );
+
+  const removeAllFromCity = useCallback(
+    (cityName: string) => {
+      if (readOnly) return;
+      const city = cities.find((c) => c.name === cityName);
+      if (!city) return;
+      const attractionIds = city.columns.flatMap((col) =>
+        col.tasks.map((t) => t.id)
+      );
+      setCities((prev) => prev.filter((c) => c.name !== cityName));
+      if (tripId) {
+        attractionIds.forEach((attractionId) =>
+          removeAttractionFromTrip(tripId, attractionId).catch((err) =>
+            console.error(
+              "Failed to remove attraction from trip",
+              attractionId,
+              err
+            )
+          )
+        );
+      }
+    },
+    [readOnly, tripId, cities]
+  );
+
   const toggleItinerarySelection = useCallback((attractionId: number) => {
     setItinerarySelection((prev) => {
       const isCurrentlyIn = !!prev[attractionId];
@@ -873,6 +928,17 @@ const Board: React.FC<BoardProps> = ({
                 {isCollapsed ? "▶" : "▼"}
               </button>
               <h1 className="city-title">{city.name}</h1>
+              {!readOnly && (
+                <button
+                  type="button"
+                  className="city-remove-all-btn"
+                  onClick={() => setCityPendingRemoval(city.name)}
+                  title="Remove all attractions from this location"
+                  aria-label={`Remove all attractions from ${city.name}`}
+                >
+                  🗑 Remove all
+                </button>
+              )}
             </div>
             {!collapsedByCity[city.name] && (
               <div className="attraction-board">
@@ -931,6 +997,7 @@ const Board: React.FC<BoardProps> = ({
                         onUpdateWorkingHours={updateAttractionWorkingHours}
                         onUpdateVisitTime={updateAttractionVisitTime}
                         onToggleMustVisit={toggleAttractionMustVisit}
+                        onDeleteTask={removeAttraction}
                         updateById={updateAttractionById}
                         upsertAttractions={upsertAttractions}
                         isInItinerary={(id) => !!itinerarySelection[id]}
@@ -951,6 +1018,17 @@ const Board: React.FC<BoardProps> = ({
           </div>
         );
       })}
+      <ConfirmDeleteDialog
+        name={
+          cityPendingRemoval ? `all attractions in ${cityPendingRemoval}` : ""
+        }
+        hidden={cityPendingRemoval === null}
+        onConfirm={() => {
+          if (cityPendingRemoval) removeAllFromCity(cityPendingRemoval);
+          setCityPendingRemoval(null);
+        }}
+        onDismiss={() => setCityPendingRemoval(null)}
+      />
     </div>
   );
 };

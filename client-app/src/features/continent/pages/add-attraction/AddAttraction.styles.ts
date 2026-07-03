@@ -29,14 +29,12 @@ export const useClasses = () => {
     },
     attractionName: {
       width: "90vh",
-      maxWidth: "1200px",
-      marginLeft: "25px"
+      maxWidth: "1200px"
     },
     inputToggle: {
       marginTop: "26px"
     },
     dropdowns: {
-      marginLeft: "25px",
       width: 300,
       selectors: {
         ".ms-Callout-main": {
@@ -47,12 +45,10 @@ export const useClasses = () => {
       }
     },
     whereToVisit: {
-      marginTop: "30px",
-      marginLeft: "25px"
+      marginTop: "30px"
     },
     tip: {
-      marginTop: "15px",
-      marginLeft: "25px"
+      marginTop: "15px"
     },
     checkbox: {
       marginTop: "15px"

@@ -69,6 +69,11 @@ export const useClasses = () => {
         }
       }
     },
+    saveError: {
+      marginTop: "24px",
+      marginLeft: "25px",
+      maxWidth: "1200px"
+    },
     footer: {
       height: "40px",
       width: "100%",

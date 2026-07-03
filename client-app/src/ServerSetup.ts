@@ -27,7 +27,9 @@ import {
   UpdateTripRangeRequest
 } from "./clients/manager";
 
-export default function makeServer(): ReturnType<typeof createServer> {
+export default function makeServer(options?: {
+  saveAttractionStatus?: number;
+}): ReturnType<typeof createServer> {
   return createServer({
     models: {
       continent: Model.extend<GetContinentResponse>({}),
@@ -746,6 +748,30 @@ export default function makeServer(): ReturnType<typeof createServer> {
           return result.slice(0, 2);
         },
         { timing: 600 }
+      );
+
+      this.post(
+        "/attractions",
+        () => {
+          const status = options?.saveAttractionStatus;
+          if (status && status >= 400) {
+            const body =
+              status === 409
+                ? {
+                    errorCode: "NAME_CONFLICT",
+                    errorMessage:
+                      "The given name is not valid as it already exists"
+                  }
+                : {
+                    errorCode: "INTERNAL_SERVER_ERROR",
+                    errorMessage:
+                      "Something went wrong while saving the attraction"
+                  };
+            return new MirageResponse(status, {}, body);
+          }
+          return new MirageResponse(204);
+        },
+        { timing: 400 }
       );
 
       this.delete(

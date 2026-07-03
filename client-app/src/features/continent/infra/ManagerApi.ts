@@ -799,7 +799,7 @@ export const saveNewAttraction = async (
   });
 
   if (error) {
-    throw new Error("Error while saving attraction ", error);
+    throw new Error("Error while saving attraction", { cause: error });
   }
 };
 

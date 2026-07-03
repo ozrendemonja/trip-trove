@@ -6,6 +6,7 @@ import {
   saveTrip,
   updateTripDetail,
   updateTripRange,
+  GetTripResponse,
   TripParameter
 } from "../../../clients/manager";
 import { client } from "../../../clients/manager";
@@ -57,13 +58,31 @@ const computeStatus = (
   return new Date(endDate) < today ? "past" : "active";
 };
 
-export const fetchTrips = async (
-  lastReadTrip?: LastReadTrip,
+// Maps a trip DTO from the backend into the domain `Trip`, or `undefined` when
+// the payload is missing the fields we require.
+const toTrip = (dto: GetTripResponse): Trip | undefined => {
+  if (dto.tripId == null || dto.tripName == null) {
+    return undefined;
+  }
+  return {
+    id: dto.tripId,
+    name: dto.tripName,
+    startDate: dto.fromDate,
+    endDate: dto.toDate,
+    updatedOn: dto.changedOn,
+    status: computeStatus(dto.toDate, dto.archived)
+  };
+};
+
+// Fetches a single page of trips (the page starting after `cursor`) and maps it
+// to domain `Trip`s. This is the only function here that talks to the backend.
+const fetchTripsPage = async (
+  cursor: LastReadTrip | undefined,
   orderBy?: "ASC" | "DESC"
 ): Promise<Trip[]> => {
   const after: TripParameter = {
-    tripId: lastReadTrip?.tripId,
-    updatedOn: lastReadTrip?.updatedOn
+    tripId: cursor?.tripId,
+    updatedOn: cursor?.updatedOn
   };
 
   const { data, error } = await getTrips({
@@ -78,16 +97,43 @@ export const fetchTrips = async (
     throw new Error("Invalid trip data");
   }
 
-  return data
-    .filter((t) => t.tripId != null && t.tripName != null)
-    .map((t) => ({
-      id: t.tripId!,
-      name: t.tripName!,
-      startDate: t.fromDate,
-      endDate: t.toDate,
-      updatedOn: t.changedOn,
-      status: computeStatus(t.toDate, t.archived)
-    }));
+  return data.map(toTrip).filter((trip): trip is Trip => trip !== undefined);
+};
+
+// Pulls every page the backend serves and returns the full list of trips.
+//
+// The backend serves trips one page at a time (manager.request.page-size), so we
+// follow the cursor until a page yields no new trips; otherwise every trip beyond
+// the first page (e.g. archived ones) would be silently hidden. De-duplicating by
+// id keeps the loop correct even if a page repeats boundary rows.
+export const fetchTrips = async (
+  lastReadTrip?: LastReadTrip,
+  orderBy?: "ASC" | "DESC"
+): Promise<Trip[]> => {
+  const tripsById = new Map<number, Trip>();
+  let cursor: LastReadTrip | undefined = lastReadTrip;
+  let hasMorePages = true;
+
+  while (hasMorePages) {
+    const page = await fetchTripsPage(cursor, orderBy);
+
+    const sizeBeforePage = tripsById.size;
+    for (const trip of page) {
+      if (!tripsById.has(trip.id)) {
+        tripsById.set(trip.id, trip);
+      }
+    }
+
+    // Continue only while the page introduced at least one new trip. When the
+    // server has nothing new left to hand out, the list is fully loaded.
+    const lastTrip = page.at(-1);
+    hasMorePages = lastTrip !== undefined && tripsById.size > sizeBeforePage;
+    if (lastTrip) {
+      cursor = { tripId: lastTrip.id, updatedOn: lastTrip.updatedOn };
+    }
+  }
+
+  return Array.from(tripsById.values());
 };
 
 export const saveTripToApi = async (
@@ -126,18 +172,11 @@ export const fetchTripById = async (id: number): Promise<Trip | undefined> => {
     headers: { "x-api-version": "1" }
   });
 
-  if (error || !data?.tripId || !data.tripName) {
+  if (error || !data) {
     return undefined;
   }
 
-  return {
-    id: data.tripId,
-    name: data.tripName,
-    startDate: data.fromDate,
-    endDate: data.toDate,
-    updatedOn: data.changedOn,
-    status: computeStatus(data.toDate, data.archived)
-  };
+  return toTrip(data);
 };
 
 export const updateTripName = async (

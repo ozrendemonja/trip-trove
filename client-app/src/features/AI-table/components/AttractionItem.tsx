@@ -40,6 +40,10 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   visitHistory
 }) => {
   const review = useReviewStyles();
+  // Attractions in the "Excluded Attractions" column were deliberately dropped
+  // from the trip, so they are not part of the review flow and offer no
+  // "add to trip" form. Every excluded column id contains "_excluded".
+  const isExcluded = columnId?.includes("_excluded") ?? false;
   const nameClasses = [
     "attraction-name",
     attraction.mustVisit ? "must-visit" : "",
@@ -569,7 +573,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
           )}
         </div>
       )}
-      {reviewMode && (
+      {reviewMode && !isExcluded && (
         <div className={review.reviewSection}>
           {isAttached ? (
             <div className={review.reviewAttached}>

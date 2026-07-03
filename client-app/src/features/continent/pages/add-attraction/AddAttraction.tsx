@@ -5,6 +5,8 @@ import {
   DefaultButton,
   Dropdown,
   ITextField,
+  MessageBar,
+  MessageBarType,
   PrimaryButton,
   Separator,
   Stack,
@@ -75,11 +77,15 @@ export const AddAttraction: React.FunctionComponent = () => {
     { setFalse: setNonTraditional, toggle: toggleIsTraditional }
   ] = useBoolean(false);
   const [iteration, setIteration] = useState<number>(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  const [nameConflict, setNameConflict] = useState<string | undefined>(
+    undefined
+  );
   const nameFieldRef = useRef<ITextField>(null);
   const addressFieldRef = useRef<ITextField>(null);
   const googleMapsImportRef = useRef<GoogleMapsImportHandle>(null);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!isFormValid) {
       return;
     }
@@ -120,7 +126,28 @@ export const AddAttraction: React.FunctionComponent = () => {
       infoRecorded: formFields.sourceFrom.value!.toISOString(),
       optimalVisitPeriod: optimalVisitPeriod
     };
-    saveNewAttraction(newAttraction);
+    try {
+      await saveNewAttraction(newAttraction);
+    } catch (error) {
+      const cause = (error as { cause?: unknown }).cause;
+      const errorCode =
+        cause && typeof cause === "object" && "errorCode" in cause
+          ? (cause as { errorCode?: string }).errorCode
+          : undefined;
+      if (errorCode === "NAME_CONFLICT") {
+        setNameConflict("An attraction with this name already exists.");
+        setSaveError(undefined);
+      } else {
+        setSaveError(
+          "The attraction wasn't saved. Your details are still here, so you can review or edit them and try again."
+        );
+        setNameConflict(undefined);
+      }
+      return;
+    }
+
+    setSaveError(undefined);
+    setNameConflict(undefined);
 
     if (!isMultipleSubmissions) {
       navigate(-1);
@@ -158,10 +185,20 @@ export const AddAttraction: React.FunctionComponent = () => {
   ]);
 
   useEffect(() => {
+    setNameConflict(undefined);
+  }, [formFields.name.value]);
+
+  useEffect(() => {
+    if (nameConflict) {
+      document.getElementById("add-attraction-name")?.focus();
+    }
+  }, [nameConflict]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (isShortcut("attraction.save", keyComboFromEvent(event))) {
         event.preventDefault();
-        handleSave();
+        void handleSave();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -265,6 +302,8 @@ export const AddAttraction: React.FunctionComponent = () => {
               {...formFields.name}
               componentRef={nameFieldRef}
               className={classes.attractionName}
+              errorMessage={nameConflict}
+              id="add-attraction-name"
             />
             <Toggle
               className={classes.inputToggle}
@@ -335,6 +374,13 @@ export const AddAttraction: React.FunctionComponent = () => {
             <DatePicker {...formFields.sourceFrom} />
           </Stack>
         </Stack>
+        {saveError && (
+          <Stack className={classes.saveError}>
+            <MessageBar messageBarType={MessageBarType.error}>
+              {saveError}
+            </MessageBar>
+          </Stack>
+        )}
         <Stack
           horizontal
           horizontalAlign="end"
@@ -343,7 +389,7 @@ export const AddAttraction: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!isFormValid}
             text="Save"
           />

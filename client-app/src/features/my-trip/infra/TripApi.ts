@@ -6,8 +6,7 @@ import {
   saveTrip,
   updateTripDetail,
   updateTripRange,
-  GetTripResponse,
-  TripParameter
+  GetTripResponse
 } from "../../../clients/manager";
 import { client } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
@@ -80,14 +79,13 @@ const fetchTripsPage = async (
   cursor: LastReadTrip | undefined,
   orderBy?: "ASC" | "DESC"
 ): Promise<Trip[]> => {
-  const after: TripParameter = {
-    tripId: cursor?.tripId,
-    updatedOn: cursor?.updatedOn
-  };
-
   const { data, error } = await getTrips({
     headers: { "x-api-version": "1" },
-    query: { after, sd: orderBy }
+    query: {
+      sd: orderBy,
+      tripId: cursor?.tripId,
+      updatedOn: cursor?.updatedOn
+    }
   });
 
   if (error) {

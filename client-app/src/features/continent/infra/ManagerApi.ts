@@ -58,7 +58,8 @@ import {
   LastReadAttraction,
   mapCategory,
   mapType,
-  SaveAttraction
+  SaveAttraction,
+  toAttractionVisitStatus
 } from "../domain/Attraction.types";
 import { City, LastReadCity } from "../domain/City.types";
 import {
@@ -1277,6 +1278,7 @@ export const getPagedAttractionsByContinentName = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      visitStatus: toAttractionVisitStatus(attraction.visitStatus),
       updatedOn: attraction.changedOn
     };
   });
@@ -1366,6 +1368,7 @@ export const getPagedAttractionsByCountryId = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      visitStatus: toAttractionVisitStatus(attraction.visitStatus),
       updatedOn: attraction.changedOn
     };
   });
@@ -1455,6 +1458,7 @@ export const getPagedAttractionsByRegionId = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      visitStatus: toAttractionVisitStatus(attraction.visitStatus),
       updatedOn: attraction.changedOn
     };
   });
@@ -1544,6 +1548,7 @@ export const getPagedAttractionsByCityId = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      visitStatus: toAttractionVisitStatus(attraction.visitStatus),
       updatedOn: attraction.changedOn
     };
   });
@@ -1633,6 +1638,7 @@ export const getPagedAttractionsByMainAttractionId = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      visitStatus: toAttractionVisitStatus(attraction.visitStatus),
       updatedOn: attraction.changedOn
     };
   });

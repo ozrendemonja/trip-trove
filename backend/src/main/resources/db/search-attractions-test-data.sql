@@ -1,4 +1,5 @@
 DELETE FROM trip_attraction;
+DELETE FROM trip;
 DELETE FROM attraction WHERE id = 5;
 DELETE FROM attraction;
 DELETE FROM city;
@@ -13,6 +14,8 @@ ALTER SEQUENCE region_id_seq RESTART 1;
 ALTER SEQUENCE city_id_seq RESTART 1;
 ALTER SEQUENCE attraction_id_seq RESTART 1;
 ALTER SEQUENCE information_provider_id_seq RESTART 1;
+ALTER SEQUENCE trip_attraction_id_seq RESTART 1;
+ALTER SEQUENCE trip_id_seq RESTART 1;
 
 INSERT INTO continent (created_on, name, updated_on)
  	VALUES
@@ -56,3 +59,14 @@ INSERT INTO attraction(address, latitude, longitude, category, created_on, infor
     (null, null, null, 'WILDLIFE_TOUR', '2025-02-23T08:12:43', 5, '2024-08-23T08:12:43', true, false, true, 'Test attraction 3', null, null, null, 'IMMINENT_CHANGE', null, null, 1, 1, 1),
     (null, 38.6341039, 34.9072272, 'LAND_BASED_ACTIVITY', '2025-02-23T08:12:44', 6, '2020-01-10T07:12:00', true, false, false, 'Test attraction 4', null, null, 'Test tip new', 'POTENTIAL_CHANGE', null, 3, 2, null, 2),
     (null, -33.856757, 151.1328955, 'POINT_OF_INTEREST_AND_LANDMARK', '2025-02-23T08:12:45', 7, '2020-01-15T07:12:00', false, true, true, 'Test attraction 5', null, null, 'Tip new', 'STABLE', null, 3, 2, null, 2);
+
+INSERT INTO trip(name, trip_start_date, trip_end_date, created_on, archived)
+	VALUES
+	('Visit status earlier trip', '2025-04-20T00:00:00', '2025-05-01T00:00:00', '2025-05-02T10:00:00', false),
+    ('Visit status latest trip', '2025-06-01T00:00:00', '2025-06-15T00:00:00', '2025-06-16T10:00:00', false);
+
+INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, would_visit_again, must_visit, attraction_group)
+	VALUES
+	('2025-05-02T10:00:00', 1, 1, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY'),
+    ('2025-06-16T10:00:00', 1, 2, 'VISITED', 'EXCELLENT', null, null, true, true, 'PRIMARY'),
+    ('2025-06-16T10:00:00', 4, 2, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY');

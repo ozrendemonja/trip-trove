@@ -50,6 +50,7 @@ export class AttractionListCustomizer extends ListElementCustomizer<AttractionRo
 
   public createColumns = (): void => {
     const columns = buildColumns(this.items, true)
+      .filter((column) => column.key !== "visitStatus")
       .map((column) => this.hideIdHeader(column))
       .map((column) => this.setDefaultLayout(column));
 

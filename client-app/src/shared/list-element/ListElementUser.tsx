@@ -33,6 +33,7 @@ export const ListElementUser: React.FunctionComponent<ListElementUserProps> = (
       ariaLabelForListHeader="Column attraction headers"
       onRenderMissingItem={props.onRenderMissingItem}
       onRenderItemColumn={props.onRenderItemColumn}
+      onRenderRow={props.onRenderRow}
       ariaLabelForGrid="Item details"
     />
   );

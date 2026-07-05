@@ -1,6 +1,8 @@
 import {
+  DetailsRow,
   IColumn,
   Icon,
+  IDetailsListProps,
   initializeIcons,
   Link,
   SearchBox,
@@ -8,13 +10,16 @@ import {
   Text
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { ListElementUser } from "../../../../shared/list-element/ListElementUser";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { LastReadAttraction } from "../../domain/Attraction.types";
+import {
+  AttractionVisitStatus,
+  LastReadAttraction
+} from "../../domain/Attraction.types";
 import { AttractionListCustomizerUser } from "../../domain/AttractionListCustomizerUser";
 import { onRenderWhenNoMoreItems } from "../list-attraction/ListAttraction.config";
 import {
@@ -22,7 +27,11 @@ import {
   ListAttractionPageInfo
 } from "../list-attraction/ListAttraction.types";
 import { toLastReadAttraction } from "../list-attraction/ListAttraction.util";
-import { useClasses } from "./ListAttractionUser.styles";
+import {
+  getVisitStatusRowStyles,
+  useClasses,
+  visitMarkerClasses
+} from "./ListAttractionUser.styles";
 import {
   createGetPagedAttractions,
   createGetPageInfoById,
@@ -40,9 +49,18 @@ const onRenderItemColumn = (
   column?: IColumn
 ): JSX.Element | string | number => {
   if (column?.key === "name") {
+    const wantsReturn =
+      atraction?.visitStatus === AttractionVisitStatus.VISITED_WANT_RETURN;
     return (
       <Stack horizontal>
-        {atraction?.mustVisit && (
+        {wantsReturn && (
+          <Icon
+            iconName="Sync"
+            className={visitMarkerClasses.returnIcon}
+            title="Would return"
+          />
+        )}
+        {atraction?.mustVisit && !wantsReturn && (
           <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
         )}
         <Link
@@ -137,6 +155,37 @@ const onRenderItemColumn = (
   return atraction[column?.fieldName as keyof AttractionRow] as string;
 };
 
+// Tints only the "seen and done" rows a soft muted grey; every other row keeps
+// the default look (want-return is marked by its Sync icon in the name cell).
+const renderVisitStatusRow: IDetailsListProps["onRenderRow"] = (props) => {
+  if (!props) {
+    return null;
+  }
+  const status = (props.item as AttractionRow | null)?.visitStatus;
+  return <DetailsRow {...props} styles={getVisitStatusRowStyles(status)} />;
+};
+
+// Groups rows by how the traveller relates to each place: still-to-see first,
+// then the ones worth another trip, and finally those already seen and done.
+// The infinite-scroll sentinel (null) always sinks to the very bottom.
+const visitStatusRank = (row: AttractionRow | null): number => {
+  if (!row) {
+    return 3;
+  }
+  switch (row.visitStatus) {
+    case AttractionVisitStatus.VISITED_WANT_RETURN:
+      return 1;
+    case AttractionVisitStatus.VISITED_DONE:
+      return 2;
+    default:
+      return 0;
+  }
+};
+
+// Array.prototype.sort is stable, so rows keep their fetched order within a group.
+const sortByVisitStatus = (items: AttractionRow[]): AttractionRow[] =>
+  [...items].sort((a, b) => visitStatusRank(a) - visitStatusRank(b));
+
 export const AttractionListUser: React.FunctionComponent = () => {
   const classes = useClasses();
 
@@ -197,6 +246,8 @@ export const AttractionListUser: React.FunctionComponent = () => {
     }
   });
 
+  const orderedItems = useMemo(() => sortByVisitStatus(items), [items]);
+
   return (
     <>
       <Navigation />
@@ -238,11 +289,12 @@ export const AttractionListUser: React.FunctionComponent = () => {
             ></Filter>
           </Stack>
           <ListElementUser
-            items={items}
+            items={orderedItems}
             columns={columns}
             onRenderMissingItem={(_index: number | undefined) =>
               onRenderWhenNoMoreItems(toggleReloadData)
             }
+            onRenderRow={renderVisitStatusRow}
             onRenderItemColumn={(
               item?: AttractionRow,
               _index?: number,

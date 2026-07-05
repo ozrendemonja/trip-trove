@@ -1,8 +1,11 @@
 package com.triptrove.manager;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.triptrove.manager.application.dto.AttractionVisitStatusResponse;
 import com.triptrove.manager.application.dto.GetAttractionResponse;
+import com.triptrove.manager.application.dto.GetSearchAttractionResponse;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Attraction;
@@ -38,6 +41,9 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @BeforeAll
     static void setup() {
         mapper.registerModule(new JavaTimeModule());
+        // Search responses carry an extra visitStatus field on top of the base
+        // attraction fields these assertions read; ignore it here.
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @Test
@@ -77,6 +83,40 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].cityName()).isEqualTo("Test city 0");
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
+    }
+
+    @Test
+    void shouldReturnAggregatedVisitStatusForContinentAttractions() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchAttractionResponse[] firstPage = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+
+        assertThat(firstPage).hasSize(2);
+        assertThat(firstPage[0].attractionName()).isEqualTo("Test attraction 3");
+        assertThat(firstPage[0].visitStatus()).isEqualTo(AttractionVisitStatusResponse.NOT_VISITED);
+        assertThat(firstPage[1].attractionName()).isEqualTo("Test attraction 2");
+        assertThat(firstPage[1].visitStatus()).isEqualTo(AttractionVisitStatusResponse.VISITED_DONE);
+
+        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("attractionId", firstPage[1].attractionId().toString())
+                        .param("updatedOn", firstPage[1].changedOn().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchAttractionResponse[] secondPage = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+        assertThat(secondPage).hasSize(1);
+        assertThat(secondPage[0].attractionName()).isEqualTo("Test attraction 0");
+        assertThat(secondPage[0].visitStatus()).isEqualTo(AttractionVisitStatusResponse.VISITED_WANT_RETURN);
     }
 
     @ParameterizedTest

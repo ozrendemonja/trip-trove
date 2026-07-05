@@ -7,13 +7,13 @@ import java.util.List;
 public interface SearchService {
     List<Suggestion> suggestNames(String query, SearchInElement searchIn, Integer countryId);
 
-    List<Attraction> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionWithVisitStatus> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 
-    List<Attraction> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionWithVisitStatus> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 
-    List<Attraction> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionWithVisitStatus> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 
-    List<Attraction> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionWithVisitStatus> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 
-    List<Attraction> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionWithVisitStatus> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 }

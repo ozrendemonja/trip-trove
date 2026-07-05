@@ -1,4 +1,4 @@
-import { IColumn, Selection } from "@fluentui/react";
+import { IColumn, IDetailsListProps, Selection } from "@fluentui/react";
 import { AddRowOptionsProps } from "./ui/delete-dialog/DeleteDialog.types";
 import { ListHeaderProps } from "./ui/list-header/ListHeader.types";
 import { AttractionRow } from "../../features/continent/pages/list-attraction/ListAttraction.types";
@@ -48,6 +48,8 @@ export interface ListElementUserProps {
     index?: number,
     column?: IColumn
   ) => JSX.Element | string | number;
+
+  onRenderRow?: IDetailsListProps["onRenderRow"];
 }
 
 export abstract class ListElementCustomizer<T> {

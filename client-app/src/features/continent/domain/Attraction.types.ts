@@ -77,6 +77,21 @@ export enum AttractionType {
   STABLE = "STABLE"
 }
 
+export enum AttractionVisitStatus {
+  NOT_VISITED = "NOT_VISITED",
+  VISITED_WANT_RETURN = "VISITED_WANT_RETURN",
+  VISITED_DONE = "VISITED_DONE"
+}
+
+export const toAttractionVisitStatus = (
+  raw: string | undefined
+): AttractionVisitStatus | undefined =>
+  raw === AttractionVisitStatus.NOT_VISITED ||
+  raw === AttractionVisitStatus.VISITED_WANT_RETURN ||
+  raw === AttractionVisitStatus.VISITED_DONE
+    ? (raw as AttractionVisitStatus)
+    : undefined;
+
 export type Attraction = {
   id: number;
   name: AttractionName;
@@ -89,6 +104,7 @@ export type Attraction = {
   tip?: string;
   infoFrom: AttractionInfoFrom;
   optimalVisitPeriod?: AttractionOptimalVisitPeriod;
+  visitStatus?: AttractionVisitStatus;
   updatedOn: string;
 };
 

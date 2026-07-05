@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.AttractionVisit;
+import com.triptrove.manager.domain.model.AttractionVisitFlag;
 import com.triptrove.manager.domain.model.TripAttraction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +42,20 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
             """)
     List<AttractionVisit> findVisitHistory(@Param("attractionIds") List<Long> attractionIds,
                                            @Param("currentTripId") Long currentTripId);
+
+    @Query("""
+                SELECT new com.triptrove.manager.domain.model.AttractionVisitFlag(
+                        ta.attraction.id,
+                        ta.wouldVisitAgain)
+                FROM TripAttraction ta
+                WHERE ta.status = com.triptrove.manager.domain.model.TripAttractionStatus.VISITED
+                AND ta.attraction.id IN :attractionIds
+                AND ta.trip.to = (
+                    SELECT MAX(latestVisit.trip.to)
+                    FROM TripAttraction latestVisit
+                    WHERE latestVisit.status = com.triptrove.manager.domain.model.TripAttractionStatus.VISITED
+                    AND latestVisit.attraction.id = ta.attraction.id
+                )
+            """)
+    List<AttractionVisitFlag> findLatestVisitFlags(@Param("attractionIds") List<Long> attractionIds);
 }

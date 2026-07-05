@@ -27,6 +27,11 @@ import {
   UpdateTripRangeRequest
 } from "./clients/manager";
 
+const attractionVisitStatuses: Record<number, string> = {
+  0: "VISITED_WANT_RETURN",
+  2: "VISITED_DONE"
+};
+
 export default function makeServer(options?: {
   saveAttractionStatus?: number;
 }): ReturnType<typeof createServer> {
@@ -1049,7 +1054,11 @@ export default function makeServer(options?: {
               ) + 1
             );
           }
-          return result.slice(0, 2);
+          return result.slice(0, 2).map((attraction) => ({
+            ...attraction,
+            visitStatus:
+              attractionVisitStatuses[attraction.attractionId!] ?? "NOT_VISITED"
+          })) as GetAttractionResponse[];
         },
         { timing: 400 }
       );

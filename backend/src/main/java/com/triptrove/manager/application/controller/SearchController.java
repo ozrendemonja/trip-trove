@@ -3,7 +3,7 @@ package com.triptrove.manager.application.controller;
 import com.triptrove.manager.application.dto.AttractionCategoryDTO;
 import com.triptrove.manager.application.dto.AttractionParameter;
 import com.triptrove.manager.application.dto.AttractionTypeDTO;
-import com.triptrove.manager.application.dto.GetAttractionResponse;
+import com.triptrove.manager.application.dto.GetSearchAttractionResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SearchIn;
 import com.triptrove.manager.application.dto.search.StrategyApiType;
@@ -58,7 +58,7 @@ public class SearchController {
                     @Parameter(name = "isTraditional", description = "Filter attraction based on their isTraditional information."),
                     @Parameter(name = "q", description = "Filter attraction based on who provided information, name and tip.")
             })
-    public List<GetAttractionResponse> getContinentAttractions(@PathVariable String name,
+    public List<GetSearchAttractionResponse> getContinentAttractions(@PathVariable String name,
                                                                AttractionParameter after,
                                                                @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                                @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
@@ -72,7 +72,7 @@ public class SearchController {
         var typeFilter = type != null ? type.toAttractionType() : null;
         return searchService.getAllAttractionsUnderContinent(name, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
                 .stream()
-                .map(GetAttractionResponse::from)
+                .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 
@@ -87,7 +87,7 @@ public class SearchController {
                     @Parameter(name = "isTraditional", description = "Filter attraction based on their isTraditional information."),
                     @Parameter(name = "q", description = "Filter attraction based on who provided information, name and tip.")
             })
-    public List<GetAttractionResponse> getCountryAttractions(@PathVariable Integer countryId,
+    public List<GetSearchAttractionResponse> getCountryAttractions(@PathVariable Integer countryId,
                                                              AttractionParameter after,
                                                              @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                              @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
@@ -101,7 +101,7 @@ public class SearchController {
         var typeFilter = type != null ? type.toAttractionType() : null;
         return searchService.getAllAttractionsUnderCountry(countryId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
                 .stream()
-                .map(GetAttractionResponse::from)
+                .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 
@@ -116,7 +116,7 @@ public class SearchController {
                     @Parameter(name = "isTraditional", description = "Filter attraction based on their isTraditional information."),
                     @Parameter(name = "q", description = "Filter attraction based on who provided information, name and tip.")
             })
-    public List<GetAttractionResponse> getRegionAttractions(@PathVariable Integer regionId,
+    public List<GetSearchAttractionResponse> getRegionAttractions(@PathVariable Integer regionId,
                                                             AttractionParameter after,
                                                             @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                             @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
@@ -130,7 +130,7 @@ public class SearchController {
         var typeFilter = type != null ? type.toAttractionType() : null;
         return searchService.getAllAttractionsUnderRegion(regionId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
                 .stream()
-                .map(GetAttractionResponse::from)
+                .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 
@@ -145,7 +145,7 @@ public class SearchController {
                     @Parameter(name = "isTraditional", description = "Filter attraction based on their isTraditional information."),
                     @Parameter(name = "q", description = "Filter attraction based on who provided information, name and tip.")
             })
-    public List<GetAttractionResponse> getCityAttractions(@PathVariable Integer cityId,
+    public List<GetSearchAttractionResponse> getCityAttractions(@PathVariable Integer cityId,
                                                           AttractionParameter after,
                                                           @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                           @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
@@ -159,7 +159,7 @@ public class SearchController {
         var typeFilter = type != null ? type.toAttractionType() : null;
         return searchService.getAllAttractionsUnderCity(cityId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
                 .stream()
-                .map(GetAttractionResponse::from)
+                .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 
@@ -174,7 +174,7 @@ public class SearchController {
                     @Parameter(name = "isTraditional", description = "Filter attraction based on their isTraditional information."),
                     @Parameter(name = "q", description = "Filter attraction based on who provided information, name and tip.")
             })
-    public List<GetAttractionResponse> getMainAttractionAttractions(@PathVariable Long mainAttractionId,
+    public List<GetSearchAttractionResponse> getMainAttractionAttractions(@PathVariable Long mainAttractionId,
                                                                     AttractionParameter after,
                                                                     @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                                     @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
@@ -188,7 +188,7 @@ public class SearchController {
         var typeFilter = type != null ? type.toAttractionType() : null;
         return searchService.getAllAttractionsUnderMainAttraction(mainAttractionId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
                 .stream()
-                .map(GetAttractionResponse::from)
+                .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 

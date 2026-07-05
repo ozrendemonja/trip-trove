@@ -3,7 +3,8 @@ import {
   AttractionAddress,
   AttractionInfoFrom,
   AttractionOptimalVisitPeriod,
-  AttractionType
+  AttractionType,
+  AttractionVisitStatus
 } from "../../domain/Attraction.types";
 
 export class AttractionRow implements Omit<Attraction, "updatedOn"> {
@@ -18,7 +19,8 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
     public readonly isTraditional: boolean,
     public readonly infoFrom: Attraction["infoFrom"],
     public readonly optimalVisitPeriod: Attraction["optimalVisitPeriod"],
-    public readonly tip?: string
+    public readonly tip?: string,
+    public readonly visitStatus?: AttractionVisitStatus
   ) {}
 
   public static from(attraction: Attraction): AttractionRow {
@@ -33,7 +35,8 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
       attraction.isTraditional,
       attraction.infoFrom,
       attraction.optimalVisitPeriod,
-      attraction.tip
+      attraction.tip,
+      attraction.visitStatus
     );
   }
 

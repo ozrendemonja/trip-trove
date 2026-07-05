@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.triptrove.manager.domain.repo.AttractionSpecifications.*;
 
@@ -27,6 +29,7 @@ public class SearchServiceImpl implements SearchService {
     private final CityRepo cityRepo;
     private final AttractionRepo attractionRepo;
     private final InformationProviderRepo informationProviderRepo;
+    private final TripAttractionRepo tripAttractionRepo;
 
     @Override
     public List<Suggestion> suggestNames(String query, SearchInElement searchIn, Integer countryId) {
@@ -91,39 +94,39 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public List<Attraction> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionWithVisitStatus> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         log.atInfo().log("Search for attractions under continent");
         Specification<Attraction> filterCriteria = newestAttractionsUnderContinent(name).and(applyFilters(attractionFilter));
 
-        return getFilteredAttractions(filterCriteria, beforeAttraction);
+        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<Attraction> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionWithVisitStatus> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderCountry(countryId).and(applyFilters(attractionFilter));
 
-        return getFilteredAttractions(filterCriteria, beforeAttraction);
+        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<Attraction> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionWithVisitStatus> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderRegion(regionId).and(applyFilters(attractionFilter));
 
-        return getFilteredAttractions(filterCriteria, beforeAttraction);
+        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<Attraction> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionWithVisitStatus> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderCity(cityId).and(applyFilters(attractionFilter));
 
-        return getFilteredAttractions(filterCriteria, beforeAttraction);
+        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<Attraction> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionWithVisitStatus> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderMainAttraction(attractionId).and(applyFilters(attractionFilter));
 
-        return getFilteredAttractions(filterCriteria, beforeAttraction);
+        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     private List<Attraction> getFilteredAttractions(Specification<Attraction> attractions, ScrollPosition beforeAttraction) {
@@ -138,5 +141,33 @@ public class SearchServiceImpl implements SearchService {
         List<Attraction> result = attractionRepo.findAll(attractions, PageRequest.of(0, managerProperties.pageSize())).getContent();
         log.atInfo().log("Found {} attractions which meets criteria", result.size());
         return result;
+    }
+
+    private List<AttractionWithVisitStatus> withVisitStatuses(List<Attraction> attractions) {
+        if (attractions.isEmpty()) {
+            return List.of();
+        }
+        var attractionIds = attractions.stream().map(Attraction::getId).toList();
+        Map<Long, AttractionVisitStatus> statuses = computeVisitStatuses(attractionIds);
+        return attractions.stream()
+                .map(attraction -> new AttractionWithVisitStatus(attraction, statuses.get(attraction.getId())))
+                .toList();
+    }
+
+    private Map<Long, AttractionVisitStatus> computeVisitStatuses(List<Long> attractionIds) {
+        if (attractionIds.isEmpty()) {
+            return Map.of();
+        }
+        log.atInfo().log("Computing visit status for {} attractions", attractionIds.size());
+
+        Map<Long, AttractionVisitStatus> statuses = attractionIds.stream()
+                .collect(Collectors.toMap(attractionId -> attractionId, _attractionId -> AttractionVisitStatus.NOT_VISITED, (a, b) -> b));
+        for (AttractionVisitFlag flag : tripAttractionRepo.findLatestVisitFlags(attractionIds)) {
+            var status = flag.wouldVisitAgain()
+                    ? AttractionVisitStatus.VISITED_WANT_RETURN
+                    : AttractionVisitStatus.VISITED_DONE;
+            statuses.put(flag.attractionId(), status);
+        }
+        return statuses;
     }
 }

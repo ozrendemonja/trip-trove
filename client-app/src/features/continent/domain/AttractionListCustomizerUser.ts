@@ -37,7 +37,13 @@ export class AttractionListCustomizerUser extends ListElementCustomizer<Attracti
   };
 
   public createColumns = (): void => {
-    const skipColumns = new Set(["id", "type", "mustVisit", "isTraditional"]);
+    const skipColumns = new Set([
+      "id",
+      "type",
+      "mustVisit",
+      "isTraditional",
+      "visitStatus"
+    ]);
     const columns = buildColumns(this.items, true)
       .map((column) => this.setDefaultLayout(column))
       .filter((column) => !skipColumns.has(column.key));

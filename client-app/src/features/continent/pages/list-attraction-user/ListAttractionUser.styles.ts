@@ -37,12 +37,22 @@ export const useClasses = () => {
 // Theme-independent, so they live at module scope and can be used straight from
 // the column renderer without threading the hook through.
 export const visitMarkerClasses = mergeStyleSets({
+  // A fixed-width gutter for the optional leading marker (return loop or
+  // must-visit pin). Reserving the space here keeps every attraction name
+  // aligned at the same x, whether or not the row carries a marker.
+  markerSlot: {
+    width: 22,
+    minWidth: 22,
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center"
+  },
   // Just the loop symbol — a wordless nod that this is a place worth returning to.
   // The row's warm tint carries the rest of the meaning, so no label is needed.
   returnIcon: {
-    fontSize: 16,
+    fontSize: 12,
+    fontWeight: "bold",
     color: RETURN_ICON,
-    marginRight: 6,
     flexShrink: 0
   }
 });

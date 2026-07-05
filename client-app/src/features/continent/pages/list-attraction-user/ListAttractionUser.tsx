@@ -51,18 +51,24 @@ const onRenderItemColumn = (
   if (column?.key === "name") {
     const wantsReturn =
       atraction?.visitStatus === AttractionVisitStatus.VISITED_WANT_RETURN;
+    const visitedDone =
+      atraction?.visitStatus === AttractionVisitStatus.VISITED_DONE;
+    // Already been and done with it — the must-visit pin no longer applies.
+    const showPin = atraction?.mustVisit && !wantsReturn && !visitedDone;
     return (
       <Stack horizontal>
-        {wantsReturn && (
-          <Icon
-            iconName="Sync"
-            className={visitMarkerClasses.returnIcon}
-            title="Would return"
-          />
-        )}
-        {atraction?.mustVisit && !wantsReturn && (
-          <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
-        )}
+        <div className={visitMarkerClasses.markerSlot}>
+          {wantsReturn && (
+            <Icon
+              iconName="Sync"
+              className={visitMarkerClasses.returnIcon}
+              title="Would return"
+            />
+          )}
+          {showPin && (
+            <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
+          )}
+        </div>
         <Link
           className={className}
           href={`https://www.google.com/search?q=${atraction?.name.name}`}

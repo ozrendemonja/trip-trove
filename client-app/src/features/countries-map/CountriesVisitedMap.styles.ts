@@ -137,6 +137,6 @@ export const useClasses = () =>
   });
 
 export const COLOR_GRAY = "#9aa0a6";
-export const COLOR_YELLOW = "#fde293";
+export const COLOR_YELLOW = "#FCE600";
 export const COLOR_GOLD = "#f4b400";
-export const COLOR_DEFAULT = "#e6e6e6";
+export const COLOR_DEFAULT = "#FDEAD5";

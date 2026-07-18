@@ -30,6 +30,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onToggleMustVisit,
   onDelete,
   readOnly,
+  canManageAttractions,
   inItinerary,
   onToggleInItinerary,
   reviewMode,
@@ -280,7 +281,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
             {attraction.mustVisit ? "★" : "☆"}
           </button>
         )}
-        {readOnly && onToggleInItinerary && (
+        {readOnly && !canManageAttractions && onToggleInItinerary && (
           <label
             className="itinerary-checkbox"
             title="Mark as already planned in itinerary"
@@ -307,7 +308,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
         {visitHistory && visitHistory.length > 0 && (
           <VisitHistoryBadge visits={visitHistory} />
         )}
-        {onDelete && !readOnly && (
+        {onDelete && canManageAttractions && (
           <button
             type="button"
             className="attraction-delete-btn"

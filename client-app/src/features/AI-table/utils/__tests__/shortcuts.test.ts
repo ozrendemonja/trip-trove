@@ -129,9 +129,10 @@ describe("getShortcut & isShortcut", () => {
   });
 
   test("isShortcut matches the configured combo for each action", () => {
-    expect(isShortcut("board.mode.edit", "Alt+1")).toBe(true);
-    expect(isShortcut("board.mode.plan", "Alt+2")).toBe(true);
-    expect(isShortcut("board.mode.review", "Alt+3")).toBe(true);
+    expect(isShortcut("board.mode.prepare", "Alt+1")).toBe(true);
+    expect(isShortcut("board.mode.edit", "Alt+2")).toBe(true);
+    expect(isShortcut("board.mode.plan", "Alt+3")).toBe(true);
+    expect(isShortcut("board.mode.review", "Alt+4")).toBe(true);
     expect(isShortcut("board.mode.cycle", "Ctrl+V")).toBe(true);
     expect(isShortcut("board.export.json", "Ctrl+S")).toBe(true);
     expect(isShortcut("attraction.save", "Ctrl+S")).toBe(true);
@@ -184,7 +185,7 @@ describe("getShortcut & isShortcut", () => {
   });
 
   test("isShortcut rejects mismatched combos", () => {
-    expect(isShortcut("board.mode.edit", "Alt+2")).toBe(false);
+    expect(isShortcut("board.mode.edit", "Alt+1")).toBe(false);
     expect(isShortcut("board.export.json", "S")).toBe(false);
   });
 

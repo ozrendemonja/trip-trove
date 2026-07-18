@@ -64,19 +64,19 @@ test("Show filter dropdowns in toolbar", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
-test("Switch to Plan mode using Alt+2 keyboard shortcut", async ({ page }) => {
-  await page.keyboard.press("Alt+2");
+test("Switch to Plan mode using Alt+3 keyboard shortcut", async ({ page }) => {
+  await page.keyboard.press("Alt+3");
 
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
     /mode-btn-active/
   );
 });
 
-test("Switch back to Edit mode using Alt+1 keyboard shortcut", async ({
+test("Switch back to Edit mode using Alt+2 keyboard shortcut", async ({
   page
 }) => {
+  await page.keyboard.press("Alt+3");
   await page.keyboard.press("Alt+2");
-  await page.keyboard.press("Alt+1");
 
   await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
     /mode-btn-active/
@@ -104,10 +104,10 @@ test("Cycle back to Edit from Plan using Ctrl+V when no tripId", async ({
   );
 });
 
-test("Alt+3 does not switch to Review mode when no tripId", async ({
+test("Alt+4 does not switch to Review mode when no tripId", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+4");
 
   await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
     /mode-btn-active/

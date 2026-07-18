@@ -12,7 +12,8 @@ import type { AttractionVisitHistory } from "./domain/VisitHistory.types";
 import Board from "../AI-table/components/Board";
 import type {
   TouristDestination,
-  Column
+  Column,
+  BoardMode
 } from "../AI-table/components/Board.types";
 import type { Attraction as BoardAttraction } from "../AI-table/components/AttractionList.types";
 import {
@@ -197,15 +198,22 @@ export const MyTrip: React.FC = () => {
   const [tripArchived, setTripArchived] = useState<boolean | undefined>(
     undefined
   );
+  // The tripId each async source has finished loading for, so the Board's
+  // landing mode is never computed from a previous trip's data.
+  const [archivedTripId, setArchivedTripId] = useState<number | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (!tripId) return;
-    fetchTripById(Number(tripId)).then((trip) => {
-      if (trip) {
-        setTripName(trip.name);
-        setTripArchived(trip.status === "archived");
-      }
-    });
+    fetchTripById(Number(tripId))
+      .then((trip) => {
+        if (trip) {
+          setTripName(trip.name);
+          setTripArchived(trip.status === "archived");
+        }
+      })
+      .finally(() => setArchivedTripId(Number(tripId)));
   }, [tripId]);
 
   // Source of truth: all attractions from server responses
@@ -223,6 +231,10 @@ export const MyTrip: React.FC = () => {
   >({});
   // Attraction IDs already persisted in DB (to avoid duplicate saves)
   const [savedAttractionIds, setSavedAttractionIds] = useState<number[]>([]);
+  // The tripId whose saved attractions have finished loading.
+  const [attractionsTripId, setAttractionsTripId] = useState<
+    number | undefined
+  >(undefined);
   // Visit history aggregated across other trips for the loaded attractions
   const [visitHistory, setVisitHistory] = useState<AttractionVisitHistory[]>(
     []
@@ -231,11 +243,19 @@ export const MyTrip: React.FC = () => {
   // Load saved trip attractions from DB on mount
   useEffect(() => {
     if (!tripId) return;
-    fetchTripAttractions(Number(tripId)).then((saved) => {
-      if (saved.length > 0) {
-        setSavedCities(mapSavedTripAttractionsToBoard(saved));
+    fetchTripAttractions(Number(tripId))
+      .then((saved) => {
         const savedIds = saved.map((s) => s.attractionId);
         setSavedAttractionIds(savedIds);
+
+        if (saved.length === 0) {
+          // New/empty trip: clear any previous trip's loaded data.
+          setSavedCities([]);
+          setSavedReviewData({});
+          return;
+        }
+
+        setSavedCities(mapSavedTripAttractionsToBoard(saved));
 
         const reviewData: Record<
           number,
@@ -264,8 +284,8 @@ export const MyTrip: React.FC = () => {
             });
           }
         );
-      }
-    });
+      })
+      .finally(() => setAttractionsTripId(Number(tripId)));
   }, [tripId]);
 
   // Derive display attractions from allAttractions, then merge with loadedCities and savedCities
@@ -329,6 +349,23 @@ export const MyTrip: React.FC = () => {
     // attractions will be automatically recomputed via useMemo
   };
 
+  // Landing mode for the Board: review for archived trips, prepare for a newly
+  // created (empty) trip so attractions can be staged before saving, otherwise
+  // edit. Left undefined until this trip's data has loaded so the Board never
+  // lands on a mode computed from a previous trip's data.
+  const currentTripId = tripId ? Number(tripId) : undefined;
+  const tripDataReady =
+    currentTripId !== undefined &&
+    archivedTripId === currentTripId &&
+    attractionsTripId === currentTripId;
+  const initialMode: BoardMode | undefined = !tripDataReady
+    ? undefined
+    : tripArchived
+      ? "review"
+      : savedAttractionIds.length === 0
+        ? "prepare"
+        : "edit";
+
   return (
     <>
       <Navigation />
@@ -349,13 +386,14 @@ export const MyTrip: React.FC = () => {
         />
       </Stack>
       <Board
+        key={tripId}
         initialCities={attractions}
         onCitiesLoaded={handleCitiesLoaded}
-        tripId={tripId ? Number(tripId) : undefined}
+        tripId={currentTripId}
         initialReviewData={savedReviewData}
         initialSavedAttractionIds={savedAttractionIds}
         visitHistory={visitHistoryMap}
-        archived={tripArchived}
+        initialMode={initialMode}
       />
     </>
   );

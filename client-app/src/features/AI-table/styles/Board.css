@@ -92,6 +92,11 @@
 .mode-btn:hover { background: #f1f5f9; color: #333; }
 .mode-btn-active { background: #fff; color: #111; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
+/* Commit staged prepare-mode changes to the trip */
+.commit-prepare-btn { background: #dcfce7; border: 1px solid #86efac; color: #166534; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.commit-prepare-btn:hover:not(:disabled) { background: #bbf7d0; }
+.commit-prepare-btn:disabled { opacity: 0.5; cursor: default; }
+
 @media (width < 600px) {
   .attraction-board { flex-direction: column; }
 }

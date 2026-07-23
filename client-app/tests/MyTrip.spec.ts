@@ -49,31 +49,31 @@ test("Switch to Review mode and show review forms", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
-test("Switch to Review mode using Alt+3 keyboard shortcut", async ({
+test("Switch to Review mode using Alt+4 keyboard shortcut", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+4");
 
   await expect(page.getByRole("button", { name: /Review/i })).toHaveClass(
     /mode-btn-active/
   );
 });
 
-test("Switch to Plan mode using Alt+2 keyboard shortcut on MyTrip", async ({
+test("Switch to Plan mode using Alt+3 keyboard shortcut on MyTrip", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+2");
+  await page.keyboard.press("Alt+3");
 
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
     /mode-btn-active/
   );
 });
 
-test("Switch back to Edit mode using Alt+1 keyboard shortcut on MyTrip", async ({
+test("Switch back to Edit mode using Alt+2 keyboard shortcut on MyTrip", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
-  await page.keyboard.press("Alt+1");
+  await page.keyboard.press("Alt+4");
+  await page.keyboard.press("Alt+2");
 
   await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
     /mode-btn-active/
@@ -83,6 +83,10 @@ test("Switch back to Edit mode using Alt+1 keyboard shortcut on MyTrip", async (
 test("Cycle through all modes using Ctrl+V when tripId is provided", async ({
   page
 }) => {
+  // A new (empty) trip lands in Prepare mode, which is not part of the cycle;
+  // start from Edit so the edit -> plan -> review -> edit cycle can be verified.
+  await page.keyboard.press("Alt+2");
+
   await page.keyboard.press("Control+v");
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
     /mode-btn-active/

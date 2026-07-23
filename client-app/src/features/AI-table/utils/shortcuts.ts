@@ -13,15 +13,17 @@ export type ShortcutAction =
   | "board.mode.edit"
   | "board.mode.plan"
   | "board.mode.review"
+  | "board.mode.prepare"
   | "board.mode.cycle"
   | "board.export.json"
   | "attraction.save"
   | "form.submit";
 
 export const SHORTCUTS: Record<ShortcutAction, string> = {
-  "board.mode.edit": "Alt+1",
-  "board.mode.plan": "Alt+2",
-  "board.mode.review": "Alt+3",
+  "board.mode.prepare": "Alt+1",
+  "board.mode.edit": "Alt+2",
+  "board.mode.plan": "Alt+3",
+  "board.mode.review": "Alt+4",
   "board.mode.cycle": "Ctrl+V",
   "board.export.json": "Ctrl+S",
   "attraction.save": "Ctrl+S",

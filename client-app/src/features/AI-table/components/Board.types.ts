@@ -13,6 +13,8 @@ export interface TouristDestination {
   columns: Column[];
 }
 
+export type BoardMode = "edit" | "prepare" | "readOnly" | "review";
+
 export interface BoardProps {
   initialCities?: TouristDestination[]; // optional; defaults to empty
   onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
@@ -23,5 +25,7 @@ export interface BoardProps {
   >; // pre-populated review ratings/notes/flags from DB
   initialSavedAttractionIds?: number[]; // attraction IDs already saved in DB (skip re-saving)
   visitHistory?: VisitHistoryMap; // visit history per attraction id (other trips)
-  archived?: boolean; // when true, Board defaults to review mode on first load
+  // Landing mode chosen by the container once the trip data is known (review
+  // when archived, prepare for a new/empty trip, otherwise edit). Applied once.
+  initialMode?: BoardMode;
 }

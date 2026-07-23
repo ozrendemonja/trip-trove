@@ -17,7 +17,12 @@ import {
 } from "../../my-trip/infra/TripApi";
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
-import type { Column, TouristDestination, BoardProps } from "./Board.types";
+import type {
+  Column,
+  TouristDestination,
+  BoardProps,
+  BoardMode
+} from "./Board.types";
 import {
   getShortcut,
   isShortcut,
@@ -48,8 +53,6 @@ const COLUMN_TO_GROUP: Record<string, TripAttractionGroup> = {
   "Excluded Attractions": "EXCLUDED"
 };
 
-type BoardMode = "edit" | "readOnly" | "review";
-
 const Board: React.FC<BoardProps> = ({
   initialCities,
   onCitiesLoaded,
@@ -57,7 +60,7 @@ const Board: React.FC<BoardProps> = ({
   initialReviewData,
   initialSavedAttractionIds,
   visitHistory,
-  archived
+  initialMode
 }) => {
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
@@ -67,17 +70,32 @@ const Board: React.FC<BoardProps> = ({
     overColumnId: null,
     insertionIndex: -1
   });
-  const [boardMode, setBoardMode] = useState<BoardMode>(
-    archived ? "review" : "edit"
-  );
-  const initialModeAppliedRef = useRef(archived !== undefined);
+  const [boardMode, setBoardMode] = useState<BoardMode>(initialMode ?? "edit");
+  // The container computes the landing mode from trip data loaded
+  // asynchronously; apply it once it becomes known. The user's later mode
+  // switches are preserved (applied only once per mounted Board).
+  const initialModeAppliedRef = useRef(initialMode !== undefined);
   useEffect(() => {
-    if (initialModeAppliedRef.current || archived === undefined) return;
+    if (initialModeAppliedRef.current || initialMode === undefined) return;
     initialModeAppliedRef.current = true;
-    if (archived) setBoardMode("review");
-  }, [archived]);
+    setBoardMode(initialMode);
+  }, [initialMode]);
   const readOnly = boardMode !== "edit";
   const reviewMode = boardMode === "review";
+  // "prepare" is a staging mode: you may add, remove and re-group attractions
+  // (like edit) but per-attraction detail edits are disabled and nothing is
+  // persisted until you commit (explicitly, or by leaving the mode).
+  const isPrepare = boardMode === "prepare";
+  const canManageAttractions = boardMode === "edit" || boardMode === "prepare";
+  const persistImmediately = boardMode === "edit";
+  // Bumped after a prepare-mode commit to re-render the pending count/button,
+  // whose source of truth (saved attraction ids) lives in a ref.
+  const [, setCommitVersion] = useState(0);
+  // Group moves applied to already-saved attractions while in prepare mode,
+  // flushed to the backend on commit.
+  const pendingGroupChangesRef = useRef<Map<number, TripAttractionGroup>>(
+    new Map()
+  );
   const [collapsedByCity, setCollapsedByCity] = useState<
     Record<string, boolean>
   >({});
@@ -296,18 +314,23 @@ const Board: React.FC<BoardProps> = ({
             : targetColumn.tasks.length;
         targetColumn.tasks.splice(insertionIndex, 0, attraction);
 
-        // Persist group change to backend when column changes
+        // Persist group change to backend when column changes. In prepare mode
+        // the change is staged and flushed on commit instead.
         if (tripId && dragState.fromColumnId !== targetColumnId) {
           const newGroup = COLUMN_TO_GROUP[targetColumn.title];
           if (newGroup) {
-            updateAttractionGroup(tripId, attraction.id, newGroup).catch(
-              (err) =>
-                console.error(
-                  "Failed to update attraction group",
-                  attraction.id,
-                  err
-                )
-            );
+            if (persistImmediately) {
+              updateAttractionGroup(tripId, attraction.id, newGroup).catch(
+                (err) =>
+                  console.error(
+                    "Failed to update attraction group",
+                    attraction.id,
+                    err
+                  )
+              );
+            } else if (isPrepare) {
+              pendingGroupChangesRef.current.set(attraction.id, newGroup);
+            }
           }
         }
 
@@ -316,7 +339,14 @@ const Board: React.FC<BoardProps> = ({
       setDragState(null);
       setDragUI({ overColumnId: null, insertionIndex: -1 });
     },
-    [dragState, dragUI.insertionIndex, dragUI.overColumnId, tripId]
+    [
+      dragState,
+      dragUI.insertionIndex,
+      dragUI.overColumnId,
+      tripId,
+      persistImmediately,
+      isPrepare
+    ]
   );
 
   const updateAttractionNote = useCallback(
@@ -542,6 +572,7 @@ const Board: React.FC<BoardProps> = ({
       for (const id of initialSavedAttractionIds) {
         savedAttractionIdsRef.current.add(id);
       }
+      setCommitVersion((v) => v + 1);
     }
   }, [initialSavedAttractionIds]);
 
@@ -574,13 +605,76 @@ const Board: React.FC<BoardProps> = ({
     }
   }, [cities, boardMode, tripId]);
 
+  // Reconcile the prepare-mode draft with the backend: attach newly added
+  // attractions, flush staged group moves, and remove any that were pruned.
+  // Runs on an explicit "Save to trip" click and when leaving prepare mode.
+  const commitPreparedChanges = useCallback(() => {
+    if (!tripId) return;
+    const saved = savedAttractionIdsRef.current;
+    const previouslySaved = new Set(saved);
+    const onBoard = new Set<number>();
+
+    for (const city of cities) {
+      for (const col of city.columns) {
+        const group = COLUMN_TO_GROUP[col.title];
+        for (const task of col.tasks) {
+          onBoard.add(task.id);
+          if (!saved.has(task.id)) {
+            saved.add(task.id);
+            attachAttractionToTrip(tripId, task.id, group).catch((err) =>
+              console.error("Failed to save attraction", task.id, err)
+            );
+          }
+        }
+      }
+    }
+
+    // Flush group moves for attractions that were already persisted.
+    for (const [attractionId, group] of Array.from(
+      pendingGroupChangesRef.current.entries()
+    )) {
+      if (previouslySaved.has(attractionId) && onBoard.has(attractionId)) {
+        updateAttractionGroup(tripId, attractionId, group).catch((err) =>
+          console.error("Failed to update attraction group", attractionId, err)
+        );
+      }
+    }
+    pendingGroupChangesRef.current.clear();
+
+    // Remove attractions that were saved before but pruned during preparation.
+    for (const attractionId of Array.from(saved)) {
+      if (!onBoard.has(attractionId)) {
+        saved.delete(attractionId);
+        removeAttractionFromTrip(tripId, attractionId).catch((err) =>
+          console.error(
+            "Failed to remove attraction from trip",
+            attractionId,
+            err
+          )
+        );
+      }
+    }
+
+    setCommitVersion((v) => v + 1);
+  }, [cities, tripId]);
+
+  // Commit staged changes automatically when leaving prepare mode.
+  const prevBoardModeRef = useRef(boardMode);
+  useEffect(() => {
+    const prev = prevBoardModeRef.current;
+    prevBoardModeRef.current = boardMode;
+    if (prev === "prepare" && boardMode !== "prepare") {
+      commitPreparedChanges();
+    }
+  }, [boardMode, commitPreparedChanges]);
+
   const toggleCityCollapse = useCallback((cityName: string) => {
     setCollapsedByCity((prev) => ({ ...prev, [cityName]: !prev[cityName] }));
   }, []);
 
   const removeAttraction = useCallback(
     (attractionId: number) => {
-      if (readOnly) return;
+      if (!canManageAttractions) return;
       setCities((prev) =>
         prev
           .map((city) => ({
@@ -592,7 +686,8 @@ const Board: React.FC<BoardProps> = ({
           }))
           .filter((city) => city.columns.some((col) => col.tasks.length > 0))
       );
-      if (tripId) {
+      // In prepare mode the removal is staged locally and reconciled on commit.
+      if (persistImmediately && tripId) {
         removeAttractionFromTrip(tripId, attractionId).catch((err) =>
           console.error(
             "Failed to remove attraction from trip",
@@ -602,19 +697,20 @@ const Board: React.FC<BoardProps> = ({
         );
       }
     },
-    [readOnly, tripId]
+    [canManageAttractions, persistImmediately, tripId]
   );
 
   const removeAllFromCity = useCallback(
     (cityName: string) => {
-      if (readOnly) return;
+      if (!canManageAttractions) return;
       const city = cities.find((c) => c.name === cityName);
       if (!city) return;
       const attractionIds = city.columns.flatMap((col) =>
         col.tasks.map((t) => t.id)
       );
       setCities((prev) => prev.filter((c) => c.name !== cityName));
-      if (tripId) {
+      // In prepare mode the removal is staged locally and reconciled on commit.
+      if (persistImmediately && tripId) {
         attractionIds.forEach((attractionId) =>
           removeAttractionFromTrip(tripId, attractionId).catch((err) =>
             console.error(
@@ -626,7 +722,7 @@ const Board: React.FC<BoardProps> = ({
         );
       }
     },
-    [readOnly, tripId, cities]
+    [canManageAttractions, persistImmediately, tripId, cities]
   );
 
   const toggleItinerarySelection = useCallback((attractionId: number) => {
@@ -727,6 +823,9 @@ const Board: React.FC<BoardProps> = ({
       } else if (isShortcut("board.mode.review", combo) && tripId) {
         e.preventDefault();
         setBoardMode("review");
+      } else if (isShortcut("board.mode.prepare", combo) && tripId) {
+        e.preventDefault();
+        setBoardMode("prepare");
       } else if (isShortcut("board.mode.cycle", combo)) {
         e.preventDefault();
         setBoardMode((prev) =>
@@ -748,10 +847,45 @@ const Board: React.FC<BoardProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleExportJSON, tripId]);
 
+  // Number of staged attach/remove operations awaiting commit in prepare mode.
+  const pendingCommitCount = ((): number => {
+    if (boardMode !== "prepare" || !tripId) return 0;
+    const saved = savedAttractionIdsRef.current;
+    const onBoard = new Set<number>();
+    let adds = 0;
+    for (const city of cities) {
+      for (const col of city.columns) {
+        for (const task of col.tasks) {
+          onBoard.add(task.id);
+          if (!saved.has(task.id)) adds++;
+        }
+      }
+    }
+    let removes = 0;
+    for (const id of Array.from(saved)) {
+      if (!onBoard.has(id)) removes++;
+    }
+    return adds + removes;
+  })();
+
   return (
     <div className="attraction-board-wrapper">
       <div className="board-toolbar">
         <div className="mode-selector">
+          {tripId && (
+            <button
+              type="button"
+              className={`mode-btn${boardMode === "prepare" ? " mode-btn-active" : ""}`}
+              onClick={() => setBoardMode("prepare")}
+              title={`Prepare mode – stage attractions before saving${
+                getShortcut("board.mode.prepare")
+                  ? ` (${getShortcut("board.mode.prepare")})`
+                  : ""
+              }`}
+            >
+              🧳 Prepare
+            </button>
+          )}
           <button
             type="button"
             className={`mode-btn${boardMode === "edit" ? " mode-btn-active" : ""}`}
@@ -791,6 +925,18 @@ const Board: React.FC<BoardProps> = ({
             </button>
           )}
         </div>
+        {boardMode === "prepare" && tripId && (
+          <button
+            type="button"
+            onClick={commitPreparedChanges}
+            className="commit-prepare-btn"
+            disabled={pendingCommitCount === 0}
+            title="Save staged attractions and removals to this trip"
+          >
+            💾 Save to trip
+            {pendingCommitCount ? ` (${pendingCommitCount})` : ""}
+          </button>
+        )}
         <button
           type="button"
           onClick={handleExportJSON}
@@ -928,7 +1074,7 @@ const Board: React.FC<BoardProps> = ({
                 {isCollapsed ? "▶" : "▼"}
               </button>
               <h1 className="city-title">{city.name}</h1>
-              {!readOnly && (
+              {canManageAttractions && (
                 <button
                   type="button"
                   className="city-remove-all-btn"
@@ -1003,6 +1149,7 @@ const Board: React.FC<BoardProps> = ({
                         isInItinerary={(id) => !!itinerarySelection[id]}
                         onToggleItinerary={toggleItinerarySelection}
                         readOnly={readOnly}
+                        canManageAttractions={canManageAttractions}
                         reviewMode={reviewMode}
                         reviewSelection={reviewSelection}
                         onAttachAttraction={handleAttachAttraction}

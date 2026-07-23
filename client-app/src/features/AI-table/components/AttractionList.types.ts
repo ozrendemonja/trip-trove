@@ -42,6 +42,9 @@ export interface AttractionListProps {
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
   readOnly?: boolean;
+  // Whether add/remove/move of attraction cards is allowed even when per-item
+  // detail edits are disabled (true in edit and prepare modes).
+  canManageAttractions?: boolean;
   isInItinerary?: (attractionId: number) => boolean;
   onToggleItinerary?: (attractionId: number) => void;
   reviewMode?: boolean;

@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
@@ -27,53 +27,102 @@ export default meta;
 
 type Story = StoryObj<typeof AddAttraction>;
 
-/** Fills the form with a valid attraction and clicks Save. */
-const fillAttractionForm = async (): Promise<void> => {
-  // Fluent callouts/options animate in and briefly set pointer-events: none,
-  // so disable user-event's interactability guard. Typing instantly avoids the
-  // date calendar re-rendering on every keystroke.
-  const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+type User = ReturnType<typeof userEvent.setup>;
 
-  // Country
-  await user.type(screen.getByLabelText("Select a country"), "Mon");
+// Fluent callouts/options animate in and briefly set pointer-events: none, so
+// disable user-event's interactability guard. Typing instantly (delay: null)
+// avoids re-rendering (e.g. the date calendar) on every keystroke.
+const setupUser = (): User =>
+  userEvent.setup({ pointerEventsCheck: 0, delay: null });
+
+// A fresh Mirage server per story, so the save-error variants can request a
+// specific HTTP status without leaking into the others. react/display-name is
+// disabled because this renders a Storybook decorator, not a UI component.
+/* eslint-disable react/display-name */
+const withServer =
+  (options?: { saveAttractionStatus?: number }): Decorator =>
+  (Story) => {
+    makeServer(options);
+    return <Story />;
+  };
+/* eslint-enable react/display-name */
+
+const getSaveButton = (): HTMLElement =>
+  screen.getByRole("button", { name: "Save" });
+
+const expectSaveDisabled = (): Promise<void> =>
+  waitFor(() => expect(getSaveButton()).toBeDisabled());
+
+const expectSaveEnabled = (): Promise<void> =>
+  waitFor(() => expect(getSaveButton()).toBeEnabled());
+
+const selectCountry = async (
+  user: User,
+  name = "Monaco",
+  query = "Mon"
+): Promise<void> => {
+  await user.type(screen.getByLabelText("Select a country"), query);
   await user.click(
-    await screen.findByRole("menuitem", { name: "Monaco" }, { timeout: 5000 })
+    await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
+};
 
-  // City
-  await user.type(screen.getByLabelText("Select a city"), "Mon");
+const selectCity = async (
+  user: User,
+  name = "Monaco, Monaco, Monaco",
+  query = "Mon"
+): Promise<void> => {
+  await user.type(screen.getByLabelText("Select a city"), query);
   await user.click(
-    await screen.findByRole(
-      "menuitem",
-      { name: "Monaco, Monaco, Monaco" },
-      { timeout: 5000 }
-    )
+    await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
+};
 
-  // Attraction name
-  await user.type(screen.getByLabelText("Attraction name"), "Casino Square");
+const enableRegionLevel = (user: User): Promise<void> =>
+  user.click(screen.getByLabelText("Attraction is region level"));
 
-  // Category (Type defaults to STABLE, so it is left as-is)
+const selectRegion = async (
+  user: User,
+  name = "Monaco",
+  query = "Mon"
+): Promise<void> => {
+  await user.type(screen.getByLabelText("Select a region"), query);
+  await user.click(
+    await screen.findByRole("menuitem", { name }, { timeout: 5000 })
+  );
+};
+
+const typeAttractionName = (
+  user: User,
+  value = "Casino Square"
+): Promise<void> => user.type(screen.getByLabelText("Attraction name"), value);
+
+const selectCategory = async (
+  user: User,
+  name = "ART_MUSEUM"
+): Promise<void> => {
   await user.click(
     screen.getByRole("combobox", { name: "Attraction category" })
   );
-  await user.click(await screen.findByRole("option", { name: "ART_MUSEUM" }));
+  await user.click(await screen.findByRole("option", { name }));
+};
 
-  // Where the information comes from — pick the suggestion so its dropdown
-  // closes and does not overlap the Save button.
-  await user.type(screen.getByLabelText("Where information comes from"), "Lonely");
+const selectSource = async (
+  user: User,
+  name = "Lonely Planet",
+  query = "Lonely"
+): Promise<void> => {
+  await user.type(screen.getByLabelText("Where information comes from"), query);
   await user.click(
-    await screen.findByRole(
-      "menuitem",
-      { name: "Lonely Planet" },
-      { timeout: 5000 }
-    )
+    await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
+};
 
-  // Date of information recording — typing does not commit the Fluent date
-  // picker via user-event, so open the calendar and click today's button
-  // (always enabled). The day <button> carries the accessible name; its <td>
-  // intercepts pointer events, which the disabled guard above lets us bypass.
+const pickRecordedDateToday = async (user: User): Promise<void> => {
+  // Typing does not commit the Fluent date picker via user-event, so open the
+  // calendar and click today's button (always enabled and within maxDate). The
+  // day <button> carries the accessible name; its <td> intercepts pointer
+  // events, which the pointerEventsCheck override lets us bypass.
   await user.click(
     screen.getByRole("combobox", { name: /Date of information recording/ })
   );
@@ -82,58 +131,342 @@ const fillAttractionForm = async (): Promise<void> => {
     month: "long"
   })}, ${now.getFullYear()}`;
   await user.click(await screen.findByRole("button", { name: today }));
-
-  // Submit
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled()
-  );
-  await user.click(screen.getByRole("button", { name: "Save" }));
 };
 
-export const Primary: Story = {
-  decorators: [
-    (Story) => {
-      makeServer();
-      return <Story />;
-    }
-  ]
+// Pastes a value (instead of typing) so multi-thousand-character inputs do not
+// fire a state update per character, then blurs to trigger Fluent's
+// validateOnFocusOut validation.
+const enterAndBlur = async (
+  user: User,
+  field: HTMLElement,
+  value: string
+): Promise<void> => {
+  await user.click(field);
+  await user.paste(value);
+  await user.tab();
 };
 
-/**
- * Saving fails with a name conflict (HTTP 409, errorCode NAME_CONFLICT). The
- * conflict is shown inline under the attraction name and all entered data is
- * preserved, so the name can be corrected and retried.
- */
-export const SaveConflict: Story = {
-  decorators: [
-    (Story) => {
-      makeServer({ saveAttractionStatus: 409 });
-      return <Story />;
-    }
-  ],
+// Fills every required field with a valid attraction, without submitting. Type
+// defaults to STABLE, so it is left as-is.
+const completeRequiredFields = async (user: User): Promise<void> => {
+  await selectCountry(user);
+  await selectCity(user);
+  await typeAttractionName(user);
+  await selectCategory(user);
+  await selectSource(user);
+  await pickRecordedDateToday(user);
+};
+
+export const ShowsInlineNameConflictErrorWhenAttractionAlreadyExists: Story = {
+  decorators: [withServer({ saveAttractionStatus: 409 })],
   play: async () => {
-    await fillAttractionForm();
+    const user = setupUser();
+    await completeRequiredFields(user);
+    await user.click(getSaveButton());
+
     await expect(
       await screen.findByText(/already exists/i, {}, { timeout: 5000 })
     ).toBeInTheDocument();
   }
 };
 
-/**
- * Saving fails with a generic server error (HTTP 500). A message bar is shown
- * above the actions and all entered data is preserved.
- */
-export const SaveServerError: Story = {
-  decorators: [
-    (Story) => {
-      makeServer({ saveAttractionStatus: 500 });
-      return <Story />;
-    }
-  ],
+export const ShowsGenericErrorBarWhenSaveFailsOnServer: Story = {
+  decorators: [withServer({ saveAttractionStatus: 500 })],
   play: async () => {
-    await fillAttractionForm();
+    const user = setupUser();
+    await completeRequiredFields(user);
+    await user.click(getSaveButton());
+
     await expect(
       await screen.findByText(/wasn't saved/i, {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+  }
+};
+
+export const SavesWithCtrlS: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+    await user.click(screen.getByLabelText("add one attraction"));
+    await completeRequiredFields(user);
+
+    await expectSaveEnabled();
+
+    await user.keyboard("{Control>}s{/Control}");
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Attraction name")).toHaveValue("")
+    );
+  }
+};
+
+export const SaveDisabledOnEmptyForm: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    await expectSaveDisabled();
+  }
+};
+
+export const SaveDisabledWithOnlyCountry: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+
+    await expectSaveDisabled();
+  }
+};
+
+export const SaveDisabledWithCountryAndCity: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    await selectCity(user);
+
+    await expectSaveDisabled();
+  }
+};
+
+export const SaveDisabledWithCountryAndRegion: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    await enableRegionLevel(user);
+    await selectRegion(user);
+
+    await expectSaveDisabled();
+  }
+};
+
+export const SaveDisabledUntilInformationRecordedIsSet: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    await selectCity(user);
+    await typeAttractionName(user);
+    await selectCategory(user);
+    await selectSource(user);
+
+    await expectSaveDisabled();
+  }
+};
+
+export const SaveEnabledWithAllRequiredFields: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await completeRequiredFields(user);
+
+    await expectSaveEnabled();
+  }
+};
+
+export const ShowsErrorWhenCountryDeselected: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    // Typing over the chosen country clears the selection.
+    await user.clear(screen.getByLabelText("Select a country"));
+    await user.type(screen.getByLabelText("Select a country"), "Wrong");
+
+    await expect(
+      await screen.findByText("Country must be selected", {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+    await expectSaveDisabled();
+  }
+};
+
+export const ShowsErrorWhenCityDeselected: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    await selectCity(user);
+    await user.clear(screen.getByLabelText("Select a city"));
+    await user.type(screen.getByLabelText("Select a city"), "Wrong");
+
+    await expect(
+      await screen.findByText("City must be selected", {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenRegionDeselected: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectCountry(user);
+    await enableRegionLevel(user);
+    await selectRegion(user);
+    await user.clear(screen.getByLabelText("Select a region"));
+    await user.type(screen.getByLabelText("Select a region"), "Wrong");
+
+    await expect(
+      await screen.findByText("Region must be selected", {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenNameCleared: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await typeAttractionName(user);
+    await user.clear(screen.getByLabelText("Attraction name"));
+    await user.tab();
+
+    await expect(
+      await screen.findByText(
+        "Attraction name may not be null or empty",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenNameTooLong: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(
+      user,
+      screen.getByLabelText("Attraction name"),
+      "a".repeat(2049)
+    );
+
+    await expect(
+      await screen.findByText(
+        "Attraction name may not be longer then 2048 characters",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenAddressTooLong: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(
+      user,
+      screen.getByLabelText("Attraction address"),
+      "a".repeat(513)
+    );
+
+    await expect(
+      await screen.findByText(
+        "Attraction address may not be longer then 512 characters",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenTipTooLong: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(user, screen.getByLabelText("Tip"), "a".repeat(2049));
+
+    await expect(
+      await screen.findByText(
+        "Tip may not be longer then 2048 characters",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenSourceCleared: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await selectSource(user);
+    await user.clear(screen.getByLabelText("Where information comes from"));
+    await user.tab();
+
+    await expect(
+      await screen.findByText(
+        "Info from may not be null or empty",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenSourceTooLong: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(
+      user,
+      screen.getByLabelText("Where information comes from"),
+      "a".repeat(513)
+    );
+
+    await expect(
+      await screen.findByText(
+        "Info from may not be longer then 512 characters",
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenGeoLocationLatitudeInvalid: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(
+      user,
+      screen.getByLabelText("Geo location"),
+      "90.000001,-7.4247538"
+    );
+
+    await expect(
+      await screen.findByText("Invalid latitude", {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+  }
+};
+
+export const ShowsErrorWhenGeoLocationLongitudeInvalid: Story = {
+  decorators: [withServer()],
+  play: async () => {
+    const user = setupUser();
+
+    await enterAndBlur(
+      user,
+      screen.getByLabelText("Geo location"),
+      "43.7397097,-180.00001"
+    );
+
+    await expect(
+      await screen.findByText("Invalid longitude", {}, { timeout: 5000 })
     ).toBeInTheDocument();
   }
 };

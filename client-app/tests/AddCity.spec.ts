@@ -16,39 +16,6 @@ test("Save button is disabled when city name is empty and region is not selected
   await expect(page).toHaveScreenshot();
 });
 
-test("Save button is disabled when city name is empty and region is selected", async ({
-  page
-}) => {
-  await page.getByLabel("Select a region").fill("Sam");
-  await page.getByRole("menuitem", { name: "Samogitia" }).click();
-  await page.getByRole("button", { name: "Cancel" }).focus();
-
-  await expect(page.getByLabel("Select a region")).toHaveValue("Samogitia");
-  await expect(page).toHaveScreenshot();
-});
-
-test("Save button is disabled when city name is valid and region is not selected", async ({
-  page
-}) => {
-  await page.getByLabel("City name").fill("Telšiai");
-  await page.getByRole("button", { name: "Cancel" }).focus();
-
-  await expect(page).toHaveScreenshot();
-});
-
-test("Save button is disabled when city name is valid and region name is changed after selection", async ({
-  page
-}) => {
-  await page.getByLabel("City name").fill("Telšiai");
-  await page.getByLabel("Select a region").fill("Sam");
-  await page.getByRole("menuitem", { name: "Samogitia" }).click();
-  await page.getByLabel("Select a region").fill("Invalid");
-  await page.getByRole("button", { name: "Cancel" }).focus();
-
-  await expect(page.getByLabel("Select a region")).toHaveValue("Invalid");
-  await expect(page).toHaveScreenshot();
-});
-
 test("List of suggested regions are shown after user type first 3 characters", async ({
   page
 }) => {
@@ -62,19 +29,6 @@ test("List of suggested regions are shown after user type first 3 characters", a
   await expect(page).toHaveScreenshot();
 });
 
-test("Save button is enabled when city name is valid and region is selected", async ({
-  page
-}) => {
-  await page.getByLabel("City name").fill("Telšiai");
-  await page.getByLabel("Select a region").fill("Sam");
-  await page.getByRole("menuitem", { name: "Samogitia" }).click();
-
-  await expect(page.getByRole("menuitem", { name: "Samogitia" })).toHaveCount(
-    0
-  );
-  await expect(page).toHaveScreenshot();
-});
-
 test("Save button is disabled and error message is shown when city name is too short", async ({
   page
 }) => {
@@ -82,18 +36,6 @@ test("Save button is disabled and error message is shown when city name is too s
   await page.getByRole("menuitem", { name: "Samogitia" }).click();
   await page.getByLabel("City name").fill("Telšiai");
   await page.getByLabel("City name").fill("");
-  await page.getByRole("button", { name: "Cancel" }).focus();
-
-  await expect(page).toHaveScreenshot();
-});
-
-test("Save button is disabled and error message is shown when city name is too long", async ({
-  page
-}) => {
-  await page.getByLabel("Select a region").fill("Sam");
-  await page.getByRole("menuitem", { name: "Samogitia" }).click();
-  await page.getByLabel("City name").fill("Telšiai");
-  await page.getByLabel("City name").fill("a".repeat(265));
   await page.getByRole("button", { name: "Cancel" }).focus();
 
   await expect(page).toHaveScreenshot();

@@ -11,7 +11,7 @@
     "build-storybook": "storybook build",
     "test-unit": "jest",
     "test-storybook": "playwright test",
-    "test-home-stories": "npm run build-storybook && concurrently -k -s first -n SB,TEST \"http-server storybook-static -p 6006 --silent\" \"wait-on tcp:127.0.0.1:6006 && test-storybook --url http://127.0.0.1:6006 Home\"",
+    "test-stories": "npm run build-storybook && concurrently -k -s first -n SB,TEST \"http-server storybook-static -p 6006 --silent\" \"wait-on tcp:127.0.0.1:6006 && test-storybook --url http://127.0.0.1:6006\"",
     "lint:ts": "eslint --ext \".js,.ts,.tsx\" \"src/\""
   },
   "dependencies": {

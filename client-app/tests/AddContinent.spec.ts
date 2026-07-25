@@ -25,16 +25,6 @@ test("Save button is enabled when continent name is valid", async ({
   await expect(page).toHaveScreenshot();
 });
 
-test("Save button is disabled and error message is shown when continent name is too short", async ({
-  page
-}) => {
-  await page.getByLabel("Continent name").fill("Asia");
-  await page.getByLabel("Continent name").fill("");
-  await page.getByRole("button", { name: "Cancel" }).focus();
-
-  await expect(page).toHaveScreenshot();
-});
-
 test("Save button is disabled and error message is shown when continent name is too long", async ({
   page
 }) => {

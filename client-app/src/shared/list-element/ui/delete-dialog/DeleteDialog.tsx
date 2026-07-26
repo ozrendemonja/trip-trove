@@ -42,6 +42,7 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
   return (
     <>
       <CommandBar
+        key={`command-bar-${props.selectedItem.haveSelectedItem}`}
         items={getCommandItems(
           props.selectedItem.haveSelectedItem,
           props.addRowOptions,

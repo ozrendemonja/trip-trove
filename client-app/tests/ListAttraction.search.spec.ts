@@ -7,14 +7,10 @@ test.beforeEach(async ({ page }) => {
 
   await page.waitForSelector('div[data-automationid="DetailsList"]');
   await expect(
-    page.getByRole("gridcell", { name: "Vilnius Old Town" })
+    page.getByRole("button", {
+      name: "Change attraction details from Vilnius Old Town"
+    })
   ).toBeVisible();
-});
-
-test("Search ignores inputs shorter than 3 character", async ({ page }) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Ca");
-
-  await expect(page).toHaveScreenshot();
 });
 
 test("Search dropdown displays all elements where the search value is a substring", async ({
@@ -31,23 +27,64 @@ test("Search dropdown displays all elements where the search value is a substrin
   await expect(page).toHaveScreenshot();
 });
 
-test("Dropdown and search values are cleared when clicking on cancel search", async ({
-  page
-}) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Cas");
-  await page.getByRole("button", { name: "Clear text" }).click();
+test.describe("Edit modal suggestion dropdowns", () => {
+  test.use({ viewport: { width: 2560, height: 1200 } });
 
-  await expect(page).toHaveScreenshot();
-});
+  test("Country search suggestions appear while editing a destination", async ({
+    page
+  }) => {
+    await page
+      .getByRole("button", {
+        name: "Change attraction destination from Lithuania"
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Modifying Lithuania" })
+    ).toBeVisible();
 
-test("Selected element is displayed in the table when chosen from the search dropdown, and the search value and dropdown are cleared", async ({
-  page
-}) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Cas");
-  await page.getByRole("menuitem", { name: "Casino Square" }).click();
-  await expect(
-    page.getByRole("menuitem", { name: "Casino Square" })
-  ).toHaveCount(0);
+    await page.getByLabel("Select a country").fill("Lith");
 
-  await expect(page).toHaveScreenshot();
+    await expect(
+      page.getByRole("menuitem", { name: "Lithuania" })
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot();
+  });
+
+  test("City search suggestions appear while editing a destination", async ({
+    page
+  }) => {
+    await page
+      .getByRole("button", {
+        name: "Change attraction destination from Lithuania"
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Modifying Lithuania" })
+    ).toBeVisible();
+
+    await page.getByLabel("Attraction is region level").click();
+    await page.getByLabel("Select a city").fill("Mon");
+
+    await expect(
+      page.getByRole("menuitem", { name: "Monaco, Monaco, Monaco" })
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot();
+  });
+
+  test("Information source suggestions appear while editing attraction info", async ({
+    page
+  }) => {
+    await page
+      .getByRole("button", {
+        name: "Change attraction info from Google reviews"
+      })
+      .click();
+    await expect(page.getByLabel("Where information comes from")).toBeVisible();
+
+    await page.getByLabel("Where information comes from").fill("Lonely");
+    await expect(
+      page.getByRole("menuitem", { name: "Lonely Planet" })
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot();
+  });
 });

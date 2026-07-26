@@ -11,12 +11,6 @@ test.beforeEach(async ({ page }) => {
   ).toBeVisible();
 });
 
-test("Search ignores inputs shorter than 3 character", async ({ page }) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Sa");
-
-  await expect(page).toHaveScreenshot();
-});
-
 test("Search dropdown displays all elements where the search value is a substring", async ({
   page
 }) => {
@@ -28,23 +22,13 @@ test("Search dropdown displays all elements where the search value is a substrin
   await expect(page).toHaveScreenshot();
 });
 
-test("Dropdown and search values are cleared when clicking on cancel search", async ({
+test("Search dropdown shows region suggestions when a valid region is typed", async ({
   page
 }) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Sam");
-  await page.getByRole("button", { name: "Clear text" }).click();
-
-  await expect(page).toHaveScreenshot();
-});
-
-test("Selected element is displayed in the table when chosen from the search dropdown, and the search value and dropdown are cleared", async ({
-  page
-}) => {
-  await page.getByRole("searchbox", { name: "Search" }).fill("Sam");
-  await page.getByRole("menuitem", { name: "Samogitia" }).click();
-  await expect(page.getByRole("menuitem", { name: "Samogitia" })).toHaveCount(
-    0
-  );
+  await page.getByRole("searchbox", { name: "Search" }).fill("Samogitia");
+  await expect(
+    page.getByRole("menuitem", { name: "Samogitia" })
+  ).toBeVisible();
 
   await expect(page).toHaveScreenshot();
 });

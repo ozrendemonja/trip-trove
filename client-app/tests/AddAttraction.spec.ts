@@ -1,10 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-// Interaction and validation behaviour is covered functionally by the
-// AddAttraction Storybook play functions (see AddAttraction.stories.tsx, run
-// via `npm run test-attraction-stories`). These Playwright tests keep a small
-// set of full-page visual regression baselines for the key form states.
-
 test.beforeEach(async ({ page }) => {
   await page.goto(
     "http://localhost:6006/iframe.html?id=features-continent-pages-add-attraction-addattraction--primary"

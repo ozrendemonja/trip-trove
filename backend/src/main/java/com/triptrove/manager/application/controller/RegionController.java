@@ -91,7 +91,7 @@ public class RegionController {
     @Operation(summary = "Update the country name of the region", responses = {
             @ApiResponse(description = "Region details are updated", responseCode = "204"),
     })
-    public void updateRegionCountry(@PathVariable String id, @RequestBody UpdateRegionCountryRequest countryContinentRequest) {
+    public void updateRegionCountry(@PathVariable String id, @Valid @RequestBody UpdateRegionCountryRequest countryContinentRequest) {
         regionService.updateRegionCountryDetails(Integer.parseInt(id), countryContinentRequest.countryId());
     }
 }

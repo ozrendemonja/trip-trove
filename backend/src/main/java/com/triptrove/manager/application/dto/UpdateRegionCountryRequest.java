@@ -1,4 +1,6 @@
 package com.triptrove.manager.application.dto;
 
-public record UpdateRegionCountryRequest(Integer countryId) {
+import jakarta.validation.constraints.NotNull;
+
+public record UpdateRegionCountryRequest(@NotNull Integer countryId) {
 }

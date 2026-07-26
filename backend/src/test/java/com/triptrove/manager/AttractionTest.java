@@ -715,6 +715,61 @@ public class AttractionTest extends AbstractIntegrationTest {
         assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder("attractionLocation.latitude = Latitude must be between -90 and 90 to be valid", "attractionLocation.longitude = Longitude must be between -180 and 180 to be valid");
     }
 
+    @ParameterizedTest
+    @MethodSource("provideBoundaryLocations")
+    void shouldUpdateAttractionLocationWhenCoordinatesAreAtInclusiveBounds(LocationDTO location) throws Exception {
+        var updateRequest = new UpdateAttractionLocationRequest("Test address, Test", location);
+
+        mockMvc.perform(put("/attractions/" + 3 + "/location")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        assertThat(attractionRepo.findById(3L).flatMap(Attraction::getAddress).map(Address::location))
+                .hasValue(new Location(location.latitude(), location.longitude()));
+    }
+
+    private static Stream<LocationDTO> provideBoundaryLocations() {
+        return Stream.of(
+                new LocationDTO(90.0, 180.0),
+                new LocationDTO(-90.0, -180.0),
+                new LocationDTO(90.0, -180.0),
+                new LocationDTO(-90.0, 180.0)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideOutOfBoundsLocations")
+    void shouldRejectUpdateAttractionLocationWhenCoordinateIsJustOutsideBounds(OutOfBoundsLocation input) throws Exception {
+        var updateRequest = new UpdateAttractionLocationRequest("Test address, Test", input.location());
+
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 1 + "/location")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
+    }
+
+    private record OutOfBoundsLocation(LocationDTO location, String errorMessage) {
+    }
+
+    private static Stream<OutOfBoundsLocation> provideOutOfBoundsLocations() {
+        return Stream.of(
+                new OutOfBoundsLocation(new LocationDTO(90.001, 0.0), "{attractionLocation.latitude = Latitude must be between -90 and 90 to be valid}"),
+                new OutOfBoundsLocation(new LocationDTO(-90.001, 0.0), "{attractionLocation.latitude = Latitude must be between -90 and 90 to be valid}"),
+                new OutOfBoundsLocation(new LocationDTO(0.0, 180.001), "{attractionLocation.longitude = Longitude must be between -180 and 180 to be valid}"),
+                new OutOfBoundsLocation(new LocationDTO(0.0, -180.001), "{attractionLocation.longitude = Longitude must be between -180 and 180 to be valid}")
+        );
+    }
+
     @Test
     void shouldRejectUpdateAttractionLocationRequestWhenAttractionIdNotExist() throws Exception {
         var updateRequest = new UpdateAttractionLocationRequest("Test address, test", null);
@@ -904,6 +959,18 @@ public class AttractionTest extends AbstractIntegrationTest {
         assertThat(attractionRepo.findById(1L).flatMap(Attraction::getTip)).isEmpty();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void shouldAcceptUpdateAttractionTipWhenTipIsBlank(String tip) throws Exception {
+        var updateRequest = new UpdateAttractionTipRequest(tip);
+
+        mockMvc.perform(put("/attractions/" + 1 + "/tip")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+    }
+
     @Test
     void shouldRejectUpdateAttractionTipRequestWhenAttractionIdNotExist() throws Exception {
         var updateRequest = new UpdateAttractionTipRequest("Test tip, test test");
@@ -1002,6 +1069,42 @@ public class AttractionTest extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
         assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder("optimalVisitPeriod.toDate = must not be null", "optimalVisitPeriod.fromDate = must not be null");
+    }
+
+    @Test
+    void shouldRejectUpdateAttractionVisitPeriodRequestWhenOnlyFromDateIsNull() throws Exception {
+        var updateRequest = new UpdateAttractionVisitPeriodRequest(new DateSpanDTO(null, LocalDate.now()));
+
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 1 + "/visitPeriod")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{optimalVisitPeriod.fromDate = must not be null}");
+    }
+
+    @Test
+    void shouldRejectUpdateAttractionVisitPeriodRequestWhenOnlyToDateIsNull() throws Exception {
+        var updateRequest = new UpdateAttractionVisitPeriodRequest(new DateSpanDTO(LocalDate.now(), null));
+
+        var jsonResponse = mockMvc.perform(put("/attractions/" + 1 + "/visitPeriod")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{optimalVisitPeriod.toDate = must not be null}");
     }
 
     @Test

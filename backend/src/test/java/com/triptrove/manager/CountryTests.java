@@ -268,6 +268,22 @@ class CountryTests extends AbstractIntegrationTest {
         assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
     }
 
+    @Test
+    void errorShouldBeReturnedWhenNonExistingCountryIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/countries/" + 999)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(countryRepo.findAll()).hasSize(5);
+    }
+
     @ParameterizedTest
     @MethodSource("provideValidCountryNames")
     void shouldUpdateCountryNameWhenNewNameIsValid(String newCountryName) throws Exception {
@@ -403,6 +419,40 @@ class CountryTests extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
         assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideInvalidContinentNames")
+    void errorShouldBeReturnedWhenContinentNameIsInvalidOnContinentUpdate(InvalidContinentName input) throws Exception {
+        var update = new UpdateCountryContinentRequest(input.continentName());
+
+        var jsonResponse = mockMvc.perform(put("/countries/1/continent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(input.errorMessage());
+    }
+
+    private record InvalidContinentName(String continentName, String errorMessage) {
+    }
+
+    private static Stream<InvalidContinentName> provideInvalidContinentNames() {
+        return Stream.of(
+                new InvalidContinentName(null, "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("   ", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("\t", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("\n", "{continentName = Continent name may not be null or empty}"),
+                new InvalidContinentName("a".repeat(65), "{continentName = Continent name may not be longer then 64}"),
+                new InvalidContinentName("ab".repeat(64), "{continentName = Continent name may not be longer then 64}")
+        );
     }
 
     @Test

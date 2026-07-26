@@ -81,7 +81,9 @@ public class RegionServiceImpl implements RegionService {
             throw new BaseApiException("Region has cities or attractions under", ErrorCode.HAS_CHILDREN);
         }
 
-        regionRepo.deleteById(id);
+        var region = regionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Region not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        regionRepo.delete(region);
         log.atInfo().log("Region deleted");
     }
 

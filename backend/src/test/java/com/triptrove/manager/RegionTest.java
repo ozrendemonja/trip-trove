@@ -91,6 +91,24 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
     }
 
+    @Test
+    void regionSaveRequestShouldBeRejectedWhenCountryIdIsNull() throws Exception {
+        var request = new SaveRegionRequest("Test region 9", null);
+
+        var jsonResponse = mockMvc.perform(post("/regions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{countryId = must not be null}");
+    }
+
     @ParameterizedTest
     @MethodSource("provideInvalidRegionNames")
     void regionSaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidRegionName input) throws Exception {
@@ -310,6 +328,22 @@ public class RegionTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void errorShouldBeReturnedWhenNonExistingRegionIsRequestedToBeDeleted() throws Exception {
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 100)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(regionRepo.findAll()).hasSize(5);
+    }
+
+    @Test
     void regionShouldBeReturnedWhenValidIdIsSent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/regions/" + 1)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -482,6 +516,24 @@ public class RegionTest extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
         assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+    }
+
+    @Test
+    void errorShouldBeReturnedWhenNullCountryIdIsSentToUpdateRegionCountry() throws Exception {
+        var update = new UpdateRegionCountryRequest(null);
+
+        var jsonResponse = mockMvc.perform(put("/regions/1/country")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{countryId = must not be null}");
     }
 
     @Test

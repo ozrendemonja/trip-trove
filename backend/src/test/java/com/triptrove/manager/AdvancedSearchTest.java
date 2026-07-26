@@ -628,4 +628,47 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         );
     }
 
+    @Test
+    void shouldReturnEmptyListWhenSearchingAttractionsUnderNonExistingContinent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search/continent/Nonexistent continent/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenSearchingAttractionsUnderNonExistingCountry() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search/country/9999/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenQueryMatchesNoAttractionUnderContinent() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", "zzzznomatchxyz")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
 }

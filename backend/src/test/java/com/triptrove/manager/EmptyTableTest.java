@@ -1,6 +1,7 @@
 package com.triptrove.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.triptrove.manager.application.dto.GetAttractionResponse;
 import com.triptrove.manager.application.dto.GetCityResponse;
 import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.GetCountryResponse;
@@ -80,6 +81,20 @@ class EmptyTableTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         GetContinentResponse[] response = mapper.readValue(jsonResponse, GetContinentResponse[].class);
+        assertThat(response).isEmpty();
+    }
+
+    @Test
+    void attractionListShouldBeReturnedEmptyWhenNoAttractionExists() throws Exception {
+        var jsonResponse = mockMvc.perform(get("/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).isEmpty();
     }
 }

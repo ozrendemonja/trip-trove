@@ -83,7 +83,9 @@ public class CountryServiceImpl implements CountryService {
             throw new BaseApiException("Country has regions under", ErrorCode.HAS_CHILDREN);
         }
 
-        countryRepo.deleteById(id);
+        var country = countryRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        countryRepo.delete(country);
         log.atInfo().log("Country deleted");
     }
 

@@ -86,7 +86,7 @@ public class CountryController {
     @Operation(summary = "Update the continent name of the country", responses = {
             @ApiResponse(description = "Country details are updated", responseCode = "204"),
     })
-    public void updateCountryContinent(@PathVariable String id, @RequestBody UpdateCountryContinentRequest countryContinentRequest) {
+    public void updateCountryContinent(@PathVariable String id, @Valid @RequestBody UpdateCountryContinentRequest countryContinentRequest) {
         countryService.updateCountryContinentDetails(Integer.valueOf(id), countryContinentRequest.continentName());
     }
 

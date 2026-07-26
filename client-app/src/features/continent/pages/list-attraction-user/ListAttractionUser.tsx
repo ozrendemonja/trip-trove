@@ -248,6 +248,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
       setAttractionCustomizer(
         new AttractionListCustomizerUser(setItems, setColumns)
       );
+      setLastElement(undefined);
       toggleReloadData();
     }
   });

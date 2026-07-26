@@ -460,6 +460,24 @@ export default function makeServer(options?: {
         { timing: 600 }
       );
 
+      this.put(
+        "/countries/:id/iso-code",
+        (schema, request) => {
+          const id = request.params.id;
+          const newIsoCode = (
+            JSON.parse(request.requestBody) as { isoCode: string }
+          ).isoCode;
+
+          const element = schema.db.countries.findBy((data) => {
+            return data.countryId == id;
+          });
+          if (element) {
+            schema.db.countries.update(element.id, { isoCode: newIsoCode });
+          }
+        },
+        { timing: 600 }
+      );
+
       this.get("/search", (schema, request) => {
         const query = request.queryParams.q;
         const inElement = request.queryParams.i;

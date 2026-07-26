@@ -1,32 +1,266 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { MemoryRouter } from "react-router";
-import makeServer from "../../../../ServerSetup";
+import { expect, waitFor, within } from "@storybook/test";
 import AttractionList from "./ListAttraction";
-
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
-
-const meta: Meta<typeof AttractionList> = {
-  component: AttractionList,
-  decorators: [
-    (Story) => {
-      makeServer();
-      return (
-        <>
-          <MemoryRouter initialEntries={["/"]}>
-            <Story />
-          </MemoryRouter>
-          <style>{styleOverrides}</style>
-        </>
-      );
-    }
-  ]
-};
-
-export default meta;
+import {
+  withFreshServer,
+  setupUser,
+  overlay,
+  searchFor,
+  openAttractionNameEditor,
+  waitForAllAttractionsToLoad,
+  pickSuggestion,
+  updateButton,
+  cancelButton
+} from "./ListAttraction.helpers";
 
 type Story = StoryObj<typeof AttractionList>;
 
+const meta: Meta<typeof AttractionList> = {
+  component: AttractionList,
+  tags: ["wide"],
+  decorators: [withFreshServer]
+};
+export default meta;
+
 export const Primary: Story = {};
+
+export const SearchIgnoresShortInput: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+
+    await searchFor(canvasElement, user, "Ca");
+
+    expect(
+      within(canvasElement).queryByRole("menuitem", { name: "Casino Square" })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const SearchShowsSubstringMatches: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+
+    await searchFor(canvasElement, user, "Cas");
+
+    expect(
+      await within(canvasElement).findByRole("menuitem", {
+        name: "Casino of Monte-Carlo"
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(canvasElement).getByRole("menuitem", { name: "Casino Square" })
+    ).toBeInTheDocument();
+  }
+};
+
+export const ClearsSearchInputAndSuggestions: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+
+    await searchFor(canvasElement, user, "Cas");
+    await within(canvasElement).findByRole("menuitem", {
+      name: "Casino Square"
+    });
+    await user.click(
+      within(canvasElement).getByRole("button", { name: "Clear text" })
+    );
+
+    await waitFor(() =>
+      expect(
+        within(canvasElement).queryByRole("menuitem", { name: "Casino Square" })
+      ).not.toBeInTheDocument()
+    );
+    expect(within(canvasElement).getByRole("searchbox")).toHaveValue("");
+  }
+};
+
+export const SelectsSuggestionFromDropdown: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+
+    await searchFor(canvasElement, user, "Cas");
+    await user.click(
+      await within(canvasElement).findByRole("menuitem", {
+        name: "Casino Square"
+      })
+    );
+
+    await waitFor(() =>
+      expect(
+        within(canvasElement).queryByRole("menuitem", { name: "Casino Square" })
+      ).not.toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(
+        within(canvasElement).getAllByRole("button", {
+          name: /Change attraction details from/
+        })
+      ).toHaveLength(1)
+    );
+    expect(
+      within(canvasElement).getByRole("button", {
+        name: "Change attraction details from Casino Square"
+      })
+    ).toBeInTheDocument();
+    expect(within(canvasElement).getByRole("searchbox")).toHaveValue("");
+  }
+};
+
+export const EditAttractionNameShowsErrorWhenEmpty: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.click(field);
+    await user.type(field, "A");
+    await user.clear(field);
+    await user.tab();
+
+    await overlay(canvasElement).findByText(
+      "Attraction name may not be null or empty"
+    );
+    expect(
+      overlay(canvasElement).getByRole("button", { name: "Update" })
+    ).toBeDisabled();
+  }
+};
+
+export const EditAttractionNameShowsErrorWhenTooLong: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.click(field);
+    await user.clear(field);
+    await user.paste("a".repeat(2049));
+    await user.tab();
+
+    await overlay(canvasElement).findByText(
+      "Attraction name may not be longer then 2048 characters"
+    );
+    expect(
+      overlay(canvasElement).getByRole("button", { name: "Update" })
+    ).toBeDisabled();
+  }
+};
+
+export const KeepsAttractionNameWhenCancelled: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.click(field);
+    await user.type(field, "Test");
+    await user.click(
+      overlay(canvasElement).getByRole("button", { name: "Cancel" })
+    );
+
+    await waitFor(() =>
+      expect(
+        overlay(canvasElement).queryByRole("heading", {
+          name: "Modifying Vilnius Old Town"
+        })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      within(canvasElement).getByRole("button", {
+        name: "Change attraction details from Vilnius Old Town"
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(canvasElement).queryByRole("button", {
+        name: "Change attraction details from Test"
+      })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const UpdatesAttractionName: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.click(field);
+    await user.clear(field);
+    await user.type(field, "Vilnius Old Town new");
+    await user.click(
+      overlay(canvasElement).getByRole("button", { name: "Update" })
+    );
+
+    await within(canvasElement).findByRole(
+      "button",
+      { name: "Change attraction details from Vilnius Old Town new" },
+      { timeout: 5000 }
+    );
+    expect(
+      within(canvasElement).queryByRole("button", {
+        name: "Change attraction details from Vilnius Old Town"
+      })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const DisablesUpdateWhenAttractionNameEmptyOnOpen: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    expect(updateButton(canvasElement)).toBeDisabled();
+  }
+};
+
+export const DisablesAttractionNameButtonsWhileUpdating: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.type(field, "Vilnius Old Town new");
+    await user.click(updateButton(canvasElement));
+
+    await waitFor(() => expect(cancelButton(canvasElement)).toBeDisabled());
+    await waitFor(() => expect(updateButton(canvasElement)).toBeDisabled());
+  }
+};
+
+export const ShowsPartOfLabelWhenLinkedToMainAttraction: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Vilnius Old Town");
+
+    await user.type(
+      overlay(canvasElement).getByLabelText("Attraction name"),
+      "Vilnius Old Town new"
+    );
+    await user.click(
+      overlay(canvasElement).getByLabelText("Part of attraction")
+    );
+    await user.type(
+      overlay(canvasElement).getByLabelText("Select main attraction name"),
+      "Cas"
+    );
+    await pickSuggestion(canvasElement, user, "Casino of Monte-Carlo");
+    await user.click(updateButton(canvasElement));
+
+    await within(canvasElement).findByText(
+      /part of Casino of Monte-Carlo/,
+      {},
+      { timeout: 8000 }
+    );
+  }
+};

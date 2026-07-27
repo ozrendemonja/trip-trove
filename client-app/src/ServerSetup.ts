@@ -309,6 +309,15 @@ export default function makeServer(options?: {
         { timing: 400 }
       );
 
+      // MyTrip loads a trip's saved attractions on mount. An empty list keeps a
+      // freshly opened trip empty so the Board lands in "prepare" mode.
+      this.get("/trips/:id/attractions", () => [], { timing: 200 });
+
+      // Visit history for the given attraction ids across other trips.
+      this.post("/trips/:id/attractions/visit-history", () => [], {
+        timing: 100
+      });
+
       this.post(
         "/trips/:id/attractions/:attractionId",
         () => new MirageResponse(204),
@@ -1079,6 +1088,85 @@ export default function makeServer(options?: {
           })) as GetAttractionResponse[];
         },
         { timing: 400 }
+      );
+
+      this.get(
+        "/search/country/:countryId/attractions",
+        (schema, request) => {
+          const countryId = Number(request.params.countryId);
+          const country = schema.db.countries.findBy(
+            (c) => c.countryId === countryId
+          );
+          const attractionId = request.queryParams.attractionId;
+          let result = schema.db.attractions
+            .filter((a) => !!country && a.countryName === country.countryName)
+            .sort() as GetAttractionResponse[];
+          if (attractionId) {
+            result = result.slice(
+              result.findIndex(
+                (a) => a.attractionId == (attractionId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.map((attraction) => ({
+            ...attraction,
+            visitStatus:
+              attractionVisitStatuses[attraction.attractionId!] ?? "NOT_VISITED"
+          })) as GetAttractionResponse[];
+        },
+        { timing: 100 }
+      );
+
+      this.get(
+        "/search/region/:regionId/attractions",
+        (schema, request) => {
+          const regionId = Number(request.params.regionId);
+          const region = schema.db.regions.findBy(
+            (r) => r.regionId === regionId
+          );
+          const attractionId = request.queryParams.attractionId;
+          let result = schema.db.attractions
+            .filter((a) => !!region && a.regionName === region.regionName)
+            .sort() as GetAttractionResponse[];
+          if (attractionId) {
+            result = result.slice(
+              result.findIndex(
+                (a) => a.attractionId == (attractionId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.map((attraction) => ({
+            ...attraction,
+            visitStatus:
+              attractionVisitStatuses[attraction.attractionId!] ?? "NOT_VISITED"
+          })) as GetAttractionResponse[];
+        },
+        { timing: 100 }
+      );
+
+      this.get(
+        "/search/city/:cityId/attractions",
+        (schema, request) => {
+          const cityId = Number(request.params.cityId);
+          const city = schema.db.cities.findBy((c) => c.cityId === cityId);
+          const attractionId = request.queryParams.attractionId;
+          let result = schema.db.attractions
+            .filter((a) => !!city && a.cityName === city.cityName)
+            .sort() as GetAttractionResponse[];
+          if (attractionId) {
+            result = result.slice(
+              result.findIndex(
+                (a) => a.attractionId == (attractionId as unknown as number)
+              ) + 1
+            );
+          }
+          return result.map((attraction) => ({
+            ...attraction,
+            visitStatus:
+              attractionVisitStatuses[attraction.attractionId!] ?? "NOT_VISITED"
+          })) as GetAttractionResponse[];
+        },
+        { timing: 100 }
       );
 
       this.get(

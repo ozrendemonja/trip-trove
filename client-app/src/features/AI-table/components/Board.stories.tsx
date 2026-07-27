@@ -1,26 +1,14 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { within, userEvent } from "@storybook/test";
+import { userEvent, within } from "@storybook/test";
 import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import { initialCities } from "../data/initialCities";
-import makeServer from "../../../ServerSetup";
 import type { VisitHistoryMap } from "../utils/Mapper";
-
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { styleDecorator, withServer } from "./Board.helpers";
 
 const meta: Meta<typeof Board> = {
   component: Board,
-  decorators: [
-    (Story) => (
-      <>
-        <Story />
-        <style>{styleOverrides}</style>
-      </>
-    )
-  ]
+  decorators: [styleDecorator]
 };
 
 export default meta;
@@ -52,12 +40,7 @@ export const ReviewMode: Story = {
     initialCities,
     tripId: 1
   },
-  decorators: [
-    (Story) => {
-      makeServer();
-      return <Story />;
-    }
-  ],
+  decorators: [withServer],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const reviewBtn = canvas.getByRole("button", { name: /Review/i });

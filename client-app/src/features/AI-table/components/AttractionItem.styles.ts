@@ -143,6 +143,31 @@ export const useReviewStyles = () => {
     }
   };
 
+  const clearBtn: IButtonStyles = {
+    root: {
+      background: "transparent",
+      border: "none",
+      borderRadius: 4,
+      padding: "4px 10px",
+      fontSize: "0.7rem",
+      cursor: "pointer",
+      color: theme.palette.neutralSecondary,
+      fontWeight: 500,
+      minWidth: 0,
+      minHeight: 0,
+      height: "auto"
+    },
+    label: { fontSize: "0.7rem", color: theme.palette.neutralSecondary },
+    rootHovered: {
+      background: theme.palette.neutralLighter,
+      color: theme.palette.neutralPrimary
+    },
+    rootDisabled: {
+      color: theme.palette.neutralTertiary,
+      cursor: "not-allowed"
+    }
+  };
+
   return {
     ...classes,
     attachedRating,
@@ -150,6 +175,7 @@ export const useReviewStyles = () => {
     removeBtn,
     ratingBtn,
     noteInput,
-    addBtn
+    addBtn,
+    clearBtn
   };
 };

@@ -187,6 +187,12 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
     }
   };
 
+  // Reset the review form to its defaults (used by the "Clear" button).
+  const handleClearReview = () => {
+    setReviewRating("AVERAGE");
+    setReviewNote("");
+  };
+
   const containerClasses = [
     "attraction-item",
     inItinerary ? "in-itinerary" : "",
@@ -662,17 +668,33 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                     }
                   }}
                 />
-                <PrimaryButton
-                  styles={review.addBtn}
-                  onClick={handleAttach}
-                  disabled={reviewSaving}
+                <Stack
+                  horizontal
+                  verticalAlign="center"
+                  tokens={{ childrenGap: 6 }}
+                  styles={{ root: { alignSelf: "flex-start" } }}
                 >
-                  {reviewSaving ? (
-                    <Spinner size={SpinnerSize.xSmall} />
-                  ) : (
-                    "+ Add to trip"
+                  <PrimaryButton
+                    styles={review.addBtn}
+                    onClick={handleAttach}
+                    disabled={reviewSaving}
+                  >
+                    {reviewSaving ? (
+                      <Spinner size={SpinnerSize.xSmall} />
+                    ) : (
+                      "+ Add to trip"
+                    )}
+                  </PrimaryButton>
+                  {(reviewRating !== "AVERAGE" || reviewNote !== "") && (
+                    <DefaultButton
+                      styles={review.clearBtn}
+                      onClick={handleClearReview}
+                      disabled={reviewSaving}
+                    >
+                      Clear
+                    </DefaultButton>
                   )}
-                </PrimaryButton>
+                </Stack>
               </Stack>
             </div>
           )}

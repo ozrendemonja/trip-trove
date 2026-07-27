@@ -90,3 +90,41 @@ test("Detach attraction from trip when Remove button is clicked", async ({
   ).toBeVisible();
   await expect(page).toHaveScreenshot();
 });
+
+test("Record every rating emoji when attaching attractions", async ({
+  page
+}) => {
+  const ratings = [
+    { attraction: "Eiffel Tower", rating: "Disliked", badge: "😞 Disliked" },
+    {
+      attraction: "Louvre Museum",
+      rating: "Below Average",
+      badge: "😕 Below Average"
+    },
+    { attraction: "Tower of London", rating: "Average", badge: "😐 Average" },
+    {
+      attraction: "Borough Market",
+      rating: "Very Good",
+      badge: "😊 Very Good"
+    },
+    {
+      attraction: "Seine River Cruise",
+      rating: "Excellent",
+      badge: "🤩 Excellent"
+    }
+  ];
+
+  for (const { attraction, rating } of ratings) {
+    const item = page.locator(".attraction-item", { hasText: attraction });
+    await item.getByRole("button", { name: rating, exact: true }).click();
+    await item.getByRole("button", { name: /Add to trip/i }).click();
+  }
+
+  for (const { attraction, badge } of ratings) {
+    await expect(
+      page.locator(".attraction-item", { hasText: attraction }).getByText(badge)
+    ).toBeVisible();
+  }
+
+  await expect(page).toHaveScreenshot({ fullPage: true });
+});

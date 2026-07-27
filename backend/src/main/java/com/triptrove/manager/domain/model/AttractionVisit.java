@@ -8,5 +8,6 @@ public record AttractionVisit(Long attractionId,
                               LocalDate tripFromDate,
                               LocalDate tripToDate,
                               Rating rating,
-                              String reviewNote) {
+                              String reviewNote,
+                              boolean wouldVisitAgain) {
 }

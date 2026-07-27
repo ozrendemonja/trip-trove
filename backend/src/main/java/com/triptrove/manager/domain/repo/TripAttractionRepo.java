@@ -33,7 +33,8 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
                         ta.trip.from,
                         ta.trip.to,
                         ta.rating,
-                        ta.reviewNote)
+                        ta.reviewNote,
+                        ta.wouldVisitAgain)
                 FROM TripAttraction ta
                 WHERE ta.status = com.triptrove.manager.domain.model.TripAttractionStatus.VISITED
                 AND ta.attraction.id IN :attractionIds

@@ -17,7 +17,8 @@ public record GetAttractionVisitHistoryResponse(Long attractionId, List<VisitHis
                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                     LocalDate tripToDate,
                                     RatingDTO rating,
-                                    String reviewNote) {
+                                    String reviewNote,
+                                    boolean wouldVisitAgain) {
         public static VisitHistoryEntry from(AttractionVisit visit) {
             return new VisitHistoryEntry(
                     visit.tripId(),
@@ -25,7 +26,8 @@ public record GetAttractionVisitHistoryResponse(Long attractionId, List<VisitHis
                     visit.tripFromDate(),
                     visit.tripToDate(),
                     RatingDTO.valueOf(visit.rating().name()),
-                    visit.reviewNote()
+                    visit.reviewNote(),
+                    visit.wouldVisitAgain()
             );
         }
     }

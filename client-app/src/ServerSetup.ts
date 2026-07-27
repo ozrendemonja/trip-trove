@@ -1,6 +1,7 @@
 import { createServer, Model, Response as MirageResponse } from "miragejs";
 import {
   GetAttractionResponse,
+  GetAttractionVisitHistoryResponse,
   GetCityResponse,
   GetContinentResponse,
   GetCountryResponse,
@@ -42,7 +43,8 @@ export default function makeServer(options?: {
       region: Model.extend<GetRegionResponse>({}),
       city: Model.extend<GetCityResponse>({}),
       attraction: Model.extend<GetAttractionResponse>({}),
-      trip: Model.extend<GetTripResponse>({})
+      trip: Model.extend<GetTripResponse>({}),
+      visitHistory: Model.extend<GetAttractionVisitHistoryResponse>({})
     },
 
     seeds(server) {
@@ -218,6 +220,35 @@ export default function makeServer(options?: {
         fromDate: "2025-07-04",
         toDate: "2025-07-20",
         changedOn: "2025-08-10T14:00:00.0000000"
+      });
+
+      server.create("visitHistory", {
+        attractionId: 0,
+        visits: [
+          {
+            tripId: 2,
+            tripName: "Riviera 2025",
+            tripFromDate: "2025-05-10",
+            tripToDate: "2025-05-20",
+            rating: "VERY_GOOD",
+            reviewNote: "Loved it, coming back",
+            wouldVisitAgain: true
+          }
+        ]
+      });
+      server.create("visitHistory", {
+        attractionId: 2,
+        visits: [
+          {
+            tripId: 2,
+            tripName: "Riviera 2025",
+            tripFromDate: "2025-05-10",
+            tripToDate: "2025-05-20",
+            rating: "AVERAGE",
+            reviewNote: "Seen it once, that's enough",
+            wouldVisitAgain: false
+          }
+        ]
       });
     },
 

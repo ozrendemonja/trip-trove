@@ -102,6 +102,13 @@ const waitForPrepareMode = (canvasElement: HTMLElement): Promise<void> =>
     { timeout: 3000 }
   );
 
+// The board column (its .attraction-board-column wrapper) whose <h2> title
+// matches, so a test can assert which column an attraction card lives in.
+const columnFor = (canvasElement: HTMLElement, title: string): HTMLElement =>
+  within(canvasElement)
+    .getByRole("heading", { name: title })
+    .closest(".attraction-board-column") as HTMLElement;
+
 export const Primary: Story = {};
 
 export const LandsInPrepareModeForEmptyTrip: Story = {
@@ -294,6 +301,41 @@ export const AddsAttractionsWhenSearchSubmitted: Story = {
     ).toBeInTheDocument();
   }
 };
+
+export const MarkedWouldVisitAgainAttractionsAreSuggestedInSecondaryColumn: Story =
+  {
+    play: async ({ canvasElement }) => {
+      const user = setupUser();
+      await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+
+      const canvas = within(canvasElement);
+      await canvas.findByRole(
+        "link",
+        { name: "Casino of Monte-Carlo" },
+        { timeout: 8000 }
+      );
+
+      await expect(
+        within(columnFor(canvasElement, "Secondary Spots")).getByRole("link", {
+          name: "Casino of Monte-Carlo"
+        })
+      ).toBeInTheDocument();
+      await expect(
+        within(columnFor(canvasElement, "Excluded Attractions")).queryByRole(
+          "link",
+          { name: "Casino of Monte-Carlo" }
+        )
+      ).not.toBeInTheDocument();
+      // A visited attraction that was NOT flagged still lands in Excluded, proving
+      // the wouldVisitAgain flag is what decides the column.
+      await expect(
+        within(columnFor(canvasElement, "Excluded Attractions")).getByRole(
+          "link",
+          { name: "Larvotto Beach" }
+        )
+      ).toBeInTheDocument();
+    }
+  };
 
 export const KeepsExistingAttractionsWhenAddingMore: Story = {
   parameters: { savedAttractions: SAVED_ATTRACTIONS },

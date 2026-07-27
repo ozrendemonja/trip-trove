@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1499,6 +1500,34 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(visit.tripToDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 23));
         assertThat(visit.rating()).isEqualTo(RatingDTO.VERY_GOOD);
         assertThat(visit.reviewNote()).isEqualTo("Great experience");
+        assertThat(visit.wouldVisitAgain()).isFalse();
+    }
+
+    @Test
+    void visitHistoryShouldReportWouldVisitAgainForPastVisit() throws Exception {
+        // Flag the past visit (attraction 1 under trip 2) as "would visit again".
+        mockMvc.perform(put("/trips/" + 2 + "/attractions/" + 1 + "/would-visit-again")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(new UpdateTripAttractionWouldVisitAgainRequest(true))))
+                .andExpect(status().isNoContent());
+
+        var request = new GetVisitHistoryRequest(List.of(1L));
+
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
+        assertThat(response).hasSize(1);
+        assertThat(response[0].attractionId()).isEqualTo(1L);
+        assertThat(response[0].visits()).hasSize(1);
+        assertThat(response[0].visits().getFirst().wouldVisitAgain()).isTrue();
     }
 
     @Test

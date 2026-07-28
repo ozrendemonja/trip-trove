@@ -1,11 +1,13 @@
 const { getStoryContext } = require("@storybook/test-runner");
 
 /*
- * The attraction list renders its DetailsList with
- * ConstrainMode.horizontalConstrained, which drops the trailing columns
- * (traditional, info, visit period, tip) when the viewport is too narrow.
- * Stories tagged "wide" opt into a large viewport so every column mounts and
- * its edit dialog can be exercised by the play function.
+ * Attraction-list stories are tagged "wide" so their DetailsList renders every
+ * column fully on-screen while the play function exercises the trailing
+ * columns' edit dialogs (traditional, info, visit period, tip). The list now
+ * keeps ALL columns mounted at any width (ConstrainMode.unconstrained +
+ * non-collapsible columns => horizontal scroll instead of dropped columns), so
+ * the wide viewport is no longer required for columns to exist — it just keeps
+ * every cell in view so interactions don't have to scroll horizontally.
  */
 module.exports = {
   async preVisit(page, context) {

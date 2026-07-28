@@ -31,7 +31,9 @@ export class AttractionListCustomizerUser extends ListElementCustomizer<Attracti
       result.minWidth = 100;
     }
     result.isResizable = true;
-    result.isCollapsible = true;
+    // Keep every column mounted so narrow screens (e.g. laptops) can reach the
+    // later columns by scrolling horizontally instead of having them dropped.
+    result.isCollapsible = false;
 
     return result;
   };

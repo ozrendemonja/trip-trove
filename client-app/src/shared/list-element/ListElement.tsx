@@ -64,7 +64,7 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
         layoutMode={DetailsListLayoutMode.justified}
         isHeaderVisible={true}
         selectionMode={SelectionMode.single}
-        constrainMode={ConstrainMode.horizontalConstrained}
+        constrainMode={ConstrainMode.unconstrained}
         selectionZoneProps={{
           selection: selection,
           disableAutoSelectOnInputElements: true,

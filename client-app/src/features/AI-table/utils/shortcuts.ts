@@ -16,7 +16,7 @@ export type ShortcutAction =
   | "board.mode.prepare"
   | "board.mode.cycle"
   | "board.export.json"
-  | "attraction.save"
+  | "form.save"
   | "form.submit";
 
 export const SHORTCUTS: Record<ShortcutAction, string> = {
@@ -26,7 +26,9 @@ export const SHORTCUTS: Record<ShortcutAction, string> = {
   "board.mode.review": "Alt+4",
   "board.mode.cycle": "Ctrl+V",
   "board.export.json": "Ctrl+S",
-  "attraction.save": "Ctrl+S",
+  // Save/submit any add form or edit dialog (AddAttraction, AddCity, edit
+  // popups, ...). Handled by the shared useSaveShortcut hook.
+  "form.save": "Ctrl+S",
   // Submit a form/input via Enter. Shift+Enter is intentionally NOT mapped
   // here so multiline fields can still insert newlines.
   "form.submit": "Enter"

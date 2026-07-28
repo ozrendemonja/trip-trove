@@ -13,11 +13,22 @@ import { SearchText } from "../../../../shared/search-text/SearchText";
 import { saveNewCity } from "../../infra/ManagerApi";
 import { useCityFormField } from "./AddCity.config";
 import { useClasses } from "./AddCity.styles";
+import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 
 export const AddCity: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useCityFormField();
   const navigate = useNavigate();
+
+  const handleSave = (): void => {
+    if (!isFormValid) {
+      return;
+    }
+    saveNewCity(formFields.cityName.value!, formFields.regionId.value!);
+    navigate(-1);
+  };
+
+  useSaveShortcut(handleSave);
 
   return (
     <>
@@ -43,13 +54,7 @@ export const AddCity: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={() => {
-              saveNewCity(
-                formFields.cityName.value!,
-                formFields.regionId.value!
-              );
-              navigate(-1);
-            }}
+            onClick={handleSave}
             disabled={!isFormValid}
             text="Save"
           />

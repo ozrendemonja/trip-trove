@@ -215,6 +215,24 @@ export const UpdatesContinentName: Story = {
   }
 };
 
+export const SavesContinentNameWithCtrlS: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+    await openContinentNameEditor(canvasElement, user, "Australia");
+
+    const field = overlay(canvasElement).getByRole("textbox");
+    await user.type(field, "Australia ctrl s test");
+    await user.keyboard("{Control>}s{/Control}");
+
+    await within(canvasElement).findByRole(
+      "button",
+      { name: "Change value for Australia ctrl s test" },
+      { timeout: 5000 }
+    );
+  }
+};
+
 export const SelectsContinentViaCheckbox: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

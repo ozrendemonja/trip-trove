@@ -28,7 +28,7 @@ import {
   isShortcut,
   isTypingInFormField,
   keyComboFromEvent
-} from "../utils/Shortcuts";
+} from "../utils/shortcuts";
 import { applyVisitHistoryToCities } from "../utils/Mapper";
 import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
 

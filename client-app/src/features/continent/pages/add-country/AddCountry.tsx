@@ -16,6 +16,7 @@ import { Continent } from "../../domain/Continent.types";
 import { getContinents, saveNewCountry } from "../../infra/ManagerApi";
 import { useCountryFormField } from "./AddCountry.config";
 import { useClasses } from "./AddCountry.styles";
+import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 
 const createOptions = (continents: Continent[]): IDropdownOption[] => {
   return continents
@@ -34,6 +35,20 @@ export const AddCountry: React.FunctionComponent = () => {
   useEffect(() => {
     getContinents().then(setContinents);
   }, []);
+
+  const handleSave = (): void => {
+    if (!isFormValid) {
+      return;
+    }
+    saveNewCountry(
+      formFields.countryName.value!,
+      formFields.continentName.value,
+      formFields.isoCode!.value
+    );
+    navigate(-1);
+  };
+
+  useSaveShortcut(handleSave);
 
   return (
     <>
@@ -66,14 +81,7 @@ export const AddCountry: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={() => {
-              saveNewCountry(
-                formFields.countryName.value!,
-                formFields.continentName.value,
-                formFields.isoCode!.value
-              );
-              navigate(-1);
-            }}
+            onClick={handleSave}
             disabled={!isFormValid}
             text="Save"
           />

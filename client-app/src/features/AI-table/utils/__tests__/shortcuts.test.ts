@@ -6,7 +6,7 @@ import {
   isTypingInFormField,
   keyComboFromEvent,
   normalizeKeyCombo
-} from "../Shortcuts";
+} from "../shortcuts";
 
 describe("normalizeKeyCombo", () => {
   test("returns empty string for empty input", () => {
@@ -135,11 +135,11 @@ describe("getShortcut & isShortcut", () => {
     expect(isShortcut("board.mode.review", "Alt+4")).toBe(true);
     expect(isShortcut("board.mode.cycle", "Ctrl+V")).toBe(true);
     expect(isShortcut("board.export.json", "Ctrl+S")).toBe(true);
-    expect(isShortcut("attraction.save", "Ctrl+S")).toBe(true);
+    expect(isShortcut("form.save", "Ctrl+S")).toBe(true);
     expect(isShortcut("form.submit", "Enter")).toBe(true);
   });
 
-  test("attraction.save matches Ctrl+S derived from a KeyboardEvent", () => {
+  test("form.save matches Ctrl+S derived from a KeyboardEvent", () => {
     const combo = keyComboFromEvent({
       key: "s",
       ctrlKey: true,
@@ -147,10 +147,10 @@ describe("getShortcut & isShortcut", () => {
       shiftKey: false,
       metaKey: false
     } as KeyboardEvent);
-    expect(isShortcut("attraction.save", combo)).toBe(true);
+    expect(isShortcut("form.save", combo)).toBe(true);
   });
 
-  test("attraction.save does not match plain S without modifiers", () => {
+  test("form.save does not match plain S without modifiers", () => {
     const combo = keyComboFromEvent({
       key: "s",
       ctrlKey: false,
@@ -158,7 +158,7 @@ describe("getShortcut & isShortcut", () => {
       shiftKey: false,
       metaKey: false
     } as KeyboardEvent);
-    expect(isShortcut("attraction.save", combo)).toBe(false);
+    expect(isShortcut("form.save", combo)).toBe(false);
   });
 
   test("form.submit does NOT match Shift+Enter (so multiline newlines are preserved)", () => {

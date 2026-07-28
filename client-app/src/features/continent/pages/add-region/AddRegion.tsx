@@ -13,11 +13,22 @@ import { SearchText } from "../../../../shared/search-text/SearchText";
 import { saveNewRegion } from "../../infra/ManagerApi";
 import { useRegionFormField } from "./AddRegion.config";
 import { useClasses } from "./AddRegion.styles";
+import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 
 export const AddRegion: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useRegionFormField();
   const navigate = useNavigate();
+
+  const handleSave = (): void => {
+    if (!isFormValid) {
+      return;
+    }
+    saveNewRegion(formFields.regionName.value!, formFields.countryId.value!);
+    navigate(-1);
+  };
+
+  useSaveShortcut(handleSave);
 
   return (
     <>
@@ -43,13 +54,7 @@ export const AddRegion: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={() => {
-              saveNewRegion(
-                formFields.regionName.value!,
-                formFields.countryId.value!
-              );
-              navigate(-1);
-            }}
+            onClick={handleSave}
             disabled={!isFormValid}
             text="Save"
           />

@@ -13,7 +13,7 @@ import {
 } from "@fluentui/react";
 import type { AttractionItemProps } from "./AttractionItem.types";
 import { useReviewStyles } from "./AttractionItem.styles";
-import { isShortcut, keyComboFromEvent } from "../utils/Shortcuts";
+import { isShortcut, keyComboFromEvent } from "../utils/shortcuts";
 import { RATING_OPTIONS, RATING_OPTION_BY_VALUE } from "./Ratings";
 import VisitHistoryBadge from "./VisitHistoryBadge";
 

@@ -7,6 +7,7 @@ import {
   GetCountryResponse,
   GetRegionResponse,
   GetTripResponse,
+  GetVisitHistoryRequest,
   UpdateAttractionCategoryRequest,
   UpdateAttractionDestinationRequest,
   UpdateAttractionDetailRequest,
@@ -345,9 +346,18 @@ export default function makeServer(options?: {
       this.get("/trips/:id/attractions", () => [], { timing: 200 });
 
       // Visit history for the given attraction ids across other trips.
-      this.post("/trips/:id/attractions/visit-history", () => [], {
-        timing: 100
-      });
+      this.post(
+        "/trips/:id/attractions/visit-history",
+        (schema, request) => {
+          const { attractionIds } = JSON.parse(
+            request.requestBody
+          ) as GetVisitHistoryRequest;
+          return schema.db.visitHistories.filter((visit) =>
+            attractionIds.includes(visit.attractionId)
+          );
+        },
+        { timing: 100 }
+      );
 
       this.post(
         "/trips/:id/attractions/:attractionId",

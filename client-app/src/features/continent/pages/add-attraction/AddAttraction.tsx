@@ -29,10 +29,7 @@ import { saveNewAttraction } from "../../infra/ManagerApi";
 import { useAttractionFormField } from "./AddAttraction.config";
 import { searchOverride, useClasses } from "./AddAttraction.styles";
 import GoogleMapsImport, { GoogleMapsImportHandle } from "./GoogleMapsImport";
-import {
-  isShortcut,
-  keyComboFromEvent
-} from "../../../AI-table/utils/Shortcuts";
+import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
@@ -194,16 +191,7 @@ export const AddAttraction: React.FunctionComponent = () => {
     }
   }, [nameConflict]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (isShortcut("attraction.save", keyComboFromEvent(event))) {
-        event.preventDefault();
-        void handleSave();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleSave]);
+  useSaveShortcut(() => void handleSave());
 
   return (
     <>

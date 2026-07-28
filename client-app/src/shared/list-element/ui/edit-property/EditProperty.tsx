@@ -10,6 +10,7 @@ import { useBoolean } from "@fluentui/react-hooks";
 import { useDragOptions } from "./EditProperty.config";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
+import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   const classes = useClasses();
@@ -30,6 +31,18 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
       enableDiaglogButtons();
     }
   };
+
+  const handleSubmit = async (): Promise<void> => {
+    if (blockButton || !props.isFormValid) {
+      return;
+    }
+    disableDiaglogButtons();
+    await props.onUpdateClick();
+    handleClose();
+    enableDiaglogButtons();
+  };
+
+  useSaveShortcut(() => void handleSubmit(), isModalOpen);
 
   return (
     <>
@@ -70,12 +83,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
           className={classes.footer}
         >
           <PrimaryButton
-            onClick={async () => {
-              disableDiaglogButtons();
-              await props.onUpdateClick();
-              handleClose();
-              enableDiaglogButtons();
-            }}
+            onClick={handleSubmit}
             text={props.submitText ?? "Update"}
             disabled={blockButton || !props.isFormValid}
           />

@@ -12,11 +12,22 @@ import { saveNewContinent } from "../../infra/ManagerApi";
 import { useContinentFormField } from "./AddContinent.config";
 import { useClasses } from "./AddContinent.styles";
 import Navigation from "../../../../shared/navigation/Navigation";
+import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 
 export const AddContinent: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useContinentFormField();
   const navigate = useNavigate();
+
+  const handleSave = (): void => {
+    if (!isFormValid) {
+      return;
+    }
+    saveNewContinent(formFields.continentName.value!);
+    navigate("/");
+  };
+
+  useSaveShortcut(handleSave);
 
   return (
     <>
@@ -39,10 +50,7 @@ export const AddContinent: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={() => {
-              saveNewContinent(formFields.continentName.value!);
-              navigate("/");
-            }}
+            onClick={handleSave}
             disabled={!isFormValid}
             text="Save"
           />

@@ -1,3 +1,6 @@
+import PermanentlyClosedStatus, {
+  PermanentlyClosedSince
+} from "../../../../shared/attraction-status/PermanentlyClosedStatus";
 import {
   DetailsRow,
   IColumn,
@@ -49,15 +52,28 @@ const onRenderItemColumn = (
   column?: IColumn
 ): JSX.Element | string | number => {
   if (column?.key === "name") {
+    const permanentlyClosedAt = atraction?.permanentlyClosedAt;
+    const isPermanentlyClosed = !!permanentlyClosedAt;
     const wantsReturn =
+      !isPermanentlyClosed &&
       atraction?.visitStatus === AttractionVisitStatus.VISITED_WANT_RETURN;
     const visitedDone =
       atraction?.visitStatus === AttractionVisitStatus.VISITED_DONE;
     // Already been and done with it — the must-visit pin no longer applies.
-    const showPin = atraction?.mustVisit && !wantsReturn && !visitedDone;
+    const showPin =
+      !isPermanentlyClosed &&
+      atraction?.mustVisit &&
+      !wantsReturn &&
+      !visitedDone;
     return (
       <Stack horizontal>
         <div className={visitMarkerClasses.markerSlot}>
+          {atraction && (
+            <PermanentlyClosedStatus
+              attractionName={atraction.name.name}
+              closedAt={permanentlyClosedAt}
+            />
+          )}
           {wantsReturn && (
             <Icon
               iconName="Sync"
@@ -69,18 +85,30 @@ const onRenderItemColumn = (
             <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
           )}
         </div>
-        <Link
-          className={className}
-          href={`https://www.google.com/search?q=${atraction?.name.name}`}
-          target="_blank"
-          rel="noopener"
-          underline
+        <Stack
+          className="attraction-list-name-details"
+          tokens={{ childrenGap: 2 }}
         >
-          <div>{atraction?.name.name}</div>
-          {atraction?.name.mainAttractionName && (
-            <div>(part of {atraction?.name.mainAttractionName})</div>
-          )}
-        </Link>
+          <Link
+            className={className}
+            href={`https://www.google.com/search?q=${atraction?.name.name}`}
+            target="_blank"
+            rel="noopener"
+            underline
+          >
+            <div
+              className={
+                isPermanentlyClosed ? "permanently-closed-list-name" : undefined
+              }
+            >
+              {atraction?.name.name}
+            </div>
+            {atraction?.name.mainAttractionName && (
+              <div>(part of {atraction?.name.mainAttractionName})</div>
+            )}
+          </Link>
+          <PermanentlyClosedSince closedAt={permanentlyClosedAt} />
+        </Stack>
         <Stack tokens={{ childrenGap: 2 }} horizontal>
           {atraction?.isTraditional && (
             <Icon iconName="Cotton" styles={{ root: { color: "#fec703" } }} />
@@ -172,10 +200,14 @@ const renderVisitStatusRow: IDetailsListProps["onRenderRow"] = (props) => {
 };
 
 // Groups rows by how the traveller relates to each place: still-to-see first,
-// then the ones worth another trip, and finally those already seen and done.
-// The infinite-scroll sentinel (null) always sinks to the very bottom.
+// then the ones worth another trip, those already seen and done, and finally
+// permanently closed attractions. The infinite-scroll sentinel (null) sinks
+// below every attraction.
 const visitStatusRank = (row: AttractionRow | null): number => {
   if (!row) {
+    return 4;
+  }
+  if (row.permanentlyClosedAt) {
     return 3;
   }
   switch (row.visitStatus) {

@@ -73,6 +73,8 @@ export function pickColumnForAttraction(
   attraction: BoardAttraction,
   visits: VisitHistoryEntry[] | undefined
 ): "top" | "secondary" | "excluded" {
+  if (attraction.permanentlyClosedAt) return "excluded";
+
   const last = latestVisit(visits ?? []);
   if (last) {
     // Visited before: unless the user explicitly wants to revisit it, exclude it.
@@ -88,6 +90,7 @@ export function mapAttractionToBoardTask(a: Attraction): BoardAttraction {
     stable: toStableFlag(a.type),
     isTraditional: a.isTraditional,
     isCountrywide: a.destination.isCountrywide,
+    permanentlyClosedAt: a.permanentlyClosedAt,
     name: a.name.name,
     address: a.address.streetAddress || "",
     category: a.category,
@@ -169,6 +172,47 @@ function titleToTarget(title: string): ColumnTarget | undefined {
   return entry?.[0] as ColumnTarget | undefined;
 }
 
+export function setPermanentClosureInCities(
+  cities: TouristDestination[],
+  attractionId: number,
+  permanentlyClosedAt: string | undefined,
+  visits: VisitHistoryEntry[] | undefined
+): TouristDestination[] {
+  return cities.map((city) => {
+    const attraction = city.columns
+      .flatMap((column) => column.tasks)
+      .find((task) => task.id === attractionId);
+    if (!attraction) return city;
+
+    const updatedAttraction = { ...attraction, permanentlyClosedAt };
+    const target = pickColumnForAttraction(updatedAttraction, visits);
+    const targetTitle = STANDARD_COLUMN_TITLES[target];
+    if (!city.columns.some((column) => column.title === targetTitle)) {
+      return {
+        ...city,
+        columns: city.columns.map((column) => ({
+          ...column,
+          tasks: column.tasks.map((task) =>
+            task.id === attractionId ? updatedAttraction : task
+          )
+        }))
+      };
+    }
+
+    return {
+      ...city,
+      columns: city.columns.map((column) => {
+        const tasks = column.tasks.filter((task) => task.id !== attractionId);
+        return {
+          ...column,
+          tasks:
+            column.title === targetTitle ? [...tasks, updatedAttraction] : tasks
+        };
+      })
+    };
+  });
+}
+
 /**
  * Re-distributes tasks across each city's three standard columns based on
  * visit history. A task that has been visited moves to "Excluded Attractions"
@@ -179,8 +223,6 @@ export function applyVisitHistoryToCities(
   cities: TouristDestination[],
   visitHistoryMap: VisitHistoryMap | undefined
 ): TouristDestination[] {
-  if (!visitHistoryMap || visitHistoryMap.size === 0) return cities;
-
   return cities.map((city) => {
     const tasksByTarget: Record<ColumnTarget, BoardAttraction[]> = {
       top: [],
@@ -197,11 +239,12 @@ export function applyVisitHistoryToCities(
       hasStandardColumn = true;
 
       for (const task of col.tasks) {
-        const visits = visitHistoryMap.get(task.id);
+        const visits = visitHistoryMap?.get(task.id);
         const latest = latestVisit(visits ?? []);
-        // Visited before: unless the user explicitly wants to revisit it, exclude it.
+        // A permanent closure always wins over revisit preference.
         const shouldExclude =
-          latest !== undefined && latest.wouldVisitAgain !== true;
+          !!task.permanentlyClosedAt ||
+          (latest !== undefined && latest.wouldVisitAgain !== true);
         const target: ColumnTarget = shouldExclude ? "excluded" : sourceTarget;
         tasksByTarget[target].push(task);
         if (target !== sourceTarget) movedAny = true;

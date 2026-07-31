@@ -34,8 +34,17 @@ const attractionVisitStatuses: Record<number, string> = {
   2: "VISITED_DONE"
 };
 
+type AttractionResponseWithClosure = GetAttractionResponse & {
+  permanentlyClosedAt?: string | null;
+};
+
+type UpdateAttractionClosureRequest = {
+  isPermanentlyClosed: boolean;
+};
+
 export default function makeServer(options?: {
   saveAttractionStatus?: number;
+  permanentlyClosedAttractionId?: number;
 }): ReturnType<typeof createServer> {
   return createServer({
     models: {
@@ -43,7 +52,7 @@ export default function makeServer(options?: {
       country: Model.extend<GetCountryResponse>({}),
       region: Model.extend<GetRegionResponse>({}),
       city: Model.extend<GetCityResponse>({}),
-      attraction: Model.extend<GetAttractionResponse>({}),
+      attraction: Model.extend<AttractionResponseWithClosure>({}),
       trip: Model.extend<GetTripResponse>({}),
       visitHistory: Model.extend<GetAttractionVisitHistoryResponse>({})
     },
@@ -251,6 +260,17 @@ export default function makeServer(options?: {
           }
         ]
       });
+
+      if (options?.permanentlyClosedAttractionId !== undefined) {
+        const attraction = server.db.attractions.findBy(
+          (item) => item.attractionId === options.permanentlyClosedAttractionId
+        );
+        if (attraction) {
+          server.db.attractions.update(attraction.id, {
+            permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
+          });
+        }
+      }
     },
 
     routes() {
@@ -870,6 +890,41 @@ export default function makeServer(options?: {
           );
         },
         { timing: 400 }
+      );
+
+      this.put(
+        "/attractions/:id/permanently-closed",
+        (schema, request) => {
+          const id = request.params.id;
+          const attraction = schema.db.attractions.findBy(
+            (data) => data.attractionId == id
+          );
+
+          if (!attraction) {
+            return new MirageResponse(
+              404,
+              {},
+              {
+                errorCode: "OBJECT_NOT_FOUND",
+                errorMessage: "Attraction not found"
+              }
+            );
+          }
+
+          const { isPermanentlyClosed } = JSON.parse(
+            request.requestBody
+          ) as UpdateAttractionClosureRequest;
+          const permanentlyClosedAt = isPermanentlyClosed
+            ? (attraction.permanentlyClosedAt ?? new Date().toISOString())
+            : null;
+
+          schema.db.attractions.update(attraction.id, {
+            permanentlyClosedAt
+          });
+
+          return { permanentlyClosedAt };
+        },
+        { timing: 100 }
       );
 
       this.put(

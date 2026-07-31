@@ -1,7 +1,7 @@
 import React from "react";
 import AttractionItem from "./AttractionItem";
 import "../styles/AttractionList.css";
-import type { Attraction, AttractionListProps } from "./AttractionList.types";
+import type { AttractionListProps } from "./AttractionList.types";
 
 export type { Attraction } from "./AttractionList.types";
 
@@ -17,6 +17,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onUpdateWorkingHours,
   onUpdateVisitTime,
   onToggleMustVisit,
+  onTogglePermanentlyClosed,
   onDeleteTask,
   readOnly,
   canManageAttractions,
@@ -68,6 +69,12 @@ const AttractionList: React.FC<AttractionListProps> = ({
               onToggleMustVisit={
                 !readOnly && onToggleMustVisit
                   ? () => onToggleMustVisit(columnId, idx)
+                  : undefined
+              }
+              onTogglePermanentlyClosed={
+                onTogglePermanentlyClosed
+                  ? (isClosed) =>
+                      onTogglePermanentlyClosed(attraction.id, isClosed)
                   : undefined
               }
               onDelete={

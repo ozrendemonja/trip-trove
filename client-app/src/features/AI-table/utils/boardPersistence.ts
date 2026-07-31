@@ -14,6 +14,7 @@ function sanitizeAttraction(raw: any): Attraction {
     stable: !!raw.stable,
     isTraditional: !!raw.isTraditional,
     isCountrywide: !!raw.isCountrywide,
+    permanentlyClosedAt: raw.permanentlyClosedAt ? String(raw.permanentlyClosedAt) : undefined,
     inItinerary: !!raw.inItinerary,
     name: String(raw.name || ''),
     address: String(raw.address || ''),

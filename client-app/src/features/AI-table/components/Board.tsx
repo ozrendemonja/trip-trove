@@ -493,12 +493,12 @@ const Board: React.FC<BoardProps> = ({
     (attractionId: number, isClosed: boolean) => {
       if (!isPrepare) return;
       void setAttractionPermanentlyClosed(attractionId, isClosed)
-        .then((closedAt) => {
+        .then(() => {
           setCities((prev) =>
             setPermanentClosureInCities(
               prev,
               attractionId,
-              closedAt,
+              isClosed ? new Date().toISOString() : undefined,
               visitHistory?.get(attractionId)
             )
           );

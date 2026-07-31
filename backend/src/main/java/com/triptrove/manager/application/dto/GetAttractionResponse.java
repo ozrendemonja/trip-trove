@@ -27,6 +27,8 @@ public record GetAttractionResponse(Long attractionId,
                                     LocalDate infoRecorded,
                                     DateSpanResponse optimalVisitPeriod,
                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                                    LocalDateTime permanentlyClosedAt,
+                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                                     LocalDateTime changedOn) {
     public static GetAttractionResponse from(Attraction attraction) {
         return new GetAttractionResponse(
@@ -47,6 +49,7 @@ public record GetAttractionResponse(Long attractionId,
                 attraction.getInformationProvider().getSourceName(),
                 attraction.getRecorded(),
                 attraction.getOptimalVisitPeriod().map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
+                attraction.getPermanentlyClosedAt(),
                 attraction.getUpdatedOn().orElse(attraction.getCreatedOn())
         );
     }

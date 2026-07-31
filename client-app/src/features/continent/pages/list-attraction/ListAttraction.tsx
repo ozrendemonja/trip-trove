@@ -68,7 +68,12 @@ const onRenderItemColumn = (
             closedAt={permanentlyClosedAt}
             onChange={(isClosed) => {
               void setAttractionPermanentlyClosed(atraction.id, isClosed)
-                .then((closedAt) => onClosureChange(atraction.id, closedAt))
+                .then(() =>
+                  onClosureChange(
+                    atraction.id,
+                    isClosed ? new Date().toISOString() : undefined
+                  )
+                )
                 .catch((error) =>
                   console.error(
                     "Failed to save attraction closure status",

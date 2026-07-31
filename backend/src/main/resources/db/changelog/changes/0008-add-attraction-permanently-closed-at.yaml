@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0008-add-attraction-permanently-closed-at
+      author: trip-trove
+      comment: Store when an attraction was marked as permanently closed.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            attraction.permanently_closed_at column already exists - assuming the
+            change has already been applied; marking as ran.
+          not:
+            - columnExists:
+                tableName: attraction
+                columnName: permanently_closed_at
+      changes:
+        - addColumn:
+            tableName: attraction
+            columns:
+              - column:
+                  name: permanently_closed_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: true

@@ -934,6 +934,69 @@ public class AttractionTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldMarkAttractionPermanentlyClosedAndReturnClosureInAttractionResponse() throws Exception {
+        updateAttractionPermanentlyClosed(1L, true);
+    }
+
+    @Test
+    void shouldKeepOriginalClosureTimestampWhenAlreadyClosedAttractionIsClosedAgain() throws Exception {
+        var firstClosureTimestamp = updateAttractionPermanentlyClosed(1L, true).permanentlyClosedAt();
+
+        var secondClosureTimestamp = updateAttractionPermanentlyClosed(1L, true).permanentlyClosedAt();
+
+        assertThat(secondClosureTimestamp).isEqualTo(firstClosureTimestamp);
+    }
+
+    @Test
+    void shouldClearClosureTimestampWhenAttractionIsReopened() throws Exception {
+        updateAttractionPermanentlyClosed(1L, true);
+
+        updateAttractionPermanentlyClosed(1L, false);
+    }
+
+    @Test
+    void shouldRejectPermanentlyClosedUpdateWhenAttractionDoesNotExist() throws Exception {
+        var updateRequest = new UpdateAttractionPermanentlyClosedRequest(true);
+
+        var jsonResponse = mockMvc.perform(put("/attractions/100/permanently-closed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+    }
+
+    private GetAttractionResponse updateAttractionPermanentlyClosed(
+            long attractionId, boolean isPermanentlyClosed) throws Exception {
+        var updateRequest = new UpdateAttractionPermanentlyClosedRequest(isPermanentlyClosed);
+        mockMvc.perform(put("/attractions/" + attractionId + "/permanently-closed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNoContent());
+
+        var attraction = getAttraction(attractionId);
+        assertThat(attraction.permanentlyClosedAt() != null).isEqualTo(isPermanentlyClosed);
+        return attraction;
+    }
+
+    private GetAttractionResponse getAttraction(long attractionId) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/attractions/" + attractionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return mapper.readValue(jsonResponse, GetAttractionResponse.class);
+    }
+
+    @Test
     void shouldUpdateAttractionTipRequestWhenNewTipIsSent() throws Exception {
         var updateRequest = new UpdateAttractionTipRequest("Test tip, test test");
         mockMvc.perform(put("/attractions/" + 3 + "/tip")

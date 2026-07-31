@@ -1,5 +1,4 @@
 import {
-  client,
   DateSpanDTO,
   deleteAttraction,
   deleteCity,
@@ -35,6 +34,7 @@ import {
   updateAttractionDetail,
   updateAttractionInformationProvider,
   updateAttractionLocation,
+  updateAttractionPermanentlyClosed,
   updateAttractionTip,
   updateAttractionTraditional,
   updateAttractionType,
@@ -75,15 +75,9 @@ import { Suggestion } from "../domain/Suggestion.types.";
 
 managerClient();
 
-type AttractionResponseWithClosure = GetAttractionResponse & {
-  permanentlyClosedAt?: string | null;
-};
-
 const getPermanentlyClosedAt = (
   attraction: GetAttractionResponse
-): string | undefined =>
-  (attraction as AttractionResponseWithClosure).permanentlyClosedAt ??
-  undefined;
+): string | undefined => attraction.permanentlyClosedAt ?? undefined;
 
 export const getContinents = async (
   orderBy?: OrderOptions
@@ -777,24 +771,17 @@ export const getPagedAttractions = async (
 export const setAttractionPermanentlyClosed = async (
   id: number,
   isPermanentlyClosed: boolean
-): Promise<string | undefined> => {
-  const { data, error } = await client.put({
-    url: `/attractions/${id}/permanently-closed`,
+): Promise<void> => {
+  const { error } = await updateAttractionPermanentlyClosed({
     body: { isPermanentlyClosed },
-    headers: {
-      "x-api-version": "1",
-      "Content-Type": "application/json"
+    path: {
+      id: id.toString()
     }
   });
 
   if (error) {
     throw new Error("Error while updating attraction closure status", error);
   }
-
-  return (
-    (data as { permanentlyClosedAt?: string | null } | undefined)
-      ?.permanentlyClosedAt ?? undefined
-  );
 };
 
 export const deleteAttractionWithId = async (id: number): Promise<void> => {

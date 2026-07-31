@@ -143,6 +143,17 @@ public class AttractionController {
         attractionService.updateAttractionVisit(Long.parseLong(id), attractionVisitRequest.mustVisit());
     }
 
+    @PutMapping("/{id:\\d+}/permanently-closed")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Update attraction permanently closed status", responses = {
+            @ApiResponse(description = "Attraction permanently closed status is updated", responseCode = "204"),
+    })
+    public void updateAttractionPermanentlyClosed(
+            @PathVariable String id,
+            @RequestBody @Valid UpdateAttractionPermanentlyClosedRequest request) {
+        attractionService.updateAttractionPermanentlyClosed(Long.parseLong(id), request.isPermanentlyClosed());
+    }
+
     @PutMapping("/{id:\\d+}/tip")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update attraction category", responses = {

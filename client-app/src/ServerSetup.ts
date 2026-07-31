@@ -13,6 +13,7 @@ import {
   UpdateAttractionDetailRequest,
   UpdateAttractionInformationProviderRequest,
   UpdateAttractionLocationRequest,
+  UpdateAttractionPermanentlyClosedRequest,
   UpdateAttractionTipRequest,
   UpdateAttractionTraditionalRequest,
   UpdateAttractionTypeRequest,
@@ -36,10 +37,6 @@ const attractionVisitStatuses: Record<number, string> = {
 
 type AttractionResponseWithClosure = GetAttractionResponse & {
   permanentlyClosedAt?: string | null;
-};
-
-type UpdateAttractionClosureRequest = {
-  isPermanentlyClosed: boolean;
 };
 
 export default function makeServer(options?: {
@@ -913,7 +910,7 @@ export default function makeServer(options?: {
 
           const { isPermanentlyClosed } = JSON.parse(
             request.requestBody
-          ) as UpdateAttractionClosureRequest;
+          ) as UpdateAttractionPermanentlyClosedRequest;
           const permanentlyClosedAt = isPermanentlyClosed
             ? (attraction.permanentlyClosedAt ?? new Date().toISOString())
             : null;
@@ -922,7 +919,7 @@ export default function makeServer(options?: {
             permanentlyClosedAt
           });
 
-          return { permanentlyClosedAt };
+          return new MirageResponse(204);
         },
         { timing: 100 }
       );

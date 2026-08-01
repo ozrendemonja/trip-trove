@@ -1,11 +1,18 @@
-import { defineConfig } from '@hey-api/openapi-ts';
+import { defineConfig } from "@hey-api/openapi-ts";
 
 export default defineConfig({
-    client: '@hey-api/client-fetch',
-    input: 'openapi-doc/api-docs.json',
-    output: {
-        format: 'prettier',
-        lint: 'eslint',
-        path: 'src/clients/manager',
+  input: "./openapi-doc/api-docs.json",
+  interactive: false,
+  output: {
+    path: "src/clients/manager",
+    postProcess: ["prettier"]
+  },
+  plugins: [
+    "@hey-api/typescript",
+    {
+      name: "@hey-api/client-fetch",
+      includeInEntry: true
     },
+    "@hey-api/sdk"
+  ]
 });

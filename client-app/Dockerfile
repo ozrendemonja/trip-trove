@@ -2,12 +2,10 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json yarn.lock ./
-RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn install
-COPY ./public ./public
+RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn yarn install --frozen-lockfile
+COPY index.html .
+COPY vite.config.ts .
 COPY ./src ./src
-COPY ./webpack ./webpack
-COPY .eslintrc.js .
-COPY babel.config.json .
 COPY tsconfig.json . 
 # RUN yarn test-unit && yarn test-storybook
 RUN yarn build

@@ -6,7 +6,7 @@ export interface ExtendedSearchTextProps extends SearchTextProps {
   value: number | undefined;
 }
 
-export type AddRegionFormElements {
+export type AddRegionFormElements = {
   regionName: string;
   countryId: number | undefined;
 }

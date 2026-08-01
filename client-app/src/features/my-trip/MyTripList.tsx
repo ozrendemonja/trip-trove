@@ -9,7 +9,7 @@ import {
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { generatePath, useNavigate } from "react-router";
 import { LoadingSpinner } from "../../shared/loading-spinner/LoadingSpinner";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import Navigation from "../../shared/navigation/Navigation";
@@ -167,7 +167,13 @@ export const MyTripList: React.FC = () => {
                   <TripCard
                     key={trip.id}
                     trip={trip}
-                    onClick={() => navigate(`/my-trips/${trip.id}`)}
+                    onClick={() =>
+                      navigate(
+                        generatePath("/my-trips/:tripId", {
+                          tripId: String(trip.id)
+                        })
+                      )
+                    }
                     onDelete={() => handleDeleteRequest(trip)}
                     onEdit={() => setTripToEdit(trip)}
                   />

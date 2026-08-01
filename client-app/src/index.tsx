@@ -1,21 +1,119 @@
 import { PartialTheme, ThemeProvider } from "@fluentui/react";
+import { ComponentType } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router";
-import ContinentList from "./features/continent/pages/list-continent/ListContinent";
-import AddContinent from "./features/continent/pages/add-continent/AddContinent";
-import Home from "./features/home/Home";
-import CountryList from "./features/continent/pages/list-country/ListCountry";
-import AddCountry from "./features/continent/pages/add-country/AddCountry";
-import AddRegion from "./features/continent/pages/add-region/AddRegion";
-import RegionList from "./features/continent/pages/list-region/ListRegion";
-import CityList from "./features/continent/pages/list-city/ListCity";
-import AddCity from "./features/continent/pages/add-city/AddCity";
-import AttractionList from "./features/continent/pages/list-attraction/ListAttraction";
-import AddAttraction from "./features/continent/pages/add-attraction/AddAttraction";
-import AttractionListUser from "./features/continent/pages/list-attraction-user/ListAttractionUser";
-import MyTrip from "./features/my-trip/MyTrip";
-import MyTripList from "./features/my-trip/MyTripList";
-import CountriesVisitedMap from "./features/countries-map/CountriesVisitedMap";
+import { createBrowserRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import { LoadingSpinner } from "./shared/loading-spinner/LoadingSpinner";
+
+const lazyComponent = (load: () => Promise<{ default: ComponentType }>) => ({
+  Component: async () => (await load()).default
+});
+
+const RouteFallback = () => <LoadingSpinner text="Loading page" />;
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() => import("./features/home/Home"))
+  },
+  {
+    path: "/countries-map",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/countries-map/CountriesVisitedMap")
+    )
+  },
+  {
+    path: "/my-trips",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() => import("./features/my-trip/MyTripList"))
+  },
+  {
+    path: "/my-trips/:tripId",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() => import("./features/my-trip/MyTrip"))
+  },
+  {
+    path: "/continents",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/list-continent/ListContinent")
+    )
+  },
+  {
+    path: "/add-continent",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/add-continent/AddContinent")
+    )
+  },
+  {
+    path: "/countries",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/list-country/ListCountry")
+    )
+  },
+  {
+    path: "/add-country",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/add-country/AddCountry")
+    )
+  },
+  {
+    path: "/regions",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/list-region/ListRegion")
+    )
+  },
+  {
+    path: "/add-region",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/add-region/AddRegion")
+    )
+  },
+  {
+    path: "/cities",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/list-city/ListCity")
+    )
+  },
+  {
+    path: "/add-city",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/add-city/AddCity")
+    )
+  },
+  {
+    path: "/attractions",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/list-attraction/ListAttraction")
+    )
+  },
+  {
+    path: "/search/:whereToSearch/:id/attractions",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import(
+        "./features/continent/pages/list-attraction-user/ListAttractionUser"
+      )
+    )
+  },
+  {
+    path: "/add-attraction",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() =>
+      import("./features/continent/pages/add-attraction/AddAttraction")
+    )
+  }
+]);
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -62,28 +160,7 @@ const styleOverrides = `
 
 root.render(
   <ThemeProvider theme={appTheme}>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/countries-map" element={<CountriesVisitedMap />} />
-        <Route path="/my-trips" element={<MyTripList />} />
-        <Route path="/my-trips/:tripId" element={<MyTrip />} />
-        <Route path="/continents" element={<ContinentList />} />
-        <Route path="/add-continent" element={<AddContinent />} />
-        <Route path="/countries" element={<CountryList />} />
-        <Route path="/add-country" element={<AddCountry />} />
-        <Route path="/regions" element={<RegionList />} />
-        <Route path="/add-region" element={<AddRegion />} />
-        <Route path="/cities" element={<CityList />} />
-        <Route path="/add-city" element={<AddCity />} />
-        <Route path="/attractions" element={<AttractionList />} />
-        <Route
-          path="/search/:whereToSearch/:id/attractions"
-          element={<AttractionListUser />}
-        />
-        <Route path="/add-attraction" element={<AddAttraction />} />
-      </Routes>
-    </BrowserRouter>
+    <RouterProvider router={router} useTransitions />
     <style>{styleOverrides}</style>
   </ThemeProvider>
 );

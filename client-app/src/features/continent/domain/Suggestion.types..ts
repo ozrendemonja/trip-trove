@@ -1,4 +1,4 @@
-export type Suggestion{
+export type Suggestion = {
     value: string,
     id: number | string
   }

@@ -50,7 +50,7 @@
     "@babel/preset-typescript": "^7.26.0",
     "@eslint/js": "^8.17.0",
     "@hey-api/openapi-ts": "^0.59.0",
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "1.61.1",
     "@storybook/addon-essentials": "8.4.7",
     "@storybook/addon-interactions": "8.4.7",
     "@storybook/addon-webpack5-compiler-babel": "^3.0.3",

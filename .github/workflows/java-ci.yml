@@ -62,7 +62,7 @@ jobs:
         run: yarn test-unit --ci
 
       - name: Install Storybook Chromium
-        run: yarn --cwd node_modules/@storybook/test-runner playwright install --with-deps chromium
+        run: yarn playwright install --with-deps chromium
 
       - name: Run Storybook tests
         run: yarn test-stories

@@ -12,6 +12,7 @@ export interface AttractionItemProps {
   onUpdateWorkingHours?: (newHours: string) => void;
   onUpdateVisitTime?: (newVisit: string) => void;
   onToggleMustVisit?: () => void;
+  onTogglePermanentlyClosed?: (isClosed: boolean) => void;
   onDelete?: () => void;
   readOnly?: boolean;
   canManageAttractions?: boolean;

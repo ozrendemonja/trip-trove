@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.model;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
@@ -73,6 +74,10 @@ public class Attraction {
     @Column(name = "must_visit", nullable = false)
     private boolean mustVisit;
 
+    @Column(name = "permanently_closed_at")
+    @Setter(AccessLevel.NONE)
+    private LocalDateTime permanentlyClosedAt;
+
     @Column(name = "is_traditional", nullable = false)
     private boolean isTraditional;
 
@@ -111,6 +116,16 @@ public class Attraction {
 
     public Optional<VisitPeriod> getOptimalVisitPeriod() {
         return Optional.ofNullable(optimalVisitPeriod);
+    }
+
+    public void markPermanentlyClosed() {
+        if (permanentlyClosedAt == null) {
+            permanentlyClosedAt = LocalDateTime.now();
+        }
+    }
+
+    public void reopen() {
+        permanentlyClosedAt = null;
     }
 
     public void underCity(City newCity) {

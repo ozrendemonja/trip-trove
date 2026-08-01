@@ -6,7 +6,7 @@ import {
   isTypingInFormField,
   keyComboFromEvent,
   normalizeKeyCombo
-} from "../shortcuts";
+} from "../Shortcuts";
 
 describe("normalizeKeyCombo", () => {
   test("returns empty string for empty input", () => {

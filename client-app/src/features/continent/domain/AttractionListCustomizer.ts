@@ -52,7 +52,10 @@ export class AttractionListCustomizer extends ListElementCustomizer<AttractionRo
 
   public createColumns = (): void => {
     const columns = buildColumns(this.items, true)
-      .filter((column) => column.key !== "visitStatus")
+      .filter(
+        (column) =>
+          column.key !== "visitStatus" && column.key !== "permanentlyClosedAt"
+      )
       .map((column) => this.hideIdHeader(column))
       .map((column) => this.setDefaultLayout(column));
 
@@ -78,6 +81,24 @@ export class AttractionListCustomizer extends ListElementCustomizer<AttractionRo
   public withFixedRows(newRows: AttractionRow[]): AttractionListCustomizer {
     let result = this.removeInfiniteScrollFlag(this.items);
     result = result.concat(newRows);
+
+    this.notifyItemsChanged(result);
+    return new AttractionListCustomizer(
+      this.notifyItemsChanged,
+      this.notifyListColumnChanged,
+      result
+    );
+  }
+
+  public withPermanentClosure(
+    attractionId: number,
+    permanentlyClosedAt?: string
+  ): AttractionListCustomizer {
+    const result = this.items.map((item) =>
+      item?.id === attractionId
+        ? item.withPermanentlyClosedAt(permanentlyClosedAt)
+        : item
+    );
 
     this.notifyItemsChanged(result);
     return new AttractionListCustomizer(

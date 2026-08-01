@@ -17,6 +17,7 @@
 .mustvisit-toggle-btn:hover { background: #fde68a; }
 .attraction-delete-btn { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 3px; padding: 0 6px; font-size: 0.65rem; cursor: pointer; line-height: 1.2; }
 .attraction-delete-btn:hover { background: #fecaca; }
+.attraction-name-details { display: inline-flex; flex-direction: column; min-width: 0; }
 .attraction-name { font-weight: 500; }
 .attraction-name.must-visit::before { content: "★"; margin-right: 4px; color: #eab308; }
 .attraction-name.traditional::after { content: "●"; margin-left: 4px; font-size: 0.6rem; color: #555; }
@@ -108,6 +109,24 @@
 }
 .would-visit-again-toggle.active:focus-visible {
   box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.2);
+}
+
+.attraction-item.permanently-closed {
+  background: #fff7f6;
+  box-shadow: inset 3px 0 0 #b42318;
+}
+
+.attraction-item.permanently-closed .attraction-name {
+  color: #7a271a;
+  text-decoration-color: #b42318;
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.attraction-item.permanently-closed .attraction-address-line,
+.attraction-item.permanently-closed .attraction-hours,
+.attraction-item.permanently-closed .attraction-info-from {
+  color: #667085;
 }
 
 

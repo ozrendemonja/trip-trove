@@ -10,7 +10,8 @@ import {
   waitForAllAttractionsToLoad,
   pickSuggestion,
   updateButton,
-  cancelButton
+  cancelButton,
+  rowOf
 } from "./ListAttraction.helpers";
 
 type Story = StoryObj<typeof AttractionList>;
@@ -23,6 +24,93 @@ const meta: Meta<typeof AttractionList> = {
 export default meta;
 
 export const Primary: Story = {};
+
+export const PermanentlyClosedStatusIsVisible: Story = {
+  tags: ["closure-status"],
+  parameters: { permanentlyClosedAttractionId: 3 },
+  play: async ({ canvasElement }) => {
+    await waitForAllAttractionsToLoad(canvasElement);
+    const row = rowOf(canvasElement, "Vilnius Old Town");
+
+    expect(
+      within(row).getByRole("button", {
+        name: /Vilnius Old Town is permanently closed/
+      })
+    ).toHaveClass("permanently-closed-status", "is-closed");
+    expect(
+      within(row).getByText("Vilnius Old Town", { selector: "div" })
+    ).toHaveClass("permanently-closed-list-name");
+    expect(within(row).getByText(/^Permanently closed since .+/)).toHaveClass(
+      "permanently-closed-since"
+    );
+  }
+};
+
+export const CanMarkAttractionPermanentlyClosed: Story = {
+  tags: ["closure-status", "closure-admin-edit"],
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    const row = rowOf(canvasElement, "Vilnius Old Town");
+
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Mark Vilnius Old Town as permanently closed"
+      })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", {
+        name: "Mark permanently closed"
+      })
+    );
+
+    await waitFor(
+      () =>
+        expect(
+          within(rowOf(canvasElement, "Vilnius Old Town")).getByRole("button", {
+            name: /Vilnius Old Town is permanently closed/
+          })
+        ).toBeInTheDocument(),
+      { timeout: 5000 }
+    );
+    expect(
+      within(rowOf(canvasElement, "Vilnius Old Town")).getByText(
+        /^Permanently closed since /
+      )
+    ).toBeInTheDocument();
+  }
+};
+
+export const CanReopenPermanentlyClosedAttraction: Story = {
+  tags: ["closure-status", "closure-admin-reopen"],
+  parameters: { permanentlyClosedAttractionId: 3 },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    const row = rowOf(canvasElement, "Vilnius Old Town");
+
+    await user.click(
+      within(row).getByRole("button", {
+        name: /Vilnius Old Town is permanently closed/
+      })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", {
+        name: "Reopen attraction"
+      })
+    );
+
+    await waitFor(
+      () =>
+        expect(
+          within(rowOf(canvasElement, "Vilnius Old Town")).getByRole("button", {
+            name: "Mark Vilnius Old Town as permanently closed"
+          })
+        ).toBeInTheDocument(),
+      { timeout: 5000 }
+    );
+  }
+};
 
 export const SearchIgnoresShortInput: Story = {
   play: async ({ canvasElement }) => {

@@ -117,6 +117,11 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
     @Query("""
             SELECT new com.triptrove.manager.domain.model.CountryAttractionCount(a.country.name, a.country.isoCode, a.mustVisit, COUNT(a))
             FROM Attraction a
+            WHERE a.permanentlyClosedAt IS NULL OR EXISTS (
+                SELECT 1 FROM TripAttraction ta
+                WHERE ta.attraction.id = a.id
+                AND ta.status = com.triptrove.manager.domain.model.TripAttractionStatus.VISITED
+            )
             GROUP BY a.country.name, a.country.isoCode, a.mustVisit
             """)
     List<CountryAttractionCount> countAttractionsGroupedByCountryAndMustVisit();

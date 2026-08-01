@@ -29,6 +29,8 @@ type Story = StoryObj<typeof AddAttraction>;
 
 type User = ReturnType<typeof userEvent.setup>;
 
+let server: ReturnType<typeof makeServer> | undefined;
+
 // Fluent callouts/options animate in and briefly set pointer-events: none, so
 // disable user-event's interactability guard. Typing instantly (delay: null)
 // avoids re-rendering (e.g. the date calendar) on every keystroke.
@@ -42,7 +44,8 @@ const setupUser = (): User =>
 const withServer =
   (options?: { saveAttractionStatus?: number }): Decorator =>
   (Story) => {
-    makeServer(options);
+    server?.shutdown();
+    server = makeServer(options);
     return <Story />;
   };
 /* eslint-enable react/display-name */

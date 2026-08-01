@@ -1,0 +1,83 @@
+.permanently-closed-status {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 22px;
+  height: 22px;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0;
+  width: 22px;
+}
+
+.permanently-closed-status .ms-Button-icon,
+.permanently-closed-status > .ms-Icon {
+  color: currentColor;
+  font-size: 13px;
+  line-height: 1;
+  margin: 0;
+}
+
+.permanently-closed-status.is-closed {
+  background: #b42318;
+  border-color: #b42318;
+  box-shadow: 0 0 0 2px #fff1f0;
+  color: #ffffff;
+}
+
+button.permanently-closed-status.is-closed:hover,
+button.permanently-closed-status.is-closed:focus-visible {
+  background: #912018;
+  border-color: #912018;
+  color: #ffffff;
+}
+
+.permanently-closed-status.is-open {
+  background: #ffffff;
+  border-color: #d0d5dd;
+  color: #667085;
+  opacity: 0.65;
+}
+
+.permanently-closed-status.is-open:hover,
+.permanently-closed-status.is-open:focus-visible {
+  background: #fff1f0;
+  border-color: #fda29b;
+  color: #b42318;
+  opacity: 1;
+}
+
+.permanently-closed-status:focus-visible {
+  outline: 2px solid #344054;
+  outline-offset: 2px;
+}
+
+.closure-dialog-confirm,
+.closure-dialog-confirm:hover {
+  background: #b42318;
+  border-color: #b42318;
+}
+
+.attraction-list-name-cell {
+  min-width: 0;
+}
+
+.attraction-list-name-details {
+  min-width: 0;
+}
+
+.permanently-closed-list-name {
+  color: #7a271a;
+  text-decoration-color: #b42318;
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.permanently-closed-since {
+  color: #7a271a;
+  display: block;
+  font-size: 10px;
+  line-height: 12px;
+}

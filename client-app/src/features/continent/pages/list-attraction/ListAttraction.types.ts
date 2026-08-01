@@ -20,7 +20,8 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
     public readonly infoFrom: Attraction["infoFrom"],
     public readonly optimalVisitPeriod: Attraction["optimalVisitPeriod"],
     public readonly tip?: string,
-    public readonly visitStatus?: AttractionVisitStatus
+    public readonly visitStatus?: AttractionVisitStatus,
+    public readonly permanentlyClosedAt?: string
   ) {}
 
   public static from(attraction: Attraction): AttractionRow {
@@ -36,7 +37,26 @@ export class AttractionRow implements Omit<Attraction, "updatedOn"> {
       attraction.infoFrom,
       attraction.optimalVisitPeriod,
       attraction.tip,
-      attraction.visitStatus
+      attraction.visitStatus,
+      attraction.permanentlyClosedAt
+    );
+  }
+
+  public withPermanentlyClosedAt(permanentlyClosedAt?: string): AttractionRow {
+    return new AttractionRow(
+      this.id,
+      this.name,
+      this.destination,
+      this.address,
+      this.category,
+      this.type,
+      this.mustVisit,
+      this.isTraditional,
+      this.infoFrom,
+      this.optimalVisitPeriod,
+      this.tip,
+      this.visitStatus,
+      permanentlyClosedAt
     );
   }
 

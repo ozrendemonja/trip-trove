@@ -28,6 +28,8 @@ public interface AttractionService {
 
     void updateAttractionVisit(long id, Boolean mustVisit);
 
+    void updateAttractionPermanentlyClosed(long id, boolean isPermanentlyClosed);
+
     void updateAttractionTip(long id, String tip);
 
     void updateAttractionVisitPeriod(long id, VisitPeriod visitPeriod);

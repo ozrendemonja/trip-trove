@@ -16,6 +16,7 @@ import {
   getContinentAttractions,
   getCountry,
   getCountryAttractions,
+  GetAttractionResponse,
   getMainAttractionAttractions,
   getRegion,
   getRegionAttractions,
@@ -33,6 +34,7 @@ import {
   updateAttractionDetail,
   updateAttractionInformationProvider,
   updateAttractionLocation,
+  updateAttractionPermanentlyClosed,
   updateAttractionTip,
   updateAttractionTraditional,
   updateAttractionType,
@@ -72,6 +74,10 @@ import { LastReadRegion, Region } from "../domain/Region.types";
 import { Suggestion } from "../domain/Suggestion.types.";
 
 managerClient();
+
+const getPermanentlyClosedAt = (
+  attraction: GetAttractionResponse
+): string | undefined => attraction.permanentlyClosedAt ?? undefined;
 
 export const getContinents = async (
   orderBy?: OrderOptions
@@ -756,9 +762,26 @@ export const getPagedAttractions = async (
             toDate: attraction.optimalVisitPeriod.toDate
           }
         : undefined,
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });
+};
+
+export const setAttractionPermanentlyClosed = async (
+  id: number,
+  isPermanentlyClosed: boolean
+): Promise<void> => {
+  const { error } = await updateAttractionPermanentlyClosed({
+    body: { isPermanentlyClosed },
+    path: {
+      id: id.toString()
+    }
+  });
+
+  if (error) {
+    throw new Error("Error while updating attraction closure status", error);
+  }
 };
 
 export const deleteAttractionWithId = async (id: number): Promise<void> => {
@@ -917,6 +940,7 @@ export const getAttractionById = async (id: number): Promise<Attraction> => {
           toDate: data.optimalVisitPeriod.toDate!
         }
       : undefined,
+    permanentlyClosedAt: getPermanentlyClosedAt(data),
     updatedOn: data.changedOn
   };
 };
@@ -1279,6 +1303,7 @@ export const getPagedAttractionsByContinentName = async (
           }
         : undefined,
       visitStatus: toAttractionVisitStatus(attraction.visitStatus),
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });
@@ -1369,6 +1394,7 @@ export const getPagedAttractionsByCountryId = async (
           }
         : undefined,
       visitStatus: toAttractionVisitStatus(attraction.visitStatus),
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });
@@ -1459,6 +1485,7 @@ export const getPagedAttractionsByRegionId = async (
           }
         : undefined,
       visitStatus: toAttractionVisitStatus(attraction.visitStatus),
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });
@@ -1549,6 +1576,7 @@ export const getPagedAttractionsByCityId = async (
           }
         : undefined,
       visitStatus: toAttractionVisitStatus(attraction.visitStatus),
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });
@@ -1639,6 +1667,7 @@ export const getPagedAttractionsByMainAttractionId = async (
           }
         : undefined,
       visitStatus: toAttractionVisitStatus(attraction.visitStatus),
+      permanentlyClosedAt: getPermanentlyClosedAt(attraction),
       updatedOn: attraction.changedOn
     };
   });

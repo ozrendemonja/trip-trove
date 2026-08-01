@@ -22,6 +22,7 @@ public record GetSearchAttractionResponse(Long attractionId,
                                           String infoFrom,
                                           LocalDate infoRecorded,
                                           DateSpanResponse optimalVisitPeriod,
+                                          LocalDateTime permanentlyClosedAt,
                                           LocalDateTime changedOn,
                                           AttractionVisitStatusResponse visitStatus) {
     public static GetSearchAttractionResponse from(AttractionWithVisitStatus attractionWithVisitStatus) {
@@ -44,6 +45,7 @@ public record GetSearchAttractionResponse(Long attractionId,
                 base.infoFrom(),
                 base.infoRecorded(),
                 base.optimalVisitPeriod(),
+                base.permanentlyClosedAt(),
                 base.changedOn(),
                 AttractionVisitStatusResponse.from(attractionWithVisitStatus.visitStatus()));
     }

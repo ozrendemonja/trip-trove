@@ -7,6 +7,7 @@ export interface Attraction {
   stable: boolean;
   isTraditional: boolean;
   isCountrywide: boolean; // new flag
+  permanentlyClosedAt?: string;
   inItinerary?: boolean;
   name: string;
   address: string;
@@ -38,6 +39,10 @@ export interface AttractionListProps {
     newVisit: string
   ) => void;
   onToggleMustVisit?: (columnId: string, index: number) => void;
+  onTogglePermanentlyClosed?: (
+    attractionId: number,
+    isClosed: boolean
+  ) => void;
   onDeleteTask?: (attractionId: number) => void;
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge

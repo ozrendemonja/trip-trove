@@ -13,9 +13,13 @@ let server: ReturnType<typeof makeServer>;
 // Tear down the previous story's Mirage server before starting a new one;
 // otherwise multiple Pretender instances stack up and corrupt paginated
 // reloads (sort/delete) when the runner plays stories back to back.
-export const withFreshServer: Decorator = (Story) => {
+export const withFreshServer: Decorator = (Story, context) => {
+  const closedAttractionId = context.parameters
+    .permanentlyClosedAttractionId as number | undefined;
   server?.shutdown();
-  server = makeServer();
+  server = makeServer({
+    permanentlyClosedAttractionId: closedAttractionId
+  });
   return (
     <>
       <MemoryRouter initialEntries={["/"]}>

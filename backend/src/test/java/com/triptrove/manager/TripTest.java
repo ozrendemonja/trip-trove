@@ -8,6 +8,7 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
 import com.triptrove.manager.domain.model.TripAttractionStatus;
+import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,7 +16,9 @@ import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -45,6 +48,9 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Autowired
     private TripRepo tripRepo;
+
+        @Autowired
+        private AttractionRepo attractionRepo;
 
     @BeforeAll
     static void setupAll() {
@@ -2044,9 +2050,92 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response.totalCount()).isEqualTo(195);
     }
 
-    // SUMNJIVO !!!
     @Test
     void shouldReturnCountryVisitSummaries() throws Exception {
+        var response = getCountryVisitSummaries();
+        assertThat(response).isNotEmpty();
+        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName))
+                .contains("Test country 0");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shouldNotReportUnvisitedPermanentlyClosedAttractionAsRemaining(boolean mustVisit) throws Exception {
+        permanentlyCloseAttraction(5L, mustVisit);
+
+        var country = findCountryVisitSummary("Test country 0");
+
+        assertThat(country.visitedMustVisit()).isEqualTo(1);
+        assertThat(country.unvisitedMustVisit()).isZero();
+        assertThat(country.unvisitedOther()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shouldOmitCountryWhoseOnlyAttractionIsUnvisitedAndPermanentlyClosed(boolean mustVisit) throws Exception {
+        permanentlyCloseAttraction(4L, mustVisit);
+
+        var response = getCountryVisitSummaries();
+
+        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName))
+                .doesNotContain("Test country 2");
+    }
+
+    @ParameterizedTest
+        @CsvSource({
+                        "true, 1, 0",
+                        "false, 0, 1"
+        })
+        void shouldReportVisitedPermanentlyClosedAttraction(
+                        boolean mustVisit, long expectedVisitedMustVisit, long expectedVisitedOther) throws Exception {
+        permanentlyCloseAttraction(1L, mustVisit);
+
+        var country = findCountryVisitSummary("Test country 0");
+
+                assertThat(country.visitedMustVisit()).isEqualTo(expectedVisitedMustVisit);
+                assertThat(country.visitedOther()).isEqualTo(expectedVisitedOther);
+    }
+
+    @Test
+    void shouldExposePermanentClosureInTripAttractionResponse() throws Exception {
+        permanentlyCloseAttraction(1L, true);
+
+        var jsonResponse = mockMvc.perform(get("/trips/1/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        var response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+
+        assertThat(java.util.Arrays.stream(response)
+                .filter(attraction -> attraction.attractionId().equals(1L))
+                .map(GetTripAttractionResponse::permanentlyClosedAt))
+                .allMatch(java.util.Objects::nonNull);
+    }
+
+    private void permanentlyCloseAttraction(long attractionId, boolean mustVisit) throws Exception {
+        var attraction = attractionRepo.findById(attractionId).orElseThrow();
+        attraction.setMustVisit(mustVisit);
+        attractionRepo.saveAndFlush(attraction);
+
+        var request = new UpdateAttractionPermanentlyClosedRequest(true);
+        mockMvc.perform(put("/attractions/" + attractionId + "/permanently-closed")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+    }
+
+    private GetCountryVisitSummaryResponse findCountryVisitSummary(String countryName) throws Exception {
+        return java.util.Arrays.stream(getCountryVisitSummaries())
+                .filter(country -> country.countryName().equals(countryName))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private GetCountryVisitSummaryResponse[] getCountryVisitSummaries() throws Exception {
         var jsonResponse = mockMvc.perform(get("/trips/countries/visit-summary")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("x-api-version", "1"))
@@ -2054,11 +2143,7 @@ public class TripTest extends AbstractIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-
-        GetCountryVisitSummaryResponse[] response = mapper.readValue(jsonResponse, GetCountryVisitSummaryResponse[].class);
-        assertThat(response).isNotEmpty();
-        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName))
-                .contains("Test country 0");
+        return mapper.readValue(jsonResponse, GetCountryVisitSummaryResponse[].class);
     }
 
     @Test

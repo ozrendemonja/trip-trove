@@ -28,8 +28,12 @@ import {
   isShortcut,
   isTypingInFormField,
   keyComboFromEvent
-} from "../utils/shortcuts";
-import { applyVisitHistoryToCities } from "../utils/Mapper";
+} from "../utils/Shortcuts";
+import {
+  applyVisitHistoryToCities,
+  setPermanentClosureInCities
+} from "../utils/Mapper";
+import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
 
 export type { Column, TouristDestination } from "./Board.types";
@@ -485,6 +489,31 @@ const Board: React.FC<BoardProps> = ({
     [readOnly, tripId]
   );
 
+  const toggleAttractionPermanentlyClosed = useCallback(
+    (attractionId: number, isClosed: boolean) => {
+      if (!isPrepare) return;
+      void setAttractionPermanentlyClosed(attractionId, isClosed)
+        .then(() => {
+          setCities((prev) =>
+            setPermanentClosureInCities(
+              prev,
+              attractionId,
+              isClosed ? new Date().toISOString() : undefined,
+              visitHistory?.get(attractionId)
+            )
+          );
+        })
+        .catch((error) =>
+          console.error(
+            "Failed to save attraction closure status",
+            attractionId,
+            error
+          )
+        );
+    },
+    [isPrepare, visitHistory]
+  );
+
   // Generic update by attraction id (hidden internal id).
   const updateAttractionById = useCallback(
     (attractionId: number, partial: Partial<Attraction>) => {
@@ -807,7 +836,7 @@ const Board: React.FC<BoardProps> = ({
     [tripId]
   );
 
-  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/shortcuts.ts to remap.
+  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/Shortcuts.ts to remap.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (isTypingInFormField(e.target)) return;
@@ -1143,6 +1172,11 @@ const Board: React.FC<BoardProps> = ({
                         onUpdateWorkingHours={updateAttractionWorkingHours}
                         onUpdateVisitTime={updateAttractionVisitTime}
                         onToggleMustVisit={toggleAttractionMustVisit}
+                        onTogglePermanentlyClosed={
+                          isPrepare
+                            ? toggleAttractionPermanentlyClosed
+                            : undefined
+                        }
                         onDeleteTask={removeAttraction}
                         updateById={updateAttractionById}
                         upsertAttractions={upsertAttractions}

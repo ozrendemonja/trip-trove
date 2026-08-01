@@ -13,9 +13,12 @@ import {
 } from "@fluentui/react";
 import type { AttractionItemProps } from "./AttractionItem.types";
 import { useReviewStyles } from "./AttractionItem.styles";
-import { isShortcut, keyComboFromEvent } from "../utils/shortcuts";
+import { isShortcut, keyComboFromEvent } from "../utils/Shortcuts";
 import { RATING_OPTIONS, RATING_OPTION_BY_VALUE } from "./Ratings";
 import VisitHistoryBadge from "./VisitHistoryBadge";
+import PermanentlyClosedStatus, {
+  PermanentlyClosedSince
+} from "../../../shared/attraction-status/PermanentlyClosedStatus";
 
 const isFormSubmit = (e: React.KeyboardEvent): boolean =>
   isShortcut("form.submit", keyComboFromEvent(e));
@@ -28,6 +31,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onUpdateWorkingHours,
   onUpdateVisitTime,
   onToggleMustVisit,
+  onTogglePermanentlyClosed,
   onDelete,
   readOnly,
   canManageAttractions,
@@ -47,7 +51,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   const isExcluded = columnId?.includes("_excluded") ?? false;
   const nameClasses = [
     "attraction-name",
-    attraction.mustVisit ? "must-visit" : "",
+    attraction.mustVisit && !attraction.permanentlyClosedAt ? "must-visit" : "",
     attraction.isTraditional ? "traditional" : "",
     !attraction.stable ? "unstable" : ""
   ]
@@ -196,14 +200,35 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   const containerClasses = [
     "attraction-item",
     inItinerary ? "in-itinerary" : "",
-    isAttached && reviewMode ? "in-trip" : ""
+    isAttached && reviewMode ? "in-trip" : "",
+    attraction.permanentlyClosedAt ? "permanently-closed" : ""
   ]
     .filter(Boolean)
     .join(" ");
 
+  const searchQuery = locationHint
+    ? `${attraction.name} ${locationHint}`
+    : attraction.name;
+  const attractionNameLink = (
+    <a
+      className={nameClasses}
+      href={`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Search on Google"
+    >
+      {attraction.name}
+    </a>
+  );
+
   return (
     <div className={containerClasses}>
       <div className="attraction-line">
+        <PermanentlyClosedStatus
+          attractionName={attraction.name}
+          closedAt={attraction.permanentlyClosedAt}
+          onChange={onTogglePermanentlyClosed}
+        />
         <button
           type="button"
           className="copy-name-btn"
@@ -258,24 +283,15 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
         >
           📋
         </button>
-        {(() => {
-          const query = locationHint
-            ? `${attraction.name} ${locationHint}`
-            : attraction.name;
-          const href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-          return (
-            <a
-              className={nameClasses}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Search on Google"
-            >
-              {attraction.name}
-            </a>
-          );
-        })()}
-        {onToggleMustVisit && !readOnly && (
+        {attraction.permanentlyClosedAt ? (
+          <span className="attraction-name-details">
+            {attractionNameLink}
+            <PermanentlyClosedSince closedAt={attraction.permanentlyClosedAt} />
+          </span>
+        ) : (
+          attractionNameLink
+        )}
+        {onToggleMustVisit && !readOnly && !attraction.permanentlyClosedAt && (
           <button
             type="button"
             className="mustvisit-toggle-btn"
@@ -287,21 +303,24 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
             {attraction.mustVisit ? "★" : "☆"}
           </button>
         )}
-        {readOnly && !canManageAttractions && onToggleInItinerary && (
-          <label
-            className="itinerary-checkbox"
-            title="Mark as already planned in itinerary"
-          >
-            <input
-              type="checkbox"
-              checked={!!inItinerary}
-              onChange={onToggleInItinerary}
-            />
-            <span className="itinerary-checkbox-box">
-              {inItinerary ? "✓" : ""}
-            </span>
-          </label>
-        )}
+        {readOnly &&
+          !canManageAttractions &&
+          onToggleInItinerary &&
+          !attraction.permanentlyClosedAt && (
+            <label
+              className="itinerary-checkbox"
+              title="Mark as already planned in itinerary"
+            >
+              <input
+                type="checkbox"
+                checked={!!inItinerary}
+                onChange={onToggleInItinerary}
+              />
+              <span className="itinerary-checkbox-box">
+                {inItinerary ? "✓" : ""}
+              </span>
+            </label>
+          )}
         {attraction.isCountrywide && (
           <span
             className="countrywide-icon"

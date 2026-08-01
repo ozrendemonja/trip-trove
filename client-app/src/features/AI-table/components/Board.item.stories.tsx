@@ -6,13 +6,14 @@ import {
   oneAttractionBoard,
   setupUser,
   styleDecorator,
-  tripBoard
+  tripBoard,
+  withServer
 } from "./Board.helpers";
 
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/Item",
   component: Board,
-  decorators: [styleDecorator]
+  decorators: [styleDecorator, withServer]
 };
 export default meta;
 
@@ -34,13 +35,13 @@ export const CopyButtonWritesAttractionNameToClipboard: Story = {
     });
 
     await user.click(
-        within(findAttractionCard(canvasElement, "Casino Square")).getByRole(
-          "button",
-          { name: "Copy attraction name" }
-        )
-      );
-      await waitFor(() => expect(copied).toContain("Casino Square"));
-      delete (navigator as unknown as { clipboard?: unknown }).clipboard;
+      within(findAttractionCard(canvasElement, "Casino Square")).getByRole(
+        "button",
+        { name: "Copy attraction name" }
+      )
+    );
+    await waitFor(() => expect(copied).toContain("Casino Square"));
+    delete (navigator as unknown as { clipboard?: unknown }).clipboard;
   }
 };
 
@@ -50,7 +51,7 @@ export const AttractionNameLinksToLocationScopedGoogleSearch: Story = {
     const link = within(canvasElement).getByRole("link", {
       name: "Casino Square"
     });
-    
+
     await expect(link).toHaveAttribute(
       "href",
       `https://www.google.com/search?q=${encodeURIComponent(
@@ -170,5 +171,131 @@ export const TogglingMustVisitMarksAttractionAndPersistsToPlanMode: Story = {
         { name: "Casino Square" }
       )
     ).toHaveClass("must-visit");
+  }
+};
+
+export const PermanentlyClosedMovesToExcludedAttractions: Story = {
+  tags: ["closure-status", "closure-board-prepare"],
+  args: {
+    initialCities: oneAttractionBoard({ id: 1, mustVisit: true }),
+    initialMode: "prepare",
+    tripId: 9001
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+
+    await user.click(
+      canvas.getByRole("button", {
+        name: "Mark Casino Square as permanently closed"
+      })
+    );
+    const confirmClosureButton = await within(
+      canvasElement.ownerDocument.body
+    ).findByRole("button", { name: "Mark permanently closed" });
+    await user.click(confirmClosureButton);
+
+    await waitFor(() => {
+      const card = findAttractionCard(canvasElement, "Casino Square");
+      expect(card.closest(".attraction-board-column")).toHaveTextContent(
+        "Excluded Attractions"
+      );
+    });
+    const card = findAttractionCard(canvasElement, "Casino Square");
+    expect(card.querySelector(".attraction-item")).toHaveClass(
+      "permanently-closed"
+    );
+    expect(
+      within(card).getByRole("button", {
+        name: /Casino Square is permanently closed/
+      })
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/^Permanently closed since .+/)).toHaveClass(
+      "permanently-closed-since"
+    );
+  }
+};
+
+export const PermanentlyClosedCannotBeSelectedInEdit: Story = {
+  tags: ["closure-status", "closure-board-edit"],
+  args: {
+    initialCities: oneAttractionBoard({
+      id: 1,
+      permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
+    }),
+    initialMode: "edit",
+    tripId: 9001
+  },
+  play: async ({ canvasElement }) => {
+    const card = findAttractionCard(canvasElement, "Casino Square");
+    expect(card.querySelector(".attraction-item")).toHaveClass(
+      "permanently-closed"
+    );
+    expect(
+      within(card).queryByRole("button", {
+        name: /Casino Square is permanently closed/
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole("img", {
+        name: /Casino Square is permanently closed/
+      })
+    ).toBeInTheDocument();
+  }
+};
+
+export const PermanentlyClosedCannotBeSelectedInPlan: Story = {
+  tags: ["closure-status", "closure-board-plan"],
+  args: {
+    initialCities: oneAttractionBoard({
+      id: 1,
+      permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
+    }),
+    initialMode: "readOnly",
+    tripId: 9001
+  },
+  play: async ({ canvasElement }) => {
+    const card = findAttractionCard(canvasElement, "Casino Square");
+    expect(card.querySelector(".attraction-item")).toHaveClass(
+      "permanently-closed"
+    );
+    expect(
+      within(card).queryByRole("button", {
+        name: /Casino Square is permanently closed/
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole("img", {
+        name: /Casino Square is permanently closed/
+      })
+    ).toBeInTheDocument();
+  }
+};
+
+export const PermanentlyClosedCannotBeSelectedInReview: Story = {
+  tags: ["closure-status", "closure-board-review"],
+  args: {
+    initialCities: oneAttractionBoard({
+      id: 1,
+      permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
+    }),
+    initialMode: "review",
+    tripId: 9001
+  },
+  play: async ({ canvasElement }) => {
+    const card = findAttractionCard(canvasElement, "Casino Square");
+    expect(card.querySelector(".attraction-item")).toHaveClass(
+      "permanently-closed"
+    );
+    expect(
+      within(card).queryByRole("button", {
+        name: /Casino Square is permanently closed/
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      within(card).getByRole("img", {
+        name: /Casino Square is permanently closed/
+      })
+    ).toBeInTheDocument();
   }
 };

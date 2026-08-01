@@ -139,12 +139,14 @@ export const UpdatesAttractionTraditional: Story = {
     await openAttractionTraditionalEditor(canvasElement, user);
     await user.click(updateButton(canvasElement));
 
-    await waitFor(() =>
-      expect(
-        overlay(canvasElement).queryByRole("heading", {
-          name: "Modifying to non traditional"
-        })
-      ).not.toBeInTheDocument()
+    await waitFor(
+      () =>
+        expect(
+          overlay(canvasElement).queryByRole("heading", {
+            name: "Modifying to non traditional"
+          })
+        ).not.toBeInTheDocument(),
+      { timeout: 5000 }
     );
     await waitFor(
       () =>

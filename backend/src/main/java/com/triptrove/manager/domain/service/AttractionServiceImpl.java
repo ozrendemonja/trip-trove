@@ -230,6 +230,22 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     @Override
+    public void updateAttractionPermanentlyClosed(long id, boolean isPermanentlyClosed) {
+        log.atInfo().log("Updating attraction permanently closed status to '{}'", isPermanentlyClosed);
+        var attraction = attractionRepo.findById(id)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+
+        if (isPermanentlyClosed) {
+            attraction.markPermanentlyClosed();
+        } else {
+            attraction.reopen();
+        }
+
+        attractionRepo.save(attraction);
+        log.atInfo().log("Attraction permanently closed status has been updated");
+    }
+
+    @Override
     public void updateAttractionTip(long id, String tip) {
         log.atInfo().log("Updating the attraction tip");
         var attraction = attractionRepo.findById(id)

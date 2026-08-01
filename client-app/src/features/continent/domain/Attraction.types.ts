@@ -105,6 +105,7 @@ export type Attraction = {
   infoFrom: AttractionInfoFrom;
   optimalVisitPeriod?: AttractionOptimalVisitPeriod;
   visitStatus?: AttractionVisitStatus;
+  permanentlyClosedAt?: string;
   updatedOn: string;
 };
 

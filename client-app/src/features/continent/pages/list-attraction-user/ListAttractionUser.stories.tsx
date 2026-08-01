@@ -9,11 +9,18 @@ const styleOverrides = `
       background: #C3E0E7;
     }`;
 
+let server: ReturnType<typeof makeServer>;
+
 const meta: Meta<typeof AttractionListUser> = {
   component: AttractionListUser,
   decorators: [
-    (Story) => {
-      makeServer();
+    (Story, context) => {
+      const closedAttractionId = context.parameters
+        .permanentlyClosedAttractionId as number | undefined;
+      server?.shutdown();
+      server = makeServer({
+        permanentlyClosedAttractionId: closedAttractionId
+      });
       return (
         <>
           <MemoryRouter
@@ -113,6 +120,42 @@ const attractionCell = (
 };
 
 export const Primary: Story = {};
+
+export const ShowsPermanentlyClosedStatusInSearch: Story = {
+  tags: ["closure-status", "closure-user-readonly"],
+  parameters: { permanentlyClosedAttractionId: 0 },
+  play: async ({ canvasElement }) => {
+    await waitForAttractionsToLoad(canvasElement);
+    const cell = attractionCell(canvasElement, "Casino of Monte-Carlo");
+
+    expect(
+      within(cell).getByRole("img", {
+        name: /Casino of Monte-Carlo is permanently closed/
+      })
+    ).toHaveClass("permanently-closed-status", "is-closed");
+    expect(
+      within(cell).queryByRole("button", {
+        name: /Casino of Monte-Carlo is permanently closed/
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      within(cell).getByText("Casino of Monte-Carlo", { selector: "div" })
+    ).toHaveClass("permanently-closed-list-name");
+    expect(within(cell).getByText(/^Permanently closed since .+/)).toHaveClass(
+      "permanently-closed-since"
+    );
+    expect(
+      cell.querySelector('[data-icon-name="Pinned"]')
+    ).not.toBeInTheDocument();
+
+    const attractionLinks = within(
+      within(canvasElement).getByRole("grid", { name: "Item details" })
+    ).getAllByRole("link");
+    expect(attractionLinks[attractionLinks.length - 1]).toHaveTextContent(
+      "Casino of Monte-Carlo"
+    );
+  }
+};
 
 export const ShowsUserAttractions: Story = {
   play: async ({ canvasElement }) => {

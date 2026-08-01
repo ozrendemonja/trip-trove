@@ -22,7 +22,8 @@ import { Suggestion } from "../../domain/Suggestion.types.";
 import {
   getAttractionById,
   getPagedAttractions,
-  searchAttraction
+  searchAttraction,
+  setAttractionPermanentlyClosed
 } from "../../infra/ManagerApi";
 import EditAttractionAddress from "./EditAttractionAddress";
 import EditAttractionCategory from "./EditAttractionCategory";
@@ -38,10 +39,14 @@ import { listHeader, onRenderWhenNoMoreItems } from "./ListAttraction.config";
 import { useClasses } from "./ListAttraction.styles";
 import { AttractionRow } from "./ListAttraction.types";
 import { toLastReadAttraction } from "./ListAttraction.util";
+import PermanentlyClosedStatus, {
+  PermanentlyClosedSince
+} from "../../../../shared/attraction-status/PermanentlyClosedStatus";
 
 const onRenderItemColumn = (
   className: string,
   onUpdateClick: () => void,
+  onClosureChange: (attractionId: number, permanentlyClosedAt?: string) => void,
   atraction?: AttractionRow,
   column?: IColumn
 ): JSX.Element | string | number => {
@@ -49,20 +54,60 @@ const onRenderItemColumn = (
     return <></>;
   }
   if (column?.key === "name") {
+    const permanentlyClosedAt = atraction?.permanentlyClosedAt;
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-        <Link
-          className={className}
-          href={`https://www.google.com/search?q=${atraction?.name.name}`}
-          target="_blank"
-          rel="noopener"
-          underline
+      <Stack
+        className="attraction-list-name-cell"
+        tokens={{ childrenGap: 10 }}
+        horizontal={true}
+        verticalAlign="center"
+      >
+        {atraction && (
+          <PermanentlyClosedStatus
+            attractionName={atraction.name.name}
+            closedAt={permanentlyClosedAt}
+            onChange={(isClosed) => {
+              void setAttractionPermanentlyClosed(atraction.id, isClosed)
+                .then(() =>
+                  onClosureChange(
+                    atraction.id,
+                    isClosed ? new Date().toISOString() : undefined
+                  )
+                )
+                .catch((error) =>
+                  console.error(
+                    "Failed to save attraction closure status",
+                    atraction.id,
+                    error
+                  )
+                );
+            }}
+          />
+        )}
+        <Stack
+          className="attraction-list-name-details"
+          tokens={{ childrenGap: 2 }}
         >
-          <div>{atraction?.name.name}</div>
-          {atraction?.name.mainAttractionName && (
-            <div>(part of {atraction?.name.mainAttractionName})</div>
-          )}
-        </Link>
+          <Link
+            className={className}
+            href={`https://www.google.com/search?q=${atraction?.name.name}`}
+            target="_blank"
+            rel="noopener"
+            underline
+          >
+            <div
+              className={
+                permanentlyClosedAt ? "permanently-closed-list-name" : undefined
+              }
+            >
+              {atraction?.name.name}
+            </div>
+            {atraction?.name.mainAttractionName && (
+              <div>(part of {atraction?.name.mainAttractionName})</div>
+            )}
+          </Link>
+          <PermanentlyClosedSince closedAt={permanentlyClosedAt} />
+        </Stack>
         <EditPropertyAttractionDetails
           attractionId={atraction!.id}
           text={atraction!.name.name}
@@ -325,6 +370,13 @@ export const AttractionList: React.FunctionComponent = () => {
                 setLastElement(undefined);
                 toggleReloadData();
               },
+              (attractionId, permanentlyClosedAt) =>
+                setAttractionCustomizer((current) =>
+                  current.withPermanentClosure(
+                    attractionId,
+                    permanentlyClosedAt
+                  )
+                ),
               item,
               column
             )

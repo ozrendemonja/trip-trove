@@ -7,6 +7,7 @@ import com.triptrove.manager.domain.model.TripAttraction;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record GetTripAttractionResponse(Long attractionId,
                                         String attractionName,
@@ -25,6 +26,8 @@ public record GetTripAttractionResponse(Long attractionId,
                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                         LocalDate infoRecorded,
                                         DateSpanResponse optimalVisitPeriod,
+                                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                                        LocalDateTime permanentlyClosedAt,
                                         TripAttractionStatusDTO status,
                                         RatingDTO rating,
                                         String note,
@@ -53,6 +56,7 @@ public record GetTripAttractionResponse(Long attractionId,
                 attraction.getInformationProvider().getSourceName(),
                 attraction.getRecorded(),
                 attraction.getOptimalVisitPeriod().map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
+                attraction.getPermanentlyClosedAt(),
                 TripAttractionStatusDTO.valueOf(tripAttraction.getStatus().name()),
                 tripAttraction.getRating() != null ? RatingDTO.valueOf(tripAttraction.getRating().name()) : null,
                 tripAttraction.getNote(),

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   isShortcut,
   keyComboFromEvent
-} from "../../features/AI-table/utils/shortcuts";
+} from "../../features/AI-table/utils/Shortcuts";
 
 /**
  * Registers a window-level handler for the "form.save" shortcut (Ctrl/Cmd+S)

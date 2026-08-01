@@ -28,7 +28,7 @@ import {
   isShortcut,
   isTypingInFormField,
   keyComboFromEvent
-} from "../utils/shortcuts";
+} from "../utils/Shortcuts";
 import {
   applyVisitHistoryToCities,
   setPermanentClosureInCities
@@ -836,7 +836,7 @@ const Board: React.FC<BoardProps> = ({
     [tripId]
   );
 
-  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/shortcuts.ts to remap.
+  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/Shortcuts.ts to remap.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (isTypingInFormField(e.target)) return;

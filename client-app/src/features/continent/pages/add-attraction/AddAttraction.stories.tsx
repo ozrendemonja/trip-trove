@@ -1,5 +1,5 @@
 import { Decorator, Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AddAttraction from "./AddAttraction";

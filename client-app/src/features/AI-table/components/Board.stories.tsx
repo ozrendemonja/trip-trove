@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import { userEvent, within } from "storybook/test";
 import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import { initialCities } from "../data/initialCities";

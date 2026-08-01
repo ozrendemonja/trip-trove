@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "@storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import AttractionList from "./ListAttraction";
 import {
   User,

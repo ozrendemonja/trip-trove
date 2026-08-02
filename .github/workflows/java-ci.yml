@@ -61,11 +61,11 @@ jobs:
       - name: Run unit tests
         run: yarn test-unit --ci
 
-      - name: Install Storybook Chromium
-        run: node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Install Vitest Chromium
+        run: yarn playwright install --with-deps chromium
 
       - name: Run Storybook tests
-        run: yarn test-stories
+        run: yarn test-storybook
 
   dependency-submission:
     runs-on: ubuntu-latest

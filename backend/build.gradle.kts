@@ -1,9 +1,9 @@
 plugins {
     java
     id("org.springframework.boot") version "3.4.4"
-    id("io.spring.dependency-management") version "1.1.7"
+    id("io.spring.dependency-management") version "1.1.6"
     id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
-    id("org.sonarqube") version "7.3.1.8318"
+    id("org.sonarqube") version "3.5.0.2730"
 }
 
 group = "com.triptrove"
@@ -28,12 +28,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude(module = "spring-boot-starter-logging")
     }
-    implementation("org.springframework.boot:spring-boot-starter-log4j2")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2:3.4.0")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa") {
         exclude(module = "spring-boot-starter-logging")
     }
     implementation("org.liquibase:liquibase-core")
-    implementation("org.postgresql:postgresql:42.7.13")
+    implementation("org.postgresql:postgresql:42.7.5")
     implementation("org.hibernate:hibernate-validator:8.0.1.Final")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")

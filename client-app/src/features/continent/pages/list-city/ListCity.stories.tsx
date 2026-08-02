@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import CityList from "./ListCity";
@@ -48,6 +48,11 @@ const setupUser = (): User =>
 // canvas, so their contents are queried through the document, not the canvas.
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
+
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
 
 const waitForCitiesToLoad = (
   canvasElement: HTMLElement
@@ -293,6 +298,7 @@ export const KeepsCityNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change city name for Kaunas"
@@ -397,6 +403,7 @@ export const KeepsCityRegionWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change region name from Aukštaitija"
@@ -517,6 +524,7 @@ export const KeepsCitiesWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     ["Vilnius", "Kaunas", "Šiauliai", "Monaco"].forEach((name) =>
       expect(

@@ -61,11 +61,13 @@ jobs:
       - name: Run unit tests
         run: yarn test-unit --ci
 
-      - name: Install Storybook Chromium
-        run: yarn --cwd node_modules/@storybook/test-runner playwright install --with-deps chromium
+      - name: Install Vitest Chromium
+        run: yarn playwright install --with-deps chromium
 
       - name: Run Storybook tests
-        run: yarn test-stories
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: "1"
+        run: yarn test-storybook
 
   dependency-submission:
     runs-on: ubuntu-latest

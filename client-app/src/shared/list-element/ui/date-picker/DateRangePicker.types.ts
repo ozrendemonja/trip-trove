@@ -1,6 +1,6 @@
 import { Period } from "../../../../features/continent/pages/add-attraction/AddAttraction.types";
 
-export type DateRangePickerProps {
+export type DateRangePickerProps = {
   placeholder?: string;
   ariaLabel?: string;
   value?: Period;

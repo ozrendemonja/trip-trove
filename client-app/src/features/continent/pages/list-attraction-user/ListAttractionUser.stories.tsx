@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter, Route, Routes } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AttractionListUser from "./ListAttractionUser";

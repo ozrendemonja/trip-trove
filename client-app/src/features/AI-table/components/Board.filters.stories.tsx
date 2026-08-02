@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, within } from "@storybook/test";
+import { expect, within } from "storybook/test";
 import Board from "./Board";
 import type { Attraction } from "./AttractionList.types";
 import type { TouristDestination } from "./Board.types";
@@ -33,7 +33,6 @@ const attractionMatchingNegativeFilters: Attraction = {
   stable: false,
   category: "FOOD"
 };
-
 
 const boardWithOpposedAttractions: TouristDestination[] = [
   {

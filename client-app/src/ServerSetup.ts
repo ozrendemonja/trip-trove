@@ -43,7 +43,7 @@ export default function makeServer(options?: {
   saveAttractionStatus?: number;
   permanentlyClosedAttractionId?: number;
 }): ReturnType<typeof createServer> {
-  return createServer({
+  const server = createServer({
     models: {
       continent: Model.extend<GetContinentResponse>({}),
       country: Model.extend<GetCountryResponse>({}),
@@ -1400,4 +1400,7 @@ export default function makeServer(options?: {
       );
     }
   });
+
+  server.logging = false;
+  return server;
 }

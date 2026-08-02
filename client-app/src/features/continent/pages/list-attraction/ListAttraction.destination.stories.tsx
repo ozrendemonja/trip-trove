@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "@storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import AttractionList from "./ListAttraction";
 import {
   User,
@@ -7,6 +7,7 @@ import {
   setupUser,
   overlay,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   rowOf,
   openEditDialog,
   destinationTextbox,
@@ -195,6 +196,7 @@ export const KeepsAttractionDestinationWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction destination from Lithuania"

@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "@storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import AttractionList from "./ListAttraction";
 import {
   withFreshServer,
@@ -8,6 +8,7 @@ import {
   searchFor,
   openAttractionNameEditor,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   pickSuggestion,
   updateButton,
   cancelButton,
@@ -260,6 +261,7 @@ export const KeepsAttractionNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction details from Vilnius Old Town"

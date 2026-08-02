@@ -15,17 +15,17 @@ export interface ValueSearchTextProps extends SearchTextProps {
   value: string | undefined;
 }
 
-export type Location {
+export type Location = {
     latitude: number;
     longitude: number;
 }
 
-export type Period {
+export type Period = {
     from: string;
     to: string;
 }
 
-export type AddAttractionFormElements {
+export type AddAttractionFormElements = {
   countryId: number;
   regionId?: number;
   cityId?: number;

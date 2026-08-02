@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "@storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 import AttractionList from "./ListAttraction";
 import {
   User,
@@ -7,6 +7,7 @@ import {
   setupUser,
   overlay,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   openEditDialog,
   updateButton,
   cancelButton,
@@ -86,6 +87,7 @@ export const KeepsAttractionAddressWhenCancelled: Story = {
         overlay(canvasElement).queryByLabelText("Attraction address")
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction address from not provide"
@@ -197,6 +199,7 @@ export const KeepsAttractionCategoryWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction category from HISTORIC_SITE"
@@ -265,6 +268,7 @@ export const KeepsAttractionTypeWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction type from POTENTIAL_CHANGE"

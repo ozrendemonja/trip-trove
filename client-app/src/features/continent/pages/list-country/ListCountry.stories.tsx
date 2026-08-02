@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import CountryList from "./ListCountry";
@@ -48,6 +48,11 @@ const setupUser = (): User =>
 // contents are queried through the document, not the story canvas.
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
+
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
 
 const waitForCountriesToLoad = (
   canvasElement: HTMLElement
@@ -316,6 +321,7 @@ export const KeepsCountryNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     expect(
       within(canvasElement).getByRole("button", {
@@ -405,6 +411,7 @@ export const KeepsCountryContinentWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     expect(
       within(canvasElement).queryByRole("gridcell", { name: /Australia/ })
@@ -580,6 +587,7 @@ export const KeepsCountriesWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     ["Monaco", "San Marino", "Liechtenstein", "Lithuania"].forEach((name) =>
       expect(
         within(canvasElement).getByRole("button", {

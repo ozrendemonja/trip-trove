@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../ServerSetup";
 import { MyTrip } from "./MyTrip";
 

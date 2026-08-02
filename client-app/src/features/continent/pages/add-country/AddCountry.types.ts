@@ -1,6 +1,6 @@
 import { IComboBoxProps, IDropdownProps, ITextFieldProps } from "@fluentui/react";
 
-export type AddCountryFormElements {
+export type AddCountryFormElements = {
   continentName: string;
   countryName: string;
   isoCode: string;

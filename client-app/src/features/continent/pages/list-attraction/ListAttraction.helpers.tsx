@@ -1,5 +1,5 @@
 import { Decorator } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 
@@ -43,6 +43,11 @@ export const setupUser = (): User =>
 export const overlay = (
   canvasElement: HTMLElement
 ): ReturnType<typeof within> => within(canvasElement.ownerDocument.body);
+
+export const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
 
 export const searchFor = async (
   canvasElement: HTMLElement,

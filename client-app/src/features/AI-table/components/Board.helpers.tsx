@@ -1,5 +1,5 @@
 import type { Decorator } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import { userEvent, within } from "storybook/test";
 import makeServer from "../../../ServerSetup";
 import type { Attraction } from "./AttractionList";
 import type { TouristDestination } from "./Board.types";

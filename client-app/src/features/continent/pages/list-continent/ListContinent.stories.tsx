@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../../../ServerSetup";
 import ContinentList from "./ListContinent";
 import { MemoryRouter } from "react-router";
@@ -47,6 +47,11 @@ const setupUser = (): User =>
 // story canvas, so its contents are queried through the document.
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
+
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
 
 const waitForContinentsToLoad = (
   canvasElement: HTMLElement
@@ -182,6 +187,7 @@ export const KeepsContinentNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change value for Australia"
@@ -330,6 +336,7 @@ export const KeepsContinentsWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     // Cancelling removes nothing.
     ["Australia", "Europe", "Asia"].forEach((name) =>
       expect(

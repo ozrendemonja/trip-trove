@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent, waitFor, within } from "@storybook/test";
+import { expect, fireEvent, waitFor, within } from "storybook/test";
 import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import {

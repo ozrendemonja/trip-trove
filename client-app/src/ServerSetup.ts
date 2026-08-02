@@ -44,6 +44,7 @@ export default function makeServer(options?: {
   permanentlyClosedAttractionId?: number;
 }): ReturnType<typeof createServer> {
   return createServer({
+    logging: false,
     models: {
       continent: Model.extend<GetContinentResponse>({}),
       country: Model.extend<GetCountryResponse>({}),

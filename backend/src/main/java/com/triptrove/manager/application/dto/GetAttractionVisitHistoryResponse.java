@@ -37,7 +37,7 @@ public record GetAttractionVisitHistoryResponse(Long attractionId, List<VisitHis
                 .collect(Collectors.groupingBy(
                         AttractionVisit::attractionId,
                         LinkedHashMap::new,
-                        Collectors.mapping(VisitHistoryEntry::from, Collectors.toList())))
+                    Collectors.mapping(VisitHistoryEntry::from, Collectors.toUnmodifiableList())))
                 .entrySet()
                 .stream()
                 .map(visitHistory -> new GetAttractionVisitHistoryResponse(visitHistory.getKey(), visitHistory.getValue()))

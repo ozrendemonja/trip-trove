@@ -40,7 +40,18 @@ type AttractionResponseWithClosure = GetAttractionResponse & {
 };
 
 export default function makeServer(options?: {
+  saveTripStatus?: number;
+  updateTripStatus?: number;
   saveAttractionStatus?: number;
+  saveContinentStatus?: number;
+  updateContinentStatus?: number;
+  saveCountryStatus?: number;
+  updateCountryStatus?: number;
+  saveRegionStatus?: number;
+  updateRegionStatus?: number;
+  saveCityStatus?: number;
+  updateCityStatus?: number;
+  updateAttractionStatus?: number;
   permanentlyClosedAttractionId?: number;
 }): ReturnType<typeof createServer> {
   const server = createServer({
@@ -298,6 +309,22 @@ export default function makeServer(options?: {
       this.post(
         "/trips",
         (schema, request) => {
+          const status = options?.saveTripStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while saving the trip"
+              }
+            );
+          }
+
           const body = JSON.parse(request.requestBody);
           const existingIds = (schema.db.trips as GetTripResponse[]).map(
             (t) => t.tripId ?? 0
@@ -328,6 +355,22 @@ export default function makeServer(options?: {
       this.put(
         "/trips/:id/name",
         (schema, request) => {
+          const status = options?.updateTripStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the trip"
+              }
+            );
+          }
+
           const id = Number(request.params.id);
           const body = JSON.parse(request.requestBody) as UpdateTripNameRequest;
           const element = schema.db.trips.findBy((t) => t.tripId === id);
@@ -343,6 +386,22 @@ export default function makeServer(options?: {
       this.put(
         "/trips/:id/range",
         (schema, request) => {
+          const status = options?.updateTripStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the trip"
+              }
+            );
+          }
+
           const id = Number(request.params.id);
           const body = JSON.parse(
             request.requestBody
@@ -419,6 +478,29 @@ export default function makeServer(options?: {
         { timing: 600 }
       );
 
+      this.post(
+        "/continents",
+        () => {
+          const status = options?.saveContinentStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while saving the continent"
+              }
+            );
+          }
+          return new MirageResponse(201);
+        },
+        { timing: 400 }
+      );
+
       this.delete(
         "/continents/:name",
         (schema, request) => {
@@ -435,6 +517,22 @@ export default function makeServer(options?: {
       this.put(
         "/continents/:name",
         (schema, request) => {
+          const status = options?.updateContinentStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the continent"
+              }
+            );
+          }
+
           const oldName = request.params.name;
           const newName = (
             JSON.parse(request.requestBody) as UpdateContinentRequest
@@ -471,6 +569,29 @@ export default function makeServer(options?: {
         { timing: 600 }
       );
 
+      this.post(
+        "/countries",
+        () => {
+          const status = options?.saveCountryStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while saving the country"
+              }
+            );
+          }
+          return new MirageResponse(201);
+        },
+        { timing: 400 }
+      );
+
       this.get(
         "/countries/:id",
         (schema, request) => {
@@ -498,6 +619,22 @@ export default function makeServer(options?: {
       this.put(
         "/countries/:id/details",
         (schema, request) => {
+          const status = options?.updateCountryStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the country"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newName = (
             JSON.parse(request.requestBody) as UpdateRegionDetailResponse
@@ -514,6 +651,22 @@ export default function makeServer(options?: {
       this.put(
         "/countries/:id/continent",
         (schema, request) => {
+          const status = options?.updateCountryStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the country"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newName = (
             JSON.parse(request.requestBody) as UpdateCountryContinentRequest
@@ -682,6 +835,29 @@ export default function makeServer(options?: {
         { timing: 600 }
       );
 
+      this.post(
+        "/regions",
+        () => {
+          const status = options?.saveRegionStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while saving the region"
+              }
+            );
+          }
+          return new MirageResponse(201);
+        },
+        { timing: 400 }
+      );
+
       this.delete(
         "/regions/:id",
         (schema, request) => {
@@ -699,6 +875,22 @@ export default function makeServer(options?: {
       this.put(
         "/regions/:id/details",
         (schema, request) => {
+          const status = options?.updateRegionStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the region"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newName = (
             JSON.parse(request.requestBody) as UpdateRegionDetailsRequest
@@ -715,6 +907,22 @@ export default function makeServer(options?: {
       this.put(
         "/regions/:id/country",
         (schema, request) => {
+          const status = options?.updateRegionStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the region"
+              }
+            );
+          }
+
           const id = request.params.id;
           const countryId = (
             JSON.parse(request.requestBody) as UpdateRegionCountryRequest
@@ -763,6 +971,29 @@ export default function makeServer(options?: {
         { timing: 600 }
       );
 
+      this.post(
+        "/cities",
+        () => {
+          const status = options?.saveCityStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while saving the city"
+              }
+            );
+          }
+          return new MirageResponse(201);
+        },
+        { timing: 400 }
+      );
+
       this.delete(
         "/cities/:id",
         (schema, request) => {
@@ -787,6 +1018,22 @@ export default function makeServer(options?: {
       this.put(
         "/cities/:id/details",
         (schema, request) => {
+          const status = options?.updateCityStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the city"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newName = (
             JSON.parse(request.requestBody) as UpdateCityDetailsRequest
@@ -801,6 +1048,22 @@ export default function makeServer(options?: {
       this.put(
         "/cities/:id/region",
         (schema, request) => {
+          const status = options?.updateCityStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the city"
+              }
+            );
+          }
+
           const id = request.params.id;
           const regionId = (
             JSON.parse(request.requestBody) as UpdateCityRegionRequest
@@ -927,6 +1190,22 @@ export default function makeServer(options?: {
       this.put(
         "/attractions/:id/detail",
         (schema, request) => {
+          const status = options?.updateAttractionStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the attraction"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newName = (
             JSON.parse(request.requestBody) as UpdateAttractionDetailRequest
@@ -956,6 +1235,22 @@ export default function makeServer(options?: {
       this.put(
         "/attractions/:id/destination",
         (schema, request) => {
+          const status = options?.updateAttractionStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given name is not valid as it already exists"
+                    : "Something went wrong while updating the attraction"
+              }
+            );
+          }
+
           const id = request.params.id;
           const isCountrywide = (
             JSON.parse(

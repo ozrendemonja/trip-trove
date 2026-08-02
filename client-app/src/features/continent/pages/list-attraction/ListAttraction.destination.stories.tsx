@@ -256,6 +256,42 @@ export const UpdatesAttractionDestination: Story = {
   }
 };
 
+export const ShowsConflictWhenAttractionAlreadyExistsAtSelectedDestination: Story =
+  {
+    parameters: { updateAttractionStatus: 409 },
+    play: async ({ canvasElement }) => {
+      const modal = overlay(canvasElement);
+      const user = setupUser();
+      await waitForAllAttractionsToLoad(canvasElement);
+      await openAttractionDestinationEditor(canvasElement, user);
+
+      const country = destinationTextbox(canvasElement, "Select a country");
+      await user.type(country, "Mon");
+      await pickSuggestion(canvasElement, user, "Monaco");
+      await typeRegion(canvasElement, user);
+      await user.click(updateButton(canvasElement));
+
+      expect(
+        await modal.findByText(
+          "An attraction with this name already exists at the selected destination."
+        )
+      ).toBeInTheDocument();
+      await waitFor(() => expect(country).toHaveFocus());
+      expect(country).toHaveValue("Monaco");
+      expect(updateButton(canvasElement)).toBeEnabled();
+      expect(cancelButton(canvasElement)).toBeEnabled();
+
+      await user.type(country, " updated");
+      await waitFor(() =>
+        expect(
+          modal.queryByText(
+            "An attraction with this name already exists at the selected destination."
+          )
+        ).not.toBeInTheDocument()
+      );
+    }
+  };
+
 export const UpdatesAttractionDestinationWithCity: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

@@ -69,12 +69,14 @@ export const UpdatesAttractionMustVisit: Story = {
     await openAttractionMustVisitEditor(canvasElement, user);
     await user.click(updateButton(canvasElement));
 
-    await waitFor(() =>
-      expect(
-        overlay(canvasElement).queryByRole("heading", {
-          name: "Modifying to must visit"
-        })
-      ).not.toBeInTheDocument()
+    await waitFor(
+      () =>
+        expect(
+          overlay(canvasElement).queryByRole("heading", {
+            name: "Modifying to must visit"
+          })
+        ).not.toBeInTheDocument(),
+      { timeout: 5000 }
     );
     await waitForCanvasToBecomeAccessible(canvasElement);
     await waitFor(

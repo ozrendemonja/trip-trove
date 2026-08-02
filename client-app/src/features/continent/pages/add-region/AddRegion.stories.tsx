@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
@@ -13,7 +13,6 @@ const meta: Meta<typeof AddRegion> = {
   component: AddRegion,
   decorators: [
     (Story) => {
-      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -30,6 +29,20 @@ export default meta;
 
 type Story = StoryObj<typeof AddRegion>;
 type User = ReturnType<typeof userEvent.setup>;
+
+let server: ReturnType<typeof makeServer> | undefined;
+
+/* eslint-disable react/display-name */
+const withServer =
+  (saveRegionStatus?: number): Decorator =>
+  (Story) => {
+    server?.shutdown();
+    server = makeServer({ saveRegionStatus });
+    return <Story />;
+  };
+/* eslint-enable react/display-name */
+
+meta.decorators?.push(withServer());
 
 // Fluent callouts/options animate in and briefly set pointer-events: none, so
 // disable user-event's interactability guard. Typing instantly (delay: null)
@@ -65,6 +78,32 @@ const selectCountry = async (
 const blurField = (user: User): Promise<void> => user.tab();
 
 export const Primary: Story = {};
+
+export const ShowsInlineNameConflictWhenRegionAlreadyExists: Story = {
+  decorators: [withServer(409)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const field = regionNameField(canvasElement);
+
+    await user.type(field, "Dzūkija");
+    await selectCountry(canvasElement, user, "Lith", "Lithuania");
+    await user.click(saveButton(canvasElement));
+
+    expect(
+      await canvas.findByText("A region with this name already exists.")
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(countryField(canvasElement)).toHaveValue("Lithuania");
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        canvas.queryByText("A region with this name already exists.")
+      ).not.toBeInTheDocument()
+    );
+  }
+};
 
 export const DisablesSaveByDefault: Story = {
   play: async ({ canvasElement }) => {

@@ -14,12 +14,15 @@ let server: ReturnType<typeof makeServer>;
 const meta: Meta<typeof CityList> = {
   component: CityList,
   decorators: [
-    (Story) => {
+    (Story, context) => {
       // Tear down the previous story's Mirage server before starting a new one;
       // otherwise multiple Pretender instances stack up and corrupt paginated
       // reloads (sort/delete) when the runner plays stories back to back.
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        updateCityStatus: context.parameters.updateCityStatus as
+          number | undefined
+      });
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -332,6 +335,39 @@ export const UpdatesCityName: Story = {
   }
 };
 
+export const ShowsConflictWhenUpdatedCityNameAlreadyExists: Story = {
+  parameters: { updateCityStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCitiesToLoad(canvasElement);
+    await openCityNameEditor(canvasElement, user, "Kaunas");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Monaco");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A city with this name already exists in this region."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Monaco");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A city with this name already exists in this region."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const DisablesUpdateAfterEditingSelectedRegion: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -380,6 +416,40 @@ export const UpdatesCityRegion: Story = {
           within(canvasElement).getAllByRole("gridcell", { name: /Samogitia/ })
         ).toHaveLength(2),
       { timeout: 5000 }
+    );
+  }
+};
+
+export const ShowsConflictWhenCityAlreadyExistsInSelectedRegion: Story = {
+  parameters: { updateCityStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCitiesToLoad(canvasElement);
+    await openCityRegionEditor(canvasElement, user, "Aukštaitija");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Sam");
+    await user.click(await modal.findByRole("menuitem", { name: "Samogitia" }));
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A city with this name already exists in the selected region."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Samogitia");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A city with this name already exists in the selected region."
+        )
+      ).not.toBeInTheDocument()
     );
   }
 };

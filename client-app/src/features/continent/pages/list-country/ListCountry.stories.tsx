@@ -14,12 +14,15 @@ let server: ReturnType<typeof makeServer>;
 const meta: Meta<typeof CountryList> = {
   component: CountryList,
   decorators: [
-    (Story) => {
+    (Story, context) => {
       // Tear down the previous story's Mirage server before starting a new one;
       // otherwise multiple Pretender instances stack up and corrupt paginated
       // reloads (sort/delete) when the runner plays stories back to back.
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        updateCountryStatus: context.parameters.updateCountryStatus as
+          number | undefined
+      });
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -361,6 +364,39 @@ export const UpdatesCountryName: Story = {
   }
 };
 
+export const ShowsConflictWhenUpdatedCountryNameAlreadyExists: Story = {
+  parameters: { updateCountryStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCountriesToLoad(canvasElement);
+    await openCountryNameEditor(canvasElement, user, "Liechtenstein");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Monaco");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A country with this name already exists in this continent."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Monaco");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A country with this name already exists in this continent."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const UpdatesCountryContinent: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -390,6 +426,30 @@ export const UpdatesCountryContinent: Story = {
     expect(
       within(liechtensteinRow).queryByText("Europe")
     ).not.toBeInTheDocument();
+  }
+};
+
+export const ShowsConflictWhenCountryAlreadyExistsInSelectedContinent: Story = {
+  parameters: { updateCountryStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCountriesToLoad(canvasElement);
+    await openCountryContinentEditor(canvasElement, user, "Liechtenstein");
+
+    await selectContinent(canvasElement, user, "Australia");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A country with this name already exists in the selected continent."
+      )
+    ).toBeInTheDocument();
+    const field = modal.getByRole("combobox", { name: "Select a continent" });
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveTextContent("Australia");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
   }
 };
 

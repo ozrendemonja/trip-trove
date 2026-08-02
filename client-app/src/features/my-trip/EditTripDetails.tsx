@@ -28,14 +28,10 @@ const EditTripDetails: React.FunctionComponent<EditTripDetailsProps> = (
       editIconAriaLabel={`Edit trip ${props.trip.name}`}
       isOpen={props.isOpen}
       onDismiss={props.onDismiss}
+      conflictErrorMessage="A trip with this name already exists in the selected date range."
       isFormValid={isFormValid}
       onUpdateClick={async () => {
-        const changes = detectTripChanges(
-          props.trip,
-          name,
-          startDate,
-          endDate
-        );
+        const changes = detectTripChanges(props.trip, name, startDate, endDate);
         if (changes.nameChanged) {
           await updateTripName(props.trip.id, name.trim());
         }

@@ -14,12 +14,15 @@ let server: ReturnType<typeof makeServer>;
 const meta: Meta<typeof RegionList> = {
   component: RegionList,
   decorators: [
-    (Story) => {
+    (Story, context) => {
       // Tear down the previous story's Mirage server before starting a new one;
       // otherwise multiple Pretender instances stack up and corrupt paginated
       // reloads (sort/delete) when the runner plays stories back to back.
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        updateRegionStatus: context.parameters.updateRegionStatus as
+          number | undefined
+      });
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -324,6 +327,39 @@ export const UpdatesRegionName: Story = {
   }
 };
 
+export const ShowsConflictWhenUpdatedRegionNameAlreadyExists: Story = {
+  parameters: { updateRegionStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForRegionsToLoad(canvasElement);
+    await openRegionNameEditor(canvasElement, user, "Aukštaitija");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Dzūkija");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A region with this name already exists in this country."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Dzūkija");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A region with this name already exists in this country."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const DisablesUpdateAfterEditingSelectedCountry: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -373,6 +409,40 @@ export const UpdatesRegionCountry: Story = {
           within(canvasElement).getAllByRole("gridcell", { name: /Monaco/ })
         ).toHaveLength(3),
       { timeout: 5000 }
+    );
+  }
+};
+
+export const ShowsConflictWhenRegionAlreadyExistsInSelectedCountry: Story = {
+  parameters: { updateRegionStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForRegionsToLoad(canvasElement);
+    await openRegionCountryEditor(canvasElement, user);
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Mon");
+    await user.click(await modal.findByRole("menuitem", { name: "Monaco" }));
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A region with this name already exists in the selected country."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Monaco");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A region with this name already exists in the selected country."
+        )
+      ).not.toBeInTheDocument()
     );
   }
 };

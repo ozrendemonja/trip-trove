@@ -65,6 +65,8 @@ jobs:
         run: yarn playwright install --with-deps chromium
 
       - name: Run Storybook tests
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: "1"
         run: yarn test-storybook
 
   dependency-submission:

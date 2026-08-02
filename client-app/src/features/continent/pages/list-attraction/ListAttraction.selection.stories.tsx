@@ -6,6 +6,7 @@ import {
   setupUser,
   overlay,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   rowOf,
   selectAttractionRow,
   openAttractionDeleteDialog,
@@ -120,6 +121,7 @@ export const KeepsAttractionsWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     expect(
       within(canvasElement).getByRole("button", {

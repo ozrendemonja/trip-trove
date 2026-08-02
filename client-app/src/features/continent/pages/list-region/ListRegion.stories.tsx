@@ -49,6 +49,11 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+
 const waitForRegionsToLoad = (
   canvasElement: HTMLElement
 ): Promise<HTMLElement> =>
@@ -285,6 +290,7 @@ export const KeepsRegionNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change region name from Monaco"
@@ -397,6 +403,7 @@ export const KeepsRegionCountryWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     // Cancelling a valid Monaco pick leaves every Lithuania region untouched.
     expect(
       within(canvasElement).getAllByRole("button", {
@@ -507,6 +514,7 @@ export const KeepsRegionsWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     // Cancelling removes nothing.
     ["Dzūkija", "Aukštaitija", "Samogitia", "Monaco"].forEach((name) =>
       expect(

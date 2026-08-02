@@ -48,6 +48,11 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+
 const waitForContinentsToLoad = (
   canvasElement: HTMLElement
 ): Promise<HTMLElement> =>
@@ -182,6 +187,7 @@ export const KeepsContinentNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change value for Australia"
@@ -330,6 +336,7 @@ export const KeepsContinentsWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     // Cancelling removes nothing.
     ["Australia", "Europe", "Asia"].forEach((name) =>
       expect(

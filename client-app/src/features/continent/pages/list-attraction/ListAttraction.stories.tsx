@@ -8,6 +8,7 @@ import {
   searchFor,
   openAttractionNameEditor,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   pickSuggestion,
   updateButton,
   cancelButton,
@@ -260,6 +261,7 @@ export const KeepsAttractionNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction details from Vilnius Old Town"

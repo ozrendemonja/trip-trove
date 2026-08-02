@@ -7,6 +7,7 @@ import {
   setupUser,
   overlay,
   waitForAllAttractionsToLoad,
+  waitForCanvasToBecomeAccessible,
   rowOf,
   openEditDialog,
   pickSuggestion,
@@ -52,6 +53,7 @@ export const KeepsAttractionMustVisitWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction visit preferences for Larvotto Beach to must visit"
@@ -74,6 +76,7 @@ export const UpdatesAttractionMustVisit: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     await waitFor(
       () =>
         expect(
@@ -124,6 +127,7 @@ export const KeepsAttractionTraditionalWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(canvasElement).getByRole("button", {
         name: "Change attraction traditional preferences for Vilnius Old Town to non traditional"
@@ -308,6 +312,7 @@ export const KeepsAttractionVisitPeriodWhenClosed: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     expect(
       within(rowOf(canvasElement, "Larvotto Beach")).getAllByRole("combobox")
     ).toHaveLength(periodPickerCount);
@@ -418,6 +423,7 @@ export const KeepsAttractionTipWhenClosed: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     const row = rowOf(canvasElement, "Vilnius Old Town");
     expect(

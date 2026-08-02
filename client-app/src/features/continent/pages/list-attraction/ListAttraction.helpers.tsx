@@ -44,6 +44,11 @@ export const overlay = (
   canvasElement: HTMLElement
 ): ReturnType<typeof within> => within(canvasElement.ownerDocument.body);
 
+export const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+
 export const searchFor = async (
   canvasElement: HTMLElement,
   user: User,

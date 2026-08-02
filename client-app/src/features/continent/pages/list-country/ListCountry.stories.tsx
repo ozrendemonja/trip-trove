@@ -49,6 +49,11 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
+const waitForCanvasToBecomeAccessible = (
+  canvasElement: HTMLElement
+): Promise<void> =>
+  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+
 const waitForCountriesToLoad = (
   canvasElement: HTMLElement
 ): Promise<HTMLElement> =>
@@ -316,6 +321,7 @@ export const KeepsCountryNameWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     expect(
       within(canvasElement).getByRole("button", {
@@ -405,6 +411,7 @@ export const KeepsCountryContinentWhenCancelled: Story = {
         })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
 
     expect(
       within(canvasElement).queryByRole("gridcell", { name: /Australia/ })
@@ -580,6 +587,7 @@ export const KeepsCountriesWhenDeleteCancelled: Story = {
         overlay(canvasElement).queryByRole("button", { name: "Delete" })
       ).not.toBeInTheDocument()
     );
+    await waitForCanvasToBecomeAccessible(canvasElement);
     ["Monaco", "San Marino", "Liechtenstein", "Lithuania"].forEach((name) =>
       expect(
         within(canvasElement).getByRole("button", {

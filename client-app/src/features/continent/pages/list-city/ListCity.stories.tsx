@@ -60,7 +60,7 @@ const waitForCitiesToLoad = (
   within(canvasElement).findByRole(
     "button",
     { name: "Change city name for Kaunas" },
-    { timeout: 10000 }
+    { timeout: 5000 }
   );
 
 const waitForAllCitiesToLoad = (

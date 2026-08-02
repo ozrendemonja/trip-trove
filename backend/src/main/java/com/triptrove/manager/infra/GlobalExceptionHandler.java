@@ -14,7 +14,6 @@ import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -33,7 +32,6 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseBody
     protected ErrorResponse validationException(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getAllErrors()
                 .stream()
@@ -51,7 +49,6 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HandlerMethodValidationException.class)
-    @ResponseBody
     protected ErrorResponse validationException(HandlerMethodValidationException ex) {
         var message = ex.getParameterValidationResults()
                 .stream()

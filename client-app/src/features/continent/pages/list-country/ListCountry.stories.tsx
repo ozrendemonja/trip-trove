@@ -21,7 +21,8 @@ const meta: Meta<typeof CountryList> = {
       server?.shutdown();
       server = makeServer({
         updateCountryStatus: context.parameters.updateCountryStatus as
-          number | undefined
+          | number
+          | undefined
       });
       return (
         <>
@@ -450,6 +451,15 @@ export const ShowsConflictWhenCountryAlreadyExistsInSelectedContinent: Story = {
     expect(field).toHaveTextContent("Australia");
     expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
     expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A country with this name already exists in the selected continent."
+        )
+      ).not.toBeInTheDocument()
+    );
   }
 };
 

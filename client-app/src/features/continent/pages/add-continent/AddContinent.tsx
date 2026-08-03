@@ -1,33 +1,52 @@
 import {
   DefaultButton,
+  ITextField,
+  MessageBar,
+  MessageBarType,
   PrimaryButton,
   Separator,
   Stack,
   Text,
   TextField
 } from "@fluentui/react";
-import React from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router";
 import { saveNewContinent } from "../../infra/ManagerApi";
 import { useContinentFormField } from "./AddContinent.config";
 import { useClasses } from "./AddContinent.styles";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
+import { useSaveError } from "../../../../shared/hooks/UseSaveError";
 
 export const AddContinent: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useContinentFormField();
   const navigate = useNavigate();
+  const nameFieldRef = useRef<ITextField>(null);
+  const { nameConflict, saveError, handleSaveError } = useSaveError({
+    nameConflictMessage: "A continent with this name already exists.",
+    saveErrorMessage:
+      "The continent wasn't saved. Your details are still here, so you can review or edit them and try again.",
+    focusRef: nameFieldRef,
+    resetKey: formFields.continentName.value
+  });
 
-  const handleSave = (): void => {
+  const handleSave = async (): Promise<void> => {
     if (!isFormValid) {
       return;
     }
-    saveNewContinent(formFields.continentName.value!);
+
+    try {
+      await saveNewContinent(formFields.continentName.value!);
+    } catch (error) {
+      handleSaveError(error);
+      return;
+    }
+
     navigate("/");
   };
 
-  useSaveShortcut(handleSave);
+  useSaveShortcut(() => void handleSave());
 
   return (
     <>
@@ -39,9 +58,20 @@ export const AddContinent: React.FunctionComponent = () => {
         <Separator></Separator>
         <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
           <Stack.Item grow={1}>
-            <TextField {...formFields.continentName} />
+            <TextField
+              {...formFields.continentName}
+              componentRef={nameFieldRef}
+              errorMessage={nameConflict}
+            />
           </Stack.Item>
         </Stack>
+        {saveError && (
+          <Stack className={classes.saveError}>
+            <MessageBar messageBarType={MessageBarType.error}>
+              {saveError}
+            </MessageBar>
+          </Stack>
+        )}
         <Stack
           horizontal
           horizontalAlign="end"
@@ -50,7 +80,7 @@ export const AddContinent: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!isFormValid}
             text="Save"
           />

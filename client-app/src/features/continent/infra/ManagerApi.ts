@@ -129,7 +129,7 @@ export const saveNewContinent = async (name: string): Promise<void> => {
   });
 
   if (error) {
-    throw new Error("Error while saving continent", error);
+    throw new Error("Error while saving continent", { cause: error });
   }
 };
 
@@ -150,7 +150,7 @@ export const changeContinentName = async (
   });
 
   if (error) {
-    throw new Error("Error while updating continent", error);
+    throw new Error("Error while updating continent", { cause: error });
   }
 };
 
@@ -171,7 +171,7 @@ export const saveNewCountry = async (
   });
 
   if (error) {
-    throw new Error("Error while saving country", error);
+    throw new Error("Error while saving country", { cause: error });
   }
 };
 
@@ -276,7 +276,7 @@ export const changeCountryDetails = async (
   });
 
   if (error) {
-    throw new Error("Error while updating country details", error);
+    throw new Error("Error while updating country details", { cause: error });
   }
 };
 
@@ -297,7 +297,9 @@ export const changeCountryContinent = async (
   });
 
   if (error) {
-    throw new Error("Error while updating country countinent", error);
+    throw new Error("Error while updating country countinent", {
+      cause: error
+    });
   }
 };
 
@@ -409,7 +411,7 @@ export const saveNewRegion = async (
   });
 
   if (error) {
-    throw new Error("Error while saving region", error);
+    throw new Error("Error while saving region", { cause: error });
   }
 };
 
@@ -430,7 +432,7 @@ export const changeRegionDetails = async (
   });
 
   if (error) {
-    throw new Error("Error while updating region details", error);
+    throw new Error("Error while updating region details", { cause: error });
   }
 };
 
@@ -451,7 +453,7 @@ export const changeRegionCountry = async (
   });
 
   if (error) {
-    throw new Error("Error while updating region country", error);
+    throw new Error("Error while updating region country", { cause: error });
   }
 };
 
@@ -581,7 +583,7 @@ export const saveNewCity = async (
   });
 
   if (error) {
-    throw new Error("Error while saving city", error);
+    throw new Error("Error while saving city", { cause: error });
   }
 };
 
@@ -662,7 +664,7 @@ export const changeCityDetails = async (
   });
 
   if (error) {
-    throw new Error("Error while updating city details", error);
+    throw new Error("Error while updating city details", { cause: error });
   }
 };
 
@@ -683,7 +685,7 @@ export const changeCityRegion = async (
   });
 
   if (error) {
-    throw new Error("Error while updating city region", error);
+    throw new Error("Error while updating city region", { cause: error });
   }
 };
 
@@ -964,7 +966,9 @@ export const changeAttractionDetails = async (
   });
 
   if (error) {
-    throw new Error("Error while updating attraction details", error);
+    throw new Error("Error while updating attraction details", {
+      cause: error
+    });
   }
 };
 
@@ -989,7 +993,9 @@ export const changeAttractionDestination = async (
   });
 
   if (error) {
-    throw new Error("Error while updating attraction details", error);
+    throw new Error("Error while updating attraction details", {
+      cause: error
+    });
   }
 };
 

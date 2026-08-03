@@ -1,5 +1,8 @@
 import {
   Icon,
+  ITextField,
+  MessageBar,
+  MessageBarType,
   Pivot,
   PivotItem,
   PrimaryButton,
@@ -8,7 +11,7 @@ import {
   TextField
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { generatePath, useNavigate } from "react-router";
 import { LoadingSpinner } from "../../shared/loading-spinner/LoadingSpinner";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
@@ -19,6 +22,7 @@ import { useMyTripListClasses } from "./MyTripList.styles";
 import TripCard from "./TripCard";
 import ConfirmDeleteDialog from "../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
 import EditTripDetails from "./EditTripDetails";
+import { useSaveError } from "../../shared/hooks/UseSaveError";
 
 interface TabConfig {
   status: TripStatus;
@@ -56,6 +60,20 @@ export const MyTripList: React.FC = () => {
   const [newTripName, setNewTripName] = useState("");
   const [newStartDate, setNewStartDate] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
+  const tripNameFieldRef = useRef<ITextField>(null);
+  const {
+    nameConflict: tripConflict,
+    saveError,
+    handleSaveError,
+    clearSaveErrors
+  } = useSaveError({
+    nameConflictMessage:
+      "A trip with this name already exists in the selected date range.",
+    saveErrorMessage:
+      "The trip wasn't created. Your details are still here, so you can review or edit them and try again.",
+    focusRef: tripNameFieldRef,
+    resetKey: `${newTripName}\u0000${newStartDate}\u0000${newEndDate}`
+  });
   const [isDialogOpen, { setTrue: openDialog, setFalse: closeDialog }] =
     useBoolean(false);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
@@ -73,9 +91,16 @@ export const MyTripList: React.FC = () => {
     fetchTrips(undefined, "DESC").then(setTrips).finally(setNotLoading);
   }, [reloadData]);
 
-  const handleCreateTrip = async (): Promise<void> => {
-    await saveTripToApi(newTripName.trim(), newStartDate, newEndDate);
+  const handleCreateTrip = async (): Promise<boolean> => {
+    try {
+      await saveTripToApi(newTripName.trim(), newStartDate, newEndDate);
+    } catch (error) {
+      handleSaveError(error);
+      return false;
+    }
+
     toggleReloadData();
+    return true;
   };
 
   const handleDeleteRequest = (trip: Trip): void => {
@@ -100,6 +125,7 @@ export const MyTripList: React.FC = () => {
     setNewTripName("");
     setNewStartDate("");
     setNewEndDate("");
+    clearSaveErrors();
     closeDialog();
   };
 
@@ -197,6 +223,8 @@ export const MyTripList: React.FC = () => {
                 label="Trip name"
                 placeholder="e.g. Italy, Japan 2026"
                 value={newTripName}
+                componentRef={tripNameFieldRef}
+                errorMessage={tripConflict}
                 onChange={(_e, val) => setNewTripName(val ?? "")}
               />
               <Stack horizontal verticalAlign="end" tokens={{ childrenGap: 8 }}>
@@ -216,6 +244,11 @@ export const MyTripList: React.FC = () => {
                   className={classes.dateField}
                 />
               </Stack>
+              {saveError && (
+                <MessageBar messageBarType={MessageBarType.error}>
+                  {saveError}
+                </MessageBar>
+              )}
             </Stack>
           </EditProperty>
 

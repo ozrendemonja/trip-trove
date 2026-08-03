@@ -14,6 +14,7 @@ const EditRegionCountryDetails: React.FunctionComponent<
     <EditProperty
       editIconAriaLabel={`Change country name from ${props.text}`}
       text={props.text}
+      conflictErrorMessage="A region with this name already exists in the selected country."
       onUpdateClick={async () => {
         await changeRegionCountry(
           String(props.regionId),

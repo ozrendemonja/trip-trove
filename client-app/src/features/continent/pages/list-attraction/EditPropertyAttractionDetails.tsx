@@ -17,6 +17,7 @@ const EditPropertyAttractionDetails: React.FunctionComponent<
     <EditProperty
       editIconAriaLabel={`Change attraction details from ${props.text}`}
       text={props.text}
+      conflictErrorMessage="An attraction with this name already exists at this destination."
       onUpdateClick={async () => {
         await changeAttractionDetails(
           String(props.attractionId),

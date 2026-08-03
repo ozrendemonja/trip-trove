@@ -15,7 +15,7 @@ import {
   Toggle
 } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -30,6 +30,7 @@ import { useAttractionFormField } from "./AddAttraction.config";
 import { searchOverride, useClasses } from "./AddAttraction.styles";
 import GoogleMapsImport, { GoogleMapsImportHandle } from "./GoogleMapsImport";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
+import { useSaveError } from "../../../../shared/hooks/UseSaveError";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
@@ -74,13 +75,17 @@ export const AddAttraction: React.FunctionComponent = () => {
     { setFalse: setNonTraditional, toggle: toggleIsTraditional }
   ] = useBoolean(false);
   const [iteration, setIteration] = useState<number>(0);
-  const [saveError, setSaveError] = useState<string | undefined>(undefined);
-  const [nameConflict, setNameConflict] = useState<string | undefined>(
-    undefined
-  );
   const nameFieldRef = useRef<ITextField>(null);
   const addressFieldRef = useRef<ITextField>(null);
   const googleMapsImportRef = useRef<GoogleMapsImportHandle>(null);
+  const { nameConflict, saveError, handleSaveError, clearSaveErrors } =
+    useSaveError({
+      nameConflictMessage: "An attraction with this name already exists.",
+      saveErrorMessage:
+        "The attraction wasn't saved. Your details are still here, so you can review or edit them and try again.",
+      focusRef: nameFieldRef,
+      resetKey: formFields.name.value
+    });
 
   const handleSave = useCallback(async () => {
     if (!isFormValid) {
@@ -126,25 +131,11 @@ export const AddAttraction: React.FunctionComponent = () => {
     try {
       await saveNewAttraction(newAttraction);
     } catch (error) {
-      const cause = (error as { cause?: unknown }).cause;
-      const errorCode =
-        cause && typeof cause === "object" && "errorCode" in cause
-          ? (cause as { errorCode?: string }).errorCode
-          : undefined;
-      if (errorCode === "NAME_CONFLICT") {
-        setNameConflict("An attraction with this name already exists.");
-        setSaveError(undefined);
-      } else {
-        setSaveError(
-          "The attraction wasn't saved. Your details are still here, so you can review or edit them and try again."
-        );
-        setNameConflict(undefined);
-      }
+      handleSaveError(error);
       return;
     }
 
-    setSaveError(undefined);
-    setNameConflict(undefined);
+    clearSaveErrors();
 
     if (!isMultipleSubmissions) {
       navigate(-1);
@@ -178,18 +169,10 @@ export const AddAttraction: React.FunctionComponent = () => {
     setNotPartOfAttraction,
     setNotCountrywide,
     setMustVisitTrue,
-    setNonTraditional
+    setNonTraditional,
+    handleSaveError,
+    clearSaveErrors
   ]);
-
-  useEffect(() => {
-    setNameConflict(undefined);
-  }, [formFields.name.value]);
-
-  useEffect(() => {
-    if (nameConflict) {
-      document.getElementById("add-attraction-name")?.focus();
-    }
-  }, [nameConflict]);
 
   useSaveShortcut(() => void handleSave());
 

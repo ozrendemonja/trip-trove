@@ -14,12 +14,15 @@ let server: ReturnType<typeof makeServer>;
 const meta: Meta<typeof ContinentList> = {
   component: ContinentList,
   decorators: [
-    (Story) => {
+    (Story, context) => {
       // Tear down the previous story's Mirage server before starting a new
       // one; otherwise stacked Pretender instances corrupt the paginated
       // reloads that fire after a delete or update.
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        updateContinentStatus: context.parameters.updateContinentStatus as
+          number | undefined
+      });
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -217,6 +220,35 @@ export const UpdatesContinentName: Story = {
       "button",
       { name: "Change value for Australia update test" },
       { timeout: 5000 }
+    );
+  }
+};
+
+export const ShowsConflictWhenUpdatedContinentNameAlreadyExists: Story = {
+  parameters: { updateContinentStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+    await openContinentNameEditor(canvasElement, user, "Australia");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Asia");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText("A continent with this name already exists.")
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Asia");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText("A continent with this name already exists.")
+      ).not.toBeInTheDocument()
     );
   }
 };

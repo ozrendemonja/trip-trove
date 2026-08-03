@@ -67,7 +67,11 @@ const meta: Meta<typeof MyTripList> = {
   decorators: [
     (Story, context) => {
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        saveTripStatus: context.parameters.saveTripStatus as number | undefined,
+        updateTripStatus: context.parameters.updateTripStatus as
+          number | undefined
+      });
       // A story can replace the default seeds with its own deterministic trips;
       // the real Mirage routes then serve/mutate them for create/edit/delete.
       const trips = context.parameters.trips as GetTripResponse[] | undefined;
@@ -227,6 +231,45 @@ export const CreatesTripAndShowsNewCard: Story = {
   }
 };
 
+export const ShowsInlineConflictWhenTripAlreadyExists: Story = {
+  parameters: { trips: TWO_ACTIVE_TRIPS, saveTripStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await findTripCard(canvasElement, "Italy");
+    const modal = within(await openCreateDialog(canvasElement, user));
+    const nameField = modal.getByLabelText("Trip name");
+    const startDateField = modal.getByLabelText("Start date");
+    const endDateField = modal.getByLabelText("End date");
+
+    await user.type(nameField, "Italy");
+    setDateField(startDateField, "2099-06-10");
+    setDateField(endDateField, "2099-06-24");
+    await user.click(modal.getByRole("button", { name: "Create" }));
+
+    expect(
+      await modal.findByText(
+        "A trip with this name already exists in the selected date range."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(nameField).toHaveFocus());
+    expect(nameField).toHaveValue("Italy");
+    expect(startDateField).toHaveValue("2099-06-10");
+    expect(endDateField).toHaveValue("2099-06-24");
+    await waitFor(() =>
+      expect(modal.getByRole("button", { name: "Create" })).toBeEnabled()
+    );
+
+    setDateField(endDateField, "2099-06-25");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A trip with this name already exists in the selected date range."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const UpdatesTripNameFromEditDialog: Story = {
   parameters: { trips: TWO_ACTIVE_TRIPS },
   play: async ({ canvasElement }) => {
@@ -246,6 +289,83 @@ export const UpdatesTripNameFromEditDialog: Story = {
     await expect(
       within(canvasElement).queryByRole("button", { name: "Open trip: Italy" })
     ).not.toBeInTheDocument();
+  }
+};
+
+export const ShowsConflictWhenUpdatedTripAlreadyExists: Story = {
+  parameters: {
+    trips: TWO_ACTIVE_TRIPS,
+    updateTripStatus: 409
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const modal = within(await openEditDialog(canvasElement, user, "Italy"));
+    const nameField = modal.getByLabelText("Trip name");
+    const startDateField = modal.getByLabelText("Start date");
+    const endDateField = modal.getByLabelText("End date");
+
+    await user.clear(nameField);
+    await user.type(nameField, "Japan Adventure");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A trip with this name already exists in the selected date range."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(nameField).toHaveFocus());
+    expect(nameField).toHaveValue("Japan Adventure");
+    expect(startDateField).toHaveValue("2099-06-10");
+    expect(endDateField).toHaveValue("2099-06-24");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(nameField, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A trip with this name already exists in the selected date range."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
+export const ShowsConflictWhenUpdatedTripDateRangeAlreadyExists: Story = {
+  parameters: {
+    trips: TWO_ACTIVE_TRIPS,
+    updateTripStatus: 409
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const modal = within(await openEditDialog(canvasElement, user, "Italy"));
+    const nameField = modal.getByLabelText("Trip name");
+    const startDateField = modal.getByLabelText("Start date");
+    const endDateField = modal.getByLabelText("End date");
+
+    setDateField(endDateField, "2099-07-10");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A trip with this name already exists in the selected date range."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(nameField).toHaveFocus());
+    expect(nameField).toHaveValue("Italy");
+    expect(startDateField).toHaveValue("2099-06-10");
+    expect(endDateField).toHaveValue("2099-07-10");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    setDateField(endDateField, "2099-07-11");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A trip with this name already exists in the selected date range."
+        )
+      ).not.toBeInTheDocument()
+    );
   }
 };
 

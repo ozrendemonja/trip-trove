@@ -1,6 +1,8 @@
 import {
   DefaultButton,
   IconButton,
+  MessageBar,
+  MessageBarType,
   Modal,
   PrimaryButton,
   Stack,
@@ -11,6 +13,8 @@ import { useDragOptions } from "./EditProperty.config";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
 import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
+import { getApiErrorCode } from "../../../hooks/UseSaveError";
+import { useRef, useState } from "react";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   const classes = useClasses();
@@ -19,11 +23,14 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     blockButton,
     { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }
   ] = useBoolean(false);
+  const [submitError, setSubmitError] = useState<string>();
+  const formRef = useRef<HTMLDivElement>(null);
 
   const isControlled = props.isOpen !== undefined;
   const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
 
   const handleClose = () => {
+    setSubmitError(undefined);
     if (isControlled) {
       props.onDismiss?.();
     } else {
@@ -37,9 +44,30 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
       return;
     }
     disableDiaglogButtons();
-    await props.onUpdateClick();
-    handleClose();
-    enableDiaglogButtons();
+    setSubmitError(undefined);
+    try {
+      const shouldClose = await props.onUpdateClick();
+      if (shouldClose !== false) {
+        handleClose();
+      }
+    } catch (error) {
+      const isNameConflict = getApiErrorCode(error) === "NAME_CONFLICT";
+      setSubmitError(
+        isNameConflict && props.conflictErrorMessage
+          ? props.conflictErrorMessage
+          : (props.saveErrorMessage ??
+              "The changes weren't saved. Your details are still here, so you can review or edit them and try again.")
+      );
+      if (isNameConflict) {
+        formRef.current
+          ?.querySelector<HTMLElement>(
+            'input:not([type="hidden"]), textarea, [role="combobox"]'
+          )
+          ?.focus();
+      }
+    } finally {
+      enableDiaglogButtons();
+    }
   };
 
   useSaveShortcut(() => void handleSubmit(), isModalOpen);
@@ -72,8 +100,18 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
             onClick={handleClose}
           />
         </Stack>
-        <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
+        <Stack
+          tokens={{ childrenGap: 12 }}
+          className={classes.form}
+          ref={formRef}
+          onChange={() => setSubmitError(undefined)}
+        >
           <Stack.Item grow={1}>{props.children}</Stack.Item>
+          {submitError && (
+            <MessageBar messageBarType={MessageBarType.error}>
+              {submitError}
+            </MessageBar>
+          )}
         </Stack>
         <Stack
           tokens={{ childrenGap: 12 }}

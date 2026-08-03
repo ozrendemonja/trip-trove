@@ -149,7 +149,7 @@ export const saveTripToApi = async (
   });
 
   if (error) {
-    throw new Error("Error while saving trip", error);
+    throw new Error("Error while saving trip", { cause: error });
   }
 };
 
@@ -188,7 +188,7 @@ export const updateTripName = async (
   });
 
   if (error) {
-    throw new Error("Error while updating trip name", error);
+    throw new Error("Error while updating trip name", { cause: error });
   }
 };
 
@@ -204,7 +204,7 @@ export const updateTripDates = async (
   });
 
   if (error) {
-    throw new Error("Error while updating trip dates", error);
+    throw new Error("Error while updating trip dates", { cause: error });
   }
 };
 

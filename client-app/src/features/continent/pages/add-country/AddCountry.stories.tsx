@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "storybook/test";
 import AddCountry from "./AddCountry";
 import { MemoryRouter } from "react-router";
@@ -13,7 +13,6 @@ const meta: Meta<typeof AddCountry> = {
   component: AddCountry,
   decorators: [
     (Story) => {
-      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -30,6 +29,20 @@ export default meta;
 
 type Story = StoryObj<typeof AddCountry>;
 type User = ReturnType<typeof userEvent.setup>;
+
+let server: ReturnType<typeof makeServer> | undefined;
+
+/* eslint-disable react/display-name */
+const withServer =
+  (saveCountryStatus?: number): Decorator =>
+  (Story) => {
+    server?.shutdown();
+    server = makeServer({ saveCountryStatus });
+    return <Story />;
+  };
+/* eslint-enable react/display-name */
+
+meta.decorators?.push(withServer());
 
 // Fluent callouts/options animate in and briefly set pointer-events: none, so
 // disable user-event's interactability guard. Typing instantly (delay: null)
@@ -55,6 +68,37 @@ const saveButton = (): HTMLElement =>
   screen.getByRole("button", { name: "Save" });
 
 export const Primary: Story = {};
+
+export const ShowsInlineNameConflictWhenCountryAlreadyExists: Story = {
+  decorators: [withServer(409)],
+  play: async () => {
+    const user = setupUser();
+    const field = countryNameField();
+
+    await user.type(field, "Monaco");
+    await selectOption(user, "Select a continent", "Europe");
+    await selectOption(user, "ISO code", "Monaco (MC)");
+    await user.click(saveButton());
+
+    expect(
+      await screen.findByText("A country with this name already exists.")
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(
+      screen.getByRole("combobox", { name: "Select a continent" })
+    ).toHaveTextContent("Europe");
+    expect(screen.getByRole("combobox", { name: "ISO code" })).toHaveValue(
+      "Monaco (MC)"
+    );
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("A country with this name already exists.")
+      ).not.toBeInTheDocument()
+    );
+  }
+};
 
 export const ShowsFormWithSaveInitiallyDisabled: Story = {
   play: async () => {

@@ -302,6 +302,39 @@ export const UpdatesAttractionName: Story = {
   }
 };
 
+export const ShowsConflictWhenUpdatedAttractionNameAlreadyExists: Story = {
+  parameters: { updateAttractionStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForAllAttractionsToLoad(canvasElement);
+    await openAttractionNameEditor(canvasElement, user, "Casino Square");
+
+    const field = modal.getByLabelText("Attraction name");
+    await user.type(field, "Casino of Monte-Carlo");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "An attraction with this name already exists at this destination."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Casino of Monte-Carlo");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "An attraction with this name already exists at this destination."
+        )
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const DisablesUpdateWhenAttractionNameEmptyOnOpen: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

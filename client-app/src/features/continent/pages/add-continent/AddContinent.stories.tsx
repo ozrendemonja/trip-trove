@@ -1,6 +1,7 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Decorator, Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
+import makeServer from "../../../../ServerSetup";
 import AddContinent from "./AddContinent";
 
 const styleOverrides = `
@@ -29,6 +30,18 @@ export default meta;
 type Story = StoryObj<typeof AddContinent>;
 type User = ReturnType<typeof userEvent.setup>;
 
+let server: ReturnType<typeof makeServer> | undefined;
+
+/* eslint-disable react/display-name */
+const withServer =
+  (saveContinentStatus: number): Decorator =>
+  (Story) => {
+    server?.shutdown();
+    server = makeServer({ saveContinentStatus });
+    return <Story />;
+  };
+/* eslint-enable react/display-name */
+
 // Fluent's TextField validates on a short debounce and only surfaces an error
 // once the field has been touched, so type instantly (delay: null) and blur the
 // field to trigger validateOnFocusOut before asserting.
@@ -48,6 +61,30 @@ const findError = (
   within(canvasElement).findByText(message, {}, { timeout: 5000 });
 
 export const Primary: Story = {};
+
+export const ShowsInlineNameConflictWhenContinentAlreadyExists: Story = {
+  decorators: [withServer(409)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const field = nameField(canvasElement);
+
+    await user.type(field, "Asia");
+    await user.click(saveButton(canvasElement));
+
+    expect(
+      await canvas.findByText("A continent with this name already exists.")
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        canvas.queryByText("A continent with this name already exists.")
+      ).not.toBeInTheDocument()
+    );
+  }
+};
 
 export const SaveDisabledWhenNameEmpty: Story = {
   play: async ({ canvasElement }) => {

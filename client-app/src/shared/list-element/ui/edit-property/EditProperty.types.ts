@@ -12,7 +12,17 @@ export interface EditPropertyProps {
 
   editIconName?: string;
 
-  onUpdateClick: () => Promise<void>;
+  onUpdateClick: () => Promise<void | boolean>;
+
+  /**
+   * Message shown when the API rejects an update with NAME_CONFLICT.
+   */
+  conflictErrorMessage?: string;
+
+  /**
+   * Fallback shown when an update fails for another reason.
+   */
+  saveErrorMessage?: string;
 
   /**
    * Controlled mode: when provided the trigger IconButton is not rendered.

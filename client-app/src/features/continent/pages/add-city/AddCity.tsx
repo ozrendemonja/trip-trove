@@ -1,12 +1,15 @@
 import {
   DefaultButton,
+  ITextField,
+  MessageBar,
+  MessageBarType,
   PrimaryButton,
   Separator,
   Stack,
   Text,
   TextField
 } from "@fluentui/react";
-import React from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { SearchText } from "../../../../shared/search-text/SearchText";
@@ -14,21 +17,37 @@ import { saveNewCity } from "../../infra/ManagerApi";
 import { useCityFormField } from "./AddCity.config";
 import { useClasses } from "./AddCity.styles";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
+import { useSaveError } from "../../../../shared/hooks/UseSaveError";
 
 export const AddCity: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useCityFormField();
   const navigate = useNavigate();
+  const nameFieldRef = useRef<ITextField>(null);
+  const { nameConflict, saveError, handleSaveError } = useSaveError({
+    nameConflictMessage: "A city with this name already exists.",
+    saveErrorMessage:
+      "The city wasn't saved. Your details are still here, so you can review or edit them and try again.",
+    focusRef: nameFieldRef,
+    resetKey: formFields.cityName.value
+  });
 
-  const handleSave = (): void => {
+  const handleSave = async (): Promise<void> => {
     if (!isFormValid) {
       return;
     }
-    saveNewCity(formFields.cityName.value!, formFields.regionId.value!);
+
+    try {
+      await saveNewCity(formFields.cityName.value!, formFields.regionId.value!);
+    } catch (error) {
+      handleSaveError(error);
+      return;
+    }
+
     navigate(-1);
   };
 
-  useSaveShortcut(handleSave);
+  useSaveShortcut(() => void handleSave());
 
   return (
     <>
@@ -43,9 +62,20 @@ export const AddCity: React.FunctionComponent = () => {
         <Separator></Separator>
         <Stack tokens={{ childrenGap: 12 }} className={classes.formText}>
           <Stack.Item grow={1}>
-            <TextField {...formFields.cityName} />
+            <TextField
+              {...formFields.cityName}
+              componentRef={nameFieldRef}
+              errorMessage={nameConflict}
+            />
           </Stack.Item>
         </Stack>
+        {saveError && (
+          <Stack className={classes.saveError}>
+            <MessageBar messageBarType={MessageBarType.error}>
+              {saveError}
+            </MessageBar>
+          </Stack>
+        )}
         <Stack
           horizontal
           horizontalAlign="end"
@@ -54,7 +84,7 @@ export const AddCity: React.FunctionComponent = () => {
         >
           <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
           <PrimaryButton
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!isFormValid}
             text="Save"
           />

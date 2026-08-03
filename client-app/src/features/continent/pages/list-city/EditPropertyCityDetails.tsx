@@ -14,6 +14,7 @@ const EditPropertyCityDetails: React.FunctionComponent<
     <EditProperty
       editIconAriaLabel={`Change city name for ${props.text}`}
       text={props.text}
+      conflictErrorMessage="A city with this name already exists in this region."
       onUpdateClick={async () => {
         await changeCityDetails(
           String(props.cityId),

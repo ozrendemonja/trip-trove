@@ -16,9 +16,12 @@ let server: ReturnType<typeof makeServer>;
 export const withFreshServer: Decorator = (Story, context) => {
   const closedAttractionId = context.parameters
     .permanentlyClosedAttractionId as number | undefined;
+  const updateAttractionStatus = context.parameters.updateAttractionStatus as
+    number | undefined;
   server?.shutdown();
   server = makeServer({
-    permanentlyClosedAttractionId: closedAttractionId
+    permanentlyClosedAttractionId: closedAttractionId,
+    updateAttractionStatus
   });
   return (
     <>

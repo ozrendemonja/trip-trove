@@ -15,6 +15,7 @@ const meta: Meta<typeof CountryList> = {
   component: CountryList,
   decorators: [
     (Story, context) => {
+    (Story, context) => {
       // Tear down the previous story's Mirage server before starting a new one;
       // otherwise multiple Pretender instances stack up and corrupt paginated
       // reloads (sort/delete) when the runner plays stories back to back.
@@ -362,6 +363,39 @@ export const UpdatesCountryName: Story = {
         name: "Change country name for Liechtenstein"
       })
     ).not.toBeInTheDocument();
+  }
+};
+
+export const ShowsConflictWhenUpdatedCountryNameAlreadyExists: Story = {
+  parameters: { updateCountryStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCountriesToLoad(canvasElement);
+    await openCountryNameEditor(canvasElement, user, "Liechtenstein");
+
+    const field = modal.getByRole("textbox");
+    await user.type(field, "Monaco");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText(
+        "A country with this name already exists in this continent."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("Monaco");
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await user.type(field, " updated");
+    await waitFor(() =>
+      expect(
+        modal.queryByText(
+          "A country with this name already exists in this continent."
+        )
+      ).not.toBeInTheDocument()
+    );
   }
 };
 

@@ -27,6 +27,16 @@ export interface EditPropertyProps {
   saveErrorMessage?: string;
 
   /**
+   * Clears the submit error when this value changes.
+   */
+  submitErrorResetKey?: unknown;
+
+  /**
+   * Clears the submit error when this value changes.
+   */
+  submitErrorResetKey?: unknown;
+
+  /**
    * Controlled mode: when provided, the edit trigger is not rendered.
    */
   isOpen?: boolean;

@@ -25,6 +25,11 @@ export interface EditPropertyProps {
   saveErrorMessage?: string;
 
   /**
+   * Clears the submit error when this value changes.
+   */
+  submitErrorResetKey?: unknown;
+
+  /**
    * Controlled mode: when provided the trigger IconButton is not rendered.
    */
   isOpen?: boolean;

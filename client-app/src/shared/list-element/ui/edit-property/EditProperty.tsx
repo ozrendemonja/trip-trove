@@ -14,7 +14,7 @@ import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
 import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
 import { getApiErrorCode } from "../../../hooks/UseSaveError";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   const classes = useClasses();
@@ -28,6 +28,10 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
 
   const isControlled = props.isOpen !== undefined;
   const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
+
+  useEffect(() => {
+    setSubmitError(undefined);
+  }, [props.submitErrorResetKey]);
 
   const handleClose = () => {
     setSubmitError(undefined);

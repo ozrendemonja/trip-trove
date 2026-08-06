@@ -1,5 +1,5 @@
 import { Decorator, Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import AddCountry from "./AddCountry";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
@@ -13,7 +13,6 @@ const meta: Meta<typeof AddCountry> = {
   component: AddCountry,
   decorators: [
     (Story) => {
-      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -43,7 +42,9 @@ const withServer =
   };
 /* eslint-enable react/display-name */
 
-meta.decorators?.push(withServer());
+if (Array.isArray(meta.decorators)) {
+  meta.decorators.push(withServer());
+}
 
 // Fluent callouts/options animate in and briefly set pointer-events: none, so
 // disable user-event's interactability guard. Typing instantly (delay: null)

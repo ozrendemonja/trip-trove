@@ -16,9 +16,12 @@ let server: ReturnType<typeof makeServer>;
 export const withFreshServer: Decorator = (Story, context) => {
   const closedAttractionId = context.parameters
     .permanentlyClosedAttractionId as number | undefined;
+  const updateAttractionStatus = context.parameters.updateAttractionStatus as
+    number | undefined;
   server?.shutdown();
   server = makeServer({
-    permanentlyClosedAttractionId: closedAttractionId
+    permanentlyClosedAttractionId: closedAttractionId,
+    updateAttractionStatus
   });
   return (
     <>
@@ -113,7 +116,7 @@ export const openAttractionDeleteDialog = async (
   await waitFor(() =>
     expect(
       within(canvasElement).getByRole("menuitem", { name: "Delete attraction" })
-    ).not.toHaveAttribute("aria-disabled", "true")
+    ).toBeEnabled()
   );
   await user.click(
     within(canvasElement).getByRole("menuitem", { name: "Delete attraction" })
@@ -176,6 +179,6 @@ export const modalDropdown = (
 ): HTMLElement => {
   const modal = overlay(canvasElement)
     .getByRole("heading", { name: headingName })
-    .closest(".ms-Modal") as HTMLElement;
+    .closest('[role="dialog"]') as HTMLElement;
   return within(modal).getByRole("combobox");
 };

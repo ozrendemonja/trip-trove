@@ -161,7 +161,7 @@ export const DataTable = <T,>({
 }: DataTableProps<T>): ReactElement => {
   const [, rerender] = React.useReducer((value) => value + 1, 0);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const selectedRows = selection?.selectedRows() ?? [];
     const selectedRow = selectedRows.length > 0 ? selectedRows[0] : undefined;
     const normalizedRows = rows.filter((row): row is T => row != null);

@@ -382,8 +382,8 @@ export const AttractionList: React.FunctionComponent = () => {
                   toggleReloadData();
                 },
                 (attractionId, permanentlyClosedAt) =>
-                  setAttractionCustomizer((current) =>
-                    current.withPermanentClosure(
+                  setAttractionCustomizer(
+                    attractionCustomizer.withPermanentClosure(
                       attractionId,
                       permanentlyClosedAt
                     )

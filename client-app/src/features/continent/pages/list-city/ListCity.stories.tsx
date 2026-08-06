@@ -138,7 +138,7 @@ const selectCityRow = async (
 ): Promise<HTMLElement> => {
   const row = within(canvasElement)
     .getByRole("button", { name: `Change city name for ${name}` })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
   await user.click(within(row).getByRole("radio", { name: "select row" }));
   return row;
 };
@@ -556,7 +556,7 @@ export const SelectsCityViaCheckbox: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change city name for Monaco" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 
@@ -573,7 +573,7 @@ export const SelectsCityViaRowClick: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change city name for Kaunas" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 

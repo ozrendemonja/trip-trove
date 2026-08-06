@@ -1,4 +1,4 @@
-import { TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { EditPropertyCityDetailsProps } from "./ListCity.types";
 import { changeCityDetails } from "../../infra/ManagerApi";
@@ -8,7 +8,6 @@ const EditPropertyCityDetails: React.FunctionComponent<
   EditPropertyCityDetailsProps
 > = (props) => {
   const { formFields, isFormValid } = useCityDetailsFormField();
-  formFields.cityName.placeholder = props.text;
 
   return (
     <EditProperty
@@ -18,13 +17,13 @@ const EditPropertyCityDetails: React.FunctionComponent<
       onUpdateClick={async () => {
         await changeCityDetails(
           String(props.cityId),
-          formFields?.cityName.value!
+          formFields.cityName.value ?? ""
         );
         props.onUpdateClick();
       }}
       isFormValid={isFormValid}
     >
-      <TextField {...formFields.cityName} />
+      <InputField {...formFields.cityName} placeholder={props.text} />
     </EditProperty>
   );
 };

@@ -19,8 +19,7 @@ interface NominatimResponse {
 }
 
 export type ReverseGeocodeResult =
-  | { ok: true; address: string | null }
-  | { ok: false; reason: string };
+  { ok: true; address: string | null } | { ok: false; reason: string };
 
 const NOMINATIM_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 const REQUEST_TIMEOUT_MS = 8000;
@@ -42,15 +41,11 @@ export const reverseGeocode = async (
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(
-      `${NOMINATIM_ENDPOINT}?${params.toString()}`,
-      {
-        headers: { Accept: "application/json" },
-        signal: controller.signal
-      }
-    );
+    const response = await fetch(`${NOMINATIM_ENDPOINT}?${params.toString()}`, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
     if (!response.ok) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[reverseGeocode] Nominatim returned HTTP ${response.status}`
       );
@@ -58,7 +53,6 @@ export const reverseGeocode = async (
     }
     const data: NominatimResponse = await response.json();
     if (data.error) {
-      // eslint-disable-next-line no-console
       console.warn("[reverseGeocode] Nominatim error:", data.error);
       return { ok: true, address: null };
     }
@@ -68,7 +62,6 @@ export const reverseGeocode = async (
       address: displayName && displayName.length > 0 ? displayName : null
     };
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.warn("[reverseGeocode] request failed:", error);
     const reason =
       error instanceof DOMException && error.name === "AbortError"

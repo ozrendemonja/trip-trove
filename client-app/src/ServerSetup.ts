@@ -706,8 +706,21 @@ export default function makeServer(options?: {
           return data.countryId == countryId;
         });
 
-        if (inElement == "COUNTRY") {
-          let result = schema.db.countries
+        if (inElement == "CONTINENT") {
+          const result = schema.db.continents
+            .sort()
+            .filter((data) => data.continentName.includes(query))
+            .map((continent) => {
+              return {
+                value: continent.continentName,
+                id: continent.continentName,
+                strategyType: "RANK"
+              };
+            });
+
+          return { prefix: query, suggestions: result };
+        } else if (inElement == "COUNTRY") {
+          const result = schema.db.countries
             .sort()
             .filter((data) => data.countryName.includes(query))
             .map((country) => {
@@ -720,7 +733,7 @@ export default function makeServer(options?: {
 
           return { prefix: query, suggestions: result };
         } else if (inElement == "REGION") {
-          let result = schema.db.regions
+          const result = schema.db.regions
             .sort()
             .filter((region) => region.regionName.includes(query))
             .filter(
@@ -738,7 +751,7 @@ export default function makeServer(options?: {
 
           return { prefix: query, suggestions: result };
         } else if (inElement == "CITY") {
-          let result = schema.db.cities
+          const result = schema.db.cities
             .sort()
             .filter((city) => city.cityName.includes(query))
             .filter(
@@ -761,7 +774,7 @@ export default function makeServer(options?: {
 
           return { prefix: query, suggestions: result };
         } else if (inElement == "ATTRACTION") {
-          let result = schema.db.attractions
+          const result = schema.db.attractions
             .sort()
             .filter((attraction) => attraction.attractionName.includes(query))
             .map((attraction) => {
@@ -775,7 +788,7 @@ export default function makeServer(options?: {
           return { prefix: query, suggestions: result };
         } else if (inElement == "INFORMATION_PROVIDER") {
           const seen = new Set<string>();
-          let result = (schema.db.attractions as { infoFrom?: string }[])
+          const result = (schema.db.attractions as { infoFrom?: string }[])
             .filter((attraction) => {
               if (!attraction.infoFrom) return false;
               if (!attraction.infoFrom.includes(query)) return false;
@@ -793,7 +806,7 @@ export default function makeServer(options?: {
 
           return { prefix: query, suggestions: result };
         } else if (inElement == "MAIN_ATTRACTION") {
-          let result = schema.db.attractions
+          const result = schema.db.attractions
             .sort()
             .filter((attraction) => attraction.attractionName.includes(query))
             .filter((attraction) =>

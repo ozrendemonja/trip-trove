@@ -27,10 +27,9 @@ export const useContinentFormField = (): ContinentFormFieldProps => {
       setTouched({ ...touched, continentName: true });
       setValues({ ...values, continentName: value || "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.continentName ? errorMessage.continentNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 

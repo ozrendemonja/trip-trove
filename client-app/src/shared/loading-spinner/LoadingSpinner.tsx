@@ -1,4 +1,4 @@
-import { Spinner, SpinnerSize } from "@fluentui/react";
+import { Spinner } from "@fluentui/react-components";
 import { useClasses } from "./LoadingSpinner.styles";
 import { LoadingSpinnerProps } from "./LoadingSpinner.types";
 
@@ -8,11 +8,11 @@ export const LoadingSpinner: React.FunctionComponent<LoadingSpinnerProps> = (
   const classes = useClasses();
   return (
     <Spinner
-      size={SpinnerSize.large}
+      size="huge"
       role="main"
       label={props.text}
-      ariaLive="assertive"
-      labelPosition="bottom"
+      aria-live="assertive"
+      labelPosition="below"
       className={classes.root}
     />
   );

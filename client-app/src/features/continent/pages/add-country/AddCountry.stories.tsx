@@ -1,5 +1,5 @@
 import { Decorator, Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import AddCountry from "./AddCountry";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
@@ -42,7 +42,9 @@ const withServer =
   };
 /* eslint-enable react/display-name */
 
-meta.decorators?.push(withServer());
+if (Array.isArray(meta.decorators)) {
+  meta.decorators.push(withServer());
+}
 
 // Fluent callouts/options animate in and briefly set pointer-events: none, so
 // disable user-event's interactability guard. Typing instantly (delay: null)
@@ -62,7 +64,7 @@ const selectOption = async (
 };
 
 const countryNameField = (): HTMLElement =>
-  screen.getByLabelText("Country name");
+  screen.getByLabelText(/^Country name/);
 
 const saveButton = (): HTMLElement =>
   screen.getByRole("button", { name: "Save" });
@@ -101,11 +103,15 @@ export const ShowsInlineNameConflictWhenCountryAlreadyExists: Story = {
 };
 
 export const ShowsFormWithSaveInitiallyDisabled: Story = {
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
     expect(
       screen.getByRole("heading", { name: "Add Country" })
     ).toBeInTheDocument();
+    expect(canvas.getAllByText("*")).toHaveLength(3);
     expect(countryNameField()).toBeInTheDocument();
+    expect(countryNameField()).toBeRequired();
     expect(
       screen.getByRole("combobox", { name: "Select a continent" })
     ).toBeInTheDocument();

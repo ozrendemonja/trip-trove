@@ -1,4 +1,5 @@
-import { Stack, Text, useTheme } from "@fluentui/react";
+import { tokens } from "@fluentui/react-components";
+import { Text } from "@fluentui/react-components";
 import React, { useEffect, useState } from "react";
 import { getCountriesVisitedSummary } from "../../continent/infra/ManagerApi";
 import {
@@ -9,6 +10,7 @@ import {
   useClasses
 } from "./CountriesVisitedGauge.styles";
 import { CountriesVisitedGaugeProps } from "./CountriesVisitedGauge.types";
+import { Flex } from "../../../shared/ui/Flex";
 
 const describeArc = (
   cx: number,
@@ -29,8 +31,7 @@ const describeArc = (
 export const CountriesVisitedGauge: React.FunctionComponent<
   CountriesVisitedGaugeProps
 > = ({ visitedCount, totalCount }) => {
-  const theme = useTheme();
-  const classes = useClasses(theme);
+  const classes = useClasses();
   const [visited, setVisited] = useState<number>(visitedCount ?? 0);
   const [total, setTotal] = useState<number>(totalCount ?? 0);
 
@@ -61,7 +62,7 @@ export const CountriesVisitedGauge: React.FunctionComponent<
       : "";
 
   return (
-    <Stack horizontalAlign="center" tokens={{ childrenGap: 0 }}>
+    <Flex justify="center" gap={0}>
       <div className={classes.svgContainer}>
         <svg
           width={GAUGE_SIZE}
@@ -71,7 +72,7 @@ export const CountriesVisitedGauge: React.FunctionComponent<
           <path
             d={trackPath}
             fill="none"
-            stroke={theme.palette.neutralLight}
+            stroke={tokens.colorNeutralBackground1}
             strokeWidth={STROKE_WIDTH}
             strokeLinecap="round"
           />
@@ -79,22 +80,22 @@ export const CountriesVisitedGauge: React.FunctionComponent<
             <path
               d={filledPath}
               fill="none"
-              stroke={theme.palette.themePrimary}
+              stroke={tokens.colorBrandBackground}
               strokeWidth={STROKE_WIDTH}
               strokeLinecap="round"
             />
           )}
         </svg>
         <div className={classes.labelContainer}>
-          <Text variant="mediumPlus" className={classes.valueText}>
+          <Text size={400} className={classes.valueText}>
             {visited} of {total}
           </Text>
         </div>
       </div>
-      <Text variant="xSmall" className={classes.subtitleText}>
+      <Text size={100} className={classes.subtitleText}>
         Countries visited
       </Text>
-    </Stack>
+    </Flex>
   );
 };
 

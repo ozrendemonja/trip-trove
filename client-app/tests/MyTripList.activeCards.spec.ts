@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 
   await expect(
     page.getByRole("button", { name: "Open trip: Italy" })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 5000 });
 });
 
 test("Show active trip cards with name, dates and status badge", async ({

@@ -1,4 +1,4 @@
-import { TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeRegionDetails } from "../../infra/ManagerApi";
 import { useRegionDetailsFormField } from "../add-region/AddRegion.config";
@@ -8,7 +8,6 @@ const EditPropertyRegionDetails: React.FunctionComponent<
   EditRegionDetailsProps
 > = (props) => {
   const { formFields, isFormValid } = useRegionDetailsFormField();
-  formFields.regionName.placeholder = props.text;
 
   return (
     <EditProperty
@@ -24,7 +23,7 @@ const EditPropertyRegionDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <TextField {...formFields.regionName} />
+      <InputField {...formFields.regionName} placeholder={props.text} />
     </EditProperty>
   );
 };

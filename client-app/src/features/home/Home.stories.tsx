@@ -6,7 +6,7 @@ import makeServer from "../../ServerSetup";
 
 const styleOverrides = `
     body {
-      background: #C3E0E7;
+      background: radial-gradient(#C3E0E7, #61A9B4);
     }`;
 
 const meta: Meta<typeof Home> = {
@@ -105,12 +105,12 @@ export const SearchingSuggestsMatchingContinents: Story = {
     const canvas = within(canvasElement);
     const user = setupUser();
 
-    await search(canvasElement, user, "Abc");
+    await search(canvasElement, user, "rop");
 
     await findSuggestion(canvasElement, "Europe");
     expect(
       canvas.getAllByRole("menuitem").map((item) => item.textContent)
-    ).toEqual(["Asia", "Europe", "Australia"]);
+    ).toEqual(["Europe"]);
   }
 };
 
@@ -119,7 +119,7 @@ export const SelectsSuggestedContinent: Story = {
     const canvas = within(canvasElement);
     const user = setupUser();
 
-    await search(canvasElement, user, "Abc");
+    await search(canvasElement, user, "rop");
     await user.click(await findSuggestion(canvasElement, "Europe"));
 
     expect(canvas.getByPlaceholderText("Search")).toHaveValue("Europe");

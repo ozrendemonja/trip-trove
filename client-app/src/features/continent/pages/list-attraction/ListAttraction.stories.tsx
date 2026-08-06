@@ -5,11 +5,11 @@ import {
   withFreshServer,
   setupUser,
   overlay,
+  waitForCanvasToBecomeAccessible,
   searchFor,
   openAttractionNameEditor,
   waitForAllAttractionsToLoad,
-  waitForCanvasToBecomeAccessible,
-  pickSuggestion,
+  expectSuggestionBelowInput,
   updateButton,
   cancelButton,
   rowOf
@@ -373,11 +373,15 @@ export const ShowsPartOfLabelWhenLinkedToMainAttraction: Story = {
     await user.click(
       overlay(canvasElement).getByLabelText("Part of attraction")
     );
-    await user.type(
-      overlay(canvasElement).getByLabelText("Select main attraction name"),
-      "Cas"
+    const mainAttractionInput = overlay(canvasElement).getByLabelText(
+      "Select main attraction name"
     );
-    await pickSuggestion(canvasElement, user, "Casino of Monte-Carlo");
+    await user.type(mainAttractionInput, "Cas");
+    const suggestion = await overlay(canvasElement).findByRole("menuitem", {
+      name: "Casino of Monte-Carlo"
+    });
+    expectSuggestionBelowInput(mainAttractionInput, suggestion);
+    await user.click(suggestion);
     await user.click(updateButton(canvasElement));
 
     await within(canvasElement).findByText(

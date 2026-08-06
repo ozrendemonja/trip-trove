@@ -1,20 +1,22 @@
 import {
+  ComboBoxField,
+  SelectField
+} from "../../../../shared/ui/forms/SelectField";
+import { DateInput } from "../../../../shared/ui/forms/DateInput";
+import {
+  InputField,
+  InputFieldHandle
+} from "../../../../shared/ui/forms/InputField";
+import {
+  Button,
   Checkbox,
-  ComboBox,
-  DatePicker,
-  DefaultButton,
-  Dropdown,
-  ITextField,
+  Divider,
   MessageBar,
-  MessageBarType,
-  PrimaryButton,
-  Separator,
-  Stack,
-  Text,
-  TextField,
-  Toggle
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  MessageBarBody,
+  Switch,
+  Text
+} from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
@@ -27,25 +29,26 @@ import {
 } from "../../domain/Attraction.types";
 import { saveNewAttraction } from "../../infra/ManagerApi";
 import { useAttractionFormField } from "./AddAttraction.config";
-import { searchOverride, useClasses } from "./AddAttraction.styles";
+import { useClasses } from "./AddAttraction.styles";
 import GoogleMapsImport, { GoogleMapsImportHandle } from "./GoogleMapsImport";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 import { useSaveError } from "../../../../shared/hooks/UseSaveError";
+import { Flex } from "../../../../shared/ui/Flex";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
   .sort((a, b) => a.localeCompare(b))
   .map((category) => ({
-    key: category,
-    text: category
+    value: category,
+    label: category
   }));
 
 const typeOptions = Object.values(AttractionType)
   .filter((x) => typeof x !== "number")
   .sort((a, b) => a.localeCompare(b))
   .map((category) => ({
-    key: category,
-    text: category
+    value: category,
+    label: category
   }));
 
 export const AddAttraction: React.FunctionComponent = () => {
@@ -58,25 +61,25 @@ export const AddAttraction: React.FunctionComponent = () => {
   } = useAttractionFormField();
   const navigate = useNavigate();
   const [isMultipleSubmissions, { toggle: toggleMultipleSubmissions }] =
-    useBoolean(false);
+    useBooleanState(false);
   const [
     isCountrywide,
     { setFalse: setNotCountrywide, toggle: toggleIsCountrywide }
-  ] = useBoolean(false);
-  const [isReginal, { toggle: toggleReginal }] = useBoolean(false);
+  ] = useBooleanState(false);
+  const [isReginal, { toggle: toggleReginal }] = useBooleanState(false);
   const [mustVisit, { setTrue: setMustVisitTrue, toggle: toggleMustVisit }] =
-    useBoolean(true);
+    useBooleanState(true);
   const [
     isPartOfAttraction,
     { setFalse: setNotPartOfAttraction, toggle: togglePartOfAttraction }
-  ] = useBoolean(false);
+  ] = useBooleanState(false);
   const [
     isTraditional,
     { setFalse: setNonTraditional, toggle: toggleIsTraditional }
-  ] = useBoolean(false);
+  ] = useBooleanState(false);
   const [iteration, setIteration] = useState<number>(0);
-  const nameFieldRef = useRef<ITextField>(null);
-  const addressFieldRef = useRef<ITextField>(null);
+  const nameFieldRef = useRef<InputFieldHandle>(null);
+  const addressFieldRef = useRef<InputFieldHandle>(null);
   const googleMapsImportRef = useRef<GoogleMapsImportHandle>(null);
   const { nameConflict, saveError, handleSaveError, clearSaveErrors } =
     useSaveError({
@@ -179,66 +182,78 @@ export const AddAttraction: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
-      <Stack className={classes.root}>
-        <Stack horizontal tokens={{ childrenGap: 48 }}>
+      <Flex className={classes.root}>
+        <Flex direction="row" gap={48}>
           <Text as="h1" className={classes.header}>
             Add Attraction
           </Text>
-          <Toggle
+          <Switch
             className={classes.checkbox}
             label={
               isMultipleSubmissions
                 ? "add series of attractions"
                 : "add one attraction"
             }
-            inlineLabel
             onChange={toggleMultipleSubmissions}
-            styles={{ root: { marginTop: 5 } }}
+            style={{ marginTop: 5 }}
           />
-        </Stack>
-        <Separator></Separator>
-        <Stack styles={{ root: { marginLeft: "25px" } }}>
-          <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+        </Flex>
+        <Divider className={classes.headerDivider} />
+        <Flex style={{ marginLeft: "25px" }}>
+          <Flex gap={36} direction="row">
             <Text as="h1" className={classes.subHeader}>
               Country
             </Text>
-            <Toggle
+            <Switch
               className={classes.checkbox}
               label="Nationally Recognized Attraction"
-              inlineLabel
               onChange={toggleIsCountrywide}
-              styles={{ root: { marginTop: 10 } }}
+              style={{ marginTop: 10 }}
               checked={isCountrywide}
             />
-          </Stack>
-          <SearchText {...formFields.countryId} className={searchOverride} />
-          <Separator></Separator>
-          <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+          </Flex>
+          <SearchText
+            {...formFields.countryId}
+            showRequiredIndicator
+            className={classes.searchRootOverride}
+            searchBoxClassName={classes.searchBoxOverride}
+          />
+          <Divider className={classes.sectionDivider} />
+          <Flex gap={36} direction="row">
             <Text as="h2" className={classes.subHeader}>
               {isReginal ? "Region" : "City"}
             </Text>
-            <Toggle
+            <Switch
               className={classes.checkbox}
               label="Attraction is region level"
-              inlineLabel
               onChange={toggleReginal}
-              styles={{ root: { marginTop: 5 } }}
+              style={{ marginTop: 5 }}
             />
-          </Stack>
+          </Flex>
           {isReginal && (
             <>
-              <SearchText {...formFields.regionId} className={searchOverride} />
-              <Separator></Separator>
+              <SearchText
+                {...formFields.regionId!}
+                showRequiredIndicator
+                className={classes.searchRootOverride}
+                searchBoxClassName={classes.searchBoxOverride}
+              />
+              <Divider className={classes.attractionSectionDivider} />
             </>
           )}
           {!isReginal && (
             <>
-              <SearchText {...formFields.cityId} className={searchOverride} />
-              <Separator></Separator>
+              <SearchText
+                {...formFields.cityId!}
+                showRequiredIndicator
+                className={classes.searchRootOverride}
+                searchBoxClassName={classes.searchBoxOverride}
+              />
+              <Divider className={classes.attractionSectionDivider} />
             </>
           )}
 
-          <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
+          <Flex gap={48} direction="row">
             <Text as="h2" className={classes.subHeader}>
               Attraction
             </Text>
@@ -254,8 +269,8 @@ export const AddAttraction: React.FunctionComponent = () => {
               onChange={toggleIsTraditional}
               className={classes.checkbox}
             />
-          </Stack>
-          <Stack className={classes.tip}>
+          </Flex>
+          <Flex className={classes.tip}>
             <GoogleMapsImport
               ref={googleMapsImportRef}
               onImport={(payload) => {
@@ -263,109 +278,106 @@ export const AddAttraction: React.FunctionComponent = () => {
                 addressFieldRef.current?.focus();
               }}
             />
-          </Stack>
-          <Stack
-            tokens={{ childrenGap: 48 }}
-            horizontal={true}
-            className={classes.row}
-          >
-            <TextField
+          </Flex>
+          <Flex gap={48} direction="row" className={classes.row}>
+            <InputField
               {...formFields.name}
-              componentRef={nameFieldRef}
+              ref={nameFieldRef}
               className={classes.attractionName}
               errorMessage={nameConflict}
               id="add-attraction-name"
+              showRequiredIndicator
             />
-            <Toggle
+            <Switch
               className={classes.inputToggle}
               label="Part of attraction"
-              inlineLabel
               onChange={togglePartOfAttraction}
               checked={isPartOfAttraction}
             />
-          </Stack>
+          </Flex>
           {isPartOfAttraction && (
-            <SearchText
-              {...formFields.mainAttractionId}
-              className={searchOverride}
-            />
+            <Flex className={classes.row}>
+              <SearchText
+                {...formFields.mainAttractionId!}
+                className={classes.searchRootOverride}
+                searchBoxClassName={classes.searchBoxOverride}
+              />
+            </Flex>
           )}
-          <Stack
-            tokens={{ childrenGap: 48 }}
-            horizontal={true}
-            className={classes.row}
-          >
-            <TextField
+          <Flex gap={48} direction="row" className={classes.row}>
+            <InputField
               {...formFields.address}
-              componentRef={addressFieldRef}
+              ref={addressFieldRef}
               className={classes.attractionName}
             />
-            <TextField {...formFields.geoLocation} />
-          </Stack>
-          <Stack
-            tokens={{ childrenGap: 48 }}
-            horizontal={true}
-            className={classes.row}
-          >
-            <ComboBox
+            <InputField {...formFields.geoLocation} />
+          </Flex>
+          <Flex gap={48} direction="row" className={classes.row}>
+            <ComboBoxField
               {...formFields.category}
-              options={categoryOptions}
+              choices={categoryOptions}
               className={classes.dropdowns}
-              autoComplete={"on"}
               key={`Category-${iteration}`}
             />
-            <Dropdown
+            <SelectField
               {...formFields.type}
-              options={typeOptions}
+              choices={typeOptions}
               className={classes.dropdowns}
-              defaultSelectedKeys={undefined}
               key={`Type-${iteration}`}
             />
-          </Stack>
-          <Stack
-            tokens={{ childrenGap: 48 }}
-            horizontal={true}
-            className={classes.whereToVisit}
-          >
-            <Stack>
-              <Text as="label">Where to visit</Text>
+          </Flex>
+          <Flex gap={48} direction="row" className={classes.whereToVisit}>
+            <Flex>
+              <Text as="span">Where to visit</Text>
               <DateRangePicker
                 key={`DateRangePicker-${iteration}`}
-                {...formFields.optimalVisitPeriod}
+                {...formFields.optimalVisitPeriod!}
               />
-            </Stack>
-          </Stack>
-          <TextField {...formFields.tip} className={classes.tip} />
-          <Stack
-            tokens={{ childrenGap: 48 }}
-            horizontal={true}
-            className={classes.tip}
+            </Flex>
+          </Flex>
+          <InputField {...formFields.tip} className={classes.tip} />
+          <Flex
+            gap="24px 48px"
+            direction="row"
+            wrap
+            className={classes.informationSourceRow}
           >
-            <SearchText {...formFields.source} className={searchOverride} />
-            <DatePicker {...formFields.sourceFrom} />
-          </Stack>
-        </Stack>
+            <SearchText
+              {...formFields.source}
+              showRequiredIndicator
+              searchBoxClassName={classes.informationSourceControl}
+            />
+            <DateInput
+              {...formFields.sourceFrom}
+              className={classes.informationSourceControl}
+            />
+          </Flex>
+        </Flex>
         {saveError && (
-          <Stack className={classes.saveError}>
-            <MessageBar messageBarType={MessageBarType.error}>
-              {saveError}
+          <Flex className={classes.saveError}>
+            <MessageBar intent="error">
+              <MessageBarBody>{saveError}</MessageBarBody>
             </MessageBar>
-          </Stack>
+          </Flex>
         )}
-        <Stack
-          horizontal
-          horizontalAlign="end"
+        <Flex
+          direction="row"
+          justify="flex-end"
           className={classes.footer}
-          tokens={{ childrenGap: 12 }}
+          gap={12}
         >
-          <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
-          <PrimaryButton
+          <Button appearance="secondary" onClick={() => navigate(-1)}>
+            Cancel
+          </Button>
+          <Button
+            appearance="primary"
             onClick={() => void handleSave()}
             disabled={!isFormValid}
-            text="Save"
-          />
-        </Stack>
-      </Stack>
+          >
+            Save
+          </Button>
+        </Flex>
+      </Flex>
     </>
   );
 };

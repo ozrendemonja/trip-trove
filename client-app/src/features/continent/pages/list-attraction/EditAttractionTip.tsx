@@ -1,4 +1,4 @@
-import { TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeAttractionTip } from "../../infra/ManagerApi";
 import { useAttractionTipFormField } from "../add-attraction/AddAttraction.config";
@@ -22,7 +22,7 @@ const EditAttractionTip: React.FunctionComponent<EditAttractionTipProps> = (
       }}
       isFormValid={isFormValid}
     >
-      <TextField
+      <InputField
         {...formFields.tip}
         // className={classes.tip}
       />

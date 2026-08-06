@@ -95,7 +95,7 @@ export const EnablesDeleteAttractionButtonWhenRowSelected: Story = {
 
     expect(
       within(canvasElement).getByRole("menuitem", { name: "Delete attraction" })
-    ).toHaveAttribute("aria-disabled", "true");
+    ).toBeDisabled();
 
     await selectAttractionRow(canvasElement, user, "Larvotto Beach");
 
@@ -104,7 +104,7 @@ export const EnablesDeleteAttractionButtonWhenRowSelected: Story = {
         within(canvasElement).getByRole("menuitem", {
           name: "Delete attraction"
         })
-      ).not.toHaveAttribute("aria-disabled", "true")
+      ).toBeEnabled()
     );
   }
 };

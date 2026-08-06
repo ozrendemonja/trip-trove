@@ -15,7 +15,9 @@ test("Show single city board", async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-ai-table-components-board--single-city"
   );
 
-  await expect(page.getByText("Paris")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Paris", exact: true })
+  ).toBeVisible();
   await expect(page.getByText("Eiffel Tower")).toBeVisible();
   await expect(page).toHaveScreenshot();
 });

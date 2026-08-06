@@ -1,4 +1,7 @@
-import { Dropdown, IDropdownOption } from "@fluentui/react";
+import {
+  SelectChoice,
+  SelectField
+} from "../../../../shared/ui/forms/SelectField";
 import { useEffect, useState } from "react";
 import { Continent } from "../../domain/Continent.types";
 import { changeCountryContinent, getContinents } from "../../infra/ManagerApi";
@@ -6,9 +9,9 @@ import { useCountryContinentFormField } from "../add-country/AddCountry.config";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { EditCountryDetailsProps } from "./ListCountry.types";
 
-const createOptions = (continents: Continent[]): IDropdownOption[] => {
+const createOptions = (continents: Continent[]): SelectChoice[] => {
   return continents.map((continent) => {
-    return { key: continent.name, text: continent.name } as IDropdownOption;
+    return { value: continent.name, label: continent.name } as SelectChoice;
   });
 };
 
@@ -36,9 +39,9 @@ const EditContinentDetails: React.FunctionComponent<EditCountryDetailsProps> = (
       }}
       isFormValid={isFormValid}
     >
-      <Dropdown
+      <SelectField
         {...formFields.continentName}
-        options={createOptions(continents)}
+        choices={createOptions(continents)}
       />
     </EditProperty>
   );

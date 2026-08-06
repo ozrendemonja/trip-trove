@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 test("Save button is disabled when region name is empty and country is not selected", async ({
   page
 }) => {
-  await page.waitForSelector(".ms-Button");
+  await page.getByRole("button").first().waitFor();
 
   await expect(page).toHaveScreenshot();
 });

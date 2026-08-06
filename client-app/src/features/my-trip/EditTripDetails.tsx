@@ -1,10 +1,12 @@
-import { Stack, Text, TextField } from "@fluentui/react";
+import { InputField } from "../../shared/ui/forms/InputField";
+import { Text } from "@fluentui/react-components";
 import React, { useState } from "react";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import { updateTripDates, updateTripName } from "./infra/TripApi";
 import { useMyTripListClasses } from "./MyTripList.styles";
 import { EditTripDetailsProps } from "./EditTripDetails.types";
 import { detectTripChanges } from "./EditTripDetails.utils";
+import { Flex } from "../../shared/ui/Flex";
 
 const toDateInputValue = (iso?: string): string =>
   iso ? iso.substring(0, 10) : "";
@@ -41,14 +43,14 @@ const EditTripDetails: React.FunctionComponent<EditTripDetailsProps> = (
         props.onUpdateClick();
       }}
     >
-      <Stack tokens={{ childrenGap: 16 }}>
-        <TextField
+      <Flex gap={16}>
+        <InputField
           label="Trip name"
           value={name}
           onChange={(_e, val) => setName(val ?? "")}
         />
-        <Stack horizontal verticalAlign="end" tokens={{ childrenGap: 8 }}>
-          <TextField
+        <Flex direction="row" align="flex-end" gap={8}>
+          <InputField
             label="Start date"
             type="date"
             value={startDate}
@@ -56,15 +58,15 @@ const EditTripDetails: React.FunctionComponent<EditTripDetailsProps> = (
             className={classes.dateField}
           />
           <Text className={classes.dateArrow}>{"\u2192"}</Text>
-          <TextField
+          <InputField
             label="End date"
             type="date"
             value={endDate}
             onChange={(_e, val) => setEndDate(val ?? "")}
             className={classes.dateField}
           />
-        </Stack>
-      </Stack>
+        </Flex>
+      </Flex>
     </EditProperty>
   );
 };

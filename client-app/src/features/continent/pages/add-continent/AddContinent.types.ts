@@ -1,11 +1,11 @@
-import { ITextFieldProps } from "@fluentui/react";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
 
 export type AddContinentFormElements = {
   continentName: string;
-}
+};
 
 type FormFields<T> = {
-  [K in keyof T]: ITextFieldProps;
+  [K in keyof T]: InputFieldProps;
 };
 
 export interface ContinentFormFieldProps {

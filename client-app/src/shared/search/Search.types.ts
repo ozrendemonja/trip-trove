@@ -16,7 +16,7 @@ export interface SearchProps {
 
   items: Suggestion[];
 
-  onFindItem: (id: number) => void;
+  onFindItem: (id: Suggestion["id"]) => void;
 
   setItems: (suggestions: Suggestion[]) => void;
 }

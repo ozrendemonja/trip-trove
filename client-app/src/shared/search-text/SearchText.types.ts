@@ -10,6 +10,8 @@ export interface SearchTextProps {
 
   required: boolean;
 
+  showRequiredIndicator?: boolean;
+
   onSelectItem: (id: number | undefined) => void;
 
   /**
@@ -31,18 +33,21 @@ export interface SearchTextProps {
    * - If invalid, it returns the error message and the text field will
    *   show a red border and show an error message below the text field.
    *
-   * When it returns `Promise<string | JSX.Element>`:
-   * - The resolved value is displayed as the error message.
-   * - If rejected, the value is thrown away.
    */
-  onGetErrorMessage?: (
-    value: string
-  ) => string | JSX.Element | PromiseLike<string | JSX.Element> | undefined;
+  validate?: (value: string) => string | undefined;
 
   /**
    * When true, the underlying text field renders as a multiline textarea
    */
   multiline?: boolean;
 
-  className?: object;
+  className?: string;
+
+  searchBoxClassName?: string;
+
+  /**
+   * Keeps suggestions in the document flow directly below the input. Use this
+   * inside scrollable dialogs where an absolutely positioned list is clipped.
+   */
+  suggestionsInFlow?: boolean;
 }

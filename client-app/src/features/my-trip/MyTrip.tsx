@@ -1,4 +1,5 @@
-import { ActionButton, Stack, Text } from "@fluentui/react";
+import { Button, Text } from "@fluentui/react-components";
+import { ArrowLeft24Regular } from "@fluentui/react-icons";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
@@ -28,6 +29,7 @@ import { Rating } from "./domain/Trip.types";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
+import { Flex } from "../../shared/ui/Flex";
 
 // Helper function to merge cities by name and combine their attractions
 function mergeCities(
@@ -369,14 +371,15 @@ export const MyTrip: React.FC = () => {
   return (
     <>
       <Navigation />
-      <Stack horizontal verticalAlign="center">
-        <ActionButton
-          iconProps={{ iconName: "Back" }}
+      <Flex direction="row" align="center">
+        <Button
+          appearance="subtle"
+          icon={<ArrowLeft24Regular />}
           onClick={() => navigate("/my-trips")}
           className={classes.backButton}
         >
           My Trips
-        </ActionButton>
+        </Button>
         <Text as="h1" className={classes.tripName}>
           {tripName}
         </Text>
@@ -384,7 +387,7 @@ export const MyTrip: React.FC = () => {
           text="Trip Planner"
           onUpdateClick={handleUpdate}
         />
-      </Stack>
+      </Flex>
       <Board
         key={tripId}
         initialCities={attractions}
@@ -405,14 +408,16 @@ const loadAllAttractionsUnder = async (
 ): Promise<Attraction[]> => {
   let result: Attraction[] = [];
   let lastElement: LastReadAttraction | undefined = undefined;
+  let hasMore = true;
 
-  do {
+  while (hasMore) {
     // TODO Change whereToSearch to enum so not toLocaleLowerCase is needed
-    var attractions = await createGetPagedAttractions(
+    const attractions = await createGetPagedAttractions(
       whereToSearch.toLocaleLowerCase()
     )(id, lastElement);
 
-    if (attractions.length <= 0) {
+    hasMore = attractions.length > 0;
+    if (!hasMore) {
       break;
     }
     lastElement = {
@@ -421,7 +426,7 @@ const loadAllAttractionsUnder = async (
     };
 
     result = [...result, ...attractions];
-  } while (true);
+  }
 
   return result;
 };

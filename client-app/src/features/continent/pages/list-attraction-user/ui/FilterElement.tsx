@@ -1,4 +1,5 @@
-import { Icon, Link } from "@fluentui/react";
+import { Dismiss24Regular } from "@fluentui/react-icons";
+import { Link } from "@fluentui/react-components";
 import { useClasses } from "./Filter.styles";
 import { FilterElementProps } from "./FilterElement.types";
 
@@ -8,6 +9,7 @@ export const FilterElement: React.FunctionComponent<FilterElementProps> = (
   const classes = useClasses();
   return (
     <Link
+      data-fluent-link
       className={
         props.isSelected
           ? classes.filterElementSelected
@@ -17,7 +19,10 @@ export const FilterElement: React.FunctionComponent<FilterElementProps> = (
     >
       {props.children}
       {props.isSelected && (
-        <Icon className={classes.filterElementClearIcon} iconName="Clear" />
+        <Dismiss24Regular
+          className={classes.filterElementClearIcon}
+          data-icon-name="Clear"
+        />
       )}
     </Link>
   );

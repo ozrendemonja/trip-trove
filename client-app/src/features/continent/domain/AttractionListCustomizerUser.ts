@@ -1,39 +1,38 @@
-import { buildColumns, IColumn } from "@fluentui/react";
+import {
+  createDataColumns,
+  DataColumn
+} from "../../../shared/ui/data-table/DataTable";
 import { ListElementCustomizer } from "../../../shared/list-element/ListElement.types";
 import { AttractionRow } from "../pages/list-attraction/ListAttraction.types";
 
 export class AttractionListCustomizerUser extends ListElementCustomizer<AttractionRow> {
   constructor(
     notifyAttractionChanged: (items: AttractionRow[]) => void,
-    notifyListColumnChanged: (columns: IColumn[]) => void,
+    notifyListColumnChanged: (columns: DataColumn[]) => void,
     items: AttractionRow[] = []
   ) {
     super(items, notifyAttractionChanged, notifyListColumnChanged);
   }
 
-  private setDefaultLayout = (column: IColumn): IColumn => {
+  private setDefaultLayout = (column: DataColumn): DataColumn => {
     const result = { ...column };
 
-    result.ariaLabel = `Operations for ${column.name}`;
-    result.isMultiline = true;
+    result.headerAriaLabel = `Operations for ${column.header}`;
+    result.multiline = true;
 
-    if (column?.key === "infoFrom") {
+    if (column.id === "infoFrom") {
       result.maxWidth = 150;
-    } else if (column?.key === "address") {
+    } else if (column.id === "address") {
       result.maxWidth = 200;
-    } else if (column?.key === "destination") {
+    } else if (column.id === "destination") {
       result.maxWidth = 250;
-    } else if (column?.key === "category") {
+    } else if (column.id === "category") {
       result.maxWidth = 260;
-    } else if (column?.key === "optimalVisitPeriod") {
+    } else if (column.id === "optimalVisitPeriod") {
       result.maxWidth = 230;
     } else {
       result.minWidth = 100;
     }
-    result.isResizable = true;
-    // Keep every column mounted so narrow screens (e.g. laptops) can reach the
-    // later columns by scrolling horizontally instead of having them dropped.
-    result.isCollapsible = false;
 
     return result;
   };
@@ -44,11 +43,12 @@ export class AttractionListCustomizerUser extends ListElementCustomizer<Attracti
       "type",
       "mustVisit",
       "isTraditional",
-      "visitStatus"
+      "visitStatus",
+      "permanentlyClosedAt"
     ]);
-    const columns = buildColumns(this.items, true)
+    const columns = createDataColumns(this.items)
       .map((column) => this.setDefaultLayout(column))
-      .filter((column) => !skipColumns.has(column.key));
+      .filter((column) => !skipColumns.has(column.id));
 
     this.columns = columns;
     this.notifyListColumnChanged(this.columns);
@@ -82,7 +82,7 @@ export class AttractionListCustomizerUser extends ListElementCustomizer<Attracti
   }
 
   private addInfiniteScrollFlag(result: AttractionRow[]): AttractionRow[] {
-    return [...result, null];
+    return [...result, null as unknown as AttractionRow];
   }
 
   private removeInfiniteScrollFlag(items: AttractionRow[]): AttractionRow[] {

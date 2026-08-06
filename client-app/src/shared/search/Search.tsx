@@ -1,29 +1,15 @@
-import {
-  DefaultButton,
-  FocusZone,
-  FocusZoneDirection,
-  SearchBox,
-  Stack
-} from "@fluentui/react";
-import { LegacyRef, useRef, useState } from "react";
+import { Button, SearchBox } from "@fluentui/react-components";
+import { useRef, useState } from "react";
 import { useClasses } from "./Search.styles";
 import { SearchProps } from "./Search.types";
+import { Flex } from "../ui/Flex";
+import { FocusRegion, FocusRegionHandle } from "../ui/FocusRegion";
 
 export const Search: React.FunctionComponent<SearchProps> = (props) => {
-  const [dropdownTopPosition, setDropdownTopPosition] = useState<number>(30);
   const [value, setValue] = useState("");
-  const classes = useClasses(dropdownTopPosition);
+  const classes = useClasses();
 
-  const getBottomPosition = (element: LegacyRef) => {
-    if (element) {
-      setDropdownTopPosition(
-        element.getBoundingClientRect().top +
-          element.getBoundingClientRect().height
-      );
-    }
-  };
-
-  const focusZoneRef = useRef(null);
+  const focusZoneRef = useRef<FocusRegionHandle>(null);
   const handleTextFieldKeyDown = (event) => {
     if (event.key === "ArrowDown") {
       focusZoneRef.current!.focus();
@@ -31,35 +17,29 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
   };
 
   return (
-    <Stack verticalAlign={"center"}>
+    <Flex align="center" className={classes.container}>
       <SearchBox
         onKeyDown={handleTextFieldKeyDown}
         placeholder="Search"
-        ref={getBottomPosition}
-        onClear={() => {
-          props.setItems([]);
-          setValue("");
-        }}
-        onChange={(event, newValue) => {
-          setValue(newValue ?? "");
-          props.onSearchTyped(event, newValue);
+        dismiss={{ role: "button", "aria-label": "Clear text" }}
+        onChange={(event, data) => {
+          setValue(data.value);
+          props.onSearchTyped(event, data.value);
+          if (!data.value) {
+            props.setItems([]);
+          }
         }}
         className={classes.searchBox}
         value={value}
       />
-      <FocusZone
-        direction={FocusZoneDirection.vertical}
-        isCircularNavigation={true}
-        role="grid"
-        className={classes.dropdown}
-        componentRef={focusZoneRef}
-      >
+      <FocusRegion role="grid" className={classes.dropdown} ref={focusZoneRef}>
         {props.items.map((item) => (
-          <DefaultButton
+          <Button
             key={`${item.value}-${item.id}`}
             role="menuitem"
+            appearance="secondary"
             className={classes.button}
-            ariaLabel={item.value}
+            aria-label={item.value}
             onFocus={() => setValue(item.value)}
             onClick={(_event) => {
               props.onFindItem(item.id);
@@ -67,9 +47,9 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
             }}
           >
             {item.value}
-          </DefaultButton>
+          </Button>
         ))}
-      </FocusZone>
-    </Stack>
+      </FocusRegion>
+    </Flex>
   );
 };

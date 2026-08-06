@@ -2,17 +2,16 @@ import PermanentlyClosedStatus, {
   PermanentlyClosedSince
 } from "../../../../shared/attraction-status/PermanentlyClosedStatus";
 import {
-  DetailsRow,
-  IColumn,
-  Icon,
-  IDetailsListProps,
-  initializeIcons,
-  Link,
-  SearchBox,
-  Stack,
-  Text
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  Alert16Regular,
+  ArrowRepeatAll16Regular,
+  BuildingBank16Regular,
+  Flag16Regular,
+  Location20Regular,
+  Pin12Filled
+} from "@fluentui/react-icons";
+import { DataColumn } from "../../../../shared/ui/data-table/DataTable";
+import { Link, SearchBox, Text } from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { ListElementUser } from "../../../../shared/list-element/ListElementUser";
@@ -30,11 +29,7 @@ import {
   ListAttractionPageInfo
 } from "../list-attraction/ListAttraction.types";
 import { toLastReadAttraction } from "../list-attraction/ListAttraction.util";
-import {
-  getVisitStatusRowStyles,
-  useClasses,
-  visitMarkerClasses
-} from "./ListAttractionUser.styles";
+import { useClasses } from "./ListAttractionUser.styles";
 import {
   createGetPagedAttractions,
   createGetPageInfoById,
@@ -42,16 +37,16 @@ import {
   toggleQueryParam
 } from "./ListAttractionUser.utils";
 import { Filter } from "./ui/Filter";
+import { Flex } from "../../../../shared/ui/Flex";
 
-initializeIcons();
-
-const onRenderItemColumn = (
+const renderCellContent = (
+  classes: ReturnType<typeof useClasses>,
   className: string,
-  onUpdateClick: () => void,
-  atraction?: AttractionRow,
-  column?: IColumn
+  atraction: AttractionRow,
+  _index: number,
+  column: DataColumn
 ): JSX.Element | string | number => {
-  if (column?.key === "name") {
+  if (column.id === "name") {
     const permanentlyClosedAt = atraction?.permanentlyClosedAt;
     const isPermanentlyClosed = !!permanentlyClosedAt;
     const wantsReturn =
@@ -66,8 +61,8 @@ const onRenderItemColumn = (
       !wantsReturn &&
       !visitedDone;
     return (
-      <Stack horizontal>
-        <div className={visitMarkerClasses.markerSlot}>
+      <Flex direction="row">
+        <div className={classes.markerSlot}>
           {atraction && (
             <PermanentlyClosedStatus
               attractionName={atraction.name.name}
@@ -75,21 +70,19 @@ const onRenderItemColumn = (
             />
           )}
           {wantsReturn && (
-            <Icon
-              iconName="Sync"
-              className={visitMarkerClasses.returnIcon}
-              title="Would return"
+            <ArrowRepeatAll16Regular
+              data-icon-name="Revisit"
+              className={classes.returnIcon}
+              title="Visited, would return"
             />
           )}
           {showPin && (
-            <Icon iconName="Pinned" styles={{ root: { color: "red" } }} />
+            <Pin12Filled data-icon-name="Pinned" className={classes.pinIcon} />
           )}
         </div>
-        <Stack
-          className="attraction-list-name-details"
-          tokens={{ childrenGap: 2 }}
-        >
+        <Flex className="attraction-list-name-details" gap={2}>
           <Link
+            data-fluent-link
             className={className}
             href={`https://www.google.com/search?q=${atraction?.name.name}`}
             target="_blank"
@@ -108,17 +101,21 @@ const onRenderItemColumn = (
             )}
           </Link>
           <PermanentlyClosedSince closedAt={permanentlyClosedAt} />
-        </Stack>
-        <Stack tokens={{ childrenGap: 2 }} horizontal>
+        </Flex>
+        <Flex gap={2} direction="row">
           {atraction?.isTraditional && (
-            <Icon iconName="Cotton" styles={{ root: { color: "#fec703" } }} />
+            <BuildingBank16Regular
+              data-icon-name="Traditional"
+              className={classes.traditionalIcon}
+              title="Traditional"
+            />
           )}
-        </Stack>
-      </Stack>
+        </Flex>
+      </Flex>
     );
-  } else if (column?.key === "destination") {
+  } else if (column.id === "destination") {
     return (
-      <Stack horizontal>
+      <Flex direction="row">
         <Text>
           {(atraction?.destination.cityName
             ? atraction?.destination.cityName + ", "
@@ -128,11 +125,11 @@ const onRenderItemColumn = (
             atraction?.destination.countryName}
         </Text>
         {atraction?.destination.isCountrywide && (
-          <Icon iconName="Flag" styles={{ root: { color: "green" } }} />
+          <Flag16Regular data-icon-name="Flag" className={classes.flagIcon} />
         )}
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "address") {
+  } else if (column.id === "address") {
     return (
       <Text>
         {atraction?.address.streetAddress && (
@@ -149,16 +146,16 @@ const onRenderItemColumn = (
         )}
       </Text>
     );
-  } else if (column?.key === "infoFrom") {
+  } else if (column.id === "infoFrom") {
     return (
-      <Stack styles={{ root: { color: "black" } }}>
+      <Flex className={classes.infoText}>
         <div>{atraction?.infoFrom.source}</div>
         <div>({atraction?.infoFrom.recorded})</div>
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "optimalVisitPeriod") {
+  } else if (column.id === "optimalVisitPeriod") {
     return (
-      <Stack>
+      <Flex>
         {atraction?.optimalVisitPeriod && (
           <DateRangePicker
             fromDate={atraction.optimalVisitPeriod.fromDate}
@@ -166,38 +163,38 @@ const onRenderItemColumn = (
             disable={true}
           ></DateRangePicker>
         )}
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "tip") {
+  } else if (column.id === "tip") {
     return <Text>{atraction?.tip}</Text>;
-  } else if (column?.key === "category") {
+  } else if (column.id === "category") {
     return (
-      <Stack horizontal>
-        <Text>{atraction?.category}</Text>
+      <Flex direction="row">
+        <Text className={classes.categoryText}>{atraction?.category}</Text>
         {atraction?.needsBellIcon() && (
-          <Icon
-            iconName="Ringer"
-            styles={{
-              root: { colour: atraction?.willChangeSoon() ? "red" : "yellow" }
-            }}
+          <Alert16Regular
+            data-icon-name="Ringer"
+            className={
+              atraction?.willChangeSoon()
+                ? classes.changeSoonIcon
+                : classes.changePotentialIcon
+            }
           />
         )}
-      </Stack>
+      </Flex>
     );
   }
 
-  return atraction[column?.fieldName as keyof AttractionRow] as string;
+  return atraction[column.accessor as keyof AttractionRow] as string;
 };
 
-// Tints only the "seen and done" rows a soft muted grey; every other row keeps
-// the default look (want-return is marked by its Sync icon in the name cell).
-const renderVisitStatusRow: IDetailsListProps["onRenderRow"] = (props) => {
-  if (!props) {
-    return null;
-  }
-  const status = (props.item as AttractionRow | null)?.visitStatus;
-  return <DetailsRow {...props} styles={getVisitStatusRowStyles(status)} />;
-};
+const getVisitStatusRowClass = (
+  classes: ReturnType<typeof useClasses>,
+  row: AttractionRow
+): string | undefined =>
+  row.visitStatus === AttractionVisitStatus.VISITED_DONE
+    ? classes.doneRow
+    : undefined;
 
 // Groups rows by how the traveller relates to each place: still-to-see first,
 // then the ones worth another trip, those already seen and done, and finally
@@ -229,10 +226,10 @@ export const AttractionListUser: React.FunctionComponent = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<AttractionRow[]>([]);
-  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
-    useBoolean(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
+    useBooleanState(true);
+  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [lastElement, setLastElement] = useState<
     LastReadAttraction | undefined
   >(undefined);
@@ -288,73 +285,76 @@ export const AttractionListUser: React.FunctionComponent = () => {
   const orderedItems = useMemo(() => sortByVisitStatus(items), [items]);
 
   return (
-    <>
+    <div className={classes.pageLayout}>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of attractions" />}
-      {!isLoading && (
-        <>
-          <Stack
-            horizontal
-            styles={{ root: { fontSize: 30, marginBottom: 46 } }}
-          >
-            <Icon iconName="MapPin" />
-            <Text styles={{ root: { fontSize: 30 } }}>{pageInfo.name}</Text>
-            <Text styles={{ root: { fontSize: 30, color: "gray" } }}>
-              {pageInfo.under && `, ${pageInfo.under}`}
-            </Text>
-          </Stack>
-          <Stack horizontal className={classes.root}>
-            <Text as="h1" styles={{ root: { fontSize: 30, paddingLeft: 10 } }}>
-              Attractions
-            </Text>
-            <SearchBox
-              placeholder="Search for name, source or tip"
-              value={searchParams.get("q") ?? undefined}
-              onSearch={(newValue) => {
-                createFilter("q").onClick(newValue);
-              }}
-              onClear={() => {
-                const filter = createFilter("q");
-                searchParams.has("q") && filter.onClick(searchParams.get("q")!);
-              }}
-              styles={{ root: { marginTop: 30, width: "400px" } }}
-            />
-            <Filter
-              countrywide={createFilter("isCountrywide")}
-              mustVisit={createFilter("mustVisit")}
-              traditional={createFilter("isTraditional")}
-              category={createFilter("category")}
-              type={createFilter("type")}
-            ></Filter>
-          </Stack>
-          <ListElementUser
-            items={orderedItems}
-            columns={columns}
-            onRenderMissingItem={(_index: number | undefined) =>
-              onRenderWhenNoMoreItems(toggleReloadData)
-            }
-            onRenderRow={renderVisitStatusRow}
-            onRenderItemColumn={(
-              item?: AttractionRow,
-              _index?: number,
-              column?: IColumn
-            ) =>
-              onRenderItemColumn(
-                classes.linkField,
-                () => {
-                  setAttractionCustomizer(
-                    new AttractionListCustomizerUser(setItems, setColumns)
-                  );
-                  toggleReloadData();
-                },
-                item,
-                column
-              )
-            }
-          />
-        </>
-      )}
-    </>
+      <main className={classes.content}>
+        {isLoading && <LoadingSpinner text="Updating list of attractions" />}
+        {!isLoading && (
+          <>
+            <Flex direction="row" className={classes.pageInfo}>
+              <Location20Regular data-icon-name="MapPin" />
+              <Text className={classes.pageName}>{pageInfo.name}</Text>
+              <Text className={classes.pageUnder}>
+                {pageInfo.under && `, ${pageInfo.under}`}
+              </Text>
+            </Flex>
+            <Flex direction="row" className={classes.root}>
+              <Text as="h1" className={classes.heading}>
+                Attractions
+              </Text>
+              <SearchBox
+                placeholder="Search for name, source or tip"
+                value={searchParams.get("q") ?? undefined}
+                onChange={(_event, data) => {
+                  if (data.value !== "") {
+                    return;
+                  }
+                  const filter = createFilter("q");
+                  if (searchParams.has("q")) {
+                    filter.onClick(searchParams.get("q")!);
+                  }
+                }}
+                onSearch={(_event, data) => {
+                  createFilter("q").onClick(data.value);
+                }}
+                dismiss={{ role: "button", "aria-label": "Clear text" }}
+                className={classes.searchBox}
+              />
+              <Filter
+                countrywide={createFilter("isCountrywide")}
+                mustVisit={createFilter("mustVisit")}
+                traditional={createFilter("isTraditional")}
+                category={createFilter("category")}
+                type={createFilter("type")}
+              ></Filter>
+            </Flex>
+            <div className={classes.listViewport}>
+              <ListElementUser
+                items={orderedItems}
+                columns={columns}
+                onLoadMore={(_index: number) =>
+                  onRenderWhenNoMoreItems(toggleReloadData)
+                }
+                getRowClassName={(row) => getVisitStatusRowClass(classes, row)}
+                renderCell={(
+                  item: AttractionRow,
+                  index: number,
+                  column: DataColumn
+                ) =>
+                  renderCellContent(
+                    classes,
+                    classes.linkField,
+                    item,
+                    index,
+                    column
+                  )
+                }
+              />
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 };
 

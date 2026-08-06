@@ -6,11 +6,11 @@ import {
   withFreshServer,
   setupUser,
   overlay,
-  waitForAllAttractionsToLoad,
   waitForCanvasToBecomeAccessible,
+  waitForAllAttractionsToLoad,
   rowOf,
   openEditDialog,
-  pickSuggestion,
+  expectSuggestionBelowInput,
   updateButton,
   cancelButton
 } from "./ListAttraction.helpers";
@@ -78,7 +78,6 @@ export const UpdatesAttractionMustVisit: Story = {
         ).not.toBeInTheDocument(),
       { timeout: 5000 }
     );
-    await waitForCanvasToBecomeAccessible(canvasElement);
     await waitFor(
       () =>
         expect(
@@ -197,9 +196,14 @@ export const InfoDisablesUpdateWhenSourceEmpty: Story = {
     await waitForAllAttractionsToLoad(canvasElement);
     await openAttractionInfoEditor(canvasElement, user);
 
-    await user.type(infoSourceTextbox(canvasElement), "Lonely");
-    await pickSuggestion(canvasElement, user, "Lonely Planet");
-    await user.clear(infoSourceTextbox(canvasElement));
+    const sourceInput = infoSourceTextbox(canvasElement);
+    await user.type(sourceInput, "Lonely");
+    const suggestion = await overlay(canvasElement).findByRole("menuitem", {
+      name: "Lonely Planet"
+    });
+    expectSuggestionBelowInput(sourceInput, suggestion);
+    await user.click(suggestion);
+    await user.clear(sourceInput);
 
     await overlay(canvasElement).findByText(
       "Info from may not be null or empty",

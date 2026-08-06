@@ -1,34 +1,38 @@
 import {
-  IColumn,
-  IDropdownOption,
-  Link,
-  Selection,
-  Stack
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  DataColumn,
+  DataSelection
+} from "../../../../shared/ui/data-table/DataTable";
+import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
+import { Link } from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import EditContinentDetails from "./EditContinentDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Continent";
 import { Continent, OrderOptions } from "../../domain/Continent.types";
 import { ContinentListCustomizer } from "../../domain/ContinentListCustomizer";
-import { getContinents } from "../../infra/ManagerApi";
+import { Suggestion } from "../../domain/Suggestion.types.";
+import { getContinents, searchContinent } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
 import { useClasses } from "./ListContinent.styles";
+import { Flex } from "../../../../shared/ui/Flex";
 
-const onRenderItemColumn = (
+const renderCellContent = (
   className: string,
   onUpdateClick: () => void,
-  continent?: Continent,
-  column?: IColumn
+  continent: Continent,
+  _index: number,
+  column: DataColumn
 ): JSX.Element | string | number => {
-  if (column?.key === "name") {
+  if (column.id === "name") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Link
+          data-fluent-link
           className={className}
           href={`https://www.google.com/search?q=${continent.name}`}
           target="_blank"
@@ -41,24 +45,25 @@ const onRenderItemColumn = (
           text={continent!.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
   }
-  return item[column.key as keyof Continent];
+  return continent[column.accessor as keyof Continent];
 };
 
-const sortOptions: IDropdownOption[] = [
-  { key: "DESC" as OrderOptions, text: "Newest", selected: true },
-  { key: "ASC" as OrderOptions, text: "Oldest" }
+const sortOptions: SelectChoice[] = [
+  { value: "DESC" as OrderOptions, label: "Newest" },
+  { value: "ASC" as OrderOptions, label: "Oldest" }
 ];
 
 export const ContinentList: React.FunctionComponent = () => {
   const classes = useClasses();
+  const pageClasses = useListPageClasses();
 
-  const [items, setItems] = useState(undefined);
-  const [columns, setColumns] = useState(undefined);
+  const [items, setItems] = useState<Continent[]>([]);
+  const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
+  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("ASC");
   const navigate = useNavigate();
 
@@ -70,56 +75,75 @@ export const ContinentList: React.FunctionComponent = () => {
     });
   }, [reloadData]);
 
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  useEffect(() => {
+    if (query.trim().length >= 3) {
+      searchContinent(query).then(setSuggestions);
+    }
+  }, [query]);
+
   return (
-    <>
+    <div className={pageClasses.pageLayout}>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of continents" />}
-      {!isLoading && (
-        <ListElement
-          items={items}
-          columns={columns}
-          listHeader={{
-            ...listHeader,
-            onSortOptionChange: (
-              _event: React.FormEvent<HTMLDivElement>,
-              option?: IDropdownOption,
-              _index?: number
-            ) => {
-              setOrder(option!.key as OrderOptions);
-              toggleReloadData();
-            },
-            sortOptions: sortOptions
-          }}
-          addRowOptions={{
-            text: "Add new continent",
-            onAddRow: () => navigate("/add-continent")
-          }}
-          deleteRowOptions={{
-            text: "Delete continent",
-            onDeleteRow: async (selection: Selection<Continent>) => {
-              await deleteRows(selection.getSelection());
-              toggleReloadData();
+      <main className={pageClasses.content}>
+        {isLoading && <LoadingSpinner text="Updating list of continents" />}
+        {!isLoading && (
+          <ListElement
+            items={items}
+            columns={columns}
+            listHeader={{
+              ...listHeader,
+              onSortOptionChange: (_event, choice) => {
+                setOrder(choice!.value as OrderOptions);
+                toggleReloadData();
+              },
+              sortOptions: sortOptions,
+              selectedSortValue: order,
+              items: suggestions,
+              setItems: setSuggestions,
+              onSearchTyped: (_event, newValue) => {
+                setQuery(newValue ?? "");
+              },
+              onFindItem: (id) => {
+                if (typeof id !== "string") return;
+                const customizer = new ContinentListCustomizer(
+                  [{ name: id }],
+                  setItems,
+                  setColumns
+                );
+                customizer.createColumns();
+                setSuggestions([]);
+              }
+            }}
+            addRowOptions={{
+              text: "Add new continent",
+              onAddRow: () => navigate("/add-continent")
+            }}
+            deleteRowOptions={{
+              text: "Delete continent",
+              onDeleteRow: async (selection: DataSelection<Continent>) => {
+                await deleteRows(selection.selectedRows());
+                toggleReloadData();
+              }
+            }}
+            onLoadMore={onRenderWhenNoMoreItems}
+            renderCell={(item: Continent, index: number, column: DataColumn) =>
+              renderCellContent(
+                classes.linkField,
+                toggleReloadData,
+                item,
+                index,
+                column
+              )
             }
-          }}
-          onRenderMissingItem={onRenderWhenNoMoreItems}
-          onRenderItemColumn={(
-            item?: Continent,
-            _index?: number,
-            column?: IColumn
-          ) =>
-            onRenderItemColumn(
-              classes.linkField,
-              toggleReloadData,
-              item,
-              column
-            )
-          }
-          selectedItemName={(selection: Selection<Continent>) => {
-            return selection.getSelection()[0].name;
-          }}
-        />
-      )}
-    </>
+            getSelectedItemName={(selection: DataSelection<Continent>) => {
+              return selection.selectedRows()[0].name;
+            }}
+          />
+        )}
+      </main>
+    </div>
   );
 };
 

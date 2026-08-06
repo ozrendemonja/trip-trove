@@ -5,7 +5,7 @@ test("Show spinner while trips are loading", async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-my-trip-mytriplist--with-trips"
   );
 
-  await page.waitForSelector(".ms-Spinner-label");
+  await page.getByRole("main").waitFor();
 
   await expect(page).toHaveScreenshot();
 });

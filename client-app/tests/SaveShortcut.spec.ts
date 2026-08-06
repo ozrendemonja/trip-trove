@@ -3,9 +3,9 @@ import { test, expect } from "@playwright/test";
 const LIST_CONTINENT_STORY =
   "http://localhost:6006/iframe.html?id=features-continent-pages-list-continent-listcontinent--primary";
 
-// The Fluent edit dialog portals into a `.ms-Modal` layer, so scope modal
-// queries to it to avoid clashing with the list behind it.
-const MODAL = ".ms-Modal";
+// Fluent dialogs portal outside the story canvas, so scope queries to the
+// dialog to avoid clashing with the list behind it.
+const MODAL = '[role="dialog"]';
 
 test.beforeEach(async ({ page }) => {
   await page.goto(LIST_CONTINENT_STORY);

@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-my-trip-mytriplist--with-trips"
   );
 
-  await expect(page.getByText("Italy")).toBeVisible();
+  await expect(page.getByText("Italy")).toBeVisible({ timeout: 15000 });
 });
 
 test("Show list of trips when loaded", async ({ page }) => {
@@ -15,9 +15,14 @@ test("Show list of trips when loaded", async ({ page }) => {
 test("Show delete confirmation dialog when delete button is clicked", async ({
   page
 }) => {
-  await page.getByLabel("Delete trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Delete trip")
+    .click();
 
-  await expect(page.getByText("Delete Italy")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Delete Italy", exact: true })
+  ).toBeVisible();
   await expect(
     page.getByText("Are you sure you want to delete Italy?")
   ).toBeVisible();
@@ -27,7 +32,10 @@ test("Show delete confirmation dialog when delete button is clicked", async ({
 test("All elements should be present when canceling delete dialog", async ({
   page
 }) => {
-  await page.getByLabel("Delete trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Delete trip")
+    .click();
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await expect(page.getByText("Italy")).toBeVisible();
@@ -35,9 +43,14 @@ test("All elements should be present when canceling delete dialog", async ({
 });
 
 test("Trip should not be present after confirming delete", async ({ page }) => {
-  await page.getByLabel("Delete trip").first().click();
-  await page.getByRole("button", { name: "Delete" }).click();
-  await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Delete trip")
+    .click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Delete", exact: true })
+  ).toHaveCount(0);
 
   await expect(page.getByText("Italy")).toHaveCount(0);
   await expect(page).toHaveScreenshot();
@@ -46,19 +59,25 @@ test("Trip should not be present after confirming delete", async ({ page }) => {
 test("Show edit dialog with prepopulated data when edit button is clicked", async ({
   page
 }) => {
-  await page.getByLabel("Edit trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Edit trip")
+    .click();
 
   await expect(page.getByText("Edit Italy")).toBeVisible();
   await expect(page.getByLabel("Trip name")).toHaveValue("Italy");
-  await expect(page.getByLabel("Start date")).toHaveValue("2026-06-10");
-  await expect(page.getByLabel("End date")).toHaveValue("2026-06-24");
+  await expect(page.getByLabel("Start date")).toHaveValue("2099-06-10");
+  await expect(page.getByLabel("End date")).toHaveValue("2099-06-24");
   await expect(page).toHaveScreenshot();
 });
 
 test("Update button is disabled when trip name is cleared", async ({
   page
 }) => {
-  await page.getByLabel("Edit trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Edit trip")
+    .click();
   await page.getByLabel("Trip name").clear();
 
   await expect(page.getByRole("button", { name: "Update" })).toBeDisabled();
@@ -66,7 +85,10 @@ test("Update button is disabled when trip name is cleared", async ({
 });
 
 test("Trip name is updated after editing", async ({ page }) => {
-  await page.getByLabel("Edit trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Edit trip")
+    .click();
   await page.getByLabel("Trip name").clear();
   await page.getByLabel("Trip name").fill("Italy 2026");
   await page.getByRole("button", { name: "Update" }).click();
@@ -76,7 +98,10 @@ test("Trip name is updated after editing", async ({ page }) => {
 });
 
 test("Edit dialog is closed when cancel icon is clicked", async ({ page }) => {
-  await page.getByLabel("Edit trip").first().click();
+  await page
+    .getByRole("button", { name: "Open trip: Italy" })
+    .getByLabel("Edit trip")
+    .click();
   await expect(page.getByText("Edit Italy")).toBeVisible();
 
   await page.getByLabel("Close modify popup").click();

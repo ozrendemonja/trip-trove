@@ -1,4 +1,4 @@
-import { ITheme, mergeStyleSets } from "@fluentui/react";
+import { makeStyles, tokens } from "@fluentui/react-components";
 
 const GAUGE_SIZE = 110;
 const STROKE_WIDTH = 10;
@@ -8,27 +8,25 @@ export { GAUGE_SIZE, STROKE_WIDTH };
 export const RADIUS = (GAUGE_SIZE - STROKE_WIDTH) / 2;
 export const CENTER_Y = CENTER;
 
-export const useClasses = (theme: ITheme) => {
-  return mergeStyleSets({
-    svgContainer: {
-      position: "relative",
-      width: GAUGE_SIZE,
-      height: CENTER + 6
-    },
-    labelContainer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      textAlign: "center"
-    },
-    valueText: {
-      fontWeight: 700,
-      color: theme.palette.neutralPrimary
-    },
-    subtitleText: {
-      color: theme.palette.neutralSecondary,
-      marginTop: 2
-    }
-  });
-};
+export const useClasses = makeStyles({
+  svgContainer: {
+    position: "relative",
+    width: `${GAUGE_SIZE}px`,
+    height: `${CENTER + 6}px`
+  },
+  labelContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    textAlign: "center"
+  },
+  valueText: {
+    fontWeight: tokens.fontWeightBold,
+    color: tokens.colorNeutralForeground1
+  },
+  subtitleText: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: "2px"
+  }
+});

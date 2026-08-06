@@ -60,7 +60,10 @@ export function normalizeKeyCombo(combo: string): string {
   const modifiers = new Set<"Ctrl" | "Alt" | "Shift" | "Meta">();
   let key = "";
 
-  for (const raw of combo.split("+").map((p) => p.trim()).filter(Boolean)) {
+  for (const raw of combo
+    .split("+")
+    .map((p) => p.trim())
+    .filter(Boolean)) {
     const modifier = MODIFIER_ALIASES[raw.toLowerCase()];
     if (modifier) {
       modifiers.add(modifier);

@@ -1,9 +1,10 @@
-import { PartialTheme, ThemeProvider } from "@fluentui/react";
+import { FluentProvider } from "@fluentui/react-components";
 import { ComponentType } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { LoadingSpinner } from "./shared/loading-spinner/LoadingSpinner";
+import { appTheme } from "./shared/fluent/AppTheme";
 
 const lazyComponent = (load: () => Promise<{ default: ComponentType }>) => ({
   Component: async () => (await load()).default
@@ -20,8 +21,8 @@ const router = createBrowserRouter([
   {
     path: "/countries-map",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/countries-map/CountriesVisitedMap")
+    lazy: lazyComponent(
+      () => import("./features/countries-map/CountriesVisitedMap")
     )
   },
   {
@@ -37,80 +38,79 @@ const router = createBrowserRouter([
   {
     path: "/continents",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/list-continent/ListContinent")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/list-continent/ListContinent")
     )
   },
   {
     path: "/add-continent",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/add-continent/AddContinent")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/add-continent/AddContinent")
     )
   },
   {
     path: "/countries",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/list-country/ListCountry")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/list-country/ListCountry")
     )
   },
   {
     path: "/add-country",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/add-country/AddCountry")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/add-country/AddCountry")
     )
   },
   {
     path: "/regions",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/list-region/ListRegion")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/list-region/ListRegion")
     )
   },
   {
     path: "/add-region",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/add-region/AddRegion")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/add-region/AddRegion")
     )
   },
   {
     path: "/cities",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/list-city/ListCity")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/list-city/ListCity")
     )
   },
   {
     path: "/add-city",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/add-city/AddCity")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/add-city/AddCity")
     )
   },
   {
     path: "/attractions",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/list-attraction/ListAttraction")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/list-attraction/ListAttraction")
     )
   },
   {
     path: "/search/:whereToSearch/:id/attractions",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import(
-        "./features/continent/pages/list-attraction-user/ListAttractionUser"
-      )
+    lazy: lazyComponent(
+      () =>
+        import("./features/continent/pages/list-attraction-user/ListAttractionUser")
     )
   },
   {
     path: "/add-attraction",
     HydrateFallback: RouteFallback,
-    lazy: lazyComponent(() =>
-      import("./features/continent/pages/add-attraction/AddAttraction")
+    lazy: lazyComponent(
+      () => import("./features/continent/pages/add-attraction/AddAttraction")
     )
   }
 ]);
@@ -119,48 +119,14 @@ const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 
-const appTheme: PartialTheme = {
-  palette: {
-    orange: "#fec703",
-    themePrimary: "#fec703",
-    themeDark: "#d4a600",
-    themeDarker: "#a88200",
-    themeLight: "#fff0a8",
-    themeLighter: "#fff7d4",
-    themeLighterAlt: "#fffdf5",
-    tealLight: "#61A9B4",
-    tealDark: "#3d7f8a",
-    greenLight: "#e6f4ea",
-    greenDark: "#2e7d32"
-  },
-  semanticColors: {
-    bodyBackground: "transparent",
-    inputBackgroundChecked: "#FEC703",
-    buttonText: "#323130",
-    primaryButtonText: "#323130",
-    primaryButtonTextHovered: "#323130",
-    primaryButtonTextPressed: "#323130"
-  },
-  components: {
-    Nav: {
-      styles: {
-        chevronButton: {
-          right: "5px",
-          left: "none"
-        }
-      }
-    }
-  }
-};
-
 const styleOverrides = `
     body {
       background: radial-gradient(#C3E0E7, #61A9B4);;
     }`;
 
 root.render(
-  <ThemeProvider theme={appTheme}>
+  <FluentProvider theme={appTheme} style={{ backgroundColor: "transparent" }}>
     <RouterProvider router={router} useTransitions />
     <style>{styleOverrides}</style>
-  </ThemeProvider>
+  </FluentProvider>
 );

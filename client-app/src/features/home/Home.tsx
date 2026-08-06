@@ -1,11 +1,6 @@
-import {
-  Icon,
-  IOverflowSetItemProps,
-  Link,
-  OverflowSet,
-  Stack,
-  Text
-} from "@fluentui/react";
+import { Link, Text } from "@fluentui/react-components";
+import { VehicleSubway24Regular } from "@fluentui/react-icons";
+import { Flex } from "../../shared/ui/Flex";
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { configData } from "../../assets/ConfigData";
@@ -29,13 +24,12 @@ const searchConfig: Omit<SearchTextProps, "getSuggestions" | "onSelectItem"> = {
   required: false
 };
 
-const onRenderItem = (item: IOverflowSetItemProps): JSX.Element => {
-  return (
-    <Link className={item.className} onClick={item.onClick}>
-      {item.name}
-    </Link>
-  );
-};
+interface SearchOptionAction {
+  key: string;
+  name: string;
+  onClick: () => void;
+  className: string;
+}
 
 const continent = "Continent";
 const country = "Country";
@@ -63,54 +57,68 @@ export const Home: React.FunctionComponent = () => {
   const [selected, setSelected] = useState<string>(continent);
 
   return (
-    <>
-      <Navigation />
-      <div className={classes.gaugeContainer}>
-        <button
-          type="button"
-          aria-label="Open countries visited map"
-          title="Open countries visited map"
-          className={classes.mapIconButton}
-          onClick={() => navigate("/countries-map")}
-        >
-          <MapWithPinIcon size={56} />
-        </button>
-        <CountriesVisitedGauge />
-      </div>
-      <Stack tokens={{ childrenGap: 0 }} className={classes.searchContiner}>
-        <Stack horizontal className={classes.headerRow}>
-          <Icon iconName="Train" className={classes.headerIcon} />
-          <Text as={"h2"} className={classes.headerText}>
-            {configData.APPLICATION_NAME}
-          </Text>
-        </Stack>
-        <OverflowSet
-          aria-label="Search options"
-          items={searchOptions.map((option) => ({
-            key: option.key,
-            name: option.name,
-            onClick: () => {
-              setSearchQuery(() => option.searchQuery);
-              setSelected(option.name);
-            },
-            className:
-              selected == option.name
-                ? classes.selectedSearchOption
-                : classes.notSelectedSearchOption
-          }))}
-          onRenderItem={onRenderItem}
-        />
-        <SearchText
-          {...searchConfig}
-          getSuggestions={searchQuery}
-          onSelectItem={(id: number | string | undefined) => {
-            navigate(
-              "/search/" + selected.toLowerCase() + "/" + id + "/attractions"
-            );
-          }}
-        />
-      </Stack>
-    </>
+    <div className={classes.page}>
+      <aside className={classes.navigationRegion}>
+        <Navigation />
+      </aside>
+      <main className={classes.mainContent}>
+        <div className={classes.gaugeContainer}>
+          <button
+            type="button"
+            aria-label="Open countries visited map"
+            title="Open countries visited map"
+            className={classes.mapIconButton}
+            onClick={() => navigate("/countries-map")}
+          >
+            <MapWithPinIcon size={56} />
+          </button>
+          <CountriesVisitedGauge />
+        </div>
+        <Flex gap={0} className={classes.searchContiner}>
+          <Flex direction="row" className={classes.headerRow}>
+            <VehicleSubway24Regular className={classes.headerIcon} />
+            <Text as={"h2"} className={classes.headerText}>
+              {configData.APPLICATION_NAME}
+            </Text>
+          </Flex>
+          <div role="toolbar" aria-label="Search options">
+            {searchOptions
+              .map((option): SearchOptionAction => ({
+                key: option.key,
+                name: option.name,
+                onClick: () => {
+                  setSearchQuery(() => option.searchQuery);
+                  setSelected(option.name);
+                },
+                className:
+                  selected == option.name
+                    ? classes.selectedSearchOption
+                    : classes.notSelectedSearchOption
+              }))
+              .map((item) => (
+                <Link
+                  key={item.key}
+                  data-fluent-link
+                  className={item.className}
+                  onClick={item.onClick}
+                >
+                  {item.name}
+                </Link>
+              ))}
+          </div>
+          <SearchText
+            {...searchConfig}
+            searchBoxClassName={classes.homeSearchBox}
+            getSuggestions={searchQuery}
+            onSelectItem={(id: number | string | undefined) => {
+              navigate(
+                "/search/" + selected.toLowerCase() + "/" + id + "/attractions"
+              );
+            }}
+          />
+        </Flex>
+      </main>
+    </div>
   );
 };
 

@@ -52,10 +52,11 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
-const waitForCanvasToBecomeAccessible = (
+const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 const waitForCountriesToLoad = (
   canvasElement: HTMLElement
@@ -158,7 +159,7 @@ const selectCountryRow = async (
 ): Promise<HTMLElement> => {
   const row = within(canvasElement)
     .getByRole("button", { name: `Change country name for ${name}` })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
   await user.click(within(row).getByRole("radio", { name: "select row" }));
   return row;
 };
@@ -418,11 +419,11 @@ export const UpdatesCountryContinent: Story = {
       .getByRole("button", {
         name: "Change country name for Liechtenstein"
       })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     expect(within(row).getByText("Australia")).toBeInTheDocument();
     const liechtensteinRow = within(canvasElement)
       .getByRole("button", { name: "Change country name for Liechtenstein" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     expect(
       within(liechtensteinRow).queryByText("Europe")
     ).not.toBeInTheDocument();
@@ -480,7 +481,7 @@ export const KeepsCountryContinentWhenCancelled: Story = {
       .getByRole("button", {
         name: "Change country name for Liechtenstein"
       })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     expect(within(row).getByText("Europe")).toBeInTheDocument();
   }
 };
@@ -556,7 +557,7 @@ export const SelectsCountryViaCheckbox: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change country name for Monaco" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 
@@ -573,7 +574,7 @@ export const SelectsCountryViaRowClick: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change country name for San Marino" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 

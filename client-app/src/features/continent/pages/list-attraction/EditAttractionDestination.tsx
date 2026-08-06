@@ -1,19 +1,22 @@
-import { Separator, Stack, Text, Toggle } from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+import { Divider, Switch, Text } from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { SearchText } from "../../../../shared/search-text/SearchText";
 import { useAttractionDestinationFormField } from "../add-attraction/AddAttraction.config";
 import { EditAttractionDestinationProps } from "./ListAttraction.types";
 import { changeAttractionDestination } from "../../infra/ManagerApi";
+import { Flex } from "../../../../shared/ui/Flex";
+import { useClasses } from "./EditAttractionDestination.styles";
 
 const EditAttractionDestination: React.FunctionComponent<
   EditAttractionDestinationProps
 > = (props) => {
+  const classes = useClasses();
   const { formFields, isFormValid } = useAttractionDestinationFormField();
-  const [isCountrywide, { toggle: toggleIsCountrywide }] = useBoolean(
+  const [isCountrywide, { toggle: toggleIsCountrywide }] = useBooleanState(
     props.destination.isCountrywide
   );
-  const [isReginal, { toggle: toggleReginal }] = useBoolean(true);
+  const [isReginal, { toggle: toggleReginal }] = useBooleanState(true);
 
   return (
     <EditProperty
@@ -31,48 +34,60 @@ const EditAttractionDestination: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Separator></Separator>
-      <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+      <Divider />
+      <Flex gap={36} direction="row">
         <Text
           as="h2"
-          styles={{ root: { textAlign: "end", fontSize: "20px" } }}
+          style={{ textAlign: "end", fontSize: "20px" }}
           // className={classes.subHeader}
         >
           Country
         </Text>
-        <Toggle
+        <Switch
           //   className={classes.checkbox}
           label="Nationally Recognized Attraction"
-          inlineLabel
           onChange={toggleIsCountrywide}
-          styles={{
-            root: { textAlign: "end", marginBottom: 0, fontSize: "14px" }
-          }}
+          checked={isCountrywide}
+          style={{ marginBottom: 0, fontSize: "14px" }}
         />
-      </Stack>
-      <SearchText {...formFields.countryId} />
-      <Separator></Separator>
-      <Stack tokens={{ childrenGap: 36 }} horizontal={true}>
+      </Flex>
+      <div className={classes.searchField}>
+        <SearchText
+          {...formFields.countryId}
+          searchBoxClassName={classes.searchBox}
+        />
+      </div>
+      <Divider />
+      <Flex gap={36} direction="row">
         <Text
           as="h2"
-          styles={{ root: { textAlign: "end", fontSize: "20px" } }}
+          style={{ textAlign: "end", fontSize: "20px" }}
           // className={classes.subHeader}
         >
           {isReginal ? "Region" : "City"}
         </Text>
-        <Toggle
+        <Switch
           //   className={classes.checkbox}
           label="Attraction is region level"
-          inlineLabel
-          defaultChecked={isReginal}
           onChange={toggleReginal}
-          styles={{
-            root: { textAlign: "end", marginBottom: 0, fontSize: "14px" }
-          }}
+          checked={isReginal}
+          style={{ marginBottom: 0, fontSize: "14px" }}
         />
-      </Stack>
-      {isReginal && <SearchText {...formFields.regionId} />}
-      {!isReginal && <SearchText {...formFields.cityId} />}
+      </Flex>
+      <div className={classes.searchField}>
+        {isReginal && (
+          <SearchText
+            {...formFields.regionId}
+            searchBoxClassName={classes.searchBox}
+          />
+        )}
+        {!isReginal && (
+          <SearchText
+            {...formFields.cityId}
+            searchBoxClassName={classes.searchBox}
+          />
+        )}
+      </div>
     </EditProperty>
   );
 };

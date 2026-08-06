@@ -13,6 +13,7 @@ const meta: Meta<typeof AddCity> = {
   component: AddCity,
   decorators: [
     (Story) => {
+      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -51,10 +52,10 @@ const setupUser = (): User =>
   userEvent.setup({ pointerEventsCheck: 0, delay: null });
 
 const cityNameField = (canvasElement: HTMLElement): HTMLElement =>
-  within(canvasElement).getByLabelText("City name");
+  within(canvasElement).getByLabelText(/^City name/);
 
 const regionField = (canvasElement: HTMLElement): HTMLElement =>
-  within(canvasElement).getByLabelText("Select a region");
+  within(canvasElement).getByLabelText(/^Select a region/);
 
 const saveButton = (canvasElement: HTMLElement): HTMLElement =>
   within(canvasElement).getByRole("button", { name: "Save" });
@@ -118,6 +119,9 @@ export const ShowsEmptyFormWithSaveDisabled: Story = {
     expect(
       canvas.getByRole("heading", { name: "Add City" })
     ).toBeInTheDocument();
+    expect(canvas.getAllByText("*")).toHaveLength(2);
+    expect(cityNameField(canvasElement)).toBeRequired();
+    expect(regionField(canvasElement)).toBeRequired();
     expect(cityNameField(canvasElement)).toHaveValue("");
     expect(regionField(canvasElement)).toHaveValue("");
     expect(saveButton(canvasElement)).toBeDisabled();

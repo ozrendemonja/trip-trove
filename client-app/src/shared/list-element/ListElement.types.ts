@@ -1,7 +1,8 @@
-import { IColumn, IDetailsListProps, Selection } from "@fluentui/react";
+import { DataColumn, DataSelection } from "../ui/data-table/DataTable";
 import { AddRowOptionsProps } from "./ui/delete-dialog/DeleteDialog.types";
 import { ListHeaderProps } from "./ui/list-header/ListHeader.types";
 import { AttractionRow } from "../../features/continent/pages/list-attraction/ListAttraction.types";
+import type React from "react";
 
 export interface ListElementProps<T> {
   /**
@@ -9,7 +10,13 @@ export interface ListElementProps<T> {
    */
   items: T[];
 
-  columns: IColumn[];
+  columns: DataColumn[];
+
+  rootClassName?: string;
+
+  tableContainerClassName?: string;
+
+  tableClassName?: string;
 
   listHeader: ListHeaderProps;
 
@@ -17,18 +24,14 @@ export interface ListElementProps<T> {
 
   deleteRowOptions: {
     text: string;
-    onDeleteRow: (selection: Selection<T>) => void;
+    onDeleteRow: (selection: DataSelection<T>) => void;
   };
 
-  onRenderMissingItem: (index?: number) => null;
+  onLoadMore: (index: number) => React.ReactNode;
 
-  onRenderItemColumn: (
-    item?: T,
-    index?: number,
-    column?: IColumn
-  ) => JSX.Element | string | number;
+  renderCell: (item: T, index: number, column: DataColumn) => React.ReactNode;
 
-  selectedItemName: (selection: Selection) => string;
+  getSelectedItemName: (selection: DataSelection<T>) => string;
 }
 
 export interface ListElementUserProps {
@@ -37,70 +40,74 @@ export interface ListElementUserProps {
    */
   items: AttractionRow[];
 
-  columns: IColumn[];
+  columns: DataColumn[];
 
   listHeader: ListHeaderProps;
 
-  onRenderMissingItem: (index?: number) => null;
+  onLoadMore: (index: number) => React.ReactNode;
 
-  onRenderItemColumn: (
-    item?: AttractionRow,
-    index?: number,
-    column?: IColumn
-  ) => JSX.Element | string | number;
+  renderCell: (
+    item: AttractionRow,
+    index: number,
+    column: DataColumn
+  ) => React.ReactNode;
 
-  onRenderRow?: IDetailsListProps["onRenderRow"];
+  getRowClassName?: (row: AttractionRow, index: number) => string | undefined;
 }
 
 export abstract class ListElementCustomizer<T> {
   items: T[];
-  columns?: IColumn[] = undefined;
+  columns?: DataColumn[] = undefined;
   notifyItemsChanged: (items: T[]) => void;
-  notifyListColumnChanged: (columns: IColumn[]) => void;
+  notifyListColumnChanged: (columns: DataColumn[]) => void;
 
   constructor(
     items: T[],
     notifyItemsChanged: (items: T[]) => void,
-    notifyListColumnChanged: (columns: IColumn[]) => void
+    notifyListColumnChanged: (columns: DataColumn[]) => void
   ) {
     this.items = items;
     this.notifyItemsChanged = notifyItemsChanged;
     this.notifyListColumnChanged = notifyListColumnChanged;
   }
 
-  private copyAndSort<T>(columnKey: string, isSortedDescending?: boolean): T[] {
-    const key = columnKey as keyof T;
+  private copyAndSort<T>(accessor: string, sortDescending?: boolean): T[] {
+    const key = accessor as keyof T;
     return this.items
       .slice(0)
       .sort((a: T, b: T) =>
-        (isSortedDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
+        (sortDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
       );
   }
 
-  onColumnClick = (
+  handleHeaderClick = (
     _event: React.MouseEvent<HTMLElement>,
-    column: IColumn
+    column: DataColumn
   ): void => {
-    let isSortedDescending = column.isSortedDescending;
+    let sortDescending = column.sortDescending;
 
     // // If we've sorted this column, flip it.
-    if (column.isSorted) {
-      isSortedDescending = !isSortedDescending;
+    if (column.sorted) {
+      sortDescending = !sortDescending;
     }
 
     // // Sort the items.
-    this.items = this.copyAndSort(column.fieldName!, isSortedDescending) as T[];
+    this.items = this.copyAndSort(
+      column.accessor ?? column.id,
+      sortDescending
+    ) as T[];
 
     // // Reset the items and columns to match the state.
-    this.columns = this.columns.map((col) => {
-      col.isSorted = col.key === column.key;
+    this.columns =
+      this.columns?.map((col) => {
+        col.sorted = col.id === column.id;
 
-      if (col.isSorted) {
-        col.isSortedDescending = isSortedDescending;
-      }
+        if (col.sorted) {
+          col.sortDescending = sortDescending;
+        }
 
-      return col;
-    });
+        return col;
+      }) ?? [];
 
     this.notifyItemsChanged(this.items);
     this.notifyListColumnChanged(this.columns);

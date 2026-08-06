@@ -1203,25 +1203,25 @@ export const searchMainAttraction = async (
 };
 
 export const searchContinent = async (query: string): Promise<Suggestion[]> => {
-  const { data, error } = await getAllContinents({
+  const { data, error } = await getSearchedElements({
+    query: {
+      q: query,
+      i: "CONTINENT"
+    },
     headers: {
       "x-api-version": "1"
     }
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
-  }
-  if (!data || data?.find((continent) => !continent.continentName)) {
-    throw new Error("Invalid continent name");
+    throw new Error("Error while searching for continent", error);
   }
 
-  return data.map((continent) => {
-    return {
-      value: continent.continentName,
-      id: continent.continentName
-    } as Suggestion;
-  });
+  return (
+    data?.suggestions?.map((suggestion) => {
+      return { value: suggestion.value, id: suggestion.id } as Suggestion;
+    }) ?? []
+  );
 };
 
 export const getPagedAttractionsByContinentName = async (

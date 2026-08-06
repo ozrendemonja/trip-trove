@@ -1,4 +1,5 @@
-import { Dropdown, IDropdownOption, Text } from "@fluentui/react";
+import { SelectField } from "../../../ui/forms/SelectField";
+import { Text } from "@fluentui/react-components";
 import React from "react";
 import useClasses from "./ListHeader.styles";
 import { ListHeaderProps } from "./ListHeader.types";
@@ -6,15 +7,6 @@ import { Search } from "../../../search/Search";
 
 const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
   const classes = useClasses();
-  const onRenderTitle = (options?: IDropdownOption[]): JSX.Element => {
-    const selectedOption = options;
-    return (
-      <Text as={"span"} className={classes.dropdownSelectedOption}>
-        <Text as={"span"}>Sort by: </Text>
-        {selectedOption ? selectedOption[0].text : ""}
-      </Text>
-    );
-  };
 
   return (
     <div className={classes.root}>
@@ -29,12 +21,14 @@ const ListHeader: React.FunctionComponent<ListHeaderProps> = (props) => {
           setItems={props.setItems}
         />
       )}
-      <Dropdown
-        onChange={props.onSortOptionChange}
+      <SelectField
+        onOptionSelect={props.onSortOptionChange}
         className={classes.dropdown}
+        aria-label="Sort by"
         placeholder="Sort by:"
-        options={props.sortOptions}
-        onRenderTitle={(options) => onRenderTitle(options)}
+        choices={props.sortOptions}
+        selectedValue={props.selectedSortValue}
+        selectedValuePrefix="Sort by: "
       />
     </div>
   );

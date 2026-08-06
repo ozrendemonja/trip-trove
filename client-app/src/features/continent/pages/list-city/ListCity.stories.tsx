@@ -52,10 +52,26 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
-const waitForCanvasToBecomeAccessible = (
+const expectSuggestionBelowInput = (
+  input: HTMLElement,
+  suggestion: HTMLElement
+): void => {
+  const inputRect =
+    input
+      .closest<HTMLElement>(".fui-Input, .fui-Textarea")
+      ?.getBoundingClientRect() ?? input.getBoundingClientRect();
+  const suggestionRect = suggestion.getBoundingClientRect();
+
+  expect(Math.abs(suggestionRect.left - inputRect.left)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.right - inputRect.right)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.top - inputRect.bottom)).toBeLessThan(1);
+};
+
+const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 const waitForCitiesToLoad = (
   canvasElement: HTMLElement
@@ -122,7 +138,7 @@ const selectCityRow = async (
 ): Promise<HTMLElement> => {
   const row = within(canvasElement)
     .getByRole("button", { name: `Change city name for ${name}` })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
   await user.click(within(row).getByRole("radio", { name: "select row" }));
   return row;
 };
@@ -376,9 +392,11 @@ export const DisablesUpdateAfterEditingSelectedRegion: Story = {
 
     const field = overlay(canvasElement).getByRole("textbox");
     await user.type(field, "Sam");
-    await user.click(
-      await overlay(canvasElement).findByRole("menuitem", { name: "Samogitia" })
-    );
+    const suggestion = await overlay(canvasElement).findByRole("menuitem", {
+      name: "Samogitia"
+    });
+    expectSuggestionBelowInput(field, suggestion);
+    await user.click(suggestion);
     await waitFor(() =>
       expect(
         overlay(canvasElement).getByRole("button", { name: "Update" })
@@ -538,7 +556,7 @@ export const SelectsCityViaCheckbox: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change city name for Monaco" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 
@@ -555,7 +573,7 @@ export const SelectsCityViaRowClick: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change city name for Kaunas" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 

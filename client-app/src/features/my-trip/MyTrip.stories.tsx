@@ -74,8 +74,8 @@ type User = ReturnType<typeof userEvent.setup>;
 const setupUser = (): User =>
   userEvent.setup({ pointerEventsCheck: 0, delay: null });
 
-// Fluent's Modal portals its content into a Layer appended to document.body,
-// outside the story canvas, so modal content is queried through the document.
+// Fluent dialogs portal into document.body, outside the story canvas, so
+// dialog content is queried through the document.
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
@@ -89,7 +89,7 @@ const openSearchForAttraction = async (
   const heading = await overlay(canvasElement).findByRole("heading", {
     name: "Modifying Trip Planner"
   });
-  return heading.closest(".ms-Modal") as HTMLElement;
+  return heading.closest('[role="dialog"]') as HTMLElement;
 };
 
 const waitForPrepareMode = (canvasElement: HTMLElement): Promise<void> =>
@@ -225,22 +225,20 @@ export const SwitchingSearchOptionMovesSelectedHighlight: Story = {
     const modalElement = await openSearchForAttraction(canvasElement, user);
     const modal = within(modalElement);
 
-    /* eslint-disable jest-dom/prefer-to-have-class -- Fluent generates hashed
-       class names, so assert on the class-name substring instead. */
     // Country is selected by default.
     await expect(
-      modal.getByRole("button", { name: "Country" }).className
-    ).toContain("selectedSearchOption");
+      modal.getByRole("button", { name: "Country" })
+    ).toHaveAttribute("aria-pressed", "true");
     await user.click(modal.getByRole("button", { name: "Region" }));
     await waitFor(() =>
-      expect(modal.getByRole("button", { name: "Region" }).className).toContain(
-        "selectedSearchOption"
+      expect(modal.getByRole("button", { name: "Region" })).toHaveAttribute(
+        "aria-pressed",
+        "true"
       )
     );
     await expect(
-      modal.getByRole("button", { name: "Country" }).className
-    ).toContain("notSelectedSearchOption");
-    /* eslint-enable jest-dom/prefer-to-have-class */
+      modal.getByRole("button", { name: "Country" })
+    ).toHaveAttribute("aria-pressed", "false");
   }
 };
 

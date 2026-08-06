@@ -1,4 +1,4 @@
-import { Dropdown } from "@fluentui/react";
+import { SelectField } from "../../../../shared/ui/forms/SelectField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { CategoryType } from "../../domain/Attraction.types";
 import { changeAttractionCategory } from "../../infra/ManagerApi";
@@ -8,8 +8,8 @@ import { EditAttractionCategoryProps } from "./ListAttraction.types";
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
   .map((category) => ({
-    key: category,
-    text: category
+    value: category,
+    label: category
   }));
 
 const EditAttractionCategory: React.FunctionComponent<
@@ -30,10 +30,10 @@ const EditAttractionCategory: React.FunctionComponent<
       }}
       isFormValid={formFields.category.value != undefined}
     >
-      <Dropdown
+      <SelectField
         {...formFields.category}
-        options={categoryOptions}
-        styles={{ root: { width: "300px" } }}
+        choices={categoryOptions}
+        style={{ width: "300px" }}
         // className={classes.dropdowns}
       />
     </EditProperty>

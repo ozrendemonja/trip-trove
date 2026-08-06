@@ -1,4 +1,4 @@
-import { IDropdownOption } from "@fluentui/react";
+import { SelectChoice } from "../../../ui/forms/SelectField";
 import { Suggestion } from "../../../../features/continent/domain/Suggestion.types.";
 
 export interface ListHeaderProps {
@@ -20,19 +20,21 @@ export interface ListHeaderProps {
    * Callback issued when the selected option changes.
    */
   onSortOptionChange: (
-    event: React.FormEvent<HTMLDivElement>,
-    option?: IDropdownOption,
-    index?: number
+    event: React.FormEvent<HTMLElement>,
+    choice?: SelectChoice,
+    inputValue?: string
   ) => void;
 
   /**
    * Options for the order dropdown.
    */
-  sortOptions: IDropdownOption[];
+  sortOptions: SelectChoice[];
+
+  selectedSortValue?: string | number;
 
   items: Suggestion[];
 
-  onFindItem: (id: number) => void;
+  onFindItem: (id: Suggestion["id"]) => void;
 
   setItems: (suggestions: Suggestion[]) => void;
 }

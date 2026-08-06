@@ -1,11 +1,26 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+const selectRecordedDate = async (page: Page): Promise<void> => {
+  await page
+    .getByRole("combobox", { name: "Date of information recording" })
+    .click();
+  const today = new Date();
+  await page
+    .getByRole("button", {
+      name: `${today.getDate()}, ${today.toLocaleString("en-US", {
+        month: "long"
+      })}, ${today.getFullYear()}`,
+      exact: true
+    })
+    .click();
+};
 
 test.beforeEach(async ({ page }) => {
   await page.goto(
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-attraction-listattraction--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("link", { name: "Vilnius Old Town", exact: true })
   ).toBeVisible();
@@ -109,7 +124,7 @@ test("Country, region and city are changed when new city is provided ", async ({
   await page.getByLabel("Change attraction destination from Lithuania").click();
   await page.getByLabel("Select a country").fill("Mon");
   await page.getByRole("menuitem", { name: "Monaco" }).click();
-  await page.getByLabel("Attraction is region level").check();
+  await page.getByLabel("Attraction is region level").uncheck();
   await page.getByLabel("Select a city").fill("Mon");
   await page.getByRole("menuitem", { name: "Monaco, Monaco, Monaco" }).click();
   await page.getByRole("button", { name: "Update" }).click();
@@ -333,9 +348,7 @@ test("Update button is disabled when only info recorded is provided", async ({
       name: "Change attraction info from Google reviews"
     })
     .click();
-  await page
-    .getByRole("combobox", { name: "Select recorded date..." })
-    .fill("Mon Feb 17 2025");
+  await selectRecordedDate(page);
 
   await expect(page).toHaveScreenshot();
 });
@@ -348,9 +361,7 @@ test("Info from is changed when info from and recorded is provided", async ({
       name: "Change attraction info from Google reviews"
     })
     .click();
-  await page
-    .getByRole("combobox", { name: "Select recorded date..." })
-    .fill("Mon Feb 17 2025");
+  await selectRecordedDate(page);
   await page.getByLabel("Where information comes from").fill("Lonely Planet");
   await page.getByRole("button", { name: "Update" }).click();
 

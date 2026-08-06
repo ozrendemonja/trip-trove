@@ -9,7 +9,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("Show board in edit mode with attractions loaded", async ({ page }) => {
-  await expect(page.getByText("Paris")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Paris", exact: true })
+  ).toBeVisible();
   await expect(page.getByText("Eiffel Tower")).toBeVisible();
   await expect(page.getByText("Louvre Museum")).toBeVisible();
   await expect(page).toHaveScreenshot();
@@ -59,8 +61,12 @@ test("Review button is not visible when no tripId is provided", async ({
 });
 
 test("Show filter dropdowns in toolbar", async ({ page }) => {
-  await expect(page.getByText("Countrywide")).toBeVisible();
-  await expect(page.getByText("Must-visit")).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Countrywide" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Must Visit" })
+  ).toBeVisible();
   await expect(page).toHaveScreenshot();
 });
 

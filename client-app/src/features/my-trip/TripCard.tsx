@@ -1,8 +1,16 @@
-import { Icon, IconButton, Stack, Text } from "@fluentui/react";
+import { Button } from "@fluentui/react-components";
+import { mergeClasses } from "@fluentui/react-components";
+import { Text } from "@fluentui/react-components";
+import {
+  Delete24Regular,
+  Edit24Regular,
+  TicketDiagonal24Regular
+} from "@fluentui/react-icons";
 import React from "react";
 import { TRIP_STATUS_LABEL } from "./TripCard.config";
 import { useTripCardClasses } from "./TripCard.styles";
 import { TripCardProps } from "./TripCard.types";
+import { Flex } from "../../shared/ui/Flex";
 
 export const TripCard: React.FC<TripCardProps> = ({
   trip,
@@ -10,7 +18,7 @@ export const TripCard: React.FC<TripCardProps> = ({
   onDelete,
   onEdit
 }) => {
-  const { deleteBtn, editBtn, ...classes } = useTripCardClasses(trip.status);
+  const classes = useTripCardClasses();
 
   const formatDate = (iso?: string): string =>
     iso
@@ -27,8 +35,15 @@ export const TripCard: React.FC<TripCardProps> = ({
       : `From ${formatDate(trip.startDate)}`
     : "Dates not set";
 
+  const statusClass =
+    trip.status === "active"
+      ? classes.statusActive
+      : trip.status === "past"
+        ? classes.statusPast
+        : classes.statusArchived;
+
   return (
-    <Stack
+    <Flex
       className={classes.card}
       onClick={onClick}
       role="button"
@@ -36,41 +51,39 @@ export const TripCard: React.FC<TripCardProps> = ({
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       aria-label={`Open trip: ${trip.name}`}
     >
-      <Stack
-        className={classes.cardBanner}
-        verticalAlign="center"
-        horizontalAlign="center"
-      >
-        <Icon iconName="AirTickets" className={classes.bannerIcon} />
-        <IconButton
-          iconProps={{ iconName: "Edit" }}
+      <Flex className={classes.cardBanner} align="center" justify="center">
+        <TicketDiagonal24Regular className={classes.bannerIcon} />
+        <Button
+          appearance="subtle"
+          icon={<Edit24Regular />}
           title="Edit trip"
-          ariaLabel="Edit trip"
-          styles={editBtn}
+          aria-label="Edit trip"
+          className={mergeClasses(classes.cardAction, classes.editButton)}
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
         />
-        <IconButton
-          iconProps={{ iconName: "Delete" }}
+        <Button
+          appearance="subtle"
+          icon={<Delete24Regular />}
           title="Delete trip"
-          ariaLabel="Delete trip"
-          styles={deleteBtn}
+          aria-label="Delete trip"
+          className={mergeClasses(classes.cardAction, classes.deleteButton)}
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
         />
-      </Stack>
-      <Stack className={classes.cardBody}>
+      </Flex>
+      <Flex className={classes.cardBody}>
         <Text className={classes.tripName}>{trip.name}</Text>
         <Text className={classes.dateText}>{dateLabel}</Text>
-        <span className={classes.statusBadge}>
+        <span className={mergeClasses(classes.statusBadge, statusClass)}>
           {TRIP_STATUS_LABEL[trip.status]}
         </span>
-      </Stack>
-    </Stack>
+      </Flex>
+    </Flex>
   );
 };
 

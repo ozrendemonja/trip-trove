@@ -45,7 +45,7 @@ test("Select a rating in review form", async ({ page }) => {
 
   await expect(
     page.getByRole("button", { name: "Excellent" }).first()
-  ).toHaveCSS("background-color", "rgb(232, 240, 254)");
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveScreenshot();
 });
 

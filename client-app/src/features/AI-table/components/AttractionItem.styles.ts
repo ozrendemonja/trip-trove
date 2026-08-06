@@ -1,181 +1,155 @@
-import {
-  IButtonStyles,
-  IStyle,
-  ITextFieldStyles,
-  ITextStyles,
-  mergeStyleSets,
-  useTheme
-} from "@fluentui/react";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
-export const useReviewStyles = () => {
-  const theme = useTheme();
-
-  const classes = mergeStyleSets({
-    reviewSection: { marginTop: 4 } as IStyle,
-    reviewAttached: {
-      background: theme.palette.white,
-      border: `1px solid ${theme.palette.neutralLight}`,
-      borderRadius: 8,
-      padding: "8px 10px",
-      fontSize: "0.7rem",
-      borderLeft: `3px solid ${theme.palette.green}`
-    } as IStyle,
-    reviewForm: {
-      background: theme.palette.white,
-      border: `1px solid ${theme.palette.neutralLight}`,
-      borderRadius: 8,
-      padding: 10
-    } as IStyle
-  });
-
-  const attachedRating: ITextStyles = {
-    root: {
-      fontWeight: 500,
-      color: theme.palette.neutralPrimary,
-      fontSize: "0.7rem"
+export const useReviewStyles = makeStyles({
+  reviewSection: {
+    marginTop: "4px"
+  },
+  reviewAttached: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    ...shorthands.borderLeft(
+      "3px",
+      "solid",
+      tokens.colorPaletteGreenBorderActive
+    ),
+    ...shorthands.borderRadius("8px"),
+    ...shorthands.padding("8px", "10px"),
+    fontSize: "0.7rem"
+  },
+  reviewForm: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    ...shorthands.borderRadius("8px"),
+    ...shorthands.padding("10px")
+  },
+  attachedRating: {
+    fontWeight: 500,
+    color: tokens.colorNeutralForeground1,
+    fontSize: "0.7rem"
+  },
+  attachedNote: {
+    color: tokens.colorNeutralForeground2,
+    whiteSpace: "pre-line",
+    fontSize: "0.65rem"
+  },
+  removeButton: {
+    backgroundColor: "transparent",
+    ...shorthands.border("0", "none"),
+    ...shorthands.borderRadius("50%"),
+    ...shorthands.padding("4px"),
+    color: tokens.colorPaletteRedForeground1,
+    minWidth: "0",
+    minHeight: "0",
+    height: "24px",
+    width: "24px",
+    "& svg": { fontSize: "0.65rem" },
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground3,
+      color: tokens.colorPaletteRedForeground1
+    },
+    "&:disabled": {
+      opacity: 0.4,
+      cursor: "not-allowed"
     }
-  };
-
-  const attachedNote: ITextStyles = {
-    root: {
-      color: theme.palette.neutralSecondary,
-      whiteSpace: "pre-line",
-      fontSize: "0.65rem"
+  },
+  ratingButton: {
+    ...shorthands.border("1px", "solid"),
+    ...shorthands.borderRadius("20px"),
+    ...shorthands.padding("4px", "8px"),
+    cursor: "pointer",
+    ...shorthands.transition([
+      ["background-color", "0.15s", "0s", "ease"],
+      ["border-color", "0.15s", "0s", "ease"],
+      ["box-shadow", "0.15s", "0s", "ease"]
+    ]),
+    minWidth: "0",
+    minHeight: "0",
+    height: "auto",
+    lineHeight: "1",
+    "& [data-button-label]": {
+      fontSize: "1rem",
+      lineHeight: "1",
+      ...shorthands.padding(0)
     }
-  };
-
-  const removeBtn: IButtonStyles = {
-    root: {
-      background: "transparent",
-      border: "none",
-      borderRadius: "50%",
-      padding: 4,
-      color: theme.palette.neutralSecondary,
-      minWidth: 0,
-      minHeight: 0,
-      height: 24,
-      width: 24
-    },
-    icon: { fontSize: "0.65rem", color: theme.palette.neutralSecondary },
-    rootHovered: {
-      background: theme.palette.neutralLighter,
-      color: theme.palette.redDark
-    },
-    iconHovered: { color: theme.palette.redDark },
-    rootDisabled: { opacity: 0.4, cursor: "not-allowed" }
-  };
-
-  const ratingBtn = (isActive: boolean): IButtonStyles => ({
-    root: {
-      background: isActive
-        ? theme.palette.themeLighterAlt
-        : theme.palette.white,
-      border: "1px solid",
-      borderColor: isActive
-        ? theme.palette.themePrimary
-        : theme.palette.neutralLight,
-      borderRadius: 20,
-      padding: "4px 8px",
-      cursor: "pointer",
-      transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
-      minWidth: 0,
-      minHeight: 0,
-      height: "auto",
-      lineHeight: "1"
-    },
-    label: { fontSize: "1rem", lineHeight: "1", padding: 0 },
-    textContainer: { flexGrow: 0 },
-    rootHovered: isActive
-      ? {
-          background: theme.palette.themeLighterAlt,
-          borderColor: theme.palette.themePrimary
-        }
-      : {
-          background: theme.palette.neutralLighter,
-          borderColor: theme.palette.neutralTertiaryAlt
-        }
-  });
-
-  const noteInput: Partial<ITextFieldStyles> = {
-    fieldGroup: {
-      border: `1px solid ${theme.palette.neutralLight}`,
-      borderRadius: 4,
-      background: theme.palette.white,
-      selectors: {
-        ":hover": { borderColor: theme.palette.neutralTertiaryAlt },
-        ":focus-within": {
-          borderColor: theme.palette.themePrimary,
-          boxShadow: `0 0 0 1px ${theme.palette.themePrimary}`
-        }
-      }
-    },
-    field: {
-      fontSize: "0.7rem",
-      padding: "6px 8px",
-      color: theme.palette.neutralPrimary
+  },
+  ratingButtonActive: {
+    backgroundColor: tokens.colorBrandBackground2,
+    ...shorthands.borderColor(tokens.colorBrandStroke1),
+    "&:hover": {
+      backgroundColor: tokens.colorBrandBackground2,
+      ...shorthands.borderColor(tokens.colorBrandStroke1)
     }
-  };
-
-  const addBtn: IButtonStyles = {
-    root: {
-      alignSelf: "flex-start",
-      background: theme.palette.themePrimary,
-      border: "none",
-      borderRadius: 4,
-      padding: "4px 14px",
-      fontSize: "0.7rem",
-      cursor: "pointer",
-      color: theme.palette.white,
-      fontWeight: 500,
-      minWidth: 0,
-      minHeight: 0,
-      height: "auto"
+  },
+  ratingButtonInactive: {
+    backgroundColor: tokens.colorNeutralBackground1,
+    ...shorthands.borderColor(tokens.colorNeutralStroke2),
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground3,
+      ...shorthands.borderColor(tokens.colorNeutralStroke1)
+    }
+  },
+  noteInput: {
+    ...shorthands.border("1px", "solid", tokens.colorNeutralStroke2),
+    ...shorthands.borderRadius("4px"),
+    backgroundColor: tokens.colorNeutralBackground1,
+    "&:hover": {
+      ...shorthands.borderColor(tokens.colorNeutralStroke1)
     },
-    label: { fontSize: "0.7rem", color: theme.palette.white },
-    rootHovered: {
-      background: theme.palette.themeDarkAlt,
+    "&:focus-within": {
+      ...shorthands.borderColor(tokens.colorBrandStroke1),
+      boxShadow: `0 0 0 1px ${tokens.colorBrandStroke1}`
+    },
+    "& textarea": {
+      fontSize: "0.7rem",
+      ...shorthands.padding("6px", "8px"),
+      color: tokens.colorNeutralForeground1
+    }
+  },
+  reviewActions: {
+    alignSelf: "flex-start"
+  },
+  addButton: {
+    alignSelf: "flex-start",
+    backgroundColor: tokens.colorBrandBackground,
+    ...shorthands.border("0", "none"),
+    ...shorthands.borderRadius("4px"),
+    ...shorthands.padding("4px", "14px"),
+    fontSize: "0.7rem",
+    cursor: "pointer",
+    color: tokens.colorNeutralForegroundOnBrand,
+    fontWeight: 500,
+    minWidth: "0",
+    minHeight: "0",
+    height: "auto",
+    "&:hover": {
+      backgroundColor: tokens.colorBrandBackgroundHover,
       boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
     },
-    rootDisabled: {
-      background: theme.palette.neutralLight,
-      color: theme.palette.neutralTertiary,
+    "&:disabled": {
+      backgroundColor: tokens.colorNeutralBackground3,
+      color: tokens.colorNeutralForeground4,
       cursor: "not-allowed"
     }
-  };
-
-  const clearBtn: IButtonStyles = {
-    root: {
-      background: "transparent",
-      border: "none",
-      borderRadius: 4,
-      padding: "4px 10px",
-      fontSize: "0.7rem",
-      cursor: "pointer",
-      color: theme.palette.neutralSecondary,
-      fontWeight: 500,
-      minWidth: 0,
-      minHeight: 0,
-      height: "auto"
+  },
+  clearButton: {
+    backgroundColor: "transparent",
+    ...shorthands.border("0", "none"),
+    ...shorthands.borderRadius("4px"),
+    ...shorthands.padding("4px", "10px"),
+    fontSize: "0.7rem",
+    cursor: "pointer",
+    color: tokens.colorNeutralForeground2,
+    fontWeight: 500,
+    minWidth: "0",
+    minHeight: "0",
+    height: "auto",
+    "&:hover": {
+      backgroundColor: tokens.colorNeutralBackground3,
+      color: tokens.colorNeutralForeground1
     },
-    label: { fontSize: "0.7rem", color: theme.palette.neutralSecondary },
-    rootHovered: {
-      background: theme.palette.neutralLighter,
-      color: theme.palette.neutralPrimary
-    },
-    rootDisabled: {
-      color: theme.palette.neutralTertiary,
+    "&:disabled": {
+      color: tokens.colorNeutralForeground4,
       cursor: "not-allowed"
     }
-  };
-
-  return {
-    ...classes,
-    attachedRating,
-    attachedNote,
-    removeBtn,
-    ratingBtn,
-    noteInput,
-    addBtn,
-    clearBtn
-  };
-};
+  }
+});

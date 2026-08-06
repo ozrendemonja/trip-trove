@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-attraction-listattraction--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("button", {
       name: "Change attraction details from Vilnius Old Town"

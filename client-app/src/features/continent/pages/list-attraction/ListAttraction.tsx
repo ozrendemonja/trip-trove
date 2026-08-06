@@ -1,21 +1,20 @@
 import {
-  IColumn,
-  Icon,
-  IDropdownOption,
-  Link,
-  Selection,
-  Stack,
-  Text
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  DataColumn,
+  DataSelection
+} from "../../../../shared/ui/data-table/DataTable";
+import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
+import { Link, Text, tokens } from "@fluentui/react-components";
+import { Flag16Regular } from "@fluentui/react-icons";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Attraction";
-import { Attraction, LastReadAttraction } from "../../domain/Attraction.types";
+import { LastReadAttraction } from "../../domain/Attraction.types";
 import { AttractionListCustomizer } from "../../domain/AttractionListCustomizer";
 import { OrderOptions } from "../../domain/Continent.types";
 import { Suggestion } from "../../domain/Suggestion.types.";
@@ -42,25 +41,24 @@ import { toLastReadAttraction } from "./ListAttraction.util";
 import PermanentlyClosedStatus, {
   PermanentlyClosedSince
 } from "../../../../shared/attraction-status/PermanentlyClosedStatus";
+import { Flex } from "../../../../shared/ui/Flex";
 
-const onRenderItemColumn = (
+const renderCellContent = (
   className: string,
   onUpdateClick: () => void,
   onClosureChange: (attractionId: number, permanentlyClosedAt?: string) => void,
-  atraction?: AttractionRow,
-  column?: IColumn
-): JSX.Element | string | number => {
-  if (column?.key === "skipElement") {
-    return <></>;
-  }
-  if (column?.key === "name") {
+  atraction: AttractionRow,
+  _index: number,
+  column: DataColumn
+): React.ReactNode => {
+  if (column.id === "name") {
     const permanentlyClosedAt = atraction?.permanentlyClosedAt;
     return (
-      <Stack
+      <Flex
         className="attraction-list-name-cell"
-        tokens={{ childrenGap: 10 }}
-        horizontal={true}
-        verticalAlign="center"
+        gap={10}
+        direction="row"
+        align="center"
       >
         {atraction && (
           <PermanentlyClosedStatus
@@ -84,11 +82,9 @@ const onRenderItemColumn = (
             }}
           />
         )}
-        <Stack
-          className="attraction-list-name-details"
-          tokens={{ childrenGap: 2 }}
-        >
+        <Flex className="attraction-list-name-details" gap={2}>
           <Link
+            data-fluent-link
             className={className}
             href={`https://www.google.com/search?q=${atraction?.name.name}`}
             target="_blank"
@@ -107,17 +103,17 @@ const onRenderItemColumn = (
             )}
           </Link>
           <PermanentlyClosedSince closedAt={permanentlyClosedAt} />
-        </Stack>
+        </Flex>
         <EditPropertyAttractionDetails
           attractionId={atraction!.id}
           text={atraction!.name.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "destination") {
+  } else if (column.id === "destination") {
     return (
-      <Stack tokens={{ childrenGap: 10 }} horizontal={true}>
+      <Flex gap={10} direction="row">
         <Text>
           {(atraction?.destination.cityName
             ? atraction?.destination.cityName + ", "
@@ -127,18 +123,24 @@ const onRenderItemColumn = (
             atraction?.destination.countryName}
         </Text>
         {atraction?.destination.isCountrywide && (
-          <Icon iconName="Flag" styles={{ root: { color: "green" } }} />
+          <Flag16Regular
+            style={{
+              color: tokens.colorPaletteGreenForeground1,
+              width: 12,
+              height: 12
+            }}
+          />
         )}
         <EditAttractionDestination
           attractionId={atraction!.id}
           destination={atraction!.destination}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "address") {
+  } else if (column.id === "address") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>
           {atraction?.address.streetAddress && (
             <div>{atraction?.address.streetAddress}</div>
@@ -155,50 +157,50 @@ const onRenderItemColumn = (
         </Text>
         <EditAttractionAddress
           attractionId={atraction!.id}
-          address={atraction?.address}
+          address={atraction!.address}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "mustVisit") {
+  } else if (column.id === "mustVisit") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <EditAttractionMustVisit
           attractionId={atraction!.id}
-          attractionName={atraction?.name.name!}
+          attractionName={atraction.name.name}
           mustVisit={atraction?.mustVisit || false}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "isTraditional") {
+  } else if (column.id === "isTraditional") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <EditAttractionTraditional
           attractionId={atraction!.id}
-          attractionName={atraction?.name.name!}
+          attractionName={atraction.name.name}
           isTraditional={atraction?.isTraditional || false}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "infoFrom") {
+  } else if (column.id === "infoFrom") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <div>
           <div>{atraction?.infoFrom.source}</div>
           <div>({atraction?.infoFrom.recorded})</div>
         </div>
         <EditAttractionInfoFromDetails
           attractionId={atraction!.id}
-          infoFrom={atraction?.infoFrom!}
+          infoFrom={atraction.infoFrom}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "optimalVisitPeriod") {
+  } else if (column.id === "optimalVisitPeriod") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         {atraction?.optimalVisitPeriod && (
           <DateRangePicker
             fromDate={atraction.optimalVisitPeriod.fromDate}
@@ -208,65 +210,70 @@ const onRenderItemColumn = (
         )}
         <EditAttractionVisitPeriod
           attractionId={atraction!.id}
-          attractionName={atraction?.name.name!}
+          attractionName={atraction.name.name}
           visitPeriod={atraction!.optimalVisitPeriod}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "tip") {
+  } else if (column.id === "tip") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>{atraction?.tip}</Text>
         <EditAttractionTip
           attractionId={atraction!.id}
-          attractionName={atraction?.name.name!}
+          attractionName={atraction.name.name}
           tip={atraction!.tip}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "category") {
+  } else if (column.id === "category") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>{atraction?.category}</Text>
         <EditAttractionCategory
           attractionId={atraction!.id}
-          category={atraction?.category!}
+          category={atraction.category}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "type") {
+  } else if (column.id === "type") {
     return (
-      <Stack tokens={{ childrenGap: 6 }} horizontal={true}>
+      <Flex gap={6} direction="row">
         <Text>{atraction?.type}</Text>
         <EditAttractionType
           attractionId={atraction!.id}
-          type={atraction?.type!}
+          type={atraction.type}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
   }
 
-  return atraction[column?.fieldName as keyof AttractionRow] as string;
+  if (!column.accessor) {
+    return "";
+  }
+
+  return atraction[column.accessor as keyof AttractionRow] as string;
 };
 
 // Repeated
-const sortOptions: IDropdownOption[] = [
-  { key: "DESC" as OrderOptions, text: "Newest", selected: true },
-  { key: "ASC" as OrderOptions, text: "Oldest" }
+const sortOptions: SelectChoice[] = [
+  { value: "DESC" as OrderOptions, label: "Newest" },
+  { value: "ASC" as OrderOptions, label: "Oldest" }
 ];
 
 export const AttractionList: React.FunctionComponent = () => {
   const classes = useClasses();
+  const pageClasses = useListPageClasses();
 
   const [items, setItems] = useState<AttractionRow[]>([]);
-  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
-    useBoolean(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
+    useBooleanState(true);
+  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<
     LastReadAttraction | undefined
@@ -298,101 +305,106 @@ export const AttractionList: React.FunctionComponent = () => {
   }, [query]);
 
   return (
-    <>
+    <div className={pageClasses.pageLayout}>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of attractions" />}
-      {!isLoading && (
-        <ListElement
-          items={items}
-          columns={columns}
-          listHeader={{
-            ...listHeader,
-            setItems: setSuggestions,
-            onSortOptionChange: (
-              _event: React.FormEvent<HTMLDivElement>,
-              option?: IDropdownOption,
-              _index?: number
-            ) => {
-              setOrder(option!.key as OrderOptions);
-              setAttractionCustomizer(
-                new AttractionListCustomizer(setItems, setColumns)
-              );
-              toggleReloadData();
-            },
-            sortOptions: sortOptions,
-            items: suggestions,
-            onSearchTyped: (
-              _event?: React.ChangeEvent<HTMLInputElement>,
-              newValue?: string
-            ) => {
-              setQuery(newValue ?? "");
-            },
-            onFindItem: (id: number) => {
-              getAttractionById(id).then((data) => {
-                setAttractionCustomizer(() => {
-                  return new AttractionListCustomizer(
-                    setItems,
-                    setColumns
-                  ).withFixedRows([AttractionRow.from(data)]);
-                });
-                setSuggestions([]);
-              });
-            }
-          }}
-          addRowOptions={{
-            text: "Add new attraction",
-            onAddRow: () => navigate("/add-attraction")
-          }}
-          deleteRowOptions={{
-            text: "Delete attraction",
-            onDeleteRow: async (selection: Selection<AttractionRow>) => {
-              await deleteRows(selection.getSelection());
-              setAttractionCustomizer(
-                new AttractionListCustomizer(setItems, setColumns)
-              );
-              toggleReloadData();
-            }
-          }}
-          onRenderMissingItem={(_index: number) =>
-            onRenderWhenNoMoreItems(toggleReloadData)
-          }
-          onRenderItemColumn={(
-            item?: AttractionRow,
-            _index?: number,
-            column?: IColumn
-          ) =>
-            onRenderItemColumn(
-              classes.linkField,
-              () => {
+      <main className={pageClasses.content}>
+        {isLoading && <LoadingSpinner text="Updating list of attractions" />}
+        {!isLoading && (
+          <ListElement
+            items={items}
+            columns={columns}
+            rootClassName={classes.headerRoot}
+            tableContainerClassName={classes.listViewport}
+            tableClassName={classes.table}
+            listHeader={{
+              text: listHeader.text ?? "All attractions",
+              showSearchBar: listHeader.showSearchBar ?? true,
+              setItems: setSuggestions,
+              onSortOptionChange: (_event, choice) => {
+                setOrder(choice!.value as OrderOptions);
                 setAttractionCustomizer(
                   new AttractionListCustomizer(setItems, setColumns)
                 );
-                setLastElement(undefined);
                 toggleReloadData();
               },
-              (attractionId, permanentlyClosedAt) =>
-                setAttractionCustomizer((current) =>
-                  current.withPermanentClosure(
-                    attractionId,
-                    permanentlyClosedAt
-                  )
-                ),
-              item,
-              column
-            )
-          }
-          selectedItemName={(selection: Selection<Attraction>) => {
-            if (
-              selection &&
-              selection.getSelection() &&
-              selection.getSelection().length > 0
-            ) {
-              return selection.getSelection()[0].name.name;
+              sortOptions: sortOptions,
+              selectedSortValue: order,
+              items: suggestions,
+              onSearchTyped: (
+                _event?: React.ChangeEvent<HTMLInputElement>,
+                newValue?: string
+              ) => {
+                setQuery(newValue ?? "");
+              },
+              onFindItem: (id) => {
+                if (typeof id !== "number") return;
+                getAttractionById(id).then((data) => {
+                  setAttractionCustomizer(() => {
+                    return new AttractionListCustomizer(
+                      setItems,
+                      setColumns
+                    ).withFixedRows([AttractionRow.from(data)]);
+                  });
+                  setSuggestions([]);
+                });
+              }
+            }}
+            addRowOptions={{
+              text: "Add new attraction",
+              onAddRow: () => navigate("/add-attraction")
+            }}
+            deleteRowOptions={{
+              text: "Delete attraction",
+              onDeleteRow: async (selection: DataSelection<AttractionRow>) => {
+                await deleteRows(selection.selectedRows());
+                setAttractionCustomizer(
+                  new AttractionListCustomizer(setItems, setColumns)
+                );
+                toggleReloadData();
+              }
+            }}
+            onLoadMore={(_index: number) => {
+              onRenderWhenNoMoreItems(toggleReloadData);
+              return null;
+            }}
+            renderCell={(
+              item: AttractionRow,
+              index: number,
+              column: DataColumn
+            ) =>
+              renderCellContent(
+                classes.linkField,
+                () => {
+                  setAttractionCustomizer(
+                    new AttractionListCustomizer(setItems, setColumns)
+                  );
+                  setLastElement(undefined);
+                  toggleReloadData();
+                },
+                (attractionId, permanentlyClosedAt) =>
+                  setAttractionCustomizer(
+                    attractionCustomizer.withPermanentClosure(
+                      attractionId,
+                      permanentlyClosedAt
+                    )
+                  ),
+                item,
+                index,
+                column
+              )
             }
-          }}
-        />
-      )}
-    </>
+            getSelectedItemName={(selection: DataSelection<AttractionRow>) => {
+              const selectedRows = selection.selectedRows();
+              if (selectedRows.length > 0) {
+                return selectedRows[0].name.name;
+              }
+
+              return "";
+            }}
+          />
+        )}
+      </main>
+    </div>
   );
 };
 

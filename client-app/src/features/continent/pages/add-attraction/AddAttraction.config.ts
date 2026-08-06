@@ -2,16 +2,17 @@ import {
   addMonths,
   addYears,
   defaultDatePickerStrings,
-  IComboBox,
-  IComboBoxOption,
-  IComboBoxProps,
-  IDatePickerProps,
-  IDatePickerStrings,
-  IDropdownOption,
-  IDropdownProps,
-  ITextFieldProps
-} from "@fluentui/react";
-import { useState } from "react";
+  DateInputProps,
+  DateInputStrings
+} from "../../../../shared/ui/forms/DateInput";
+import {
+  ComboBoxFieldProps,
+  SelectChoice,
+  SelectFieldProps
+} from "../../../../shared/ui/forms/SelectField";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
+import { Location24Filled } from "@fluentui/react-icons";
+import React, { useState } from "react";
 import { DateRangePickerProps } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
 import { AttractionType, CategoryType } from "../../domain/Attraction.types";
 import { createAttractionValidation } from "../../infra/AttractionValidationRules";
@@ -66,6 +67,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
+  const [today] = useState(() => new Date());
   const { isValid, errorMessage } = validator.validate(values);
 
   const countryIdSearchText: ExtendedSearchTextProps = {
@@ -76,7 +78,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, countryId: true });
       setValues({ ...values, countryId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.countryId ? errorMessage?.countryIdError : undefined,
     getSuggestions: searchCountry,
     value: values.countryId
@@ -90,7 +92,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, regionId: true });
       setValues({ ...values, regionId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.regionId ? errorMessage?.regionIdError : undefined,
     getSuggestions: (query: string) => searchRegion(query, values.countryId),
     value: values.regionId
@@ -104,13 +106,13 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, cityId: true });
       setValues({ ...values, cityId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.cityId ? errorMessage?.cityIdError : undefined,
     getSuggestions: (query: string) => searchCity(query, values.countryId),
     value: values.cityId
   };
 
-  const attractionNameField: ITextFieldProps = {
+  const attractionNameField: InputFieldProps = {
     name: "name",
     label: "Attraction name",
     value: values.name,
@@ -118,10 +120,9 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, name: true });
       setValues({ ...values, name: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.name ? errorMessage?.nameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -133,7 +134,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, mainAttractionId: true });
       setValues({ ...values, mainAttractionId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.mainAttractionId
         ? errorMessage?.mainAttractionIdError
         : undefined,
@@ -141,7 +142,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     value: values.mainAttractionId
   };
 
-  const attractionAddressField: ITextFieldProps = {
+  const attractionAddressField: InputFieldProps = {
     name: "name",
     label: "Attraction address",
     placeholder: "Attraction address",
@@ -150,18 +151,15 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, address: true });
       setValues({ ...values, address: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.address ? errorMessage?.addressError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: false
   };
 
-  const geoLocationField: ITextFieldProps = {
+  const geoLocationField: InputFieldProps = {
     label: "Geo location",
-    iconProps: {
-      iconName: "POISolid"
-    },
+    icon: React.createElement(Location24Filled),
     placeholder: "Latitude, Longitude",
     name: "geoLocation",
     value: values.geoLocation,
@@ -172,57 +170,53 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
         geoLocation: value ?? ""
       });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.geoLocation ? errorMessage?.geoLocationError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: false
   };
 
-  const categoryDropdown: Omit<IComboBoxProps, "options"> & {
+  const categoryDropdown: Omit<ComboBoxFieldProps, "choices"> & {
     value: CategoryType;
   } = {
     placeholder: "Attraction category",
     label: "Attraction category",
     required: true,
-    value: values.category,
-    autoComplete: "on",
-    onChange: (
-      _event: React.FormEvent<IComboBox>,
-      option?: IComboBoxOption,
-      _index?: number,
-      value?: string
+    selectedValue: values.category,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      _choice?: SelectChoice,
+      inputValue?: string
     ) => {
       setTouched({ ...touched, category: true });
       setValues({
         ...values,
-        category: value ? CategoryType[value] : undefined
+        category: inputValue ? CategoryType[inputValue] : undefined
       });
     }
   };
 
-  const typeDropdown: Omit<IDropdownProps, "options"> & {
+  const typeDropdown: Omit<SelectFieldProps, "choices"> & {
     value: AttractionType;
   } = {
     placeholder: "Attraction type",
     label: "Attraction type",
     required: true,
-    value: values.type,
-    onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+    selectedValue: values.type,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
       setTouched({ ...touched, type: true });
       setValues({
         ...values,
-        type: option?.key ? AttractionType[option.key] : undefined
+        type: choice?.value ? AttractionType[choice.value] : undefined
       });
     },
-    selectedKey: values.type
+    value: values.type
   };
 
-  const tipField: ITextFieldProps = {
+  const tipField: InputFieldProps = {
     name: "name",
     label: "Tip",
     value: values.tip,
@@ -230,10 +224,9 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, tip: true });
       setValues({ ...values, tip: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.tip ? errorMessage?.tipError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     multiline: true
   };
 
@@ -250,57 +243,55 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, source: true });
       setValues({ ...values, source: value });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.source ? errorMessage?.sourceError : undefined,
     getSuggestions: searchInformationProvider,
     value: values.source
   };
 
-  const sourceFromDataPicker: IDatePickerStrings = {
+  const sourceFromDataPicker: DateInputStrings = {
     ...defaultDatePickerStrings,
-    // eslint-disable-next-line @fluentui/max-len
     isOutOfBoundsErrorMessage: "Date must be today or earlier"
   };
-  const sourceFromField: IDatePickerProps = {
+  const sourceFromField: DateInputProps = {
     placeholder: "Select recorded date...",
-    ariaLabel: "Select recorded date...",
+    "aria-label": "Select recorded date...",
     label: "Date of information recording",
-    onSelectDate: (date: Date | null | undefined): void => {
+    onChange: (date: Date | null | undefined): void => {
       setTouched({ ...touched, sourceFrom: true });
       setValues({ ...values, sourceFrom: date });
     },
     value: values.sourceFrom,
-    isRequired: true,
+    required: true,
     strings: sourceFromDataPicker,
-    maxDate: new Date(Date.now()),
+    maxDate: today,
     allowTextInput: true
   };
 
-  const today = new Date(Date.now());
   const minDate = addMonths(today, -1);
   const maxDate = addYears(today, 1);
   const optimalVisitPeriodField: DateRangePickerProps = {
     placeholder: "Select a date...",
-    ariaLabel: "Select a date",
-    onSelectStartDate: (date: Date | null | undefined): void => {
+    "aria-label": "Select a date",
+    onStartDateChange: (date: Date | null | undefined): void => {
       setTouched({ ...touched, optimalVisitPeriod: true });
-      setValues({
-        ...values,
+      setValues((currentValues) => ({
+        ...currentValues,
         optimalVisitPeriod: {
           from: date?.toISOString() ?? "",
-          to: values.optimalVisitPeriod?.to!
+          to: currentValues.optimalVisitPeriod?.to ?? ""
         }
-      });
+      }));
     },
-    onSelectEndDate: (date: Date | null | undefined): void => {
+    onEndDateChange: (date: Date | null | undefined): void => {
       setTouched({ ...touched, optimalVisitPeriod: true });
-      setValues({
-        ...values,
+      setValues((currentValues) => ({
+        ...currentValues,
         optimalVisitPeriod: {
-          from: values.optimalVisitPeriod?.from!,
+          from: currentValues.optimalVisitPeriod?.from ?? "",
           to: date?.toISOString() ?? ""
         }
-      });
+      }));
     },
     value: values.optimalVisitPeriod,
     minDate: minDate,
@@ -385,7 +376,7 @@ export const useAttractionDetailsFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const attractionNameField: ITextFieldProps = {
+  const attractionNameField: InputFieldProps = {
     name: "name",
     label: "Attraction name",
     value: values.name,
@@ -393,10 +384,9 @@ export const useAttractionDetailsFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, name: true });
       setValues({ ...values, name: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.name ? errorMessage?.nameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -408,7 +398,7 @@ export const useAttractionDetailsFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, mainAttractionId: true });
       setValues({ ...values, mainAttractionId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.mainAttractionId
         ? errorMessage?.mainAttractionIdError
         : undefined,
@@ -451,7 +441,7 @@ export const useAttractionDestinationFormField =
         setTouched({ ...touched, countryId: true });
         setValues({ ...values, countryId: id });
       },
-      onGetErrorMessage: (_value: string) =>
+      validate: (_value: string) =>
         touched.countryId ? errorMessage?.countryIdError : undefined,
       getSuggestions: searchCountry,
       value: values.countryId
@@ -465,7 +455,7 @@ export const useAttractionDestinationFormField =
         setTouched({ ...touched, regionId: true });
         setValues({ ...values, regionId: id });
       },
-      onGetErrorMessage: (_value: string) =>
+      validate: (_value: string) =>
         touched.regionId ? errorMessage?.regionIdError : undefined,
       getSuggestions: searchRegion,
       value: values.regionId
@@ -479,7 +469,7 @@ export const useAttractionDestinationFormField =
         setTouched({ ...touched, cityId: true });
         setValues({ ...values, cityId: id });
       },
-      onGetErrorMessage: (_value: string) =>
+      validate: (_value: string) =>
         touched.cityId ? errorMessage?.cityIdError : undefined,
       getSuggestions: searchCity,
       value: values.cityId
@@ -510,7 +500,7 @@ export const useAttractionAddressFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const attractionAddressField: ITextFieldProps = {
+  const attractionAddressField: InputFieldProps = {
     name: "name",
     label: "Attraction address",
     value: values.address,
@@ -518,18 +508,15 @@ export const useAttractionAddressFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, address: true });
       setValues({ ...values, address: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.address ? errorMessage?.addressError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: false
   };
 
-  const geoLocationField: ITextFieldProps = {
+  const geoLocationField: InputFieldProps = {
     label: "Geo location",
-    iconProps: {
-      iconName: "POISolid"
-    },
+    icon: React.createElement(Location24Filled),
     placeholder: "Latitude, Longitude",
     name: "geoLocation",
     value: values.geoLocation,
@@ -540,10 +527,9 @@ export const useAttractionAddressFormField = (): AttractionFormFieldProps => {
         geoLocation: value ?? ""
       });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.geoLocation ? errorMessage?.geoLocationError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: false
   };
 
@@ -569,6 +555,7 @@ export const useAttractionInfoFromFormField = (): AttractionFormFieldProps => {
 
   const [touched, setTouched] = useState(initialTouched);
   const [values, setValues] = useState(initialValues);
+  const [today] = useState(() => new Date());
   const { isValid, errorMessage } = validator.validate(values);
 
   const sourceField: ValueSearchTextProps = {
@@ -584,29 +571,28 @@ export const useAttractionInfoFromFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, source: true });
       setValues({ ...values, source: value });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.source ? errorMessage?.sourceError : undefined,
     getSuggestions: searchInformationProvider,
     value: values.source
   };
 
-  const sourceFromDataPicker: IDatePickerStrings = {
+  const sourceFromDataPicker: DateInputStrings = {
     ...defaultDatePickerStrings,
-    // eslint-disable-next-line @fluentui/max-len
     isOutOfBoundsErrorMessage: "Date must be today or earlier"
   };
-  const sourceFromField: IDatePickerProps = {
+  const sourceFromField: DateInputProps = {
     placeholder: "Select recorded date...",
-    ariaLabel: "Select recorded date...",
+    "aria-label": "Select recorded date...",
     label: "Date of information recording",
-    onSelectDate: (date: Date | null | undefined): void => {
+    onChange: (date: Date | null | undefined): void => {
       setTouched({ ...touched, sourceFrom: true });
       setValues({ ...values, sourceFrom: date });
     },
     value: values.sourceFrom,
-    isRequired: true,
+    required: true,
     strings: sourceFromDataPicker,
-    maxDate: new Date(Date.now()),
+    maxDate: today,
     allowTextInput: true
   };
 
@@ -631,33 +617,33 @@ export const useAttractionVisitPeriodFormField =
 
     const [touched, setTouched] = useState(initialTouched);
     const [values, setValues] = useState(initialValues);
+    const [today] = useState(() => new Date());
     const { isValid, errorMessage } = validator.validate(values);
 
-    const today = new Date(Date.now());
     const minDate = addMonths(today, -1);
     const maxDate = addYears(today, 1);
     const optimalVisitPeriodField: DateRangePickerProps = {
       placeholder: "Select a date...",
-      ariaLabel: "Select a visit period date",
-      onSelectStartDate: (date: Date | null | undefined): void => {
+      "aria-label": "Select a visit period date",
+      onStartDateChange: (date: Date | null | undefined): void => {
         setTouched({ ...touched, optimalVisitPeriod: true });
-        setValues({
-          ...values,
+        setValues((currentValues) => ({
+          ...currentValues,
           optimalVisitPeriod: {
             from: date?.toISOString() ?? "",
-            to: values.optimalVisitPeriod?.to!
+            to: currentValues.optimalVisitPeriod?.to ?? ""
           }
-        });
+        }));
       },
-      onSelectEndDate: (date: Date | null | undefined): void => {
+      onEndDateChange: (date: Date | null | undefined): void => {
         setTouched({ ...touched, optimalVisitPeriod: true });
-        setValues({
-          ...values,
+        setValues((currentValues) => ({
+          ...currentValues,
           optimalVisitPeriod: {
-            from: values.optimalVisitPeriod?.from!,
+            from: currentValues.optimalVisitPeriod?.from ?? "",
             to: date?.toISOString() ?? ""
           }
-        });
+        }));
       },
       value: values.optimalVisitPeriod,
       minDate: minDate,
@@ -686,7 +672,7 @@ export const useAttractionTipFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const tipField: ITextFieldProps = {
+  const tipField: InputFieldProps = {
     name: "name",
     label: "Tip",
     value: values.tip,
@@ -694,10 +680,9 @@ export const useAttractionTipFormField = (): AttractionFormFieldProps => {
       setTouched({ ...touched, tip: true });
       setValues({ ...values, tip: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.tip ? errorMessage?.tipError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     multiline: true
   };
 
@@ -722,26 +707,26 @@ export const useAttractionCategoryFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const categoryDropdown: Omit<IDropdownProps, "options"> & {
+  const categoryDropdown: Omit<SelectFieldProps, "choices"> & {
     value: CategoryType;
   } = {
     placeholder: "Attraction category",
     label: "Attraction category",
     required: true,
-    value: values.category,
-    onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+    selectedValue: values.category,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
       setTouched({ ...touched, category: true });
       setValues({
         ...values,
-        category: option?.key
-          ? CategoryType[CategoryType[option.key]]
+        category: choice?.value
+          ? CategoryType[CategoryType[choice.value]]
           : undefined
       });
-    }
+    },
+    value: values.category
   };
 
   return {
@@ -765,26 +750,26 @@ export const useAttractionTypeFormField = (): AttractionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const typeDropdown: Omit<IDropdownProps, "options"> & {
+  const typeDropdown: Omit<SelectFieldProps, "choices"> & {
     value: AttractionType;
   } = {
     placeholder: "Attraction type",
     label: "Attraction type",
     required: true,
-    value: values.type,
-    onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+    selectedValue: values.type,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
       setTouched({ ...touched, type: true });
       setValues({
         ...values,
-        type: option?.key
-          ? AttractionType[AttractionType[option.key]]
+        type: choice?.value
+          ? AttractionType[AttractionType[choice.value]]
           : undefined
       });
-    }
+    },
+    value: values.type
   };
 
   return {

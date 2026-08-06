@@ -1,15 +1,17 @@
 import {
-  DefaultButton,
-  IconButton,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   MessageBar,
-  MessageBarType,
-  Modal,
-  PrimaryButton,
-  Stack,
-  Text
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
-import { useDragOptions } from "./EditProperty.config";
+  MessageBarBody
+} from "@fluentui/react-components";
+import { Dismiss24Regular, Edit16Regular } from "@fluentui/react-icons";
+import { Flex } from "../../../ui/Flex";
+import { useBooleanState } from "../../../hooks/useBooleanState";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
 import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
@@ -18,13 +20,14 @@ import { useEffect, useRef, useState } from "react";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   const classes = useClasses();
-  const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
+  const [hideDialog, { toggle: toggleHideDialog }] = useBooleanState(true);
   const [
     blockButton,
     { setTrue: disableDiaglogButtons, setFalse: enableDiaglogButtons }
-  ] = useBoolean(false);
+  ] = useBooleanState(false);
   const [submitError, setSubmitError] = useState<string>();
   const formRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
 
   const isControlled = props.isOpen !== undefined;
   const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
@@ -33,7 +36,11 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     setSubmitError(undefined);
   }, [props.submitErrorResetKey]);
 
-  const handleClose = () => {
+  useEffect(() => {
+    setSubmitError(undefined);
+  }, [props.submitErrorResetKey]);
+
+  const handleClose = (): void => {
     setSubmitError(undefined);
     if (isControlled) {
       props.onDismiss?.();
@@ -65,7 +72,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
       if (isNameConflict) {
         formRef.current
           ?.querySelector<HTMLElement>(
-            'input:not([type="hidden"]), textarea, [role="combobox"]'
+            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]'
           )
           ?.focus();
       }
@@ -79,63 +86,78 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   return (
     <>
       {!isControlled && (
-        <IconButton
-          iconProps={{ iconName: props.editIconName ?? "Edit" }}
-          ariaLabel={props.editIconAriaLabel}
+        <Button
+          appearance="subtle"
+          data-list-edit-trigger
+          icon={props.editIcon ?? <Edit16Regular />}
+          aria-label={props.editIconAriaLabel}
           className={classes.editIcon}
           onClick={toggleHideDialog}
         />
       )}
-      <Modal
-        isOpen={isModalOpen}
-        onDismiss={handleClose}
-        isBlocking={true}
-        containerClassName={classes.modalContainer}
-        dragOptions={useDragOptions()}
+      <Dialog
+        open={isModalOpen}
+        modalType="modal"
+        onOpenChange={(_event, data) => {
+          if (!data.open) {
+            handleClose();
+          }
+        }}
       >
-        <Stack horizontal={true} className={classes.header}>
-          <Text as="h1" className={classes.heading}>
-            {props.title ?? `Modifying ${props.text}`}
-          </Text>
-          <IconButton
-            className={classes.closeIcon}
-            iconProps={{ iconName: "Cancel" }}
-            ariaLabel="Close modify popup"
-            onClick={handleClose}
-          />
-        </Stack>
-        <Stack
-          tokens={{ childrenGap: 12 }}
-          className={classes.form}
-          ref={formRef}
-          onChange={() => setSubmitError(undefined)}
+        <DialogSurface
+          className={classes.modalContainer}
+          aria-labelledby={headingId}
         >
-          <Stack.Item grow={1}>{props.children}</Stack.Item>
-          {submitError && (
-            <MessageBar messageBarType={MessageBarType.error}>
-              {submitError}
-            </MessageBar>
-          )}
-        </Stack>
-        <Stack
-          tokens={{ childrenGap: 12 }}
-          enableScopedSelectors
-          horizontalAlign="end"
-          horizontal={true}
-          className={classes.footer}
-        >
-          <PrimaryButton
-            onClick={handleSubmit}
-            text={props.submitText ?? "Update"}
-            disabled={blockButton || !props.isFormValid}
-          />
-          <DefaultButton
-            onClick={handleClose}
-            text="Cancel"
-            disabled={blockButton}
-          />
-        </Stack>
-      </Modal>
+          <DialogBody>
+            <DialogTitle
+              id={headingId}
+              className={classes.heading}
+              action={
+                <Button
+                  appearance="subtle"
+                  className={classes.closeIcon}
+                  icon={<Dismiss24Regular />}
+                  aria-label="Close modify popup"
+                  onClick={handleClose}
+                />
+              }
+            >
+              {props.title ?? `Modifying ${props.text}`}
+            </DialogTitle>
+            <DialogContent className={classes.content}>
+              <Flex
+                gap={12}
+                className={classes.form}
+                ref={formRef}
+                onChange={() => setSubmitError(undefined)}
+              >
+                {props.children}
+                {submitError && (
+                  <MessageBar intent="error">
+                    <MessageBarBody>{submitError}</MessageBarBody>
+                  </MessageBar>
+                )}
+              </Flex>
+            </DialogContent>
+            <DialogActions className={classes.footer}>
+              <Button
+                appearance="primary"
+                onClick={handleSubmit}
+                disabled={blockButton || !props.isFormValid}
+              >
+                {props.submitText ?? "Update"}
+              </Button>
+              <Button
+                appearance="secondary"
+                onClick={handleClose}
+                disabled={blockButton}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 };

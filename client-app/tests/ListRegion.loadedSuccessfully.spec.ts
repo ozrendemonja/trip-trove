@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-region-listregion--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("gridcell", { name: "Change region name from Samogitia" })
   ).toBeVisible();
@@ -20,8 +20,12 @@ test("Show list of regions with disabled delete button when no element is select
 test("Edit country dropdown shows suggestions when a valid country is typed", async ({
   page
 }) => {
-  await page
-    .locator('div[data-selection-index="1"]')
+  const row = page.getByRole("row").filter({
+    has: page.getByRole("button", {
+      name: "Change region name from Samogitia"
+    })
+  });
+  await row
     .getByRole("button", {
       name: "Change country name from Lithuania"
     })

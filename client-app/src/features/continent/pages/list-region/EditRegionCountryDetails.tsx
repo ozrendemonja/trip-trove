@@ -8,7 +8,6 @@ const EditRegionCountryDetails: React.FunctionComponent<
   EditRegionDetailsProps
 > = (props) => {
   const { formFields, isFormValid } = useRegionCountryFormField();
-  formFields.countryId.placeholder = props.text;
 
   return (
     <EditProperty
@@ -24,7 +23,11 @@ const EditRegionCountryDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <SearchText {...formFields.countryId} />
+      <SearchText
+        {...formFields.countryId}
+        placeholder={props.text}
+        suggestionsInFlow
+      />
     </EditProperty>
   );
 };

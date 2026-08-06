@@ -1,8 +1,9 @@
-import { ThemeProvider } from "@fluentui/react";
+import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { Meta, StoryObj } from "@storybook/react";
 import makeServer from "../../ServerSetup";
 import EditTripDetails from "./EditTripDetails";
 import { Trip } from "./domain/Trip.types";
+import { ComponentProps, useState } from "react";
 
 const styleOverrides = `
     body {
@@ -24,9 +25,9 @@ const meta: Meta<typeof EditTripDetails> = {
       makeServer();
       return (
         <>
-          <ThemeProvider>
+          <FluentProvider theme={webLightTheme}>
             <Story />
-          </ThemeProvider>
+          </FluentProvider>
           <style>{styleOverrides}</style>
         </>
       );
@@ -38,7 +39,24 @@ export default meta;
 
 type Story = StoryObj<typeof EditTripDetails>;
 
+const InteractiveEditTripDetails = (
+  props: ComponentProps<typeof EditTripDetails>
+) => {
+  const [isOpen, setIsOpen] = useState(props.isOpen ?? true);
+  return (
+    <EditTripDetails
+      {...props}
+      isOpen={isOpen}
+      onDismiss={() => {
+        setIsOpen(false);
+        props.onDismiss?.();
+      }}
+    />
+  );
+};
+
 export const Default: Story = {
+  render: (args) => <InteractiveEditTripDetails {...args} />,
   args: {
     trip: sampleTrip,
     isOpen: true,

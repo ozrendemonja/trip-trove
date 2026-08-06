@@ -1,3 +1,5 @@
+import type React from "react";
+
 export interface EditPropertyProps {
   /**
    * Text to display as the header
@@ -10,7 +12,7 @@ export interface EditPropertyProps {
 
   children: React.ReactNode;
 
-  editIconName?: string;
+  editIcon?: React.ReactElement;
 
   onUpdateClick: () => Promise<void | boolean>;
 
@@ -30,7 +32,12 @@ export interface EditPropertyProps {
   submitErrorResetKey?: unknown;
 
   /**
-   * Controlled mode: when provided the trigger IconButton is not rendered.
+   * Clears the submit error when this value changes.
+   */
+  submitErrorResetKey?: unknown;
+
+  /**
+   * Controlled mode: when provided, the edit trigger is not rendered.
    */
   isOpen?: boolean;
 

@@ -1,15 +1,14 @@
 import {
-  IColumn,
-  IDropdownOption,
-  Link,
-  Selection,
-  Stack,
-  Text
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  DataColumn,
+  DataSelection
+} from "../../../../shared/ui/data-table/DataTable";
+import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
+import { Link, Text } from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/City";
@@ -24,20 +23,20 @@ import { useClasses } from "./ListCity.styles";
 import { toLastReadCity } from "./ListCity.utils";
 import EditPropertyCityDetails from "./EditPropertyCityDetails";
 import EditCityRegionDetails from "./EditCityRegionDetails";
+import { Flex } from "../../../../shared/ui/Flex";
 
-const onRenderItemColumn = (
+const renderCellContent = (
   className: string,
   onUpdateClick: () => void,
-  city?: CityRow,
-  column?: IColumn
+  city: CityRow,
+  _index: number,
+  column: DataColumn
 ): JSX.Element | string | number => {
-  if (column?.key === "skipElement") {
-    return <></>;
-  }
-  if (column?.key === "name") {
+  if (column.id === "name") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Link
+          data-fluent-link
           className={className}
           href={`https://www.google.com/search?q=${city?.name}`}
           target="_blank"
@@ -51,38 +50,39 @@ const onRenderItemColumn = (
           text={city!.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "region") {
+  } else if (column.id === "region") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>{city?.region}</Text>
         <EditCityRegionDetails
           cityId={city!.id}
           text={city!.region}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
   }
 
-  return city[column?.fieldName as keyof CityRow] as string;
+  return city[column.accessor as keyof CityRow] as string;
 };
 
 // Repeated
-const sortOptions: IDropdownOption[] = [
-  { key: "DESC" as OrderOptions, text: "Newest", selected: true },
-  { key: "ASC" as OrderOptions, text: "Oldest" }
+const sortOptions: SelectChoice[] = [
+  { value: "DESC" as OrderOptions, label: "Newest" },
+  { value: "ASC" as OrderOptions, label: "Oldest" }
 ];
 
 export const CityList: React.FunctionComponent = () => {
   const classes = useClasses();
+  const pageClasses = useListPageClasses();
 
   const [items, setItems] = useState<CityRow[]>([]);
-  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
-    useBoolean(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
+    useBooleanState(true);
+  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadCity | undefined>(
     undefined
@@ -112,87 +112,85 @@ export const CityList: React.FunctionComponent = () => {
   }, [query]);
 
   return (
-    <>
+    <div className={pageClasses.pageLayout}>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of cities" />}
-      {!isLoading && (
-        <ListElement
-          items={items}
-          columns={columns}
-          listHeader={{
-            ...listHeader,
-            setItems: setSuggestions,
-            onSortOptionChange: (
-              _event: React.FormEvent<HTMLDivElement>,
-              option?: IDropdownOption,
-              _index?: number
-            ) => {
-              setOrder(option!.key as OrderOptions);
-              setCityCustomizer(new CityListCustomizer(setItems, setColumns));
-              toggleReloadData();
-            },
-            sortOptions: sortOptions,
-            items: suggestions,
-            onSearchTyped: (
-              _event?: React.ChangeEvent<HTMLInputElement>,
-              newValue?: string
-            ) => {
-              setQuery(newValue ?? "");
-            },
-            onFindItem: (id: number) => {
-              getCityById(id).then((data) => {
-                setCityCustomizer(() => {
-                  return new CityListCustomizer(
-                    setItems,
-                    setColumns
-                  ).withFixedRows([CityRow.from(data)]);
-                });
-                setSuggestions([]);
-              });
-            }
-          }}
-          addRowOptions={{
-            text: "Add new city",
-            onAddRow: () => navigate("/add-city")
-          }}
-          deleteRowOptions={{
-            text: "Delete city",
-            onDeleteRow: async (selection: Selection<CityRow>) => {
-              await deleteRows(selection.getSelection());
-              setCityCustomizer(new CityListCustomizer(setItems, setColumns));
-              toggleReloadData();
-            }
-          }}
-          onRenderMissingItem={(_index: number) =>
-            onRenderWhenNoMoreItems(toggleReloadData)
-          }
-          onRenderItemColumn={(
-            item?: CityRow,
-            _index?: number,
-            column?: IColumn
-          ) =>
-            onRenderItemColumn(
-              classes.linkField,
-              () => {
+      <main className={pageClasses.content}>
+        {isLoading && <LoadingSpinner text="Updating list of cities" />}
+        {!isLoading && (
+          <ListElement
+            items={items}
+            columns={columns}
+            listHeader={{
+              ...listHeader,
+              setItems: setSuggestions,
+              onSortOptionChange: (_event, choice) => {
+                setOrder(choice!.value as OrderOptions);
                 setCityCustomizer(new CityListCustomizer(setItems, setColumns));
                 toggleReloadData();
               },
-              item,
-              column
-            )
-          }
-          selectedItemName={(selection: Selection<City>) => {
-            if (
-              selection &&
-              selection.getSelection() &&
-              selection.getSelection().length > 0
-            ) {
-              return selection.getSelection()[0].name;
+              sortOptions: sortOptions,
+              selectedSortValue: order,
+              items: suggestions,
+              onSearchTyped: (
+                _event?: React.ChangeEvent<HTMLInputElement>,
+                newValue?: string
+              ) => {
+                setQuery(newValue ?? "");
+              },
+              onFindItem: (id) => {
+                if (typeof id !== "number") return;
+                getCityById(id).then((data) => {
+                  setCityCustomizer(() => {
+                    return new CityListCustomizer(
+                      setItems,
+                      setColumns
+                    ).withFixedRows([CityRow.from(data)]);
+                  });
+                  setSuggestions([]);
+                });
+              }
+            }}
+            addRowOptions={{
+              text: "Add new city",
+              onAddRow: () => navigate("/add-city")
+            }}
+            deleteRowOptions={{
+              text: "Delete city",
+              onDeleteRow: async (selection: DataSelection<CityRow>) => {
+                await deleteRows(selection.selectedRows());
+                setCityCustomizer(new CityListCustomizer(setItems, setColumns));
+                toggleReloadData();
+              }
+            }}
+            onLoadMore={(_index: number) =>
+              onRenderWhenNoMoreItems(toggleReloadData)
             }
-          }}
-        />
-      )}
-    </>
+            renderCell={(item: CityRow, index: number, column: DataColumn) =>
+              renderCellContent(
+                classes.linkField,
+                () => {
+                  setCityCustomizer(
+                    new CityListCustomizer(setItems, setColumns)
+                  );
+                  toggleReloadData();
+                },
+                item,
+                index,
+                column
+              )
+            }
+            getSelectedItemName={(selection: DataSelection<City>) => {
+              const selectedRows = selection.selectedRows();
+              if (selectedRows.length > 0) {
+                return selectedRows[0].name;
+              }
+
+              return "";
+            }}
+          />
+        )}
+      </main>
+    </div>
   );
 };
 

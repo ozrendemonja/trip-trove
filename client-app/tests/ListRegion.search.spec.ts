@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-region-listregion--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("gridcell", { name: "Change region name from Samogitia" })
   ).toBeVisible();

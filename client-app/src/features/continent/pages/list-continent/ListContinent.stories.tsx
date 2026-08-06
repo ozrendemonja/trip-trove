@@ -51,10 +51,11 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
-const waitForCanvasToBecomeAccessible = (
+const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 const waitForContinentsToLoad = (
   canvasElement: HTMLElement
@@ -87,7 +88,7 @@ const selectContinentRow = async (
 ): Promise<HTMLElement> => {
   const row = within(canvasElement)
     .getByRole("button", { name: `Change value for ${name}` })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
   await user.click(within(row).getByRole("radio", { name: "select row" }));
   return row;
 };
@@ -130,6 +131,83 @@ const continentOrder = (canvasElement: HTMLElement): string[] =>
     );
 
 export const Primary: Story = {};
+
+export const SearchIgnoresShortInput: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+
+    await user.type(within(canvasElement).getByRole("searchbox"), "Eu");
+
+    expect(
+      within(canvasElement).queryByRole("menuitem", { name: "Europe" })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const SearchShowsSubstringMatches: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+
+    await user.type(within(canvasElement).getByRole("searchbox"), "rop");
+
+    const suggestions = await within(canvasElement).findAllByRole("menuitem", {
+      name: "Europe"
+    });
+    expect(suggestions).toHaveLength(1);
+  }
+};
+
+export const ClearsSearchInputAndSuggestions: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+
+    await user.type(within(canvasElement).getByRole("searchbox"), "rop");
+    await within(canvasElement).findByRole("menuitem", { name: "Europe" });
+    await user.click(
+      within(canvasElement).getByRole("button", { name: "Clear text" })
+    );
+
+    await waitFor(() =>
+      expect(
+        within(canvasElement).queryByRole("menuitem", { name: "Europe" })
+      ).not.toBeInTheDocument()
+    );
+    expect(within(canvasElement).getByRole("searchbox")).toHaveValue("");
+  }
+};
+
+export const SelectsSuggestionFromDropdown: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForContinentsToLoad(canvasElement);
+
+    await user.type(within(canvasElement).getByRole("searchbox"), "ustr");
+    await user.click(
+      await within(canvasElement).findByRole("menuitem", { name: "Australia" })
+    );
+
+    await waitFor(() =>
+      expect(
+        within(canvasElement).queryByRole("button", {
+          name: "Change value for Europe"
+        })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      within(canvasElement).getByRole("button", {
+        name: "Change value for Australia"
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(canvasElement).getAllByRole("button", {
+        name: /Change value for/
+      })
+    ).toHaveLength(1);
+  }
+};
 
 export const EditContinentNameShowsErrorWhenEmpty: Story = {
   play: async ({ canvasElement }) => {
@@ -278,7 +356,7 @@ export const SelectsContinentViaCheckbox: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change value for Australia" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 
@@ -295,13 +373,13 @@ export const SelectsContinentViaRowClick: Story = {
 
     const row = within(canvasElement)
       .getByRole("button", { name: "Change value for Asia" })
-      .closest('div[role="row"]') as HTMLElement;
+      .closest('[role="row"]') as HTMLElement;
     const checkbox = within(row).getByRole("radio", { name: "select row" });
     expect(checkbox).not.toBeChecked();
 
     const cell = within(canvasElement)
       .getByRole("link", { name: "Asia" })
-      .closest('div[role="gridcell"]') as HTMLElement;
+      .closest('[role="gridcell"]') as HTMLElement;
     await user.click(cell);
 
     expect(checkbox).toBeChecked();

@@ -1,16 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Button, mergeClasses, Text } from "@fluentui/react-components";
 import "../styles/AttractionItem.css";
 import { Rating } from "../../my-trip/domain/Trip.types";
-import {
-  Stack,
-  Text,
-  TextField,
-  PrimaryButton,
-  DefaultButton,
-  IconButton,
-  Spinner,
-  SpinnerSize
-} from "@fluentui/react";
+import { Spinner } from "@fluentui/react-components";
+import { InputField } from "../../../shared/ui/forms/InputField";
+import { Dismiss24Regular } from "@fluentui/react-icons";
 import type { AttractionItemProps } from "./AttractionItem.types";
 import { useReviewStyles } from "./AttractionItem.styles";
 import { isShortcut, keyComboFromEvent } from "../utils/Shortcuts";
@@ -19,6 +13,7 @@ import VisitHistoryBadge from "./VisitHistoryBadge";
 import PermanentlyClosedStatus, {
   PermanentlyClosedSince
 } from "../../../shared/attraction-status/PermanentlyClosedStatus";
+import { Flex, FlexItem } from "../../../shared/ui/Flex";
 
 const isFormSubmit = (e: React.KeyboardEvent): boolean =>
   isShortcut("form.submit", keyComboFromEvent(e));
@@ -274,7 +269,9 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
               ta.select();
               try {
                 document.execCommand("copy");
-              } catch {}
+              } catch {
+                // Clipboard access is best-effort in older browsers.
+              }
               document.body.removeChild(ta);
             }
           }}
@@ -603,19 +600,15 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
         <div className={review.reviewSection}>
           {isAttached ? (
             <div className={review.reviewAttached}>
-              <Stack
-                horizontal
-                verticalAlign="center"
-                tokens={{ childrenGap: 8 }}
-              >
-                <Stack.Item grow>
-                  <Stack tokens={{ childrenGap: 2 }}>
-                    <Text styles={review.attachedRating}>
+              <Flex direction="row" align="center" gap={8}>
+                <FlexItem grow>
+                  <Flex gap={2}>
+                    <Text className={review.attachedRating}>
                       {RATING_OPTION_BY_VALUE[reviewData.rating].emoji}{" "}
                       {RATING_OPTION_BY_VALUE[reviewData.rating].label}
                     </Text>
                     {reviewData.reviewNote && (
-                      <Text styles={review.attachedNote}>
+                      <Text className={review.attachedNote}>
                         {reviewData.reviewNote}
                       </Text>
                     )}
@@ -635,42 +628,50 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                           : "Would visit again?"}
                       </button>
                     ) : (
-                      <Text styles={review.attachedNote}>
+                      <Text className={review.attachedNote}>
                         {reviewData.wouldVisitAgain
                           ? "🔁 Would visit again"
                           : "🚫 Would not visit again"}
                       </Text>
                     )}
-                  </Stack>
-                </Stack.Item>
-                <IconButton
-                  iconProps={{ iconName: "Cancel" }}
-                  styles={review.removeBtn}
+                  </Flex>
+                </FlexItem>
+                <Button
+                  appearance="subtle"
+                  icon={<Dismiss24Regular />}
+                  className={review.removeButton}
                   onClick={handleDetach}
                   disabled={reviewSaving}
                   title="Remove from trip"
-                  ariaLabel="Remove from trip"
+                  aria-label="Remove from trip"
                 />
-              </Stack>
+              </Flex>
             </div>
           ) : (
             <div className={review.reviewForm}>
-              <Stack tokens={{ childrenGap: 6 }}>
-                <Stack horizontal tokens={{ childrenGap: 4 }}>
+              <Flex gap={6}>
+                <Flex direction="row" gap={4}>
                   {RATING_OPTIONS.map((opt) => (
-                    <DefaultButton
+                    <Button
+                      appearance="secondary"
                       key={opt.value}
-                      styles={review.ratingBtn(reviewRating === opt.value)}
+                      className={mergeClasses(
+                        review.ratingButton,
+                        reviewRating === opt.value
+                          ? review.ratingButtonActive
+                          : review.ratingButtonInactive
+                      )}
                       onClick={() => setReviewRating(opt.value)}
                       title={opt.label}
-                      ariaLabel={opt.label}
+                      aria-label={opt.label}
+                      aria-pressed={reviewRating === opt.value}
                     >
                       {opt.emoji}
-                    </DefaultButton>
+                    </Button>
                   ))}
-                </Stack>
-                <TextField
-                  styles={review.noteInput}
+                </Flex>
+                <InputField
+                  className={review.noteInput}
                   value={reviewNote}
                   onChange={(_e, newValue) =>
                     setReviewNote((newValue ?? "").slice(0, 512))
@@ -687,34 +688,32 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                     }
                   }}
                 />
-                <Stack
-                  horizontal
-                  verticalAlign="center"
-                  tokens={{ childrenGap: 6 }}
-                  styles={{ root: { alignSelf: "flex-start" } }}
+                <Flex
+                  direction="row"
+                  align="center"
+                  gap={6}
+                  className={review.reviewActions}
                 >
-                  <PrimaryButton
-                    styles={review.addBtn}
+                  <Button
+                    appearance="primary"
+                    className={review.addButton}
                     onClick={handleAttach}
                     disabled={reviewSaving}
                   >
-                    {reviewSaving ? (
-                      <Spinner size={SpinnerSize.xSmall} />
-                    ) : (
-                      "+ Add to trip"
-                    )}
-                  </PrimaryButton>
+                    {reviewSaving ? <Spinner size="tiny" /> : "+ Add to trip"}
+                  </Button>
                   {(reviewRating !== "AVERAGE" || reviewNote !== "") && (
-                    <DefaultButton
-                      styles={review.clearBtn}
+                    <Button
+                      appearance="secondary"
+                      className={review.clearButton}
                       onClick={handleClearReview}
                       disabled={reviewSaving}
                     >
                       Clear
-                    </DefaultButton>
+                    </Button>
                   )}
-                </Stack>
-              </Stack>
+                </Flex>
+              </Flex>
             </div>
           )}
         </div>

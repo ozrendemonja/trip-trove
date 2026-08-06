@@ -1,17 +1,15 @@
 import {
-  DefaultButton,
+  Button,
   Dialog,
-  DialogFooter,
-  DialogType,
-  Icon,
-  IconButton,
-  initializeIcons,
-  PrimaryButton
-} from "@fluentui/react";
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle
+} from "@fluentui/react-components";
+import { Prohibited16Regular } from "@fluentui/react-icons";
 import React, { useState } from "react";
 import "./PermanentlyClosedStatus.css";
-
-initializeIcons();
 
 interface PermanentlyClosedStatusProps {
   attractionName: string;
@@ -59,11 +57,12 @@ const PermanentlyClosedStatus: React.FC<PermanentlyClosedStatusProps> = ({
     : `Mark ${attractionName} as permanently closed`;
 
   const status = onChange ? (
-    <IconButton
+    <Button
+      appearance="subtle"
       className={`permanently-closed-status ${isClosed ? "is-closed" : "is-open"}`}
-      iconProps={{ iconName: "ChromeClose" }}
+      icon={<Prohibited16Regular />}
       title={statusLabel}
-      ariaLabel={statusLabel}
+      aria-label={statusLabel}
       onClick={() => setDialogOpen(true)}
     />
   ) : isClosed ? (
@@ -73,7 +72,7 @@ const PermanentlyClosedStatus: React.FC<PermanentlyClosedStatusProps> = ({
       role="img"
       aria-label={statusLabel}
     >
-      <Icon iconName="ChromeClose" aria-hidden="true" />
+      <Prohibited16Regular aria-hidden="true" />
     </span>
   ) : null;
 
@@ -82,30 +81,46 @@ const PermanentlyClosedStatus: React.FC<PermanentlyClosedStatusProps> = ({
       {status}
       {onChange && (
         <Dialog
-          hidden={!dialogOpen}
-          onDismiss={() => setDialogOpen(false)}
-          dialogContentProps={{
-            type: DialogType.normal,
-            title: isClosed
-              ? "Reopen this attraction?"
-              : "Mark as permanently closed?",
-            subText: isClosed
-              ? `${attractionName} will return to the column suggested by its visit history.`
-              : `${attractionName} will move to Excluded Attractions and stay there in future trip plans.`
+          open={dialogOpen}
+          modalType="alert"
+          onOpenChange={(_event, data) => {
+            if (!data.open) {
+              setDialogOpen(false);
+            }
           }}
-          modalProps={{ isBlocking: true }}
         >
-          <DialogFooter>
-            <PrimaryButton
-              className={isClosed ? undefined : "closure-dialog-confirm"}
-              text={isClosed ? "Reopen attraction" : "Mark permanently closed"}
-              onClick={() => {
-                onChange(!isClosed);
-                setDialogOpen(false);
-              }}
-            />
-            <DefaultButton text="Cancel" onClick={() => setDialogOpen(false)} />
-          </DialogFooter>
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>
+                {isClosed
+                  ? "Reopen this attraction?"
+                  : "Mark as permanently closed?"}
+              </DialogTitle>
+              <DialogContent>
+                {isClosed
+                  ? `${attractionName} will return to the column suggested by its visit history.`
+                  : `${attractionName} will move to Excluded Attractions and stay there in future trip plans.`}
+              </DialogContent>
+              <DialogActions>
+                <Button
+                  appearance="primary"
+                  className={isClosed ? undefined : "closure-dialog-confirm"}
+                  onClick={() => {
+                    onChange(!isClosed);
+                    setDialogOpen(false);
+                  }}
+                >
+                  {isClosed ? "Reopen attraction" : "Mark permanently closed"}
+                </Button>
+                <Button
+                  appearance="secondary"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
         </Dialog>
       )}
     </>

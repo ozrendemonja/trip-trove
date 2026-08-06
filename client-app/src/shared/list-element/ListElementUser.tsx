@@ -1,16 +1,7 @@
-import { initializeIcons } from "@fluentui/react";
-import {
-  CheckboxVisibility,
-  ConstrainMode,
-  DetailsList,
-  DetailsListLayoutMode,
-  SelectionMode
-} from "@fluentui/react/lib/DetailsList";
+import { DataTable } from "../ui/data-table/DataTable";
 import React from "react";
 import { useClasses } from "./ListElement.styles";
 import { ListElementUserProps } from "./ListElement.types";
-
-initializeIcons();
 
 export const ListElementUser: React.FunctionComponent<ListElementUserProps> = (
   props
@@ -20,21 +11,14 @@ export const ListElementUser: React.FunctionComponent<ListElementUserProps> = (
   const columns = props.columns;
 
   return (
-    <DetailsList
+    <DataTable
       className={classes.listBody}
-      setKey={`Attractions-DetailsList`}
-      items={sortedItems ?? []}
+      rows={sortedItems ?? []}
       columns={columns}
-      checkboxVisibility={CheckboxVisibility.hidden}
-      layoutMode={DetailsListLayoutMode.justified}
-      isHeaderVisible={true}
-      selectionMode={SelectionMode.none}
-      constrainMode={ConstrainMode.unconstrained}
-      ariaLabelForListHeader="Column attraction headers"
-      onRenderMissingItem={props.onRenderMissingItem}
-      onRenderItemColumn={props.onRenderItemColumn}
-      onRenderRow={props.onRenderRow}
-      ariaLabelForGrid="Item details"
+      aria-label="Item details"
+      onLoadMore={props.onLoadMore}
+      renderCell={props.renderCell}
+      getRowClassName={props.getRowClassName}
     />
   );
 };

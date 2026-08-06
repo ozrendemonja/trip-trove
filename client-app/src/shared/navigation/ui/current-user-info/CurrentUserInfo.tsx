@@ -1,21 +1,35 @@
-import { IconButton } from "@fluentui/react";
-import { Persona, PersonaPresence } from "@fluentui/react/lib/Persona";
-import { Stack } from "@fluentui/react/lib/Stack";
+import { Avatar, Button } from "@fluentui/react-components";
+import { SignOut24Regular } from "@fluentui/react-icons";
 import { CurrentUserInfoProps } from "./CurrentUserInfo.types";
+import { Flex } from "../../../ui/Flex";
 
 const CurrentUserInfo: React.FunctionComponent<CurrentUserInfoProps> = (
   props
 ) => {
+  const avatarSize = props.avatarSize ?? 26;
+
   return (
-    <Stack horizontal={true}>
-      <Persona
-        {...props}
-        presence={PersonaPresence.none}
-        showInitialsUntilImageLoads={true}
-        coinSize={props.coinSize ?? 26}
-      />
-      <IconButton iconProps={{ iconName: "SignOut" }} />
-    </Stack>
+    <Flex direction="row" align="center" gap={8}>
+      <Flex direction="row" align="center" gap={8}>
+        <Avatar
+          image={props.imageUrl ? { src: props.imageUrl } : undefined}
+          initials={props.imageInitials}
+          name={props.text}
+          aria-label={props.imageAlt ?? props.text}
+          style={{
+            width: avatarSize,
+            height: avatarSize,
+            backgroundColor: props.initialsColor,
+            color: props.initialsTextColor
+          }}
+        />
+        <div>
+          <div>{props.text}</div>
+          {props.secondaryText && <div>{props.secondaryText}</div>}
+        </div>
+      </Flex>
+      <Button appearance="subtle" icon={<SignOut24Regular />} />
+    </Flex>
   );
 };
 

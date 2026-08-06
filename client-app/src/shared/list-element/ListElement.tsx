@@ -1,23 +1,13 @@
-import { initializeIcons, Stack } from "@fluentui/react";
-import {
-  CheckboxVisibility,
-  ConstrainMode,
-  DetailsList,
-  DetailsListLayoutMode,
-  Selection,
-  SelectionMode
-} from "@fluentui/react/lib/DetailsList";
+import { DataTable, DataSelection } from "../ui/data-table/DataTable";
 import React, { useState } from "react";
 import { useClasses } from "./ListElement.styles";
 import { ListElementProps } from "./ListElement.types";
 import DeleteDialog from "./ui/delete-dialog/DeleteDialog";
 import ListHeader from "./ui/list-header/ListHeader";
+import { Flex } from "../ui/Flex";
+import { mergeClasses } from "@fluentui/react-components";
 
-initializeIcons();
-
-export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
-  props
-) => {
+export const ListElement = <T,>(props: ListElementProps<T>) => {
   const classes = useClasses();
   const sortedItems = props.items;
   const columns = props.columns;
@@ -25,20 +15,34 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
   const [haveSelectedItem, setHaveSelectedItem] = useState(true);
   const [selectedItemName, setSelectedItemName] = useState("");
   const onSelectedItemChange = (): void => {
-    setHaveSelectedItem(selection.getSelectedCount() == 0);
-    setSelectedItemName(props.selectedItemName(selection));
+    setHaveSelectedItem(selection.selectedCount() === 0);
+    setSelectedItemName(props.getSelectedItemName(selection));
   };
   const selection = React.useMemo(() => {
-    const selection = new Selection({
-      onSelectionChanged: onSelectedItemChange
+    const selection = new DataSelection<T>({
+      onChange: onSelectedItemChange
     });
-    selection.setItems(sortedItems, false);
+    selection.replaceRows(sortedItems, false);
     return selection;
   }, []);
 
+  const table = (
+    <DataTable
+      className={mergeClasses(classes.listBody, props.tableClassName)}
+      rows={sortedItems ?? []}
+      selection={selection}
+      columns={columns}
+      selectable
+      aria-label="Item details"
+      selectionButtonAriaLabel="select row"
+      onLoadMore={props.onLoadMore}
+      renderCell={props.renderCell}
+    />
+  );
+
   return (
     <>
-      <Stack className={classes.root}>
+      <Flex className={mergeClasses(classes.root, props.rootClassName)}>
         <ListHeader {...props.listHeader} />
         <DeleteDialog
           selectedItem={{
@@ -51,33 +55,12 @@ export const ListElement: React.FunctionComponent<ListElementProps<T>> = (
             onDeleteRow: () => props.deleteRowOptions.onDeleteRow(selection)
           }}
         />
-      </Stack>
-      <DetailsList
-        className={classes.listBody}
-        setKey={`${props.listHeader.text}-DetailsList`}
-        items={sortedItems ?? []}
-        selection={selection}
-        selectionPreservedOnEmptyClick={true}
-        enterModalSelectionOnTouch={true}
-        columns={columns}
-        checkboxVisibility={CheckboxVisibility.onHover}
-        layoutMode={DetailsListLayoutMode.justified}
-        isHeaderVisible={true}
-        selectionMode={SelectionMode.single}
-        constrainMode={ConstrainMode.unconstrained}
-        selectionZoneProps={{
-          selection: selection,
-          disableAutoSelectOnInputElements: true,
-          selectionMode: SelectionMode.single
-        }}
-        ariaLabelForListHeader="Column headers. Click to sort."
-        ariaLabelForSelectAllCheckbox="Select all rows"
-        ariaLabelForSelectionColumn="Toggle selection TEST"
-        checkButtonAriaLabel="select row"
-        onRenderMissingItem={props.onRenderMissingItem}
-        onRenderItemColumn={props.onRenderItemColumn}
-        ariaLabelForGrid="Item details"
-      />
+      </Flex>
+      {props.tableContainerClassName ? (
+        <div className={props.tableContainerClassName}>{table}</div>
+      ) : (
+        table
+      )}
     </>
   );
 };

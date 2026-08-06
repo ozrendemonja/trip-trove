@@ -21,7 +21,6 @@ describe("parseGoogleMapsUrl", () => {
 
   test("prefers @lat,lng (URL bar viewport) over !3d!4d data pin", () => {
     const url =
-      // eslint-disable-next-line @fluentui/max-len
       "https://www.google.com/maps/place/This+is+Holland/@52.3841897,4.899621,17z/data=!4m6!3m5!1s0x47c609b4697a032d:0xac3f00acb40cd7c5!8m2!3d52.3841865!4d4.9021959!16s%2Fg%2F11fxwqjfjz";
     const parsed = parseGoogleMapsUrl(url);
     expect(parsed).toEqual({
@@ -33,7 +32,6 @@ describe("parseGoogleMapsUrl", () => {
 
   test("falls back to !3d!4d when no @lat,lng present", () => {
     const url =
-      // eslint-disable-next-line @fluentui/max-len
       "https://www.google.com/maps/place/Eiffel+Tower/data=!3m1!4b1!4m6!3m5!1s0x47e66e2964e34e2d:0x8ddca9ee380ef7e0!8m2!3d48.8583701!4d2.2922926!16zL20vMDJqODE";
     const parsed = parseGoogleMapsUrl(url);
     expect(parsed).toEqual({
@@ -124,7 +122,6 @@ describe("parseGoogleMapsUrl", () => {
 
   test("read correctly values from the URL", () => {
     const url =
-      // eslint-disable-next-line @fluentui/max-len
       "https://www.google.com/maps/place/This+is+Holland/@52.3841897,4.899621,17z/data=!4m6!3m5!1s0x47c609b4697a032d:0xac3f00acb40cd7c5!8m2!3d52.3841865!4d4.9021959!16s%2Fg%2F11fxwqjfjz?hl=en&entry=ttu&g_ep=EgoyMDI2MDUzMS4wIKXMDSoASAFQAw%3D%3D";
     const parsed = parseGoogleMapsUrl(url);
     expect(parsed).toEqual({

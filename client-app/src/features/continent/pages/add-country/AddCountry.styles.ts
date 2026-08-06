@@ -1,46 +1,42 @@
-import { mergeStyleSets, useTheme } from "@fluentui/react";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
-export const useClasses = () => {
-  const theme = useTheme();
-
-  return mergeStyleSets({
-    // TODO Repeating
-    root: {
-      padding: "12px",
-      maxHeight: "90vh",
-      maxWidth: "1200px",
-      borderRadius: "30px",
-      background: theme.palette.white,
-      display: "flex",
-      flexDirection: "column"
-    },
-    header: {
-      fontSize: "30px",
-      marginLeft: "25px",
-      marginTop: "5px",
-      fontWeight: "600"
-    },
-    formText: {
-      maxWidth: "1200px",
-      marginLeft: "25px"
-    },
-    formDropdown: {
-      paddingTop: "15px",
-      selectors: {
-        ".ms-Dropdown": {
-          width: "300px"
-        }
-      }
-    },
-    saveError: {
-      marginTop: "24px",
-      marginLeft: "25px",
-      maxWidth: "1200px"
-    },
-    footer: {
-      height: "40px",
-      width: "100%",
-      marginTop: "48px"
-    }
-  });
-};
+export const useClasses = makeStyles({
+  // TODO Repeating
+  root: {
+    ...shorthands.padding("12px"),
+    maxHeight: "90vh",
+    maxWidth: "1200px",
+    ...shorthands.borderRadius("30px"),
+    backgroundColor: tokens.colorNeutralBackground1,
+    display: "flex",
+    flexDirection: "column"
+  },
+  header: {
+    fontSize: "30px",
+    marginLeft: "25px",
+    marginTop: "5px",
+    fontWeight: "600"
+  },
+  headerDivider: {
+    marginTop: "16px",
+    marginBottom: "16px"
+  },
+  formText: {
+    maxWidth: "1200px",
+    marginLeft: "25px"
+  },
+  formDropdown: {
+    paddingTop: "15px",
+    width: "300px"
+  },
+  saveError: {
+    marginTop: "24px",
+    marginLeft: "25px",
+    maxWidth: "1200px"
+  },
+  footer: {
+    height: "40px",
+    width: "100%",
+    marginTop: "48px"
+  }
+});

@@ -1,4 +1,4 @@
-import { TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeCountryDetails } from "../../infra/ManagerApi";
 import { useCountryDetailsFormField } from "../add-country/AddCountry.config";
@@ -8,7 +8,6 @@ const EditPropertyCountryDetails: React.FunctionComponent<
   EditCountryDetailsProps
 > = (props) => {
   const { formFields, isFormValid } = useCountryDetailsFormField();
-  formFields.countryName.placeholder = props.text;
 
   return (
     <EditProperty
@@ -24,7 +23,7 @@ const EditPropertyCountryDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <TextField {...formFields.countryName} />
+      <InputField {...formFields.countryName} placeholder={props.text} />
     </EditProperty>
   );
 };

@@ -1,4 +1,4 @@
-import { TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeContinentName } from "../../infra/ManagerApi";
 import { useContinentFormField } from "../add-continent/AddContinent.config";
@@ -8,7 +8,6 @@ const EditContinentDetails: React.FunctionComponent<
   EditContinentDetailsProps
 > = (props) => {
   const { formFields, isFormValid } = useContinentFormField();
-  formFields.continentName.placeholder = props.text;
 
   return (
     <EditProperty
@@ -21,7 +20,7 @@ const EditContinentDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <TextField {...formFields.continentName} />
+      <InputField {...formFields.continentName} placeholder={props.text} />
     </EditProperty>
   );
 };

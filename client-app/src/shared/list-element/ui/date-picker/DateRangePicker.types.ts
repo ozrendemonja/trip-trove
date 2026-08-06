@@ -1,15 +1,18 @@
-import { Period } from "../../../../features/continent/pages/add-attraction/AddAttraction.types";
+export type Period = {
+  from: string;
+  to: string;
+};
 
 export type DateRangePickerProps = {
   placeholder?: string;
-  ariaLabel?: string;
+  "aria-label"?: string;
   value?: Period;
-  onSelectStartDate?: (date: Date | null | undefined) => void;
-  onSelectEndDate?: (date: Date | null | undefined) => void;
+  onStartDateChange?: (date: Date | null | undefined) => void;
+  onEndDateChange?: (date: Date | null | undefined) => void;
   minDate?: Date;
   maxDate?: Date;
   allowTextInput?: boolean;
   fromDate?: string;
   toDate?: string;
   disable: boolean;
-}
+};

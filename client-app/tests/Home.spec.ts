@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-home--primary"
   );
 
-  await page.waitForSelector(".ms-Button");
+  await page.getByRole("button").first().waitFor();
 });
 
 test("Expend dashboard list when click on the text", async ({ page }) => {

@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("Save button is disabled when no data is provided", async ({ page }) => {
-  await page.waitForSelector(".ms-Button");
+  await page.getByRole("button").first().waitFor();
 
   await expect(page).toHaveScreenshot({ fullPage: true });
 });
@@ -38,7 +38,7 @@ test("Save button is enabled when only country, region, attraction name, categor
   await page.getByRole("option", { name: "STABLE" }).click();
   await page.getByLabel("Where information comes from").fill("Test info");
   await page
-    .getByRole("combobox", { name: "Select recorded date..." })
+    .getByRole("combobox", { name: "Date of information recording" })
     .fill("Mon Feb 17 2025");
   await page.getByRole("button", { name: "Cancel" }).focus();
 

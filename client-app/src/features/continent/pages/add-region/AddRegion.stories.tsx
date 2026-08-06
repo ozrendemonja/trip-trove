@@ -13,6 +13,7 @@ const meta: Meta<typeof AddRegion> = {
   component: AddRegion,
   decorators: [
     (Story) => {
+      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -51,10 +52,10 @@ const setupUser = (): User =>
   userEvent.setup({ pointerEventsCheck: 0, delay: null });
 
 const regionNameField = (canvasElement: HTMLElement): HTMLElement =>
-  within(canvasElement).getByLabelText("Region name");
+  within(canvasElement).getByLabelText(/^Region name/);
 
 const countryField = (canvasElement: HTMLElement): HTMLElement =>
-  within(canvasElement).getByLabelText("Select a country");
+  within(canvasElement).getByLabelText(/^Select a country/);
 
 const saveButton = (canvasElement: HTMLElement): HTMLElement =>
   within(canvasElement).getByRole("button", { name: "Save" });
@@ -112,6 +113,9 @@ export const DisablesSaveByDefault: Story = {
     expect(
       canvas.getByRole("heading", { name: "Add Region" })
     ).toBeInTheDocument();
+    expect(canvas.getAllByText("*")).toHaveLength(2);
+    expect(regionNameField(canvasElement)).toBeRequired();
+    expect(countryField(canvasElement)).toBeRequired();
     expect(saveButton(canvasElement)).toBeDisabled();
   }
 };

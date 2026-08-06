@@ -47,10 +47,11 @@ export const overlay = (
   canvasElement: HTMLElement
 ): ReturnType<typeof within> => within(canvasElement.ownerDocument.body);
 
-export const waitForCanvasToBecomeAccessible = (
+export const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 export const searchFor = async (
   canvasElement: HTMLElement,
@@ -94,7 +95,7 @@ export const rowOf = (
     .getByRole("button", {
       name: `Change attraction details from ${attractionName}`
     })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
 
 export const selectAttractionRow = async (
   canvasElement: HTMLElement,
@@ -115,7 +116,7 @@ export const openAttractionDeleteDialog = async (
   await waitFor(() =>
     expect(
       within(canvasElement).getByRole("menuitem", { name: "Delete attraction" })
-    ).not.toHaveAttribute("aria-disabled", "true")
+    ).toBeEnabled()
   );
   await user.click(
     within(canvasElement).getByRole("menuitem", { name: "Delete attraction" })
@@ -152,6 +153,20 @@ export const pickSuggestion = async (
   );
 };
 
+export const expectSuggestionBelowInput = (
+  input: HTMLElement,
+  suggestion: HTMLElement
+): void => {
+  const inputControl =
+    input.closest<HTMLElement>(".fui-Input, .fui-Textarea") ?? input;
+  const inputRect = inputControl.getBoundingClientRect();
+  const suggestionRect = suggestion.getBoundingClientRect();
+
+  expect(Math.abs(suggestionRect.left - inputRect.left)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.right - inputRect.right)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.top - inputRect.bottom)).toBeLessThan(1);
+};
+
 export const updateButton = (canvasElement: HTMLElement): HTMLElement =>
   overlay(canvasElement).getByRole("button", { name: "Update" });
 
@@ -164,6 +179,6 @@ export const modalDropdown = (
 ): HTMLElement => {
   const modal = overlay(canvasElement)
     .getByRole("heading", { name: headingName })
-    .closest(".ms-Modal") as HTMLElement;
+    .closest('[role="dialog"]') as HTMLElement;
   return within(modal).getByRole("combobox");
 };

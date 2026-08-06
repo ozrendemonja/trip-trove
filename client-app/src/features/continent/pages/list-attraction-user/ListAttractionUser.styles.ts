@@ -1,5 +1,4 @@
-import { IDetailsRowStyles, mergeStyleSets, useTheme } from "@fluentui/react";
-import { AttractionVisitStatus } from "../../domain/Attraction.types";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 // Colours borrowed from the countries map so the list tells the same story:
 // gold marks a place you still long for, grey a place you've already had your
@@ -11,69 +10,253 @@ const DONE_BG = "#eaedf0";
 const DONE_BG_HOVER = "#e1e5e9";
 const DONE_INK = "#5b666c";
 
-export const useClasses = () => {
-  const theme = useTheme();
-
-  return mergeStyleSets({
-    root: {
-      display: "flex",
-      justifyContent: "space-between",
-      flexWrap: "wrap",
-      padding: "12px",
-      paddingBottom: "0px",
-      maxHeight: "90%",
-      maxWidth: "85%",
-      borderRadius: "30px 30px 0 0",
-      background: theme.palette.white
+export const useClasses = makeStyles({
+  pageLayout: {
+    display: "flex",
+    alignItems: "flex-start",
+    minHeight: "calc(100vh - 16px)",
+    "& > :first-child": {
+      width: "128px",
+      maxWidth: "128px",
+      height: "auto",
+      boxSizing: "border-box",
+      marginRight: "30px",
+      flexShrink: 0,
+      ...shorthands.padding("8px", "6px")
     },
-    linkField: {
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      maxWidth: "100%"
+    "& > :first-child > :last-child": {
+      marginTop: "36px",
+      fontSize: "11px"
+    },
+    "& > :first-child [aria-label='Navigation menu']": {
+      width: "100%",
+      marginTop: "18px"
+    },
+    "& > :first-child [aria-label='Navigation menu'] > div": {
+      marginBottom: "24px"
+    },
+    "& > :first-child [aria-label='Navigation menu'] > div:last-child": {
+      marginBottom: 0
+    },
+    "& > :first-child [aria-label='Navigation menu'] a, & > :first-child [aria-label='Navigation menu'] button":
+      {
+        minHeight: "32px",
+        columnGap: "7px",
+        fontSize: "12px",
+        ...shorthands.padding(0, "6px")
+      },
+    "& > :first-child [aria-label='Navigation menu'] > div > div": {
+      rowGap: 0
+    },
+    "& > :first-child [aria-label='Navigation menu'] svg": {
+      width: "14px",
+      height: "14px"
+    },
+    "& > :first-child .navigationHeaders": {
+      fontSize: "11px"
     }
-  });
-};
-
-// Theme-independent, so they live at module scope and can be used straight from
-// the column renderer without threading the hook through.
-export const visitMarkerClasses = mergeStyleSets({
-  // A fixed-width gutter for the optional leading marker (return loop or
-  // must-visit pin). Reserving the space here keeps every attraction name
-  // aligned at the same x, whether or not the row carries a marker.
+  },
+  content: {
+    minWidth: 0,
+    flexGrow: 1,
+    overflow: "hidden"
+  },
+  root: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "nowrap",
+    ...shorthands.padding(0, "12px"),
+    minHeight: "72px",
+    boxSizing: "border-box",
+    width: "calc(100% - 19px)",
+    ...shorthands.borderRadius("20px", "20px", 0, 0),
+    backgroundColor: tokens.colorNeutralBackground1,
+    "& > .fui-SearchBox": {
+      alignSelf: "center",
+      width: "320px",
+      height: "28px",
+      minHeight: "28px",
+      marginTop: 0
+    },
+    "& > .fui-SearchBox input": {
+      height: "26px",
+      fontSize: "12px"
+    },
+    "& > div:last-child > button": {
+      width: "76px",
+      minWidth: "76px",
+      height: "28px",
+      marginTop: "0 !important",
+      fontSize: "12px"
+    },
+    "& > div:last-child > button svg": {
+      width: "14px",
+      height: "14px"
+    }
+  },
+  listViewport: {
+    width: "calc(100% - 19px)",
+    ...shorthands.overflow("auto"),
+    ...shorthands.borderRadius(0, 0, "20px", "20px"),
+    paddingBottom: "20px",
+    backgroundColor: tokens.colorNeutralBackground1,
+    "& [role='grid']": {
+      width: "100%",
+      maxWidth: "none",
+      color: "#323130",
+      fontSize: "12px"
+    },
+    "& [role='columnheader']": {
+      height: "34px",
+      fontSize: "11px",
+      fontWeight: 600,
+      color: "#4a4a4a"
+    },
+    "& [role='gridcell']": {
+      boxSizing: "border-box",
+      verticalAlign: "top",
+      lineHeight: "16px",
+      ...shorthands.padding("9px", "8px")
+    },
+    "& th:nth-child(1), & td:nth-child(1)": {
+      width: "16%"
+    },
+    "& th:nth-child(2), & td:nth-child(2)": {
+      width: "13.5%"
+    },
+    "& th:nth-child(3), & td:nth-child(3)": {
+      width: "11%"
+    },
+    "& th:nth-child(4), & td:nth-child(4)": {
+      width: "14%"
+    },
+    "& th:nth-child(5), & td:nth-child(5)": {
+      width: "8.5%"
+    },
+    "& th:nth-child(6), & td:nth-child(6)": {
+      width: "12.5%"
+    },
+    "& th:nth-child(7), & td:nth-child(7)": {
+      width: "24.5%"
+    }
+  },
+  linkField: {
+    ...shorthands.overflow("hidden"),
+    textOverflow: "ellipsis",
+    maxWidth: "100%",
+    color: tokens.colorBrandBackground,
+    "&:visited": {
+      color: tokens.colorBrandBackground
+    },
+    "&:hover, &:active": {
+      color: tokens.colorBrandBackgroundHover
+    }
+  },
   markerSlot: {
-    width: 22,
-    minWidth: 22,
+    width: "16px",
+    minWidth: "16px",
+    height: "16px",
     flexShrink: 0,
     display: "flex",
-    alignItems: "center"
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: "1px"
   },
-  // Just the loop symbol — a wordless nod that this is a place worth returning to.
-  // The row's warm tint carries the rest of the meaning, so no label is needed.
   returnIcon: {
-    fontSize: 12,
+    width: "14px",
+    height: "14px",
+    fontSize: "14px",
     fontWeight: "bold",
     color: RETURN_ICON,
     flexShrink: 0
+  },
+  pinIcon: {
+    width: "12px",
+    height: "12px",
+    color: "#d13438",
+    flexShrink: 0
+  },
+  traditionalIcon: {
+    width: "14px",
+    height: "14px",
+    marginLeft: "3px",
+    color: "#d9a300",
+    flexShrink: 0
+  },
+  flagIcon: {
+    width: "14px",
+    height: "14px",
+    marginLeft: "4px",
+    color: "#107c10",
+    flexShrink: 0
+  },
+  changeSoonIcon: {
+    width: "14px",
+    height: "14px",
+    marginLeft: "4px",
+    color: "#d13438",
+    flexShrink: 0
+  },
+  changePotentialIcon: {
+    width: "14px",
+    height: "14px",
+    marginLeft: "4px",
+    color: "#d9a300",
+    flexShrink: 0
+  },
+  infoText: {
+    color: "black"
+  },
+  categoryText: {
+    maxWidth: "100%",
+    overflowWrap: "anywhere"
+  },
+  pageInfo: {
+    alignItems: "center",
+    fontSize: "22px",
+    lineHeight: "28px",
+    marginBottom: "24px",
+    "& > svg": {
+      width: "22px",
+      height: "22px"
+    },
+    "& > span": {
+      fontSize: "22px",
+      lineHeight: "28px"
+    }
+  },
+  pageName: {
+    fontSize: "22px",
+    lineHeight: "28px"
+  },
+  pageUnder: {
+    fontSize: "22px",
+    lineHeight: "28px",
+    color: "gray"
+  },
+  heading: {
+    marginTop: 0,
+    marginBottom: 0,
+    paddingLeft: "2px",
+    fontSize: "20px",
+    lineHeight: "26px",
+    fontWeight: 500
+  },
+  searchBox: {
+    marginTop: 0,
+    width: "320px"
+  },
+  doneRow: {
+    backgroundColor: DONE_BG,
+    "&:hover": {
+      backgroundColor: DONE_BG_HOVER
+    },
+    '& [role="gridcell"]': {
+      color: DONE_INK
+    },
+    "& [data-fluent-link]": {
+      color: DONE_INK
+    }
   }
 });
-
-// Only the "already seen and done" rows get a soft muted-grey wash; every other
-// row keeps the default styling (want-return is flagged by its Sync icon alone).
-export const getVisitStatusRowStyles = (
-  status?: AttractionVisitStatus
-): Partial<IDetailsRowStyles> | undefined => {
-  if (status === AttractionVisitStatus.VISITED_DONE) {
-    return {
-      root: {
-        backgroundColor: DONE_BG,
-        selectors: {
-          "&:hover": { backgroundColor: DONE_BG_HOVER },
-          ".ms-DetailsRow-cell": { color: DONE_INK },
-          ".ms-Link": { color: DONE_INK }
-        }
-      }
-    };
-  }
-
-  return undefined;
-};

@@ -133,7 +133,6 @@ const extractSearchPathCoords = (
 ): { latitude: number; longitude: number } | undefined => {
   // /maps/search/44.81,+20.45
   const match = pathname.match(
-    // eslint-disable-next-line @fluentui/max-len
     /\/maps\/search\/(-?\d+(?:\.\d+)?)[,+\s]+(-?\d+(?:\.\d+)?)/
   );
   if (!match) {

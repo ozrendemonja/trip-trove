@@ -1,15 +1,17 @@
-import { initializeIcons, Stack, Text, useTheme } from "@fluentui/react";
-import { INavLink, INavLinkGroup, Nav } from "@fluentui/react/lib/Nav";
-import { useState } from "react";
+import { Text, tokens } from "@fluentui/react-components";
+import {
+  NavigationEntry,
+  NavigationMenu,
+  NavigationSection
+} from "./NavigationMenu";
 import { navLinkGroups } from "./Navigation.config";
 import { useClasses } from "./Navigation.styles";
 import CurrentUserInfo from "./ui/current-user-info/CurrentUserInfo";
 import { CurrentUserInfoProps } from "./ui/current-user-info/CurrentUserInfo.types";
 import HomePageInfo from "./ui/home-page-info/HomePageInfo";
 import { useNavigate } from "react-router";
-import { useBoolean } from "@fluentui/react-hooks";
-
-initializeIcons();
+import { useBooleanState } from "../hooks/useBooleanState";
+import { Flex } from "../ui/Flex";
 
 // Todo replace when add Redux
 const examplePersona: CurrentUserInfoProps = {
@@ -20,52 +22,50 @@ const examplePersona: CurrentUserInfoProps = {
   imageAlt: "Annie Lindqvist"
 };
 
-const onRenderGroupHeader = (group: INavLinkGroup): JSX.Element => {
+const renderSectionHeader = (section: NavigationSection): JSX.Element => {
   return (
     <Text as="span" className="navigationHeaders" block>
-      {group.name}
+      {section.label}
     </Text>
   );
 };
 
 export const Navigation: React.FunctionComponent = () => {
   const classes = useClasses();
-  const theme = useTheme();
-  const [expandLinks, { toggle: toogleExpandLinks }] = useBoolean(false);
+  const [expanded, { toggle: toggleExpanded }] = useBooleanState(false);
   const navigate = useNavigate();
 
-  const onLinkClick = (
-    ev?: React.MouseEvent<HTMLElement>,
-    item?: INavLink
+  const handleActivate = (
+    event: React.MouseEvent<HTMLElement>,
+    entry: NavigationEntry
   ): void => {
-    ev?.preventDefault();
+    event.preventDefault();
 
-    if (item?.blockCallToUrl) {
-      toogleExpandLinks();
+    if (entry.toggleOnly) {
+      toggleExpanded();
     } else {
-      navigate(item?.url!);
+      navigate(entry.path);
     }
   };
 
   return (
-    <Stack tokens={{ childrenGap: 15 }} className={classes.container}>
+    <Flex gap={15} className={classes.container}>
       <HomePageInfo className={classes.homePageInfo} />
-      <Nav
-        onRenderGroupHeader={onRenderGroupHeader}
-        onLinkClick={onLinkClick}
-        selectedKey="navigation-key"
-        ariaLabel="Navigation menu"
-        groups={navLinkGroups(expandLinks)}
+      <NavigationMenu
+        renderSectionHeader={renderSectionHeader}
+        onActivate={handleActivate}
+        aria-label="Navigation menu"
+        sections={navLinkGroups(expanded)}
         className={classes.nav}
       />
       <CurrentUserInfo
         {...{
           ...examplePersona,
-          initialsColor: theme.palette.orange,
-          initialsTextColor: theme.palette.white
+          initialsColor: tokens.colorBrandBackground,
+          initialsTextColor: tokens.colorNeutralForegroundOnBrand
         }}
       />
-    </Stack>
+    </Flex>
   );
 };
 

@@ -1,39 +1,44 @@
 import {
-  CommandBar,
-  IContextualMenuItem
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
-import {
-  AddRowOptionsProps,
-  DeleteDialogProps,
-  DeleteRowOptionsProps
-} from "./DeleteDialog.types";
+  Button,
+  makeStyles,
+  shorthands,
+  tokens
+} from "@fluentui/react-components";
+import { Add16Regular, Delete16Regular } from "@fluentui/react-icons";
+import { useBooleanState } from "../../../hooks/useBooleanState";
+import { DeleteDialogProps, DeleteRowOptionsProps } from "./DeleteDialog.types";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
-const getCommandItems = (
-  haveSelectedItem: boolean,
-  addRowOptions: AddRowOptionsProps,
-  deleteRowOptions: DeleteRowOptionsProps
-): IContextualMenuItem[] => {
-  return [
-    {
-      key: `addRow-${addRowOptions.text}`,
-      text: addRowOptions.text,
-      iconProps: { iconName: "Add" },
-      onClick: addRowOptions.onAddRow
+const useStyles = makeStyles({
+  deleteButton: {
+    color: tokens.colorPaletteRedForeground1,
+    ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
+    transitionProperty: "none !important",
+    "& svg": {
+      color: tokens.colorPaletteRedForeground1
     },
-    {
-      key: `deleteRow-${deleteRowOptions.text}`,
-      text: deleteRowOptions.text,
-      iconProps: { iconName: "Delete" },
-      onClick: deleteRowOptions.onDeleteRow,
-      disabled: haveSelectedItem
+    "&:hover, &:focus-visible": {
+      backgroundColor: `${tokens.colorPaletteRedForeground1} !important`,
+      ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
+      color: `${tokens.colorNeutralForegroundStaticInverted} !important`,
+      "& svg": {
+        color: `${tokens.colorNeutralForegroundStaticInverted} !important`
+      }
+    },
+    "&:disabled": {
+      color: tokens.colorPaletteRedForeground1,
+      ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
+      opacity: 0.4,
+      "& svg": {
+        color: tokens.colorPaletteRedForeground1
+      }
     }
-  ];
-};
+  }
+});
 
 const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
-  const [hideDialog, { toggle: toggleHideDialog }] = useBoolean(true);
+  const styles = useStyles();
+  const [hideDialog, { toggle: toggleHideDialog }] = useBooleanState(true);
   const deleteRowOptions: DeleteRowOptionsProps = {
     text: props.deleteRowOptions.text,
     onDeleteRow: toggleHideDialog
@@ -41,14 +46,30 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
 
   return (
     <>
-      <CommandBar
+      <div
         key={`command-bar-${props.selectedItem.haveSelectedItem}`}
-        items={getCommandItems(
-          props.selectedItem.haveSelectedItem,
-          props.addRowOptions,
-          deleteRowOptions
-        )}
-      />
+        role="menubar"
+        style={{ display: "flex", gap: 4 }}
+      >
+        <Button
+          role="menuitem"
+          appearance="secondary"
+          icon={<Add16Regular />}
+          onClick={props.addRowOptions.onAddRow}
+        >
+          {props.addRowOptions.text}
+        </Button>
+        <Button
+          role="menuitem"
+          appearance="secondary"
+          className={styles.deleteButton}
+          icon={<Delete16Regular />}
+          onClick={deleteRowOptions.onDeleteRow}
+          disabled={props.selectedItem.haveSelectedItem}
+        >
+          {deleteRowOptions.text}
+        </Button>
+      </div>
       <ConfirmDeleteDialog
         name={props.selectedItem.name}
         hidden={hideDialog}

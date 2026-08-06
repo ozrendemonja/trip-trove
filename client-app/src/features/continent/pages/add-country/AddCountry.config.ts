@@ -1,9 +1,5 @@
-import {
-  IComboBox,
-  IComboBoxOption,
-  IDropdownOption,
-  ITextFieldProps
-} from "@fluentui/react";
+import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
 import { useState } from "react";
 import { getIsoCountryOptions } from "../../infra/IsoCountries";
 import { Validator } from "../../infra/Validator";
@@ -15,10 +11,10 @@ import { createPlaceValidation } from "../../infra/PlaceValidationRules";
 
 // ComboBox uses option `text` for type-ahead. Putting the country name first
 // (e.g. "Belgium (BE)") lets users jump to it by typing the country name.
-const buildIsoCodeOptions = (): IComboBoxOption[] =>
+const buildIsoCodeOptions = (): SelectChoice[] =>
   getIsoCountryOptions().map((c) => ({
-    key: c.code,
-    text: `${c.name} (${c.code.toUpperCase()})`
+    value: c.code,
+    label: `${c.name} (${c.code.toUpperCase()})`
   }));
 
 export const useCountryFormField = (): CountryFormFieldProps => {
@@ -38,57 +34,58 @@ export const useCountryFormField = (): CountryFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const countryNameField: ITextFieldProps = {
+  const countryNameField: InputFieldProps = {
     name: "name",
     label: "Country name",
     value: values.countryName,
     onChange: (_event, value: string | undefined): void => {
-      setTouched({ ...touched, countryName: true });
-      setValues({ ...values, countryName: value ?? "" });
+      setTouched((current) => ({ ...current, countryName: true }));
+      setValues((current) => ({ ...current, countryName: value ?? "" }));
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.countryName ? errorMessage?.countryNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
   const continentDropdown = {
     placeholder: "Select a continent",
-    ariaLabel: "Select a continent",
+    "aria-label": "Select a continent",
     required: true,
-    value: values.continentName,
-    onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+    selectedValue: values.continentName,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
-      setTouched({ ...touched, continentName: true });
-      setValues({ ...values, continentName: option?.key as string });
-    }
+      setTouched((current) => ({ ...current, continentName: true }));
+      setValues((current) => ({
+        ...current,
+        continentName: String(choice?.value ?? "")
+      }));
+    },
+    value: values.continentName
   };
 
   const isoCodeDropdown = {
     label: "ISO code",
     placeholder: "Search by country name or ISO code",
-    ariaLabel: "Select ISO 3166-1 alpha-2 country code",
+    "aria-label": "Select ISO 3166-1 alpha-2 country code",
     required: true,
-    value: values.isoCode,
-    selectedKey: values.isoCode || null,
-    options: buildIsoCodeOptions(),
-    autoComplete: "on" as const,
+    selectedValue: values.isoCode || null,
+    choices: buildIsoCodeOptions(),
     allowFreeform: false,
-    useComboBoxAsMenuWidth: true,
     errorMessage: touched.isoCode ? errorMessage?.isoCodeError : undefined,
-    onChange: (
-      _event: React.FormEvent<IComboBox>,
-      option?: IComboBoxOption,
-      _index?: number,
-      _value?: string
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
-      setTouched({ ...touched, isoCode: true });
-      setValues({ ...values, isoCode: (option?.key as string) ?? "" });
-    }
+      setTouched((current) => ({ ...current, isoCode: true }));
+      setValues((current) => ({
+        ...current,
+        isoCode: String(choice?.value ?? "")
+      }));
+    },
+    value: values.isoCode
   };
 
   return {
@@ -114,18 +111,17 @@ export const useCountryDetailsFormField = (): CountryFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const countryNameField: ITextFieldProps = {
+  const countryNameField: InputFieldProps = {
     name: "name",
     label: "Country name",
     value: values.countryName,
     onChange: (_event, value: string | undefined): void => {
-      setTouched({ ...touched, countryName: true });
-      setValues({ ...values, countryName: value ?? "" });
+      setTouched((current) => ({ ...current, countryName: true }));
+      setValues((current) => ({ ...current, countryName: value ?? "" }));
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.countryName ? errorMessage?.countryNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -152,17 +148,20 @@ export const useCountryContinentFormField = (): CountryFormFieldProps => {
 
   const continentDropdown = {
     placeholder: "Select a continent",
-    ariaLabel: "Select a continent",
+    "aria-label": "Select a continent",
     required: true,
-    value: values.continentName,
-    onChange: (
-      _event: React.FormEvent<HTMLDivElement>,
-      option?: IDropdownOption,
-      _index?: number
+    selectedValue: values.continentName,
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
-      setTouched({ ...touched, continentName: true });
-      setValues({ ...values, continentName: option?.key as string });
-    }
+      setTouched((current) => ({ ...current, continentName: true }));
+      setValues((current) => ({
+        ...current,
+        continentName: String(choice?.value ?? "")
+      }));
+    },
+    value: values.continentName
   };
 
   return {
@@ -189,24 +188,23 @@ export const useCountryIsoCodeFormField = (): CountryFormFieldProps => {
   const isoCodeDropdown = {
     label: "ISO code",
     placeholder: "Search by country name or ISO code",
-    ariaLabel: "Select ISO 3166-1 alpha-2 country code",
+    "aria-label": "Select ISO 3166-1 alpha-2 country code",
     required: true,
-    value: values.isoCode,
-    selectedKey: values.isoCode || null,
-    options: buildIsoCodeOptions(),
-    autoComplete: "on" as const,
+    selectedValue: values.isoCode || null,
+    choices: buildIsoCodeOptions(),
     allowFreeform: false,
-    useComboBoxAsMenuWidth: true,
     errorMessage: touched.isoCode ? errorMessage?.isoCodeError : undefined,
-    onChange: (
-      _event: React.FormEvent<IComboBox>,
-      option?: IComboBoxOption,
-      _index?: number,
-      _value?: string
+    onOptionSelect: (
+      _event: React.FormEvent<HTMLElement>,
+      choice?: SelectChoice
     ) => {
-      setTouched({ ...touched, isoCode: true });
-      setValues({ ...values, isoCode: (option?.key as string) ?? "" });
-    }
+      setTouched((current) => ({ ...current, isoCode: true }));
+      setValues((current) => ({
+        ...current,
+        isoCode: String(choice?.value ?? "")
+      }));
+    },
+    value: values.isoCode
   };
 
   return {

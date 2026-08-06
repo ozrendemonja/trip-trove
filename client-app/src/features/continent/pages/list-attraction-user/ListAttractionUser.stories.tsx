@@ -6,7 +6,7 @@ import AttractionListUser from "./ListAttractionUser";
 
 const styleOverrides = `
     body {
-      background: #C3E0E7;
+      background: radial-gradient(#C3E0E7, #61A9B4);
     }`;
 
 let server: ReturnType<typeof makeServer>;
@@ -166,6 +166,21 @@ export const ShowsUserAttractions: Story = {
       canvas.getByRole("heading", { name: "Attractions" })
     ).toBeInTheDocument();
     expect(canvas.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+    expect(
+      canvas.getByRole("columnheader", { name: "name" })
+    ).toBeInTheDocument();
+    expect(
+      canvas.getByRole("columnheader", { name: "infoFrom" })
+    ).toBeInTheDocument();
+    expect(
+      canvas.getByRole("columnheader", { name: "optimalVisitPeriod" })
+    ).toBeInTheDocument();
+    expect(
+      canvas.queryByRole("columnheader", { name: "permanentlyClosedAt" })
+    ).not.toBeInTheDocument();
+    expect(
+      canvas.getAllByText("POINT_OF_INTEREST_AND_LANDMARK").length
+    ).toBeGreaterThan(0);
 
     const names = [
       "Casino of Monte-Carlo",
@@ -179,9 +194,13 @@ export const ShowsUserAttractions: Story = {
       attractionCell(canvasElement, name).querySelector(
         '[data-icon-name="Pinned"]'
       );
-    const cotton = (name: string): Element | null =>
+    const revisit = (name: string): Element | null =>
       attractionCell(canvasElement, name).querySelector(
-        '[data-icon-name="Cotton"]'
+        '[data-icon-name="Revisit"]'
+      );
+    const traditional = (name: string): Element | null =>
+      attractionCell(canvasElement, name).querySelector(
+        '[data-icon-name="Traditional"]'
       );
 
     expect(pin("Casino Square")).toBeInTheDocument();
@@ -189,10 +208,15 @@ export const ShowsUserAttractions: Story = {
     expect(pin("Casino of Monte-Carlo")).not.toBeInTheDocument();
     expect(pin("Larvotto Beach")).not.toBeInTheDocument();
 
-    expect(cotton("Vilnius Old Town")).toBeInTheDocument();
-    expect(cotton("Casino of Monte-Carlo")).not.toBeInTheDocument();
-    expect(cotton("Casino Square")).not.toBeInTheDocument();
-    expect(cotton("Larvotto Beach")).not.toBeInTheDocument();
+    expect(revisit("Casino of Monte-Carlo")).toBeInTheDocument();
+    expect(revisit("Vilnius Old Town")).not.toBeInTheDocument();
+    expect(revisit("Casino Square")).not.toBeInTheDocument();
+    expect(revisit("Larvotto Beach")).not.toBeInTheDocument();
+
+    expect(traditional("Vilnius Old Town")).toBeInTheDocument();
+    expect(traditional("Casino of Monte-Carlo")).not.toBeInTheDocument();
+    expect(traditional("Casino Square")).not.toBeInTheDocument();
+    expect(traditional("Larvotto Beach")).not.toBeInTheDocument();
   }
 };
 

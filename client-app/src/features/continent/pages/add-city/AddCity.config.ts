@@ -1,4 +1,4 @@
-import { ITextFieldProps } from "@fluentui/react";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
 import { useState } from "react";
 import { searchRegion } from "../../infra/ManagerApi";
 import { createPlaceValidation } from "../../infra/PlaceValidationRules";
@@ -24,7 +24,7 @@ export const useCityFormField = (): CityFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const cityNameField: ITextFieldProps = {
+  const cityNameField: InputFieldProps = {
     name: "name",
     label: "City name",
     value: values.cityName,
@@ -32,10 +32,9 @@ export const useCityFormField = (): CityFormFieldProps => {
       setTouched({ ...touched, cityName: true });
       setValues({ ...values, cityName: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.cityName ? errorMessage?.cityNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -47,7 +46,7 @@ export const useCityFormField = (): CityFormFieldProps => {
       setTouched({ ...touched, regionId: true });
       setValues({ ...values, regionId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.regionId ? errorMessage?.regionIdError : undefined,
     getSuggestions: searchRegion,
     value: values.regionId
@@ -75,7 +74,7 @@ export const useCityDetailsFormField = (): CityFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const cityNameField: ITextFieldProps = {
+  const cityNameField: InputFieldProps = {
     name: "name",
     label: "City name",
     value: values.cityName,
@@ -83,10 +82,9 @@ export const useCityDetailsFormField = (): CityFormFieldProps => {
       setTouched({ ...touched, cityName: true });
       setValues({ ...values, cityName: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.cityName ? errorMessage?.cityNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -119,7 +117,7 @@ export const useCityRegionFormField = (): CityFormFieldProps => {
       setTouched({ ...touched, regionId: true });
       setValues({ ...values, regionId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.regionId ? errorMessage?.regionIdError : undefined,
     getSuggestions: searchRegion,
     value: values.regionId

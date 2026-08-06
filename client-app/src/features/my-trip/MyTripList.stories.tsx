@@ -110,8 +110,8 @@ type User = ReturnType<typeof userEvent.setup>;
 const setupUser = (): User =>
   userEvent.setup({ pointerEventsCheck: 0, delay: null });
 
-// Fluent's Modal/Dialog portal their content into a Layer appended to
-// document.body, outside the story canvas, so query them through the document.
+// Fluent dialogs portal into document.body, outside the story canvas, so
+// query them through the document.
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
@@ -148,7 +148,7 @@ const openCreateDialog = async (
   const heading = await overlay(canvasElement).findByRole("heading", {
     name: "Create new Trip"
   });
-  return heading.closest(".ms-Modal") as HTMLElement;
+  return heading.closest('[role="dialog"]') as HTMLElement;
 };
 
 const openEditDialog = async (
@@ -161,7 +161,7 @@ const openEditDialog = async (
   const heading = await overlay(canvasElement).findByRole("heading", {
     name: `Edit ${tripName}`
   });
-  return heading.closest(".ms-Modal") as HTMLElement;
+  return heading.closest('[role="dialog"]') as HTMLElement;
 };
 
 const openDeleteDialog = async (
@@ -379,6 +379,18 @@ export const RemovesTripWhenDeleteConfirmed: Story = {
       overlay(canvasElement).getByRole("button", { name: "Delete" })
     );
 
+    await waitFor(() =>
+      expect(canvasElement).not.toHaveAttribute("aria-hidden")
+    );
+    await waitFor(
+      () =>
+        expect(
+          within(canvasElement).queryByRole("button", {
+            name: "Open trip: Italy"
+          })
+        ).not.toBeInTheDocument(),
+      { timeout: 5000 }
+    );
     await expect(
       await findTripCard(canvasElement, "Japan Adventure", 8000)
     ).toBeInTheDocument();

@@ -1,46 +1,34 @@
-import { buildColumns, IColumn } from "@fluentui/react";
+import {
+  createDataColumns,
+  DataColumn
+} from "../../../shared/ui/data-table/DataTable";
 import { ListElementCustomizer } from "../../../shared/list-element/ListElement.types";
 import { RegionRow } from "../pages/list-region/ListRegion.types";
 
 export class RegionListCustomizer extends ListElementCustomizer<RegionRow> {
   constructor(
     notifyRegionChanged: (items: RegionRow[]) => void,
-    notifyListColumnChanged: (columns: IColumn[]) => void,
+    notifyListColumnChanged: (columns: DataColumn[]) => void,
     items: RegionRow[] = []
   ) {
     super(items, notifyRegionChanged, notifyListColumnChanged);
   }
 
-  private setDefaultLayout = (column: IColumn): IColumn => {
+  private setDefaultLayout = (column: DataColumn): DataColumn => {
     const result = { ...column };
 
-    result.ariaLabel = `Operations for ${column.name}`;
-    result.isMultiline = false;
+    result.headerAriaLabel = `Operations for ${column.header}`;
+    result.multiline = false;
     result.minWidth = 100;
-    result.isResizable = true;
-    result.isCollapsible = true;
 
     return result;
   };
 
-  private hideIdHeader(column: IColumn): any {
-    const result = { ...column };
-
-    if (result.key == "id") {
-      result.maxWidth = 1;
-      result.isResizable = true;
-      result.key = "skipElement";
-      result.onRenderHeader = () => {
-        return null;
-      };
-    }
-
-    return result;
-  }
-
   public createColumns = (): void => {
-    const columns = buildColumns(this.items, true)
-      .map((column) => this.hideIdHeader(column))
+    const isUserFacingColumn = (column: DataColumn): boolean =>
+      column.id !== "id";
+    const columns = createDataColumns(this.items)
+      .filter(isUserFacingColumn)
       .map((column) => this.setDefaultLayout(column));
 
     this.columns = columns;

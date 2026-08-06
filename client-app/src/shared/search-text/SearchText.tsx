@@ -1,25 +1,39 @@
-import {
-  DefaultButton,
-  FocusZone,
-  FocusZoneDirection,
-  mergeStyleSets,
-  TextField
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
-import { LegacyRef, useEffect, useRef, useState } from "react";
+import { InputField } from "../ui/forms/InputField";
+import { Button, mergeClasses } from "@fluentui/react-components";
+import { useBooleanState } from "../hooks/useBooleanState";
+import { useEffect, useRef, useState } from "react";
 import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
-import { positionSuggestionDropdown, useClasses } from "./SearchText.styles";
+import { useClasses } from "./SearchText.styles";
 import { SearchTextProps } from "./SearchText.types";
+import { FocusRegion, FocusRegionHandle } from "../ui/FocusRegion";
 
 export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
-  let classes = mergeStyleSets(useClasses(), props.className);
+  const classes = useClasses();
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [
     isSuggestionChosen,
     { setFalse: deselectSuggestion, setTrue: selectSuggestion }
-  ] = useBoolean(false);
+  ] = useBooleanState(false);
+  const rootClassName = mergeClasses(
+    classes.root,
+    props.suggestionsInFlow ? classes.inFlowRoot : undefined,
+    props.className
+  );
+  const searchBoxClassName = mergeClasses(
+    classes.searchBox,
+    props.suggestionsInFlow ? classes.inFlowSearchBox : undefined,
+    props.searchBoxClassName
+  );
+  const dropdownClassName = mergeClasses(
+    classes.dropdown,
+    props.suggestionsInFlow ? classes.inFlowDropdown : undefined
+  );
+  const buttonClassName = mergeClasses(
+    classes.button,
+    props.suggestionsInFlow ? classes.inFlowButton : undefined
+  );
 
   useEffect(() => {
     if (isSuggestionChosen) {
@@ -29,20 +43,7 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
     }
   }, [query]);
 
-  const getBottomPosition = (element: LegacyRef) => {
-    if (element) {
-      const position =
-        element.getBoundingClientRect().top +
-        element.getBoundingClientRect().height;
-
-      const isNotInsideModal = position > 200;
-      if (isNotInsideModal) {
-        classes = mergeStyleSets(classes, positionSuggestionDropdown(position));
-      }
-    }
-  };
-
-  const focusZoneRef = useRef(null);
+  const focusZoneRef = useRef<FocusRegionHandle>(null);
   const handleTextFieldKeyDown = (event) => {
     if (event.key === "ArrowDown") {
       focusZoneRef.current!.focus();
@@ -50,12 +51,13 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
   };
 
   return (
-    <div ref={getBottomPosition}>
-      <TextField
+    <div className={rootClassName}>
+      <InputField
         onKeyDown={handleTextFieldKeyDown}
         label={props.label}
         placeholder={props.placeholder}
         required={props.required}
+        showRequiredIndicator={props.showRequiredIndicator}
         multiline={props.multiline}
         onChange={(_event, newValue: string | undefined): void => {
           if (isSuggestionChosen) {
@@ -65,23 +67,18 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
           props.onSelectValue?.(newValue ?? "");
           deselectSuggestion();
         }}
-        className={classes.searchBox}
+        className={searchBoxClassName}
         value={query}
-        onGetErrorMessage={props.onGetErrorMessage}
+        validate={props.validate}
       />
-      <FocusZone
-        componentRef={focusZoneRef}
-        direction={FocusZoneDirection.vertical}
-        isCircularNavigation={true}
-        role="grid"
-        className={classes.dropdown}
-      >
+      <FocusRegion ref={focusZoneRef} role="grid" className={dropdownClassName}>
         {suggestions.map((item) => (
-          <DefaultButton
+          <Button
             key={`${item.value}-${item.id}`}
             role="menuitem"
-            className={classes.button}
-            ariaLabel={item.value}
+            appearance="secondary"
+            className={buttonClassName}
+            aria-label={item.value}
             onClick={(_event) => {
               selectSuggestion();
               setQuery(item.value);
@@ -91,9 +88,9 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
             }}
           >
             {item.value}
-          </DefaultButton>
+          </Button>
         ))}
-      </FocusZone>
+      </FocusRegion>
     </div>
   );
 };

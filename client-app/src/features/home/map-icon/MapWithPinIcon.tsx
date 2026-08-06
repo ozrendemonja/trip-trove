@@ -1,11 +1,11 @@
 import React from "react";
 
-interface MapWithPinIconProps {
+interface MapWithPinProps {
   size?: number;
   className?: string;
 }
 
-export const MapWithPinIcon: React.FunctionComponent<MapWithPinIconProps> = ({
+export const MapWithPinIcon: React.FunctionComponent<MapWithPinProps> = ({
   size = 56,
   className
 }) => (
@@ -27,18 +27,8 @@ export const MapWithPinIcon: React.FunctionComponent<MapWithPinIconProps> = ({
       <polygon points="42,18 60,12 60,48 42,58" fill="#cfe7f3" />
 
       {/* Roads on middle panel */}
-      <path
-        d="M22,30 L42,34"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path
-        d="M28,12 L30,54"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        fill="none"
-      />
+      <path d="M22,30 L42,34" stroke="#ffffff" strokeWidth="1.5" fill="none" />
+      <path d="M28,12 L30,54" stroke="#ffffff" strokeWidth="1.5" fill="none" />
 
       {/* Fold lines */}
       <line

@@ -1,99 +1,97 @@
-import { INavLinkGroup } from "@fluentui/react";
+import { NavigationSection } from "./NavigationMenu";
+import {
+  Board24Regular,
+  CloudArrowUp24Regular,
+  Location24Regular,
+  Luggage24Regular,
+  Save24Regular,
+  Search24Regular,
+  Settings24Regular
+} from "@fluentui/react-icons";
+import React from "react";
 
-export const navLinkGroups = (expandLinks: boolean): INavLinkGroup[] => [
+export const navLinkGroups = (expanded: boolean): NavigationSection[] => [
   {
-    links: [
+    items: [
       {
-        name: "Search",
-        url: "/",
-        icon: "Search",
-        target: "_blank"
+        label: "Search",
+        path: "/",
+        icon: React.createElement(Search24Regular)
       },
       {
-        name: "My trips",
-        url: "/my-trips",
-        key: "my-trips-key",
-        icon: "AirTickets",
-        target: "_blank"
+        label: "My trips",
+        path: "/my-trips",
+        id: "my-trips-key",
+        icon: React.createElement(Luggage24Regular)
       },
       {
-        name: "Organizer",
-        url: "#",
-        key: "organizer-key",
-        icon: "MapPin",
-        target: "_blank"
+        label: "Organizer",
+        path: "#",
+        id: "organizer-key",
+        icon: React.createElement(Location24Regular)
       }
     ]
   },
   {
-    name: "Administrative",
-    links: [
+    label: "Administrative",
+    items: [
       {
-        name: "Dashboard",
-        url: "/",
-        icon: "ViewDashboard",
-        key: "dashboard-key",
-        target: "_blank",
-        links: [
+        label: "Dashboard",
+        path: "/",
+        icon: React.createElement(Board24Regular),
+        id: "dashboard-key",
+        items: [
           {
-            name: "Attractions",
-            url: "/attractions",
-            key: "attractions-key",
-            target: "_blank"
+            label: "Attractions",
+            path: "/attractions",
+            id: "attractions-key"
           },
           {
-            name: "City",
-            url: "/cities",
-            key: "city-key",
-            target: "_blank"
+            label: "City",
+            path: "/cities",
+            id: "city-key"
           },
           {
-            name: "Region",
-            url: "/regions",
-            key: "region-key",
-            target: "_blank"
+            label: "Region",
+            path: "/regions",
+            id: "region-key"
           },
           {
-            name: "Country",
-            url: "/countries",
-            key: "country-key",
-            target: "_blank"
+            label: "Country",
+            path: "/countries",
+            id: "country-key"
           },
           {
-            name: "Continent",
-            url: "/continents",
-            key: "continent-key",
-            target: "_blank"
+            label: "Continent",
+            path: "/continents",
+            id: "continent-key"
           }
         ],
-        isExpanded: expandLinks,
-        blockCallToUrl: true
+        expanded,
+        toggleOnly: true
       },
       {
-        name: "Backup",
-        url: "#",
-        key: "backup-key",
-        icon: "Save",
-        target: "_blank"
+        label: "Backup",
+        path: "#",
+        id: "backup-key",
+        icon: React.createElement(Save24Regular)
       },
       {
-        name: "Upload",
-        url: "#",
-        icon: "CloudUpload",
-        key: "upload-key",
-        target: "_blank"
+        label: "Upload",
+        path: "#",
+        icon: React.createElement(CloudArrowUp24Regular),
+        id: "upload-key"
       }
     ]
   },
   {
-    name: "Menage",
-    links: [
+    label: "Menage",
+    items: [
       {
-        name: "Account",
-        url: "#",
-        icon: "Settings",
-        key: "dashboard-key",
-        target: "_blank"
+        label: "Account",
+        path: "#",
+        icon: React.createElement(Settings24Regular),
+        id: "dashboard-key"
       }
     ]
   }

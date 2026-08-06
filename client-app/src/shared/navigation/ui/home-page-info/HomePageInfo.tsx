@@ -1,15 +1,18 @@
-import { DefaultButton } from "@fluentui/react/lib/Button";
+import { Button } from "@fluentui/react-components";
+import { VehicleSubway24Regular } from "@fluentui/react-icons";
 import { configData } from "../../../../assets/ConfigData";
 import { HomePageInfoProps } from "./HomePageInfo.types";
 
 const HomePageInfo: React.FunctionComponent<HomePageInfoProps> = (props) => {
   return (
-    <DefaultButton
-      text={configData.APPLICATION_NAME}
+    <Button
+      appearance="secondary"
       href={"/"}
-      iconProps={{ iconName: "Train" }}
+      icon={<VehicleSubway24Regular />}
       className={props.className}
-    />
+    >
+      {configData.APPLICATION_NAME}
+    </Button>
   );
 };
 

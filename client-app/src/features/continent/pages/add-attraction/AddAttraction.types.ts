@@ -1,6 +1,12 @@
-import { IDatePickerProps, IDropdownProps, IMaskedTextFieldProps, ITextFieldProps } from "@fluentui/react";
+import { DateInputProps } from "../../../../shared/ui/forms/DateInput";
+import { SelectFieldProps } from "../../../../shared/ui/forms/SelectField";
+import {
+  MaskedInputFieldProps,
+  InputFieldProps
+} from "../../../../shared/ui/forms/InputField";
 import { SearchTextProps } from "../../../../shared/search-text/SearchText.types";
 import { DateRangePickerProps } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
+import type { Period } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
 import { AttractionType, CategoryType } from "../../domain/Attraction.types";
 
 // Extended interface
@@ -16,14 +22,9 @@ export interface ValueSearchTextProps extends SearchTextProps {
 }
 
 export type Location = {
-    latitude: number;
-    longitude: number;
-}
-
-export type Period = {
-    from: string;
-    to: string;
-}
+  latitude: number;
+  longitude: number;
+};
 
 export type AddAttractionFormElements = {
   countryId: number;
@@ -35,28 +36,28 @@ export type AddAttractionFormElements = {
   address?: string;
   geoLocation?: string;
   category: CategoryType;
- type: AttractionType;
- isTraditional: boolean;
- optimalVisitPeriod?: Period;
- tip?: string;
- source: string;
- sourceFrom: Date | undefined;
-}
+  type: AttractionType;
+  isTraditional: boolean;
+  optimalVisitPeriod?: Period;
+  tip?: string;
+  source: string;
+  sourceFrom: Date | undefined;
+};
 
 type FormFields = {
   countryId: ExtendedSearchTextProps;
   regionId: ExtendedSearchTextProps;
   cityId: ExtendedSearchTextProps;
-  name: ITextFieldProps;
+  name: InputFieldProps;
   mainAttractionId: ExtendedSearchTextProps;
-  address: ITextFieldProps;
-  geoLocation: IMaskedTextFieldProps,
-  category: Omit<IDropdownProps, "options"> & {value: CategoryType},
-  type: Omit<IDropdownProps, "options"> & {value: AttractionType};
+  address: InputFieldProps;
+  geoLocation: MaskedInputFieldProps;
+  category: Omit<SelectFieldProps, "choices"> & { value: CategoryType };
+  type: Omit<SelectFieldProps, "choices"> & { value: AttractionType };
   optimalVisitPeriod: DateRangePickerProps;
-  tip: ITextFieldProps;
+  tip: InputFieldProps;
   source: ValueSearchTextProps;
-  sourceFrom: IDatePickerProps;
+  sourceFrom: DateInputProps;
 };
 
 // Utility type to enforce that CountryFormFieldProps includes all keys from AddCountryFormElements

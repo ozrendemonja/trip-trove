@@ -42,12 +42,14 @@ export class Validator {
     fieldNames: string[],
     typedError: yup.ValidationError
   ): ErrorMessagesFormFields {
-    const isErrorInUsedFields = (error: any) =>
-      error.path && fieldNames.includes(error.path);
+    const isErrorInUsedFields = (
+      error: yup.ValidationError
+    ): error is yup.ValidationError & { path: string } =>
+      typeof error.path === "string" && fieldNames.includes(error.path);
 
     return typedError.inner
       .filter(isErrorInUsedFields)
-      .map((error: any) => ({ [`${error.path}Error`]: error.errors[0] }))
+      .map((error) => ({ [`${error.path}Error`]: error.errors[0] }))
       .reduce((acc, curr) => ({ ...acc, ...curr }), {});
   }
 }

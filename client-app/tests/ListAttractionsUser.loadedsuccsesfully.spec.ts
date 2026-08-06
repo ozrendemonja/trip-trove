@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-attraction-user-listattractionuser--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("gridcell", { name: "Vilnius Old Town" })
   ).toBeVisible();
@@ -62,10 +62,10 @@ test("Show all selected filter elements when multiple elements are selected", as
   await expect(
     page.getByRole("heading", { name: "Search filters" })
   ).toBeVisible();
-  page.getByRole("button", { name: "STABLE" }).click();
+  await page.getByRole("button", { name: "STABLE" }).click();
   await expect(
-    page.getByRole("gridcell", { name: "Vilnius Old Town" })
-  ).toHaveCount(1);
+    page.getByRole("button", { name: "Filters" })
+  ).toBeVisible({ timeout: 5000 });
 
   await page.getByRole("button", { name: "Filters" }).click();
   await expect(

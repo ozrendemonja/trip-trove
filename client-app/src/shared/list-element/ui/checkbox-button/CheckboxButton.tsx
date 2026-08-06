@@ -1,18 +1,28 @@
-import { IconButton, Stack } from "@fluentui/react";
+import { Button } from "@fluentui/react-components";
+import {
+  CheckboxChecked24Regular,
+  CheckboxUnchecked24Regular
+} from "@fluentui/react-icons";
+import { Flex } from "../../../ui/Flex";
 import { CheckboxButtonProps } from "./CheckboxButton.types";
 
 const CheckboxButton: React.FunctionComponent<CheckboxButtonProps> = (
   props
 ) => {
   return (
-    <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
-      <IconButton
-        iconProps={{
-          iconName: props.isOptional ? "BoxCheckmarkSolid" : "Checkbox",
-          styles: { root: { color: "#fec703", fontSize: 24 } }
-        }}
+    <Flex gap={15} direction="row">
+      <Button
+        appearance="subtle"
+        icon={
+          props.isOptional ? (
+            <CheckboxChecked24Regular />
+          ) : (
+            <CheckboxUnchecked24Regular />
+          )
+        }
+        style={{ color: "#fec703", fontSize: 24 }}
       />
-    </Stack>
+    </Flex>
   );
 };
 

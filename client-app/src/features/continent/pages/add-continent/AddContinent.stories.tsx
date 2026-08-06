@@ -49,7 +49,7 @@ const setupUser = (): User =>
   userEvent.setup({ pointerEventsCheck: 0, delay: null });
 
 const nameField = (canvasElement: HTMLElement): HTMLElement =>
-  within(canvasElement).getByLabelText("Continent name");
+  within(canvasElement).getByLabelText(/^Continent name/);
 
 const saveButton = (canvasElement: HTMLElement): HTMLElement =>
   within(canvasElement).getByRole("button", { name: "Save" });
@@ -88,6 +88,8 @@ export const ShowsInlineNameConflictWhenContinentAlreadyExists: Story = {
 
 export const SaveDisabledWhenNameEmpty: Story = {
   play: async ({ canvasElement }) => {
+    expect(within(canvasElement).getAllByText("*")).toHaveLength(1);
+    expect(nameField(canvasElement)).toBeRequired();
     expect(saveButton(canvasElement)).toBeDisabled();
   }
 };

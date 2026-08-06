@@ -16,12 +16,9 @@ let server: ReturnType<typeof makeServer>;
 export const withFreshServer: Decorator = (Story, context) => {
   const closedAttractionId = context.parameters
     .permanentlyClosedAttractionId as number | undefined;
-  const updateAttractionStatus = context.parameters.updateAttractionStatus as
-    number | undefined;
   server?.shutdown();
   server = makeServer({
-    permanentlyClosedAttractionId: closedAttractionId,
-    updateAttractionStatus
+    permanentlyClosedAttractionId: closedAttractionId
   });
   return (
     <>
@@ -47,10 +44,11 @@ export const overlay = (
   canvasElement: HTMLElement
 ): ReturnType<typeof within> => within(canvasElement.ownerDocument.body);
 
-export const waitForCanvasToBecomeAccessible = (
+export const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 export const searchFor = async (
   canvasElement: HTMLElement,
@@ -94,7 +92,7 @@ export const rowOf = (
     .getByRole("button", {
       name: `Change attraction details from ${attractionName}`
     })
-    .closest('div[role="row"]') as HTMLElement;
+    .closest('[role="row"]') as HTMLElement;
 
 export const selectAttractionRow = async (
   canvasElement: HTMLElement,
@@ -150,6 +148,20 @@ export const pickSuggestion = async (
   await user.click(
     await overlay(canvasElement).findByRole("menuitem", { name })
   );
+};
+
+export const expectSuggestionBelowInput = (
+  input: HTMLElement,
+  suggestion: HTMLElement
+): void => {
+  const inputControl =
+    input.closest<HTMLElement>(".fui-Input, .fui-Textarea") ?? input;
+  const inputRect = inputControl.getBoundingClientRect();
+  const suggestionRect = suggestion.getBoundingClientRect();
+
+  expect(Math.abs(suggestionRect.left - inputRect.left)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.right - inputRect.right)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.top - inputRect.bottom)).toBeLessThan(1);
 };
 
 export const updateButton = (canvasElement: HTMLElement): HTMLElement =>

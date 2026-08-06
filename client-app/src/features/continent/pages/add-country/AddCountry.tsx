@@ -1,17 +1,19 @@
 import {
-  ComboBox,
-  DefaultButton,
-  Dropdown,
-  IDropdownOption,
-  ITextField,
+  ComboBoxField,
+  SelectChoice,
+  SelectField
+} from "../../../../shared/ui/forms/SelectField";
+import {
+  InputField,
+  InputFieldHandle
+} from "../../../../shared/ui/forms/InputField";
+import {
+  Divider,
   MessageBar,
-  MessageBarType,
-  PrimaryButton,
-  Separator,
-  Stack,
-  Text,
-  TextField
-} from "@fluentui/react";
+  MessageBarBody,
+  Text
+} from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -21,12 +23,13 @@ import { useCountryFormField } from "./AddCountry.config";
 import { useClasses } from "./AddCountry.styles";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 import { useSaveError } from "../../../../shared/hooks/UseSaveError";
+import { Flex, FlexItem } from "../../../../shared/ui/Flex";
 
-const createOptions = (continents: Continent[]): IDropdownOption[] => {
+const createOptions = (continents: Continent[]): SelectChoice[] => {
   return continents
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((continent) => {
-      return { key: continent.name, text: continent.name } as IDropdownOption;
+      return { value: continent.name, label: continent.name } as SelectChoice;
     });
 };
 
@@ -34,14 +37,14 @@ export const AddCountry: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useCountryFormField();
   const [continents, setContinents] = useState<Continent[]>([]);
-  const nameFieldRef = useRef<ITextField>(null);
+  const nameFieldRef = useRef<InputFieldHandle>(null);
   const navigate = useNavigate();
   const { nameConflict, saveError, handleSaveError } = useSaveError({
     nameConflictMessage: "A country with this name already exists.",
     saveErrorMessage:
       "The country wasn't saved. Your details are still here, so you can review or edit them and try again.",
     focusRef: nameFieldRef,
-    resetKey: formFields.countryName.value
+    resetKey: formFields.countryName?.value
   });
 
   useEffect(() => {
@@ -53,12 +56,16 @@ export const AddCountry: React.FunctionComponent = () => {
       return;
     }
 
+    const countryName = formFields.countryName?.value;
+    const continentName = formFields.continentName?.value;
+    const isoCode = formFields.isoCode?.value;
+
+    if (!countryName || !continentName || !isoCode) {
+      return;
+    }
+
     try {
-      await saveNewCountry(
-        formFields.countryName.value!,
-        formFields.continentName.value,
-        formFields.isoCode!.value
-      );
+      await saveNewCountry(countryName, continentName, isoCode);
     } catch (error) {
       handleSaveError(error);
       return;
@@ -72,51 +79,57 @@ export const AddCountry: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
-      <Stack className={classes.root}>
-        <Stack horizontal tokens={{ childrenGap: 48 }}>
+      <Flex className={classes.root}>
+        <Flex direction="row" gap={48}>
           <Text as="h1" className={classes.header}>
             Add Country
           </Text>
-          <Dropdown
+          <SelectField
             className={classes.formDropdown}
             {...formFields.continentName}
-            options={createOptions(continents)}
+            label="Select a continent"
+            choices={createOptions(continents)}
           />
-        </Stack>
-        <Separator></Separator>
-        <Stack tokens={{ childrenGap: 12 }} className={classes.formText}>
-          <Stack.Item grow={1}>
-            <TextField
+        </Flex>
+        <Divider className={classes.headerDivider} />
+        <Flex gap={16} className={classes.formText}>
+          <FlexItem grow={1}>
+            <InputField
               {...formFields.countryName}
-              componentRef={nameFieldRef}
+              ref={nameFieldRef}
               errorMessage={nameConflict}
+              showRequiredIndicator
             />
-          </Stack.Item>
-          <Stack.Item grow={1}>
-            <ComboBox {...formFields.isoCode!} />
-          </Stack.Item>
-        </Stack>
+          </FlexItem>
+          <FlexItem grow={1}>
+            <ComboBoxField {...formFields.isoCode!} />
+          </FlexItem>
+        </Flex>
         {saveError && (
-          <Stack className={classes.saveError}>
-            <MessageBar messageBarType={MessageBarType.error}>
-              {saveError}
+          <Flex className={classes.saveError}>
+            <MessageBar intent="error">
+              <MessageBarBody>{saveError}</MessageBarBody>
             </MessageBar>
-          </Stack>
+          </Flex>
         )}
-        <Stack
-          horizontal
-          horizontalAlign="end"
+        <Flex
+          direction="row"
+          justify="flex-end"
           className={classes.footer}
-          tokens={{ childrenGap: 12 }}
+          gap={12}
         >
-          <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
-          <PrimaryButton
+          <Button appearance="secondary" onClick={() => navigate(-1)}>
+            Cancel
+          </Button>
+          <Button
+            appearance="primary"
             onClick={() => void handleSave()}
             disabled={!isFormValid}
-            text="Save"
-          />
-        </Stack>
-      </Stack>
+          >
+            Save
+          </Button>
+        </Flex>
+      </Flex>
     </>
   );
 };

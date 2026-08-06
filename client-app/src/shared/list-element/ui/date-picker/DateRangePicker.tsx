@@ -1,16 +1,19 @@
+import { makeStyles } from "@fluentui/react-components";
 import {
-  DatePicker,
-  defaultDatePickerStrings,
-  FontIcon,
-  IDatePickerStyles,
-  Stack
-} from "@fluentui/react";
+  DateInput,
+  defaultDatePickerStrings
+} from "../../../ui/forms/DateInput";
+import { ArrowRight24Regular } from "@fluentui/react-icons";
 import { DateRangePickerProps } from "./DateRangePicker.types";
+import { Flex } from "../../../ui/Flex";
 
-const datePickerStyles: Partial<IDatePickerStyles> = {
-  root: { width: 100, color: "#fec703", backgroundColor: "white" },
-  icon: { color: "#fec703" }
-};
+const useStyles = makeStyles({
+  dateInput: {
+    width: "100px",
+    color: "#fec703",
+    backgroundColor: "white"
+  }
+});
 
 const formatDate = (date?: Date): string => {
   if (!date) return "";
@@ -23,28 +26,28 @@ const formatDate = (date?: Date): string => {
 const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
   props
 ) => {
+  const styles = useStyles();
+
   return (
-    <Stack tokens={{ childrenGap: 0 }} horizontal={true}>
-      <DatePicker
-        styles={datePickerStyles}
+    <Flex gap={0} direction="row">
+      <DateInput
+        className={styles.dateInput}
         // DatePicker uses English strings by default. For localized apps, you must override this prop.
         strings={defaultDatePickerStrings}
         // dateTimeFormatter={"MM/yyyy"}
         formatDate={formatDate}
         placeholder={props.placeholder}
-        ariaLabel={props.ariaLabel}
-        onSelectDate={props.onSelectStartDate}
+        aria-label={props["aria-label"]}
+        onChange={props.onStartDateChange}
         minDate={props.minDate}
         maxDate={props.maxDate}
         allowTextInput={props.allowTextInput}
         disabled={props.disable}
         value={props.fromDate ? new Date(props.fromDate) : undefined}
       />
-      {/* <Icon iconProps={{ iconName: "ChromeBackMirrored", styles: { root: { color: "#fec703", textAlign: "centre" } } }} /> */}
       <div style={{ padding: "5px" }}>
-        <FontIcon
+        <ArrowRight24Regular
           aria-label="Compass"
-          iconName="ChromeBackMirrored"
           style={{
             color: "#fec703",
             position: "relative",
@@ -52,23 +55,22 @@ const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
           }}
         />
       </div>
-      <DatePicker
-        styles={datePickerStyles}
+      <DateInput
+        className={styles.dateInput}
         // DatePicker uses English strings by default. For localized apps, you must override this prop.
         strings={defaultDatePickerStrings}
         // dateTimeFormatter={"MM/yyyy"}
         formatDate={formatDate}
         placeholder={props.placeholder}
-        ariaLabel={props.ariaLabel}
-        onSelectDate={props.onSelectEndDate}
+        aria-label={props["aria-label"]}
+        onChange={props.onEndDateChange}
         minDate={props.minDate}
         maxDate={props.maxDate}
         allowTextInput={props.allowTextInput}
         disabled={props.disable}
         value={props.toDate ? new Date(props.toDate) : undefined}
       />
-      {/* <IconButton iconProps={{ iconName: "Checkbox", styles: { root: { color: "#fec703", fontSize: 24 } } }} /> */}
-    </Stack>
+    </Flex>
   );
 };
 

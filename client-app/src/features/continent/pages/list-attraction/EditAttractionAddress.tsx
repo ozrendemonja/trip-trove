@@ -1,4 +1,4 @@
-import { Stack, TextField } from "@fluentui/react";
+import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeAttractionAddress } from "../../infra/ManagerApi";
 import { useAttractionAddressFormField } from "../add-attraction/AddAttraction.config";
@@ -28,15 +28,12 @@ const EditAttractionAddress: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <TextField
+      <InputField
         {...formFields.address}
-        styles={{ root: { width: "100%" } }}
+        style={{ width: "100%" }}
         // className={classes.attractionName}
       />
-      <TextField
-        {...formFields.geoLocation}
-        styles={{ root: { width: "200px" } }}
-      />
+      <InputField {...formFields.geoLocation} style={{ width: "200px" }} />
     </EditProperty>
   );
 };

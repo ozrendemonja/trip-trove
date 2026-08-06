@@ -1,17 +1,20 @@
-import { Stack, TextField, Toggle } from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+import { Switch } from "@fluentui/react-components";
+import { InputField } from "../../../../shared/ui/forms/InputField";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { SearchText } from "../../../../shared/search-text/SearchText";
 import { changeAttractionDetails } from "../../infra/ManagerApi";
 import { useAttractionDetailsFormField } from "../add-attraction/AddAttraction.config";
 import { EditPropertyAttractionDetailsProps } from "./ListAttraction.types";
+import { useClasses } from "./EditPropertyAttractionDetails.styles";
 
 const EditPropertyAttractionDetails: React.FunctionComponent<
   EditPropertyAttractionDetailsProps
 > = (props) => {
+  const classes = useClasses();
   const { formFields, isFormValid } = useAttractionDetailsFormField();
   const [isPartOfAttraction, { toggle: togglePartOfAttraction }] =
-    useBoolean(false);
+    useBooleanState(false);
 
   return (
     <EditProperty
@@ -28,24 +31,24 @@ const EditPropertyAttractionDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Stack tokens={{ childrenGap: 48 }} horizontal={true}>
-        <TextField
-          {...formFields.name}
-          // className={classes.attractionName}
-        />
-        <Toggle
-          //   className={classes.inputToggle}
-          styles={{ root: { marginBottom: "-2.8%" } }}
+      <div className={classes.fields}>
+        <div className={classes.nameField}>
+          <InputField {...formFields.name} className={classes.attractionName} />
+        </div>
+        <Switch
+          className={classes.inputToggle}
           label="Part of attraction"
-          inlineLabel
+          checked={isPartOfAttraction}
           onChange={togglePartOfAttraction}
         />
-      </Stack>
+      </div>
       {isPartOfAttraction && (
-        <SearchText
-          {...formFields.mainAttractionId}
-          //   className={searchOverride}
-        />
+        <div className={classes.mainAttractionField}>
+          <SearchText
+            {...formFields.mainAttractionId}
+            searchBoxClassName={classes.searchBox}
+          />
+        </div>
       )}
     </EditProperty>
   );

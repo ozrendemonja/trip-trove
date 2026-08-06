@@ -1,9 +1,10 @@
-import { Stack, Text } from "@fluentui/react";
+import { Text } from "@fluentui/react-components";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeAttractionVisitPeriod } from "../../infra/ManagerApi";
 import { useAttractionVisitPeriodFormField } from "../add-attraction/AddAttraction.config";
 import { EditAttractionVisitPeriodProps } from "./ListAttraction.types";
+import { Flex } from "../../../../shared/ui/Flex";
 
 const EditAttractionVisitPeriod: React.FunctionComponent<
   EditAttractionVisitPeriodProps
@@ -28,10 +29,10 @@ const EditAttractionVisitPeriod: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <Stack>
+      <Flex>
         <Text as="label">Where to visit</Text>
         <DateRangePicker {...formFields.optimalVisitPeriod} />
-      </Stack>
+      </Flex>
     </EditProperty>
   );
 };

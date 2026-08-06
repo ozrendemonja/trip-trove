@@ -1,4 +1,4 @@
-import { ITextFieldProps } from "@fluentui/react";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
 import { SearchTextProps } from "../../../../shared/search-text/SearchText.types";
 
 // Extended interface
@@ -9,11 +9,11 @@ export interface ExtendedSearchTextProps extends SearchTextProps {
 export type AddRegionFormElements = {
   regionName: string;
   countryId: number | undefined;
-}
+};
 
 type FormFields = {
-  regionName: ITextFieldProps;
-  countryId: ExtendedSearchTextProps
+  regionName: InputFieldProps;
+  countryId: ExtendedSearchTextProps;
 };
 
 // Utility type to enforce that CountryFormFieldProps includes all keys from AddCountryFormElements

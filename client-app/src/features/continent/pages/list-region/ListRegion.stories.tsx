@@ -52,10 +52,26 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
-const waitForCanvasToBecomeAccessible = (
+const expectSuggestionBelowInput = (
+  input: HTMLElement,
+  suggestion: HTMLElement
+): void => {
+  const inputRect =
+    input
+      .closest<HTMLElement>(".fui-Input, .fui-Textarea")
+      ?.getBoundingClientRect() ?? input.getBoundingClientRect();
+  const suggestionRect = suggestion.getBoundingClientRect();
+
+  expect(Math.abs(suggestionRect.left - inputRect.left)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.right - inputRect.right)).toBeLessThan(1);
+  expect(Math.abs(suggestionRect.top - inputRect.bottom)).toBeLessThan(1);
+};
+
+const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+};
 
 const waitForRegionsToLoad = (
   canvasElement: HTMLElement
@@ -368,9 +384,11 @@ export const DisablesUpdateAfterEditingSelectedCountry: Story = {
 
     const field = overlay(canvasElement).getByRole("textbox");
     await user.type(field, "Mon");
-    await user.click(
-      await overlay(canvasElement).findByRole("menuitem", { name: "Monaco" })
-    );
+    const suggestion = await overlay(canvasElement).findByRole("menuitem", {
+      name: "Monaco"
+    });
+    expectSuggestionBelowInput(field, suggestion);
+    await user.click(suggestion);
     await waitFor(() =>
       expect(
         overlay(canvasElement).getByRole("button", { name: "Update" })

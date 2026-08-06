@@ -1,4 +1,4 @@
-import { ITextFieldProps } from "@fluentui/react";
+import { InputFieldProps } from "../../../../shared/ui/forms/InputField";
 import { useState } from "react";
 import { searchCountry } from "../../infra/ManagerApi";
 import { Validator } from "../../infra/Validator";
@@ -24,7 +24,7 @@ export const useRegionFormField = (): RegionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const regionNameField: ITextFieldProps = {
+  const regionNameField: InputFieldProps = {
     name: "name",
     label: "Region name",
     value: values.regionName,
@@ -32,10 +32,9 @@ export const useRegionFormField = (): RegionFormFieldProps => {
       setTouched({ ...touched, regionName: true });
       setValues({ ...values, regionName: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.regionName ? errorMessage?.regionNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -47,7 +46,7 @@ export const useRegionFormField = (): RegionFormFieldProps => {
       setTouched({ ...touched, countryId: true });
       setValues({ ...values, countryId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.countryId ? errorMessage?.countryIdError : undefined,
     getSuggestions: searchCountry,
     value: values.countryId
@@ -75,7 +74,7 @@ export const useRegionDetailsFormField = (): RegionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const regionNameField: ITextFieldProps = {
+  const regionNameField: InputFieldProps = {
     name: "name",
     label: "Region name",
     value: values.regionName,
@@ -83,10 +82,9 @@ export const useRegionDetailsFormField = (): RegionFormFieldProps => {
       setTouched({ ...touched, regionName: true });
       setValues({ ...values, regionName: value ?? "" });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.regionName ? errorMessage?.regionNameError : undefined,
-    validateOnLoad: false,
-    validateOnFocusOut: true,
+    validateOnBlur: true,
     required: true
   };
 
@@ -119,7 +117,7 @@ export const useRegionCountryFormField = (): RegionFormFieldProps => {
       setTouched({ ...touched, countryId: true });
       setValues({ ...values, countryId: id });
     },
-    onGetErrorMessage: (_value: string) =>
+    validate: (_value: string) =>
       touched.countryId ? errorMessage?.countryIdError : undefined,
     getSuggestions: searchCountry,
     value: values.countryId

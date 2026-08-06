@@ -1,38 +1,51 @@
-import { FontWeights, mergeStyleSets } from "@fluentui/react";
+import { makeStyles, shorthands } from "@fluentui/react-components";
 
-export const useClasses = () => {
-  return mergeStyleSets({
-    modalContainer: {
-      minWidth: "700px",
-      borderRadius: "30px"
-    },
-    header: {
-      padding: "12px 12px 14px 24px"
-    },
-    heading: {
-      fontWeight: FontWeights.semibold,
-      fontSize: "30px",
-      margin: "0"
-    },
-    form: {
-      maxWidth: "600px",
-      marginLeft: "25px"
-    },
-    editIcon: {
-      color: "#fec703"
-    },
-    editDialog: {
-      height: "90px"
-    },
-    footer: {
-      padding: "24px 5px",
-      marginTop: "16px",
-      marginRight: "16px"
-    },
-    closeIcon: {
-      marginLeft: "auto",
-      marginTop: "4px",
-      marginRight: "2px"
+export const useClasses = makeStyles({
+  modalContainer: {
+    width: "720px",
+    minWidth: 0,
+    maxWidth: "calc(100vw - 32px)",
+    boxSizing: "border-box",
+    ...shorthands.borderRadius("30px")
+  },
+  heading: {
+    fontWeight: "600",
+    fontSize: "30px",
+    lineHeight: "36px",
+    overflowWrap: "anywhere",
+    ...shorthands.margin(0),
+    "@media (max-width: 480px)": {
+      fontSize: "24px",
+      lineHeight: "30px"
     }
-  });
-};
+  },
+  content: {
+    minWidth: 0,
+    paddingTop: "4px"
+  },
+  form: {
+    width: "100%",
+    minWidth: 0
+  },
+  editIcon: {
+    color: "#fec703"
+  },
+  footer: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: "12px",
+    paddingTop: "8px",
+    "& > button": {
+      minWidth: "112px"
+    },
+    "@media (max-width: 480px)": {
+      "& > button": {
+        flexGrow: 1
+      }
+    }
+  },
+  closeIcon: {
+    flexShrink: 0
+  }
+});

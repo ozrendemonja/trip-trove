@@ -1,33 +1,27 @@
-import { mergeStyleSets } from "@fluentui/react";
+import { makeStyles, shorthands } from "@fluentui/react-components";
 
-const useClasses = () =>
-  mergeStyleSets({
-    root: {
-      display: "flex",
-      justifyContent: "space-between",
-      flexWrap: "wrap"
-    },
-    header: {
-      fontSize: "30px",
-      marginLeft: "25px",
-      marginTop: "5px",
-      fontWeight: "600"
-    },
-    dropdown: {
-      marginTop: "25px",
-      borderColor: "transparent",
-      width: "200px",
-      selectors: {
-        ".ms-Dropdown-title": {
-          backgroundColor: "#F9FBFF",
-          borderRadius: "10px",
-          borderColor: "transparent"
-        }
-      }
-    },
-    dropdownSelectedOption: {
-      fontWeight: "600"
+const useClasses = makeStyles({
+  root: {
+    display: "flex",
+    justifyContent: "space-between",
+    flexWrap: "wrap"
+  },
+  header: {
+    fontSize: "30px",
+    marginLeft: "25px",
+    marginTop: "5px",
+    fontWeight: "600"
+  },
+  dropdown: {
+    marginTop: "25px",
+    ...shorthands.borderColor("transparent"),
+    width: "200px",
+    '& [role="combobox"]': {
+      backgroundColor: "#F9FBFF",
+      ...shorthands.borderRadius("10px"),
+      ...shorthands.borderColor("transparent")
     }
-  });
+  }
+});
 
 export default useClasses;

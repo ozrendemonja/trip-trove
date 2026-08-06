@@ -1,33 +1,24 @@
 import {
-  ContextualMenu,
-  DefaultButton,
-  IconButton,
-  IDragOptions,
-  Modal,
-  Separator,
-  Stack,
+  Button,
+  Dialog,
+  DialogSurface,
+  Divider,
   Text
-} from "@fluentui/react";
-import { useBoolean, useId } from "@fluentui/react-hooks";
+} from "@fluentui/react-components";
+import { Dismiss24Regular, Filter24Regular } from "@fluentui/react-icons";
+import React from "react";
+import { useBooleanState } from "../../../../../shared/hooks/useBooleanState";
 import { useClasses } from "./Filter.styles";
 import { FilterProps } from "./Filter.types";
 import { FilterElement } from "./FilterElement";
-
-// Normally the drag options would be in a constant, but here the toggle can modify keepInBounds
-const dragOptions: IDragOptions = {
-  moveMenuItemText: "Move",
-  closeMenuItemText: "Close",
-  menu: ContextualMenu,
-  keepInBounds: false,
-  dragHandleSelector: ".ms-Modal-scrollableContent > div:first-child"
-};
+import { Flex } from "../../../../../shared/ui/Flex";
 
 export const Filter: React.FunctionComponent<FilterProps> = (props) => {
   const classes = useClasses();
 
-  const titleId = useId("attraction-list-user-filter");
+  const titleId = React.useId();
   const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] =
-    useBoolean(false);
+    useBooleanState(false);
 
   const categories = [
     "POINT_OF_INTEREST_AND_LANDMARK",
@@ -71,131 +62,139 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
 
   return (
     <div className={props.className}>
-      <DefaultButton
+      <Button
+        appearance="secondary"
         onClick={showModal}
-        text="Filters"
-        iconProps={{ iconName: "Equalizer" }}
+        icon={<Filter24Regular />}
         className={classes.filterButton}
-        styles={{ root: { marginTop: 30 } }}
-      />
-      <Modal
-        titleAriaId={titleId}
-        isOpen={isModalOpen}
-        onDismiss={hideModal}
-        isBlocking={false}
-        containerClassName={classes.container}
-        dragOptions={dragOptions}
+        style={{ marginTop: 30 }}
       >
-        <div className={classes.header}>
-          <Text as="h2">Search filters</Text>
-          <IconButton
-            className={classes.closeButton}
-            iconProps={{ iconName: "Cancel" }}
-            ariaLabel="Close attraction filter modal"
-            onClick={hideModal}
-          />
-        </div>
-        <Stack horizontal tokens={{ childrenGap: 48 }} className={classes.body}>
-          <Stack>
-            <Text as={"h3"}>Geographical Scope</Text>
-            <Separator></Separator>
-            <FilterElement
-              onClick={() => {
-                props.countrywide.onClick("true");
-                hideModal();
-              }}
-              isSelected={props.countrywide.has("true")}
-            >
-              Countrywide
-            </FilterElement>
-            <FilterElement
-              onClick={() => {
-                props.countrywide.onClick("false");
-                hideModal();
-              }}
-              isSelected={props.countrywide.has("false")}
-            >
-              Local
-            </FilterElement>
-          </Stack>
-          <Stack>
-            <Text as={"h3"}>Must visit</Text>
-            <Separator></Separator>
-            <FilterElement
-              onClick={() => {
-                props.mustVisit.onClick("true");
-                hideModal();
-              }}
-              isSelected={props.mustVisit.has("true")}
-            >
-              Must visit
-            </FilterElement>
-            <FilterElement
-              onClick={() => {
-                props.mustVisit.onClick("false");
-                hideModal();
-              }}
-              isSelected={props.mustVisit.has("false")}
-            >
-              Skip-Worthy Spots
-            </FilterElement>
-          </Stack>
-          <Stack>
-            <Text as={"h3"}>Historic</Text>
-            <Separator></Separator>
-            <FilterElement
-              onClick={() => {
-                props.traditional.onClick("true");
-                hideModal();
-              }}
-              isSelected={props.traditional.has("true")}
-            >
-              Traditional
-            </FilterElement>
-            <FilterElement
-              onClick={() => {
-                props.traditional.onClick("false");
-                hideModal();
-              }}
-              isSelected={props.traditional.has("false")}
-            >
-              Modern
-            </FilterElement>
-          </Stack>
-          <Stack>
-            <Text as={"h3"}>Category</Text>
-            <Separator></Separator>
-            {categories.map((text, index) => (
+        Filters
+      </Button>
+      <Dialog
+        open={isModalOpen}
+        modalType="non-modal"
+        onOpenChange={(_event, data) => {
+          if (!data.open) {
+            hideModal();
+          }
+        }}
+      >
+        <DialogSurface className={classes.container} aria-labelledby={titleId}>
+          <div className={classes.header}>
+            <Text as="h2" id={titleId}>
+              Search filters
+            </Text>
+            <Button
+              appearance="subtle"
+              className={classes.closeButton}
+              icon={<Dismiss24Regular />}
+              aria-label="Close attraction filter modal"
+              onClick={hideModal}
+            />
+          </div>
+          <div className={classes.body}>
+            <Flex>
+              <Text as={"h3"}>Geographical Scope</Text>
+              <Divider />
               <FilterElement
-                key={text}
                 onClick={() => {
-                  props.category.onClick(text);
+                  props.countrywide.onClick("true");
                   hideModal();
                 }}
-                isSelected={props.category.has(text)}
+                isSelected={props.countrywide.has("true")}
               >
-                {text}
+                Countrywide
               </FilterElement>
-            ))}
-          </Stack>
-          <Stack>
-            <Text as={"h3"}>Type</Text>
-            <Separator></Separator>
-            {types.map((text, index) => (
               <FilterElement
-                key={text}
                 onClick={() => {
-                  props.type.onClick(text);
+                  props.countrywide.onClick("false");
                   hideModal();
                 }}
-                isSelected={props.type.has(text)}
+                isSelected={props.countrywide.has("false")}
               >
-                {text}
+                Local
               </FilterElement>
-            ))}
-          </Stack>
-        </Stack>
-      </Modal>
+            </Flex>
+            <Flex>
+              <Text as={"h3"}>Must visit</Text>
+              <Divider />
+              <FilterElement
+                onClick={() => {
+                  props.mustVisit.onClick("true");
+                  hideModal();
+                }}
+                isSelected={props.mustVisit.has("true")}
+              >
+                Must visit
+              </FilterElement>
+              <FilterElement
+                onClick={() => {
+                  props.mustVisit.onClick("false");
+                  hideModal();
+                }}
+                isSelected={props.mustVisit.has("false")}
+              >
+                Skip-Worthy Spots
+              </FilterElement>
+            </Flex>
+            <Flex>
+              <Text as={"h3"}>Historic</Text>
+              <Divider />
+              <FilterElement
+                onClick={() => {
+                  props.traditional.onClick("true");
+                  hideModal();
+                }}
+                isSelected={props.traditional.has("true")}
+              >
+                Traditional
+              </FilterElement>
+              <FilterElement
+                onClick={() => {
+                  props.traditional.onClick("false");
+                  hideModal();
+                }}
+                isSelected={props.traditional.has("false")}
+              >
+                Modern
+              </FilterElement>
+            </Flex>
+            <Flex>
+              <Text as={"h3"}>Category</Text>
+              <Divider />
+              {categories.map((text) => (
+                <FilterElement
+                  key={text}
+                  onClick={() => {
+                    props.category.onClick(text);
+                    hideModal();
+                  }}
+                  isSelected={props.category.has(text)}
+                >
+                  {text}
+                </FilterElement>
+              ))}
+            </Flex>
+            <Flex>
+              <Text as={"h3"}>Type</Text>
+              <Divider />
+              {types.map((text) => (
+                <FilterElement
+                  key={text}
+                  onClick={() => {
+                    props.type.onClick(text);
+                    hideModal();
+                  }}
+                  isSelected={props.type.has(text)}
+                >
+                  {text}
+                </FilterElement>
+              ))}
+            </Flex>
+          </div>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };

@@ -13,6 +13,7 @@ const meta: Meta<typeof AddCountry> = {
   component: AddCountry,
   decorators: [
     (Story) => {
+      makeServer();
       return (
         <>
           <MemoryRouter initialEntries={["/"]}>
@@ -62,7 +63,7 @@ const selectOption = async (
 };
 
 const countryNameField = (): HTMLElement =>
-  screen.getByLabelText("Country name");
+  screen.getByLabelText(/^Country name/);
 
 const saveButton = (): HTMLElement =>
   screen.getByRole("button", { name: "Save" });
@@ -101,11 +102,15 @@ export const ShowsInlineNameConflictWhenCountryAlreadyExists: Story = {
 };
 
 export const ShowsFormWithSaveInitiallyDisabled: Story = {
-  play: async () => {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
     expect(
       screen.getByRole("heading", { name: "Add Country" })
     ).toBeInTheDocument();
+    expect(canvas.getAllByText("*")).toHaveLength(3);
     expect(countryNameField()).toBeInTheDocument();
+    expect(countryNameField()).toBeRequired();
     expect(
       screen.getByRole("combobox", { name: "Select a continent" })
     ).toBeInTheDocument();

@@ -52,10 +52,13 @@ const setupUser = (): User =>
 const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
   within(canvasElement.ownerDocument.body);
 
-const waitForCanvasToBecomeAccessible = (
+const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
-): Promise<void> =>
-  waitFor(() => expect(canvasElement).not.toHaveAttribute("aria-hidden"));
+): Promise<void> => {
+  await waitFor(() =>
+    expect(canvasElement).not.toHaveAttribute("aria-hidden")
+  );
+};
 
 const waitForCountriesToLoad = (
   canvasElement: HTMLElement

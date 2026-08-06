@@ -22,10 +22,10 @@ export interface CurrentUserInfoProps {
    */
   secondaryText?: string;
   /**
-   * Optional custom persona coin size in pixel.
+   * Optional custom avatar size in pixel.
    * @default 26
    */
-  coinSize?: number;
+  avatarSize?: number;
   /**
    * The background color when the user's initials are displayed.
    * @defaultvalue Derived from `text`

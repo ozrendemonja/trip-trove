@@ -670,6 +670,13 @@
   resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@eslint-community/regexpp/-/regexpp-4.12.2.tgz#bccdf615bcf7b6e8db830ec0b8d21c9a25de597b"
   integrity sha1-vM32Fbz3tujbgw7AuNIcmiXeWXs=
 
+"@eslint/compat@^2.1.0":
+  version "2.1.0"
+  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@eslint/compat/-/compat-2.1.0.tgz#8c66110f95cf0fdd864b76ae4d534042dea7bb7f"
+  integrity sha1-jGYRD5XPD92GS3auTVNAQt6nu38=
+  dependencies:
+    "@eslint/core" "^1.2.1"
+
 "@eslint/config-array@^0.23.5":
   version "0.23.5"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@eslint/config-array/-/config-array-0.23.5.tgz#56e86d243049195d8acc0c06a1b3dfdc3fa3de95"
@@ -736,64 +743,12 @@
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha1-r+/nhZSfFqxM3R5pWTWjIVct1Wo=
 
-"@fluentui/date-time-utilities@^8.6.9":
-  version "8.6.9"
-  resolved "https://registry.npmjs.org/@fluentui/date-time-utilities/-/date-time-utilities-8.6.9.tgz"
-  integrity sha512-dgOlVm4nXBWDLqijmvn4iAtyv1hVpQZjN6p0So74BW+7ASUTkQGe3lf8PHV/OjBiXfZa4qwONvmTQBGCheNU0w==
-  dependencies:
-    "@fluentui/set-version" "^8.2.23"
-    tslib "^2.1.0"
-
-"@fluentui/dom-utilities@^2.3.9":
-  version "2.3.9"
-  resolved "https://registry.npmjs.org/@fluentui/dom-utilities/-/dom-utilities-2.3.9.tgz"
-  integrity sha512-8PPzv31VXnyMvZrzK7iSGPRx8piJjas0xV+qaNQ1tzAXHuTaLXPeADJK/gEDH1XA/e9Vaakb3lPUpRVa8tal+w==
-  dependencies:
-    "@fluentui/set-version" "^8.2.23"
-    tslib "^2.1.0"
-
-"@fluentui/font-icons-mdl2@^8.5.57":
-  version "8.5.57"
-  resolved "https://registry.npmjs.org/@fluentui/font-icons-mdl2/-/font-icons-mdl2-8.5.57.tgz"
-  integrity sha512-HYB+deey6wt6qHtTKdrhPhTZi7ZZVI2IwlguabK+22LzixgSdeJ0sg5Hhau5IKFwrn8ExEFOwfoaZ6KCSbcMwQ==
-  dependencies:
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/style-utilities" "^8.11.6"
-    "@fluentui/utilities" "^8.15.19"
-    tslib "^2.1.0"
-
-"@fluentui/foundation-legacy@^8.4.23":
-  version "8.4.23"
-  resolved "https://registry.npmjs.org/@fluentui/foundation-legacy/-/foundation-legacy-8.4.23.tgz"
-  integrity sha512-lWFouH1+vku2LgKaZUhuBNyoXJ7DByUIMXHF7Osgq/miN8ewHt5uez8LuuSHDgCytxksCY4usCMIIL2zJD0I6w==
-  dependencies:
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/style-utilities" "^8.11.6"
-    "@fluentui/utilities" "^8.15.19"
-    tslib "^2.1.0"
-
-"@fluentui/keyboard-key@^0.4.23":
-  version "0.4.23"
-  resolved "https://registry.npmjs.org/@fluentui/keyboard-key/-/keyboard-key-0.4.23.tgz"
-  integrity sha512-9GXeyUqNJUdg5JiQUZeGPiKnRzMRi9YEUn1l9zq6X/imYdMhxHrxpVZS12129cBfgvPyxt9ceJpywSfmLWqlKA==
-  dependencies:
-    tslib "^2.1.0"
-
 "@fluentui/keyboard-keys@^9.0.8":
   version "9.0.8"
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@fluentui/keyboard-keys/-/keyboard-keys-9.0.8.tgz#812b923f20d428f3c5cdff9922a4478b59e907c5"
   integrity sha1-gSuSPyDUKPPFzf+ZIqRHi1npB8U=
   dependencies:
     "@swc/helpers" "^0.5.1"
-
-"@fluentui/merge-styles@^8.6.13":
-  version "8.6.13"
-  resolved "https://registry.npmjs.org/@fluentui/merge-styles/-/merge-styles-8.6.13.tgz"
-  integrity sha512-IWgvi2CC+mcQ7/YlCvRjsmHL2+PUz7q+Pa2Rqk3a+QHN0V1uBvgIbKk5y/Y/awwDXy1yJHiqMCcDHjBNmS1d4A==
-  dependencies:
-    "@fluentui/set-version" "^8.2.23"
-    tslib "^2.1.0"
 
 "@fluentui/priority-overflow@^9.4.1":
   version "9.4.1"
@@ -904,6 +859,23 @@
     "@fluentui/react-aria" "^9.17.13"
     "@fluentui/react-icons" "^2.0.245"
     "@fluentui/react-jsx-runtime" "^9.4.4"
+    "@fluentui/react-shared-contexts" "^9.26.2"
+    "@fluentui/react-tabster" "^9.26.16"
+    "@fluentui/react-theme" "^9.2.1"
+    "@fluentui/react-utilities" "^9.26.5"
+    "@griffel/react" "^1.5.32"
+    "@swc/helpers" "^0.5.1"
+
+"@fluentui/react-calendar-compat@^0.4.4":
+  version "0.4.4"
+  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@fluentui/react-calendar-compat/-/react-calendar-compat-0.4.4.tgz#c594f726b91847c18141700e5aee837ad9462a69"
+  integrity sha1-xZT3JrkYR8GBQXAOWu6DetlGKmk=
+  dependencies:
+    "@fluentui/keyboard-keys" "^9.0.8"
+    "@fluentui/react-icons" "^2.0.245"
+    "@fluentui/react-jsx-runtime" "^9.4.4"
+    "@fluentui/react-motion" "^9.16.1"
+    "@fluentui/react-motion-components-preview" "^0.15.6"
     "@fluentui/react-shared-contexts" "^9.26.2"
     "@fluentui/react-tabster" "^9.26.16"
     "@fluentui/react-theme" "^9.2.1"
@@ -1074,6 +1046,27 @@
     "@fluentui/react-utilities" "^9.26.5"
     "@swc/helpers" "^0.5.1"
 
+"@fluentui/react-datepicker-compat@^0.6.34":
+  version "0.6.34"
+  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@fluentui/react-datepicker-compat/-/react-datepicker-compat-0.6.34.tgz#f5665791bfa25181022952ad670a3cd833d4e332"
+  integrity sha1-9WZXkb+iUYECKVKtZwo82DPU4zI=
+  dependencies:
+    "@fluentui/keyboard-keys" "^9.0.8"
+    "@fluentui/react-calendar-compat" "^0.4.4"
+    "@fluentui/react-field" "^9.5.3"
+    "@fluentui/react-icons" "^2.0.245"
+    "@fluentui/react-input" "^9.8.4"
+    "@fluentui/react-jsx-runtime" "^9.4.4"
+    "@fluentui/react-popover" "^9.14.4"
+    "@fluentui/react-portal" "^9.8.14"
+    "@fluentui/react-positioning" "^9.22.3"
+    "@fluentui/react-shared-contexts" "^9.26.2"
+    "@fluentui/react-tabster" "^9.26.16"
+    "@fluentui/react-theme" "^9.2.1"
+    "@fluentui/react-utilities" "^9.26.5"
+    "@griffel/react" "^1.5.32"
+    "@swc/helpers" "^0.5.1"
+
 "@fluentui/react-dialog@^9.18.2":
   version "9.18.2"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@fluentui/react-dialog/-/react-dialog-9.18.2.tgz#ae39d49f2ac1a0a7081bcc00bd521065683e7f49"
@@ -1137,28 +1130,6 @@
     "@fluentui/react-utilities" "^9.26.5"
     "@griffel/react" "^1.5.32"
     "@swc/helpers" "^0.5.1"
-
-"@fluentui/react-focus@^8.9.20":
-  version "8.9.20"
-  resolved "https://registry.npmjs.org/@fluentui/react-focus/-/react-focus-8.9.20.tgz"
-  integrity sha512-eOYKohP5v82jUAeEj7Mscqy5Tt4DhgTsVwf+cejj3AGhvLfFfmUbJFmVClooqXFdMgm1vvPGdub8SHA02REVkg==
-  dependencies:
-    "@fluentui/keyboard-key" "^0.4.23"
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/style-utilities" "^8.11.6"
-    "@fluentui/utilities" "^8.15.19"
-    tslib "^2.1.0"
-
-"@fluentui/react-hooks@^8.8.16":
-  version "8.8.16"
-  resolved "https://registry.npmjs.org/@fluentui/react-hooks/-/react-hooks-8.8.16.tgz"
-  integrity sha512-PQ1BeOp+99mdO0g7j6QLtChfXG1LxXeHG0q5CtUeD1OUGR+vUDK84h60sw7e7qU9sSmvPmHO7jn69Lg3CS+DXw==
-  dependencies:
-    "@fluentui/react-window-provider" "^2.2.28"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/utilities" "^8.15.19"
-    tslib "^2.1.0"
 
 "@fluentui/react-icons@^2.0.237", "@fluentui/react-icons@^2.0.239", "@fluentui/react-icons@^2.0.245", "@fluentui/react-icons@^2.0.334":
   version "2.0.334"
@@ -1396,13 +1367,6 @@
     "@fluentui/react-theme" "^9.2.1"
     "@fluentui/react-utilities" "^9.26.5"
     "@griffel/react" "^1.5.32"
-    "@swc/helpers" "^0.5.1"
-
-"@fluentui/react-portal-compat-context@^9.0.13":
-  version "9.0.13"
-  resolved "https://registry.npmjs.org/@fluentui/react-portal-compat-context/-/react-portal-compat-context-9.0.13.tgz"
-  integrity sha512-N+c6Qs775jnr/4WIzsQuNaRu4v16fa+gGsOCzzU1bqxX0IR9BSjjO2oLGC6luaAOqlQP+JIwn/aumOIJICKXkA==
-  dependencies:
     "@swc/helpers" "^0.5.1"
 
 "@fluentui/react-portal@^9.8.14":
@@ -1844,80 +1808,12 @@
     "@griffel/react" "^1.5.32"
     "@swc/helpers" "^0.5.1"
 
-"@fluentui/react-window-provider@^2.2.28":
-  version "2.2.28"
-  resolved "https://registry.npmjs.org/@fluentui/react-window-provider/-/react-window-provider-2.2.28.tgz"
-  integrity sha512-YdZ74HTaoDwlvLDzoBST80/17ExIl93tLJpTxnqK5jlJOAUVQ+mxLPF2HQEJq+SZr5IMXHsQ56w/KaZVRn72YA==
-  dependencies:
-    "@fluentui/set-version" "^8.2.23"
-    tslib "^2.1.0"
-
-"@fluentui/react@^8.121.13":
-  version "8.122.2"
-  resolved "https://registry.npmjs.org/@fluentui/react/-/react-8.122.2.tgz"
-  integrity sha512-GiOjekP1TPUKTvh46NqBg4o4JOpVsBQf+bunhCY9CgmYfdDEQExDCxW3wAi3DAhpRLECdc+LBRlTZQhHRJU8VA==
-  dependencies:
-    "@fluentui/date-time-utilities" "^8.6.9"
-    "@fluentui/font-icons-mdl2" "^8.5.57"
-    "@fluentui/foundation-legacy" "^8.4.23"
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/react-focus" "^8.9.20"
-    "@fluentui/react-hooks" "^8.8.16"
-    "@fluentui/react-portal-compat-context" "^9.0.13"
-    "@fluentui/react-window-provider" "^2.2.28"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/style-utilities" "^8.11.6"
-    "@fluentui/theme" "^2.6.64"
-    "@fluentui/utilities" "^8.15.19"
-    "@microsoft/load-themed-styles" "^1.10.26"
-    tslib "^2.1.0"
-
-"@fluentui/set-version@^8.2.23":
-  version "8.2.23"
-  resolved "https://registry.npmjs.org/@fluentui/set-version/-/set-version-8.2.23.tgz"
-  integrity sha512-VPXaBsiaa3Xn/AY40nLU9bvDQ62lpMVnFzFTlQ8CbpdwrjxNlRxDUY5vRToNzp1+Zu5gD/+CgsXqIZGcry5L5w==
-  dependencies:
-    tslib "^2.1.0"
-
-"@fluentui/style-utilities@^8.11.6":
-  version "8.11.6"
-  resolved "https://registry.npmjs.org/@fluentui/style-utilities/-/style-utilities-8.11.6.tgz"
-  integrity sha512-bVFu/ONP2+GZ/JzR6NhN7+1fuMHvi+LjOfgo21HQoDakY/KwFaitLiQBQFlRpbRUVcZXQDqe4Ur6EDFAlb2I7Q==
-  dependencies:
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/theme" "^2.6.64"
-    "@fluentui/utilities" "^8.15.19"
-    "@microsoft/load-themed-styles" "^1.10.26"
-    tslib "^2.1.0"
-
-"@fluentui/theme@^2.6.64":
-  version "2.6.64"
-  resolved "https://registry.npmjs.org/@fluentui/theme/-/theme-2.6.64.tgz"
-  integrity sha512-cjzwPgq3Zsw4F6Xy7A7yN8WCeEXKTwk9lfJzEr5b00euJRuPMxkxesBbAWW43+/1l1eWVYmSm4GcEMDVD4BfXQ==
-  dependencies:
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/set-version" "^8.2.23"
-    "@fluentui/utilities" "^8.15.19"
-    tslib "^2.1.0"
-
 "@fluentui/tokens@1.0.0-alpha.23":
   version "1.0.0-alpha.23"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@fluentui/tokens/-/tokens-1.0.0-alpha.23.tgz#4f846c1e4fcdb3ca80eb31802c4a366d5599b30e"
   integrity sha1-T4RsHk/Ns8qA6zGALEo2bVWZsw4=
   dependencies:
     "@swc/helpers" "^0.5.1"
-
-"@fluentui/utilities@^8.15.19":
-  version "8.15.19"
-  resolved "https://registry.npmjs.org/@fluentui/utilities/-/utilities-8.15.19.tgz"
-  integrity sha512-20WoYz0wW7pkmur+7qxTwRfvkdAnHfylLdCYSm91WLupb0cwQ1wWZWIuyo+e0cjcvem1T9TC1+NjWs0kavTWBg==
-  dependencies:
-    "@fluentui/dom-utilities" "^2.3.9"
-    "@fluentui/merge-styles" "^8.6.13"
-    "@fluentui/react-window-provider" "^2.2.28"
-    "@fluentui/set-version" "^8.2.23"
-    tslib "^2.1.0"
 
 "@griffel/core@^1.16.0", "@griffel/core@^1.21.3":
   version "1.21.3"
@@ -2376,11 +2272,6 @@
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@lukeed/ms/-/ms-2.0.2.tgz#07f09e59a74c52f4d88c6db5c1054e819538e2a8"
   integrity sha1-B/CeWadMUvTYjG21wQVOgZU44qg=
 
-"@microsoft/load-themed-styles@^1.10.26":
-  version "1.10.295"
-  resolved "https://registry.npmjs.org/@microsoft/load-themed-styles/-/load-themed-styles-1.10.295.tgz"
-  integrity sha512-W+IzEBw8a6LOOfRJM02dTT7BDZijxm+Z7lhtOAz1+y9vQm1Kdz9jlAO+qCEKsfxtUOmKilW8DIRqFw2aUgKeGg==
-
 "@miragejs/pretender-node-polyfill@^0.1.0":
   version "0.1.2"
   resolved "https://registry.npmjs.org/@miragejs/pretender-node-polyfill/-/pretender-node-polyfill-0.1.2.tgz"
@@ -2616,9 +2507,9 @@
   resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@pkgr/core/-/core-0.3.6.tgz#3569708bd4be4d8870ba32bf1c456dac81600d97"
   integrity sha1-NWlwi9S+TYhwujK/HEVtrIFgDZc=
 
-"@playwright/test@^1.62.0":
+"@playwright/test@1.62.0":
   version "1.62.0"
-  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@playwright/test/-/test-1.62.0.tgz#dab444563549f4cc94caacb7d6a72067bff4aac6"
+  resolved "https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@playwright/test/-/test-1.62.0.tgz#dab444563549f4cc94caacb7d6a72067bff4aac6"
   integrity sha1-2rREVjVJ9MyUyqy31qcgZ7/0qsY=
   dependencies:
     playwright "1.62.0"
@@ -2750,26 +2641,26 @@
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@standard-schema/spec/-/spec-1.1.0.tgz#a79b55dbaf8604812f52d140b2c9ab41bc150bb8"
   integrity sha1-p5tV26+GBIEvUtFAssmrQbwVC7g=
 
-"@storybook/addon-vitest@^10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/addon-vitest/-/addon-vitest-10.5.4.tgz#d5d84c470904feca784338399ea3603941711482"
-  integrity sha1-1dhMRwkE/sp4Qzg5nqNgOUFxFII=
+"@storybook/addon-vitest@^10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/addon-vitest/-/addon-vitest-10.5.5.tgz#e11dd8e258abbe52d01146dfa1f635cbb17b229c"
+  integrity sha1-4R3Y4lirvlLQEUbfofY1y7F7Ipw=
   dependencies:
     "@storybook/global" "^5.0.0"
     "@storybook/icons" "^2.0.2"
 
-"@storybook/builder-vite@10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/builder-vite/-/builder-vite-10.5.4.tgz#736aedcfbe496d142fd7a4b1e6a5612944fcaebd"
-  integrity sha1-c2rtz75JbRQv16Sx5qVhKUT8rr0=
+"@storybook/builder-vite@10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/builder-vite/-/builder-vite-10.5.5.tgz#6a8e057c064f14f8e8847cafdbb5e506adf56f2d"
+  integrity sha1-ao4FfAZPFPjohHyv27XlBq31by0=
   dependencies:
-    "@storybook/csf-plugin" "10.5.4"
+    "@storybook/csf-plugin" "10.5.5"
     ts-dedent "^2.0.0"
 
-"@storybook/csf-plugin@10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/csf-plugin/-/csf-plugin-10.5.4.tgz#750cb3cb74693e482e48c945f1bd29252ab1dc52"
-  integrity sha1-dQyzy3RpPkguSMlF8b0pJSqx3FI=
+"@storybook/csf-plugin@10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/csf-plugin/-/csf-plugin-10.5.5.tgz#bae774f81987a0114f525d7e90a2b1e6ddf535ba"
+  integrity sha1-uud0+BmHoBFPUl1+kKKx5t31Nbo=
   dependencies:
     unplugin "^2.3.5"
 
@@ -2783,33 +2674,33 @@
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/icons/-/icons-2.1.0.tgz#edfc2450a39c5e780f28c6cbc49acd7bff59b41a"
   integrity sha1-7fwkUKOcXngPKMbLxJrNe/9ZtBo=
 
-"@storybook/react-dom-shim@10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react-dom-shim/-/react-dom-shim-10.5.4.tgz#c92bb6d8b26aaa4523efa5a8b99178a0a76a3d52"
-  integrity sha1-ySu22LJqqkUj76WouZF4oKdqPVI=
+"@storybook/react-dom-shim@10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react-dom-shim/-/react-dom-shim-10.5.5.tgz#d60aa45a1174b2b404305c0d932cb43854afadf7"
+  integrity sha1-1gqkWhF0srQEMFwNkyy0OFSvrfc=
 
-"@storybook/react-vite@^10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react-vite/-/react-vite-10.5.4.tgz#d7fb799ba677cd10733535289a61d493a15e2fd1"
-  integrity sha1-1/t5m6Z3zRBzNTUommHUk6FeL9E=
+"@storybook/react-vite@^10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react-vite/-/react-vite-10.5.5.tgz#a22f181f7ff97de7f69a06d62089e12e16274428"
+  integrity sha1-oi8YH3/5fef2mgbWIInhLhYnRCg=
   dependencies:
     "@joshwooding/vite-plugin-react-docgen-typescript" "^0.7.0"
     "@rollup/pluginutils" "^5.0.2"
-    "@storybook/builder-vite" "10.5.4"
-    "@storybook/react" "10.5.4"
+    "@storybook/builder-vite" "10.5.5"
+    "@storybook/react" "10.5.5"
     empathic "^2.0.0"
     magic-string "^0.30.0"
     react-docgen "^8.0.2"
     resolve "^1.22.8"
     tsconfig-paths "^4.2.0"
 
-"@storybook/react@10.5.4", "@storybook/react@^10.5.4":
-  version "10.5.4"
-  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react/-/react-10.5.4.tgz#0371b370739dfeb9ec92ea3a93fc51ccbbb36059"
-  integrity sha1-A3GzcHOd/rnskuo6k/xRzLuzYFk=
+"@storybook/react@10.5.5", "@storybook/react@^10.5.5":
+  version "10.5.5"
+  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@storybook/react/-/react-10.5.5.tgz#ef97b5d12db03a4b9dcb1e178c3d6f1f8ed55401"
+  integrity sha1-75e10S2wOkudyx4XjD1vH47VVAE=
   dependencies:
     "@storybook/global" "^5.0.0"
-    "@storybook/react-dom-shim" "10.5.4"
+    "@storybook/react-dom-shim" "10.5.5"
     react-docgen "^8.0.2"
     react-docgen-typescript "^2.2.2"
 
@@ -4013,13 +3904,6 @@ brace-expansion@^5.0.5:
   dependencies:
     balanced-match "^4.0.2"
 
-braces@^3.0.3:
-  version "3.0.3"
-  resolved "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz"
-  integrity sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==
-  dependencies:
-    fill-range "^7.1.1"
-
 browserslist@^4.24.0:
   version "4.24.3"
   resolved "https://registry.npmjs.org/browserslist/-/browserslist-4.24.3.tgz"
@@ -4397,7 +4281,7 @@ debug@^4.1.0, debug@^4.1.1, debug@^4.3.1, debug@^4.3.2:
   dependencies:
     ms "^2.1.3"
 
-debug@^4.4.3:
+debug@^4.4.1, debug@^4.4.3:
   version "4.4.3"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/debug/-/debug-4.4.3.tgz#c6ae432d9bd9662582fce08709b038c58e9e3d6a"
   integrity sha1-xq5DLZvZZiWC/OCHCbA4xY6ePWo=
@@ -4846,6 +4730,14 @@ eslint-config-prettier@^10.1.8:
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/eslint-config-prettier/-/eslint-config-prettier-10.1.8.tgz#15734ce4af8c2778cc32f0b01b37b0b5cd1ecb97"
   integrity sha1-FXNM5K+MJ3jMMvCwGzewtc0ey5c=
 
+eslint-import-context@^0.1.8:
+  version "0.1.9"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/eslint-import-context/-/eslint-import-context-0.1.9.tgz#967b0b2f0a90ef4b689125e088f790f0b7756dbe"
+  integrity sha1-lnsLLwqQ70tokSXgiPeQ8Ld1bb4=
+  dependencies:
+    get-tsconfig "^4.10.1"
+    stable-hash-x "^0.2.0"
+
 eslint-import-resolver-node@^0.3.9:
   version "0.3.9"
   resolved "https://registry.npmjs.org/eslint-import-resolver-node/-/eslint-import-resolver-node-0.3.9.tgz"
@@ -4855,20 +4747,25 @@ eslint-import-resolver-node@^0.3.9:
     is-core-module "^2.13.0"
     resolve "^1.22.4"
 
+eslint-import-resolver-typescript@^4.4.5:
+  version "4.4.5"
+  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/eslint-import-resolver-typescript/-/eslint-import-resolver-typescript-4.4.5.tgz#3058afec12595b3c036c34f8a1066fb9e18fff0c"
+  integrity sha1-MFiv7BJZWzwDbDT4oQZvueGP/ww=
+  dependencies:
+    debug "^4.4.1"
+    eslint-import-context "^0.1.8"
+    get-tsconfig "^4.10.1"
+    is-bun-module "^2.0.0"
+    stable-hash-x "^0.2.0"
+    tinyglobby "^0.2.14"
+    unrs-resolver "^1.7.11"
+
 eslint-module-utils@^2.12.1:
   version "2.14.0"
   resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/eslint-module-utils/-/eslint-module-utils-2.14.0.tgz#611f8e1c6ceb29a93eb949e1cc670b8287764819"
   integrity sha1-YR+OHGzrKak+uUnhzGcLgod2SBk=
   dependencies:
     debug "^3.2.7"
-
-eslint-plugin-check-file@^3.3.2:
-  version "3.3.2"
-  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/eslint-plugin-check-file/-/eslint-plugin-check-file-3.3.2.tgz#712bd24c107cc4347c410c7f0123a7dc4684a576"
-  integrity sha1-cSvSTBB8xDR8QQx/ASOn3EaEpXY=
-  dependencies:
-    is-glob "^4.0.3"
-    micromatch "^4.0.8"
 
 eslint-plugin-import@^2.32.0:
   version "2.32.0"
@@ -5167,13 +5064,6 @@ file-entry-cache@^8.0.0:
   dependencies:
     flat-cache "^4.0.0"
 
-fill-range@^7.1.1:
-  version "7.1.1"
-  resolved "https://registry.npmjs.org/fill-range/-/fill-range-7.1.1.tgz"
-  integrity sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==
-  dependencies:
-    to-regex-range "^5.0.1"
-
 find-up@^4.0.0, find-up@^4.1.0:
   version "4.1.0"
   resolved "https://registry.npmjs.org/find-up/-/find-up-4.1.0.tgz"
@@ -5331,7 +5221,7 @@ get-symbol-description@^1.1.0:
     es-errors "^1.3.0"
     get-intrinsic "^1.2.6"
 
-get-tsconfig@4.14.0:
+get-tsconfig@4.14.0, get-tsconfig@^4.10.1:
   version "4.14.0"
   resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/get-tsconfig/-/get-tsconfig-4.14.0.tgz#985d85c52a9903864280ccc2448d413fbf1efed8"
   integrity sha1-mF2FxSqZA4ZCgMzCRI1BP78e/tg=
@@ -5581,6 +5471,13 @@ is-boolean-object@^1.2.1:
     call-bound "^1.0.2"
     has-tostringtag "^1.0.2"
 
+is-bun-module@^2.0.0:
+  version "2.0.0"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/is-bun-module/-/is-bun-module-2.0.0.tgz#4d7859a87c0fcac950c95e666730e745eae8bddd"
+  integrity sha1-TXhZqHwPyslQyV5mZzDnRerovd0=
+  dependencies:
+    semver "^7.7.1"
+
 is-callable@^1.1.3, is-callable@^1.2.7:
   version "1.2.7"
   resolved "https://registry.npmjs.org/is-callable/-/is-callable-1.2.7.tgz"
@@ -5687,11 +5584,6 @@ is-number-object@^1.1.1:
   dependencies:
     call-bound "^1.0.3"
     has-tostringtag "^1.0.2"
-
-is-number@^7.0.0:
-  version "7.0.0"
-  resolved "https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz"
-  integrity sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==
 
 is-regex@^1.2.1:
   version "1.2.1"
@@ -6511,14 +6403,6 @@ merge-stream@^2.0.0:
   resolved "https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz"
   integrity sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==
 
-micromatch@^4.0.8:
-  version "4.0.8"
-  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/micromatch/-/micromatch-4.0.8.tgz#d66fa18f3a47076789320b9b1af32bd86d9fa202"
-  integrity sha1-1m+hjzpHB2eJMgubGvMr2G2fogI=
-  dependencies:
-    braces "^3.0.3"
-    picomatch "^2.3.1"
-
 mimic-fn@^2.1.0:
   version "2.1.0"
   resolved "https://registry.npmjs.org/mimic-fn/-/mimic-fn-2.1.0.tgz"
@@ -6913,7 +6797,7 @@ picocolors@1.1.1, picocolors@^1.0.0, picocolors@^1.1.0, picocolors@^1.1.1:
   resolved "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz"
   integrity sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==
 
-picomatch@^2.0.4, picomatch@^2.3.1:
+picomatch@^2.0.4:
   version "2.3.1"
   resolved "https://registry.npmjs.org/picomatch/-/picomatch-2.3.1.tgz"
   integrity sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==
@@ -6946,7 +6830,7 @@ pkg-types@^2.3.0:
 
 playwright-core@1.62.0:
   version "1.62.0"
-  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright-core/-/playwright-core-1.62.0.tgz#66f50795fa22d4ccb1a6f70d82264f07171fa3b5"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright-core/-/playwright-core-1.62.0.tgz#66f50795fa22d4ccb1a6f70d82264f07171fa3b5"
   integrity sha1-ZvUHlfoi1MyxpvcNgiZPBxcfo7U=
 
 playwright-core@1.63.0-alpha-2026-07-25:
@@ -6956,7 +6840,7 @@ playwright-core@1.63.0-alpha-2026-07-25:
 
 playwright@1.62.0:
   version "1.62.0"
-  resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright/-/playwright-1.62.0.tgz#eddedb94b0e492a6c7425a602b0eadea35c71526"
+  resolved "https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright/-/playwright-1.62.0.tgz#eddedb94b0e492a6c7425a602b0eadea35c71526"
   integrity sha1-7d7blLDkkqbHQlpgKw6t6jXHFSY=
   dependencies:
     playwright-core "1.62.0"
@@ -7341,7 +7225,7 @@ semver@^7.5.3, semver@^7.5.4:
   resolved "https://registry.npmjs.org/semver/-/semver-7.6.3.tgz"
   integrity sha512-oVekP1cKtI+CTDvHWYFUcMtsK/00wmAEfyqKfNdARm8u1wNVhSgaX7A8d4UuIlUI5e84iEwOhs7ZPYRmzU9U6A==
 
-semver@^7.7.2, semver@^7.7.3:
+semver@^7.7.1, semver@^7.7.2, semver@^7.7.3:
   version "7.8.5"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/semver/-/semver-7.8.5.tgz#39b646037dd50c14fb451e7e4cac58ed8b863f69"
   integrity sha1-ObZGA33VDBT7RR5+TKxY7YuGP2k=
@@ -7481,6 +7365,11 @@ sprintf-js@~1.0.2:
   resolved "https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz"
   integrity sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==
 
+stable-hash-x@^0.2.0:
+  version "0.2.0"
+  resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/stable-hash-x/-/stable-hash-x-0.2.0.tgz#dfd76bfa5d839a7470125c6a6b3c8b22061793e9"
+  integrity sha1-39dr+l2DmnRwElxqazyLIgYXk+k=
+
 stack-utils@^2.0.6:
   version "2.0.6"
   resolved "https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/stack-utils/-/stack-utils-2.0.6.tgz#aaf0748169c02fc33c8232abccf933f54a1cc34f"
@@ -7506,10 +7395,10 @@ stop-iteration-iterator@^1.1.0:
     es-errors "^1.3.0"
     internal-slot "^1.1.0"
 
-storybook@^10.5.4:
-  version "10.5.4"
-  resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/storybook/-/storybook-10.5.4.tgz#3190fc10568053bd32f198ef164c045904cd2582"
-  integrity sha1-MZD8EFaAU70y8ZjvFkwEWQTNJYI=
+storybook@^10.5.5:
+  version "10.5.5"
+  resolved "https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/storybook/-/storybook-10.5.5.tgz#6b720e7cf5cfba1a06f5f1c9ab476e6af27cd72a"
+  integrity sha1-a3IOfPXPuhoG9fHJq0duavJ81yo=
   dependencies:
     "@storybook/global" "^5.0.0"
     "@storybook/icons" "^2.0.2"
@@ -7527,7 +7416,7 @@ storybook@^10.5.4:
     recast "^0.23.5"
     semver "^7.7.3"
     use-sync-external-store "^1.5.0"
-    ws "^8.18.0"
+    ws "^8.21.1"
 
 string-length@^4.0.2:
   version "4.0.2"
@@ -7755,7 +7644,7 @@ tinyexec@^1.0.2:
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/tinyexec/-/tinyexec-1.2.4.tgz#ae45bb2edebda94c70f4ea897e0f1243e470db71"
   integrity sha1-rkW7Lt69qUxw9OqJfg8SQ+Rw23E=
 
-tinyglobby@^0.2.15, tinyglobby@^0.2.17:
+tinyglobby@^0.2.14, tinyglobby@^0.2.15, tinyglobby@^0.2.17:
   version "0.2.17"
   resolved "https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/tinyglobby/-/tinyglobby-0.2.17.tgz#562a9a6c9eb2b3b123d39719f9af5bb44fcd7631"
   integrity sha1-ViqabJ6ys7Ej05cZ+a9btE/NdjE=
@@ -7782,13 +7671,6 @@ tmpl@1.0.5:
   version "1.0.5"
   resolved "https://registry.npmjs.org/tmpl/-/tmpl-1.0.5.tgz"
   integrity sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==
-
-to-regex-range@^5.0.1:
-  version "5.0.1"
-  resolved "https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz"
-  integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
-  dependencies:
-    is-number "^7.0.0"
 
 topojson-client@^3.1.0:
   version "3.1.0"
@@ -8195,12 +8077,7 @@ write-file-atomic@^5.0.1:
     imurmurhash "^0.1.4"
     signal-exit "^4.0.1"
 
-ws@^8.18.0:
-  version "8.18.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.0.tgz"
-  integrity sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==
-
-ws@^8.19.0:
+ws@^8.19.0, ws@^8.21.1:
   version "8.21.1"
   resolved "https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/ws/-/ws-8.21.1.tgz#045650cd4b1207809e7547146223c3814a9af586"
   integrity sha1-BFZQzUsSB4CedUcUYiPDgUqa9YY=

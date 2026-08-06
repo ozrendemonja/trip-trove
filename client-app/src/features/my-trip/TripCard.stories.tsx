@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@fluentui/react";
+import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, within } from "storybook/test";
 import TripCard from "./TripCard";
@@ -22,9 +22,9 @@ const meta: Meta<typeof TripCard> = {
   decorators: [
     (Story) => (
       <>
-        <ThemeProvider>
+        <FluentProvider theme={webLightTheme}>
           <Story />
-        </ThemeProvider>
+        </FluentProvider>
         <style>{styleOverrides}</style>
       </>
     )

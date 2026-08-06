@@ -1,15 +1,14 @@
 import {
-  IColumn,
-  IDropdownOption,
-  Link,
-  Selection,
-  Stack,
-  Text
-} from "@fluentui/react";
-import { useBoolean } from "@fluentui/react-hooks";
+  DataColumn,
+  DataSelection
+} from "../../../../shared/ui/data-table/DataTable";
+import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
+import { Link, Text } from "@fluentui/react-components";
+import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
@@ -29,20 +28,20 @@ import { listHeader, onRenderWhenNoMoreItems } from "./ListCountries.config";
 import { useClasses } from "./ListCountry.styles";
 import { CountryRow } from "./ListCountry.types";
 import { toLastReadCountry } from "./ListCountry.utils";
+import { Flex } from "../../../../shared/ui/Flex";
 
-const onRenderItemColumn = (
+const renderCellContent = (
   className: string,
   onUpdateClick: () => void,
-  country?: CountryRow,
-  column?: IColumn
+  country: CountryRow,
+  _index: number,
+  column: DataColumn
 ): JSX.Element | string | number => {
-  if (column?.key === "skipElement") {
-    return <></>;
-  }
-  if (column?.key === "name") {
+  if (column.id === "name") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Link
+          data-fluent-link
           className={className}
           href={`https://www.google.com/search?q=${country.name}`}
           target="_blank"
@@ -56,47 +55,48 @@ const onRenderItemColumn = (
           text={country!.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "continent") {
+  } else if (column.id === "continent") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>{country?.continent}</Text>
         <EditContinentDetails
           countryId={country!.id}
           text={country!.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
-  } else if (column?.key === "isoCode") {
+  } else if (column.id === "isoCode") {
     return (
-      <Stack tokens={{ childrenGap: 15 }} horizontal={true}>
+      <Flex gap={15} direction="row">
         <Text>{country?.isoCode?.toUpperCase()}</Text>
         <EditPropertyCountryIsoCode
           countryId={country!.id}
           text={country!.name}
           onUpdateClick={onUpdateClick}
         />
-      </Stack>
+      </Flex>
     );
   }
-  return country[column.fieldName as keyof Country] as string;
+  return country[column.accessor as keyof Country] as string;
 };
 
-const sortOptions: IDropdownOption[] = [
-  { key: "DESC" as OrderOptions, text: "Newest", selected: true },
-  { key: "ASC" as OrderOptions, text: "Oldest" }
+const sortOptions: SelectChoice[] = [
+  { value: "DESC" as OrderOptions, label: "Newest" },
+  { value: "ASC" as OrderOptions, label: "Oldest" }
 ];
 
 export const CountryList: React.FunctionComponent = () => {
   const classes = useClasses();
+  const pageClasses = useListPageClasses();
 
   const [items, setItems] = useState<CountryRow[]>([]);
-  const [columns, setColumns] = useState<IColumn[]>([]);
+  const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
-    useBoolean(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBoolean(true);
+    useBooleanState(true);
+  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadCountry | undefined>(
     undefined
@@ -128,94 +128,90 @@ export const CountryList: React.FunctionComponent = () => {
   }, [query]);
 
   return (
-    <>
+    <div className={pageClasses.pageLayout}>
       <Navigation />
-      {isLoading && <LoadingSpinner text="Updating list of contries" />}
-      {!isLoading && (
-        <ListElement
-          items={items}
-          columns={columns}
-          listHeader={{
-            ...listHeader,
-            setItems: setSuggestions,
-            showSearchBar: true,
-            onSortOptionChange: (
-              _event: React.FormEvent<HTMLDivElement>,
-              option?: IDropdownOption,
-              _index?: number
-            ) => {
-              setOrder(option!.key as OrderOptions);
-              setCountryCustomizer(
-                new CountryListCustomizer(setItems, setColumns)
-              );
-              toggleReloadData();
-            },
-            sortOptions: sortOptions,
-            items: suggestions,
-            onSearchTyped: (
-              _event?: React.ChangeEvent<HTMLInputElement>,
-              newValue?: string
-            ) => {
-              setQuery(newValue ?? "");
-            },
-            onFindItem: (id: number) => {
-              getCountryById(id).then((data) => {
-                setCountryCustomizer(() => {
-                  return new CountryListCustomizer(
-                    setItems,
-                    setColumns
-                  ).withFixedRows([CountryRow.from(data)]);
-                });
-                setSuggestions([]);
-              });
-            }
-          }}
-          addRowOptions={{
-            text: "Add new country",
-            onAddRow: () => navigate("/add-country")
-          }}
-          deleteRowOptions={{
-            text: "Delete country",
-            onDeleteRow: async (selection: Selection<CountryRow>) => {
-              await deleteRows(selection.getSelection());
-              setCountryCustomizer(
-                new CountryListCustomizer(setItems, setColumns)
-              );
-              toggleReloadData();
-            }
-          }}
-          onRenderMissingItem={(_index: number) =>
-            onRenderWhenNoMoreItems(toggleReloadData)
-          }
-          onRenderItemColumn={(
-            item?: Country,
-            _index?: number,
-            column?: IColumn
-          ) =>
-            onRenderItemColumn(
-              classes.linkField,
-              () => {
+      <main className={pageClasses.content}>
+        {isLoading && <LoadingSpinner text="Updating list of contries" />}
+        {!isLoading && (
+          <ListElement
+            items={items}
+            columns={columns}
+            listHeader={{
+              ...listHeader,
+              setItems: setSuggestions,
+              showSearchBar: true,
+              onSortOptionChange: (_event, choice) => {
+                setOrder(choice!.value as OrderOptions);
                 setCountryCustomizer(
                   new CountryListCustomizer(setItems, setColumns)
                 );
                 toggleReloadData();
               },
-              item,
-              column
-            )
-          }
-          selectedItemName={(selection: Selection<Country>) => {
-            if (
-              selection &&
-              selection.getSelection() &&
-              selection.getSelection().length > 0
-            ) {
-              return selection.getSelection()[0].name;
+              sortOptions: sortOptions,
+              selectedSortValue: order,
+              items: suggestions,
+              onSearchTyped: (
+                _event?: React.ChangeEvent<HTMLInputElement>,
+                newValue?: string
+              ) => {
+                setQuery(newValue ?? "");
+              },
+              onFindItem: (id) => {
+                if (typeof id !== "number") return;
+                getCountryById(id).then((data) => {
+                  setCountryCustomizer(() => {
+                    return new CountryListCustomizer(
+                      setItems,
+                      setColumns
+                    ).withFixedRows([CountryRow.from(data)]);
+                  });
+                  setSuggestions([]);
+                });
+              }
+            }}
+            addRowOptions={{
+              text: "Add new country",
+              onAddRow: () => navigate("/add-country")
+            }}
+            deleteRowOptions={{
+              text: "Delete country",
+              onDeleteRow: async (selection: DataSelection<CountryRow>) => {
+                await deleteRows(selection.selectedRows());
+                setCountryCustomizer(
+                  new CountryListCustomizer(setItems, setColumns)
+                );
+                toggleReloadData();
+              }
+            }}
+            onLoadMore={(_index: number) =>
+              onRenderWhenNoMoreItems(toggleReloadData)
             }
-          }}
-        />
-      )}
-    </>
+            renderCell={(item: Country, index: number, column: DataColumn) =>
+              renderCellContent(
+                classes.linkField,
+                () => {
+                  setCountryCustomizer(
+                    new CountryListCustomizer(setItems, setColumns)
+                  );
+                  toggleReloadData();
+                },
+                item,
+                index,
+                column
+              )
+            }
+            getSelectedItemName={(selection: DataSelection<Country>) => {
+              const selectedRows = selection.selectedRows();
+              if (selectedRows.length > 0) {
+                return selectedRows[0].name;
+              }
+
+              return "";
+            }}
+          />
+        )}
+      </main>
+    </div>
   );
 };
 

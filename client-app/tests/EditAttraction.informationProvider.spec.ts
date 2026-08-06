@@ -1,11 +1,26 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+const selectRecordedDate = async (page: Page): Promise<void> => {
+  await page
+    .getByRole("combobox", { name: "Date of information recording" })
+    .click();
+  const today = new Date();
+  await page
+    .getByRole("button", {
+      name: `${today.getDate()}, ${today.toLocaleString("en-US", {
+        month: "long"
+      })}, ${today.getFullYear()}`,
+      exact: true
+    })
+    .click();
+};
 
 test.beforeEach(async ({ page }) => {
   await page.goto(
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-attraction-listattraction--primary"
   );
 
-  await page.waitForSelector('div[data-automationid="DetailsList"]');
+  await page.getByRole("grid", { name: "Item details" }).waitFor();
   await expect(
     page.getByRole("link", { name: "Vilnius Old Town", exact: true })
   ).toBeVisible();
@@ -36,9 +51,7 @@ test("Information provider is updated when an existing suggestion is selected", 
     .click();
   await page.getByLabel("Where information comes from").fill("Lon");
   await page.getByRole("menuitem", { name: "Lonely Planet" }).click();
-  await page
-    .getByRole("combobox", { name: "Select recorded date..." })
-    .fill("Mon Feb 17 2025");
+  await selectRecordedDate(page);
   await page.getByRole("button", { name: "Update" }).click();
 
   await expect(
@@ -59,9 +72,7 @@ test("Information provider is updated with a brand new free-text value when no s
   await page
     .getByLabel("Where information comes from")
     .fill("Brand new source");
-  await page
-    .getByRole("combobox", { name: "Select recorded date..." })
-    .fill("Mon Feb 17 2025");
+  await selectRecordedDate(page);
   await page.getByRole("button", { name: "Update" }).click();
 
   await expect(

@@ -1,4 +1,4 @@
-import { Stack, Text } from "@fluentui/react";
+import { Text } from "@fluentui/react-components";
 import countries from "i18n-iso-countries";
 import React, { useCallback, useMemo, useEffect, useState } from "react";
 import {
@@ -20,6 +20,7 @@ import {
   COLOR_YELLOW,
   useClasses
 } from "./CountriesVisitedMap.styles";
+import { Flex } from "../../shared/ui/Flex";
 
 type CountryStatus = "GRAY" | "YELLOW" | "GOLD" | "NONE";
 
@@ -278,8 +279,8 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
           </div>
           {selected && (
             <div className={classes.detailsPanel}>
-              <Stack tokens={{ childrenGap: 4 }}>
-                <Text variant="xLarge">{selected.summary.countryName}</Text>
+              <Flex gap={4}>
+                <Text size={500}>{selected.summary.countryName}</Text>
                 <div className={classes.detailRow}>
                   <span className={classes.detailLabel}>Visited</span>
                   <span className={classes.detailValue}>
@@ -301,7 +302,7 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
                     {selected.summary.unvisitedOther}
                   </span>
                 </div>
-              </Stack>
+              </Flex>
             </div>
           )}
         </div>

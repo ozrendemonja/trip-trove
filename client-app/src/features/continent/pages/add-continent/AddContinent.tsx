@@ -1,14 +1,14 @@
 import {
-  DefaultButton,
-  ITextField,
+  InputField,
+  InputFieldHandle
+} from "../../../../shared/ui/forms/InputField";
+import { Button } from "@fluentui/react-components";
+import {
+  Divider,
   MessageBar,
-  MessageBarType,
-  PrimaryButton,
-  Separator,
-  Stack,
-  Text,
-  TextField
-} from "@fluentui/react";
+  MessageBarBody,
+  Text
+} from "@fluentui/react-components";
 import React, { useRef } from "react";
 import { useNavigate } from "react-router";
 import { saveNewContinent } from "../../infra/ManagerApi";
@@ -17,12 +17,13 @@ import { useClasses } from "./AddContinent.styles";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 import { useSaveError } from "../../../../shared/hooks/UseSaveError";
+import { Flex, FlexItem } from "../../../../shared/ui/Flex";
 
 export const AddContinent: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useContinentFormField();
   const navigate = useNavigate();
-  const nameFieldRef = useRef<ITextField>(null);
+  const nameFieldRef = useRef<InputFieldHandle>(null);
   const { nameConflict, saveError, handleSaveError } = useSaveError({
     nameConflictMessage: "A continent with this name already exists.",
     saveErrorMessage:
@@ -51,41 +52,46 @@ export const AddContinent: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
-      <Stack className={classes.root}>
+      <Flex className={classes.root}>
         <Text as="h1" className={classes.header}>
           Add Continent
         </Text>
-        <Separator></Separator>
-        <Stack tokens={{ childrenGap: 12 }} className={classes.form}>
-          <Stack.Item grow={1}>
-            <TextField
+        <Divider className={classes.headerDivider} />
+        <Flex gap={16} className={classes.form}>
+          <FlexItem grow={1}>
+            <InputField
               {...formFields.continentName}
-              componentRef={nameFieldRef}
+              ref={nameFieldRef}
               errorMessage={nameConflict}
+              showRequiredIndicator
             />
-          </Stack.Item>
-        </Stack>
+          </FlexItem>
+        </Flex>
         {saveError && (
-          <Stack className={classes.saveError}>
-            <MessageBar messageBarType={MessageBarType.error}>
-              {saveError}
+          <Flex className={classes.saveError}>
+            <MessageBar intent="error">
+              <MessageBarBody>{saveError}</MessageBarBody>
             </MessageBar>
-          </Stack>
+          </Flex>
         )}
-        <Stack
-          horizontal
-          horizontalAlign="end"
+        <Flex
+          direction="row"
+          justify="flex-end"
           className={classes.footer}
-          tokens={{ childrenGap: 12 }}
+          gap={12}
         >
-          <DefaultButton onClick={() => navigate(-1)} text="Cancel" />
-          <PrimaryButton
+          <Button appearance="secondary" onClick={() => navigate(-1)}>
+            Cancel
+          </Button>
+          <Button
+            appearance="primary"
             onClick={() => void handleSave()}
             disabled={!isFormValid}
-            text="Save"
-          />
-        </Stack>
-      </Stack>
+          >
+            Save
+          </Button>
+        </Flex>
+      </Flex>
     </>
   );
 };

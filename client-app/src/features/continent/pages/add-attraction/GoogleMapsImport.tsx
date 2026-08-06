@@ -1,13 +1,13 @@
 import {
-  DefaultButton,
-  ITextField,
+  InputField,
+  InputFieldHandle
+} from "../../../../shared/ui/forms/InputField";
+import {
+  Button,
   MessageBar,
-  MessageBarType,
-  Spinner,
-  SpinnerSize,
-  Stack,
-  TextField
-} from "@fluentui/react";
+  MessageBarBody,
+  Spinner
+} from "@fluentui/react-components";
 import React, {
   forwardRef,
   useCallback,
@@ -21,6 +21,7 @@ import {
   parseGoogleMapsUrl
 } from "./parseGoogleMapsUrl";
 import { reverseGeocode } from "./reverseGeocode";
+import { Flex } from "../../../../shared/ui/Flex";
 
 export interface GoogleMapsImportPayload {
   name?: string;
@@ -52,7 +53,7 @@ export const GoogleMapsImport = forwardRef<
 >(({ onImport, className }, ref) => {
   const [url, setUrl] = useState<string>("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const inputRef = useRef<ITextField>(null);
+  const inputRef = useRef<InputFieldHandle>(null);
   const urlRef = useRef<string>("");
   urlRef.current = url;
 
@@ -83,7 +84,6 @@ export const GoogleMapsImport = forwardRef<
       setStatus({
         kind: "error",
         message:
-          // eslint-disable-next-line @fluentui/max-len
           "Short share links (maps.app.goo.gl) cannot be read directly. Open the link in a browser, then copy the full URL from the address bar."
       });
       return;
@@ -94,7 +94,6 @@ export const GoogleMapsImport = forwardRef<
       setStatus({
         kind: "error",
         message:
-          // eslint-disable-next-line @fluentui/max-len
           "Could not recognise this URL. Copy the full URL from the Google Maps address bar after clicking a place."
       });
       return;
@@ -102,10 +101,9 @@ export const GoogleMapsImport = forwardRef<
 
     setStatus({ kind: "loading" });
 
-    // eslint-disable-next-line no-console
     console.info("[GoogleMapsImport] parsed URL:", parsed);
     const lookup = await reverseGeocode(parsed.latitude, parsed.longitude);
-    // eslint-disable-next-line no-console
+
     console.info("[GoogleMapsImport] reverseGeocode result:", lookup);
     const address = lookup.ok && lookup.address ? lookup.address : undefined;
 
@@ -128,16 +126,12 @@ export const GoogleMapsImport = forwardRef<
     if (!lookup.ok) {
       setStatus({
         kind: "warning",
-        message:
-          // eslint-disable-next-line @fluentui/max-len
-          `${filledMessage} Address lookup failed (${lookup.reason}) — please add it manually.`
+        message: `${filledMessage} Address lookup failed (${lookup.reason}) — please add it manually.`
       });
     } else if (lookup.address === null) {
       setStatus({
         kind: "warning",
-        message:
-          // eslint-disable-next-line @fluentui/max-len
-          `${filledMessage} No address found for these coordinates — please add it manually.`
+        message: `${filledMessage} No address found for these coordinates — please add it manually.`
       });
     } else {
       setStatus({ kind: "success", message: filledMessage });
@@ -145,7 +139,7 @@ export const GoogleMapsImport = forwardRef<
   }, [url, onImport]);
 
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
+    (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
         void handleImport();
@@ -155,54 +149,58 @@ export const GoogleMapsImport = forwardRef<
   );
 
   return (
-    <Stack tokens={{ childrenGap: 8 }} className={className}>
-      <Stack horizontal verticalAlign="end" tokens={{ childrenGap: 12 }}>
-        <TextField
-          label="Import from Google Maps"
-          componentRef={inputRef}
-          placeholder="Paste a Google Maps URL (e.g. https://www.google.com/maps/place/...)"
-          value={url}
-          onChange={(_e, value) => {
-            setUrl(value ?? "");
-            if (
-              status.kind === "error" ||
-              status.kind === "success" ||
-              status.kind === "warning"
-            ) {
-              setStatus({ kind: "idle" });
-            }
-          }}
-          onKeyDown={handleKeyDown}
-          styles={{ root: { flexGrow: 1 } }}
-          disabled={status.kind === "loading"}
-        />
-        <DefaultButton
-          text="Import"
+    <Flex gap={8} className={className}>
+      <Flex direction="row" align="flex-end" gap={12} wrap>
+        <Flex grow style={{ minWidth: 0, flexBasis: "480px" }}>
+          <InputField
+            label="Import from Google Maps"
+            ref={inputRef}
+            placeholder="Paste a Google Maps URL (e.g. https://www.google.com/maps/place/...)"
+            value={url}
+            onChange={(_e, value) => {
+              setUrl(value ?? "");
+              if (
+                status.kind === "error" ||
+                status.kind === "success" ||
+                status.kind === "warning"
+              ) {
+                setStatus({ kind: "idle" });
+              }
+            }}
+            onKeyDown={handleKeyDown}
+            style={{ width: "100%", minWidth: 0 }}
+            disabled={status.kind === "loading"}
+          />
+        </Flex>
+        <Button
+          appearance="secondary"
           onClick={() => {
             void handleImport();
           }}
           disabled={status.kind === "loading" || url.trim().length === 0}
-        />
-      </Stack>
+        >
+          Import
+        </Button>
+      </Flex>
       {status.kind === "loading" && (
-        <Spinner size={SpinnerSize.small} label="Looking up address..." />
+        <Spinner size="tiny" label="Looking up address..." />
       )}
       {status.kind === "success" && (
-        <MessageBar messageBarType={MessageBarType.success}>
-          {status.message}
+        <MessageBar intent="success">
+          <MessageBarBody>{status.message}</MessageBarBody>
         </MessageBar>
       )}
       {status.kind === "warning" && (
-        <MessageBar messageBarType={MessageBarType.warning}>
-          {status.message}
+        <MessageBar intent="warning">
+          <MessageBarBody>{status.message}</MessageBarBody>
         </MessageBar>
       )}
       {status.kind === "error" && (
-        <MessageBar messageBarType={MessageBarType.error}>
-          {status.message}
+        <MessageBar intent="error">
+          <MessageBarBody>{status.message}</MessageBarBody>
         </MessageBar>
       )}
-    </Stack>
+    </Flex>
   );
 });
 

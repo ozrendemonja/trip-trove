@@ -1,62 +1,47 @@
-import { buildColumns, IColumn } from "@fluentui/react";
+import {
+  createDataColumns,
+  DataColumn
+} from "../../../shared/ui/data-table/DataTable";
 import { ListElementCustomizer } from "../../../shared/list-element/ListElement.types";
 import { AttractionRow } from "../pages/list-attraction/ListAttraction.types";
 
 export class AttractionListCustomizer extends ListElementCustomizer<AttractionRow> {
   constructor(
     notifyAttractionChanged: (items: AttractionRow[]) => void,
-    notifyListColumnChanged: (columns: IColumn[]) => void,
+    notifyListColumnChanged: (columns: DataColumn[]) => void,
     items: AttractionRow[] = []
   ) {
     super(items, notifyAttractionChanged, notifyListColumnChanged);
   }
 
-  private setDefaultLayout = (column: IColumn): IColumn => {
+  private setDefaultLayout = (column: DataColumn): DataColumn => {
     const result = { ...column };
 
-    result.ariaLabel = `Operations for ${column.name}`;
-    result.isMultiline = true;
+    result.headerAriaLabel = `Operations for ${column.header}`;
+    result.multiline = true;
 
-    if (column?.key === "mustVisit" || column?.key === "isTraditional") {
+    if (column.id === "mustVisit" || column.id === "isTraditional") {
       result.maxWidth = 60;
-    } else if (column?.key === "type") {
+    } else if (column.id === "type") {
       result.maxWidth = 140;
-    } else if (column?.key === "optimalVisitPeriod") {
+    } else if (column.id === "optimalVisitPeriod") {
       result.minWidth = 280;
+      result.maxWidth = 280;
     } else {
       result.minWidth = 150;
     }
 
-    result.isResizable = true;
-    // Keep every column mounted so narrow screens (e.g. laptops) can reach the
-    // later columns by scrolling horizontally instead of having them dropped.
-    result.isCollapsible = false;
-
     return result;
   };
 
-  private hideIdHeader(column: IColumn): any {
-    const result = { ...column };
-
-    if (result.key == "id") {
-      result.maxWidth = 1;
-      result.isResizable = true;
-      result.key = "skipElement";
-      result.onRenderHeader = () => {
-        return null;
-      };
-    }
-
-    return result;
-  }
-
   public createColumns = (): void => {
-    const columns = buildColumns(this.items, true)
+    const columns = createDataColumns(this.items)
       .filter(
         (column) =>
-          column.key !== "visitStatus" && column.key !== "permanentlyClosedAt"
+          column.id !== "id" &&
+          column.id !== "visitStatus" &&
+          column.id !== "permanentlyClosedAt"
       )
-      .map((column) => this.hideIdHeader(column))
       .map((column) => this.setDefaultLayout(column));
 
     this.columns = columns;

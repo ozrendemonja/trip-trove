@@ -1,5 +1,5 @@
 import { Decorator, Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AddAttraction from "./AddAttraction";
@@ -64,7 +64,7 @@ const selectCountry = async (
   name = "Monaco",
   query = "Mon"
 ): Promise<void> => {
-  await user.type(screen.getByLabelText("Select a country"), query);
+  await user.type(screen.getByLabelText(/^Select a country/), query);
   await user.click(
     await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
@@ -75,7 +75,7 @@ const selectCity = async (
   name = "Monaco, Monaco, Monaco",
   query = "Mon"
 ): Promise<void> => {
-  await user.type(screen.getByLabelText("Select a city"), query);
+  await user.type(screen.getByLabelText(/^Select a city/), query);
   await user.click(
     await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
@@ -89,7 +89,7 @@ const selectRegion = async (
   name = "Monaco",
   query = "Mon"
 ): Promise<void> => {
-  await user.type(screen.getByLabelText("Select a region"), query);
+  await user.type(screen.getByLabelText(/^Select a region/), query);
   await user.click(
     await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
@@ -98,7 +98,7 @@ const selectRegion = async (
 const typeAttractionName = (
   user: User,
   value = "Casino Square"
-): Promise<void> => user.type(screen.getByLabelText("Attraction name"), value);
+): Promise<void> => user.type(screen.getByLabelText(/^Attraction name/), value);
 
 const selectCategory = async (
   user: User,
@@ -115,7 +115,10 @@ const selectSource = async (
   name = "Lonely Planet",
   query = "Lonely"
 ): Promise<void> => {
-  await user.type(screen.getByLabelText("Where information comes from"), query);
+  await user.type(
+    screen.getByLabelText(/^Where information comes from/),
+    query
+  );
   await user.click(
     await screen.findByRole("menuitem", { name }, { timeout: 5000 })
   );
@@ -198,7 +201,7 @@ export const SavesWithCtrlS: Story = {
     await user.keyboard("{Control>}s{/Control}");
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Attraction name")).toHaveValue("")
+      expect(screen.getByLabelText(/^Attraction name/)).toHaveValue("")
     );
   }
 };
@@ -207,6 +210,47 @@ export const SaveDisabledOnEmptyForm: Story = {
   decorators: [withServer()],
   play: async () => {
     await expectSaveDisabled();
+  }
+};
+
+export const ShowsAsterisksForAllRequiredFields: Story = {
+  decorators: [withServer()],
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getAllByText("*")).toHaveLength(7);
+    await expect(canvas.getByLabelText(/^Select a city/)).toBeRequired();
+
+    await user.click(canvas.getByLabelText("Attraction is region level"));
+
+    await waitFor(() => expect(canvas.getAllByText("*")).toHaveLength(7));
+    await expect(canvas.getByLabelText(/^Select a region/)).toBeRequired();
+  }
+};
+
+export const SuggestionsMatchSearchWidth: Story = {
+  decorators: [withServer()],
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const countryInput = canvas.getByLabelText(/^Select a country/);
+
+    await user.type(countryInput, "Mon");
+    const suggestion = await canvas.findByRole("menuitem", { name: "Monaco" });
+    const searchControl = countryInput.parentElement;
+    const suggestions = suggestion.parentElement;
+
+    expect(searchControl).toBeInTheDocument();
+    expect(suggestions).toBeInTheDocument();
+    expect(suggestions!.getBoundingClientRect().width).toBeCloseTo(
+      searchControl!.getBoundingClientRect().width,
+      1
+    );
+    expect(suggestion.getBoundingClientRect().width).toBeCloseTo(
+      searchControl!.getBoundingClientRect().width,
+      1
+    );
   }
 };
 
@@ -279,8 +323,8 @@ export const ShowsErrorWhenCountryDeselected: Story = {
 
     await selectCountry(user);
     // Typing over the chosen country clears the selection.
-    await user.clear(screen.getByLabelText("Select a country"));
-    await user.type(screen.getByLabelText("Select a country"), "Wrong");
+    await user.clear(screen.getByLabelText(/^Select a country/));
+    await user.type(screen.getByLabelText(/^Select a country/), "Wrong");
 
     await expect(
       await screen.findByText("Country must be selected", {}, { timeout: 5000 })
@@ -296,8 +340,8 @@ export const ShowsErrorWhenCityDeselected: Story = {
 
     await selectCountry(user);
     await selectCity(user);
-    await user.clear(screen.getByLabelText("Select a city"));
-    await user.type(screen.getByLabelText("Select a city"), "Wrong");
+    await user.clear(screen.getByLabelText(/^Select a city/));
+    await user.type(screen.getByLabelText(/^Select a city/), "Wrong");
 
     await expect(
       await screen.findByText("City must be selected", {}, { timeout: 5000 })
@@ -313,8 +357,8 @@ export const ShowsErrorWhenRegionDeselected: Story = {
     await selectCountry(user);
     await enableRegionLevel(user);
     await selectRegion(user);
-    await user.clear(screen.getByLabelText("Select a region"));
-    await user.type(screen.getByLabelText("Select a region"), "Wrong");
+    await user.clear(screen.getByLabelText(/^Select a region/));
+    await user.type(screen.getByLabelText(/^Select a region/), "Wrong");
 
     await expect(
       await screen.findByText("Region must be selected", {}, { timeout: 5000 })
@@ -328,7 +372,7 @@ export const ShowsErrorWhenNameCleared: Story = {
     const user = setupUser();
 
     await typeAttractionName(user);
-    await user.clear(screen.getByLabelText("Attraction name"));
+    await user.clear(screen.getByLabelText(/^Attraction name/));
     await user.tab();
 
     await expect(
@@ -348,7 +392,7 @@ export const ShowsErrorWhenNameTooLong: Story = {
 
     await enterAndBlur(
       user,
-      screen.getByLabelText("Attraction name"),
+      screen.getByLabelText(/^Attraction name/),
       "a".repeat(2049)
     );
 
@@ -406,7 +450,7 @@ export const ShowsErrorWhenSourceCleared: Story = {
     const user = setupUser();
 
     await selectSource(user);
-    await user.clear(screen.getByLabelText("Where information comes from"));
+    await user.clear(screen.getByLabelText(/^Where information comes from/));
     await user.tab();
 
     await expect(
@@ -426,7 +470,7 @@ export const ShowsErrorWhenSourceTooLong: Story = {
 
     await enterAndBlur(
       user,
-      screen.getByLabelText("Where information comes from"),
+      screen.getByLabelText(/^Where information comes from/),
       "a".repeat(513)
     );
 

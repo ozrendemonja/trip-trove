@@ -1,53 +1,112 @@
-import { FontWeights, getTheme, mergeStyleSets } from "@fluentui/react";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
-export const useClasses = () => {
-  const theme = getTheme();
-
-  return mergeStyleSets({
-    container: {
-      display: "flex",
-      flexFlow: "column nowrap",
-      alignItems: "stretch"
-    },
-    header: {
-      fontSize: theme.fonts.xLargePlus,
-      flex: "1 1 auto",
-      color: theme.palette.neutralPrimary,
-      display: "flex",
-      alignItems: "center",
-      fontWeight: FontWeights.semibold,
-      padding: "2px 12px 14px 24px",
-      selectors: {
-        "& h2": {
-          fontSize: 24,
-          fontWeight: FontWeights.semibold
-        }
-      }
-    },
-    body: {
-      marginRight: 40,
-      "& > *": {
-        marginLeft: 15,
-        ".ms-Link": { marginTop: 10 },
-        "& h3": { fontWeight: 600, margin: 0 }
-      }
-    },
-    closeButton: {
-      color: theme.palette.neutralPrimary,
-      marginLeft: "auto",
-      marginTop: "4px",
-      marginRight: "2px"
-    },
-    filterButton: { borderRadius: "25px" },
-    filterElementSelected: {
-      color: "black",
-      fontWeight: "bold"
-    },
-    filterElementNotSelected: {
-      color: "grey"
-    },
-    filterElementClearIcon: {
-      marginLeft: 10
+export const useClasses = makeStyles({
+  container: {
+    display: "flex",
+    flexDirection: "column",
+    width: "min(1120px, calc(100vw - 8px)) !important",
+    maxWidth: "min(1120px, calc(100vw - 8px)) !important",
+    maxHeight: "calc(100vh - 10px)",
+    boxSizing: "border-box",
+    opacity: "1 !important",
+    scale: "1 !important",
+    ...shorthands.padding(0),
+    ...shorthands.overflow("hidden")
+  },
+  header: {
+    color: tokens.colorNeutralForeground1,
+    display: "flex",
+    alignItems: "center",
+    minHeight: "76px",
+    boxSizing: "border-box",
+    ...shorthands.padding("8px", "10px", "8px", "20px"),
+    "& h2": {
+      ...shorthands.margin(0),
+      fontSize: "20px",
+      lineHeight: "28px",
+      fontWeight: tokens.fontWeightSemibold,
+      letterSpacing: 0
     }
-  });
-};
+  },
+  body: {
+    display: "grid",
+    gridTemplateColumns:
+      "minmax(120px, 1fr) minmax(111px, 0.92fr) minmax(67px, 0.56fr) minmax(215px, 1.8fr) minmax(127px, 1.06fr)",
+    columnGap: "24px",
+    alignItems: "start",
+    minWidth: 0,
+    width: "100%",
+    boxSizing: "border-box",
+    maxHeight: "calc(100vh - 74px)",
+    ...shorthands.padding(0, "12px", "18px"),
+    overflowX: "auto",
+    overflowY: "auto",
+    scrollbarWidth: "thin",
+    "&::-webkit-scrollbar": {
+      width: "6px",
+      height: "6px"
+    },
+    "&::-webkit-scrollbar-thumb": {
+      backgroundColor: tokens.colorNeutralStroke1,
+      ...shorthands.borderRadius("3px")
+    },
+    "& > *": {
+      minWidth: 0
+    },
+    "& > * [data-fluent-link]": {
+      width: "fit-content",
+      maxWidth: "100%",
+      marginTop: "8px",
+      fontSize: "12px",
+      lineHeight: "16px",
+      letterSpacing: 0,
+      whiteSpace: "nowrap"
+    },
+    "& > * h3": {
+      fontWeight: tokens.fontWeightSemibold,
+      fontSize: "12px",
+      lineHeight: "16px",
+      letterSpacing: 0,
+      ...shorthands.margin(0)
+    },
+    "& > * .fui-Divider": {
+      ...shorthands.margin("7px", 0, "10px")
+    },
+    "@media (min-width: 641px) and (max-width: 800px)": {
+      gridTemplateColumns: "120px 111px 67px minmax(200px, 1fr) 119px"
+    },
+    "@media (max-width: 640px)": {
+      gridTemplateColumns: "minmax(150px, 1fr) minmax(150px, 1fr)",
+      minWidth: 0,
+      rowGap: "28px",
+      "& > :nth-child(4)": {
+        gridColumn: "1 / -1"
+      }
+    }
+  },
+  closeButton: {
+    color: tokens.colorNeutralForeground1,
+    marginLeft: "auto",
+    minWidth: "32px",
+    width: "32px",
+    height: "32px"
+  },
+  filterButton: {
+    width: "128px",
+    height: "38px",
+    ...shorthands.borderRadius("25px")
+  },
+  filterElementSelected: {
+    color: tokens.colorNeutralForeground1,
+    fontWeight: tokens.fontWeightBold
+  },
+  filterElementNotSelected: {
+    color: tokens.colorNeutralForeground3
+  },
+  filterElementClearIcon: {
+    width: "14px",
+    height: "14px",
+    marginLeft: "6px",
+    flexShrink: 0
+  }
+});

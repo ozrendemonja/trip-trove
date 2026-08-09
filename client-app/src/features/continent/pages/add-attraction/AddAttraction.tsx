@@ -182,7 +182,7 @@ export const AddAttraction: React.FunctionComponent = () => {
   return (
     <>
       <Navigation />
-      <Flex className={classes.root}>
+      <Flex className={classes.root} data-testid="add-attraction-form">
         <Flex direction="row" gap={48}>
           <Text as="h1" className={classes.header}>
             Add Attraction
@@ -279,7 +279,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               }}
             />
           </Flex>
-          <Flex gap={48} direction="row" className={classes.row}>
+          <div className={`${classes.row} ${classes.nameRow}`}>
             <InputField
               {...formFields.name}
               ref={nameFieldRef}
@@ -294,7 +294,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               onChange={togglePartOfAttraction}
               checked={isPartOfAttraction}
             />
-          </Flex>
+          </div>
           {isPartOfAttraction && (
             <Flex className={classes.row}>
               <SearchText
@@ -304,14 +304,17 @@ export const AddAttraction: React.FunctionComponent = () => {
               />
             </Flex>
           )}
-          <Flex gap={48} direction="row" className={classes.row}>
+          <div className={`${classes.row} ${classes.addressRow}`}>
             <InputField
               {...formFields.address}
               ref={addressFieldRef}
               className={classes.attractionName}
             />
-            <InputField {...formFields.geoLocation} />
-          </Flex>
+            <InputField
+              {...formFields.geoLocation}
+              className={classes.geoLocation}
+            />
+          </div>
           <Flex gap={48} direction="row" className={classes.row}>
             <ComboBoxField
               {...formFields.category}

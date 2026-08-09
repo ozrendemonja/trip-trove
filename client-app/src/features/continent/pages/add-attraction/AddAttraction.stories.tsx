@@ -254,6 +254,35 @@ export const SuggestionsMatchSearchWidth: Story = {
   }
 };
 
+export const KeepsDetailControlsInsideForm: Story = {
+  decorators: [
+    withServer(),
+    (Story) => (
+      <div style={{ width: "1000px" }}>
+        <Story />
+      </div>
+    )
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const formRight = canvas
+      .getByTestId("add-attraction-form")
+      .getBoundingClientRect().right;
+    const controls = [
+      canvas.getByLabelText(/^Attraction name/),
+      canvas.getByText("Part of attraction"),
+      canvas.getByLabelText("Attraction address"),
+      canvas.getByLabelText("Geo location")
+    ];
+
+    controls.forEach((control) => {
+      expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(
+        formRight
+      );
+    });
+  }
+};
+
 export const SaveDisabledWithOnlyCountry: Story = {
   decorators: [withServer()],
   play: async () => {

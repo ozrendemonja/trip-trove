@@ -70,6 +70,7 @@ const SearchAttractionsModal: React.FunctionComponent<
         props.onUpdateClick({ whereToSearch: selected, id: selectedId ?? -1 });
       }}
       isFormValid={selectedId != undefined}
+      contentClassName={classes.searchModalContent}
     >
       <Flex gap={0}>
         <div role="toolbar" aria-label="Search options">

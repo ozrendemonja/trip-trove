@@ -7,7 +7,8 @@ import {
   DialogSurface,
   DialogTitle,
   MessageBar,
-  MessageBarBody
+  MessageBarBody,
+  mergeClasses
 } from "@fluentui/react-components";
 import { Dismiss24Regular, Edit16Regular } from "@fluentui/react-icons";
 import { Flex } from "../../../ui/Flex";
@@ -16,7 +17,7 @@ import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
 import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
 import { getApiErrorCode } from "../../../hooks/UseSaveError";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   const classes = useClasses();
@@ -124,7 +125,9 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
             >
               {props.title ?? `Modifying ${props.text}`}
             </DialogTitle>
-            <DialogContent className={classes.content}>
+            <DialogContent
+              className={mergeClasses(classes.content, props.contentClassName)}
+            >
               <Flex
                 gap={12}
                 className={classes.form}

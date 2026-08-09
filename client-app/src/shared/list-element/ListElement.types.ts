@@ -1,4 +1,8 @@
-import { DataColumn, DataSelection } from "../ui/data-table/DataTable";
+import {
+  DataColumn,
+  DataSelection,
+  DataTableVirtualizationOptions
+} from "../ui/data-table/DataTable";
 import { AddRowOptionsProps } from "./ui/delete-dialog/DeleteDialog.types";
 import { ListHeaderProps } from "./ui/list-header/ListHeader.types";
 import { AttractionRow } from "../../features/continent/pages/list-attraction/ListAttraction.types";
@@ -17,6 +21,8 @@ export interface ListElementProps<T> {
   tableContainerClassName?: string;
 
   tableClassName?: string;
+
+  virtualization?: DataTableVirtualizationOptions;
 
   listHeader: ListHeaderProps;
 
@@ -71,11 +77,11 @@ export abstract class ListElementCustomizer<T> {
     this.notifyListColumnChanged = notifyListColumnChanged;
   }
 
-  private copyAndSort<T>(accessor: string, sortDescending?: boolean): T[] {
+  private copyAndSort(accessor: string, sortDescending?: boolean): T[] {
     const key = accessor as keyof T;
     return this.items
       .slice(0)
-      .sort((a: T, b: T) =>
+      .sort((a, b) =>
         (sortDescending ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
       );
   }

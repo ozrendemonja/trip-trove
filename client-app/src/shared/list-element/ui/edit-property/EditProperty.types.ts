@@ -14,6 +14,8 @@ export interface EditPropertyProps {
 
   editIcon?: React.ReactElement;
 
+  contentClassName?: string;
+
   onUpdateClick: () => Promise<void | boolean>;
 
   /**

@@ -776,6 +776,9 @@ export const setAttractionPermanentlyClosed = async (
 ): Promise<void> => {
   const { error } = await updateAttractionPermanentlyClosed({
     body: { isPermanentlyClosed },
+    headers: {
+      "x-api-version": "1"
+    },
     path: {
       id: id.toString()
     }

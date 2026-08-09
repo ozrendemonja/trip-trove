@@ -204,6 +204,32 @@ export const SearchModalShowsAllSearchOptionsWithConfirmDisabled: Story = {
   }
 };
 
+export const SearchSuggestionsOverlayDialogContent: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const modalElement = await openSearchForAttraction(canvasElement, user);
+    const modal = within(modalElement);
+    const input = modal.getByRole("textbox");
+
+    await user.type(input, "Mon");
+    const suggestion = await modal.findByRole(
+      "menuitem",
+      { name: "Monaco" },
+      { timeout: 5000 }
+    );
+    const dialogContent = input.closest(".fui-DialogContent") as HTMLElement;
+
+    expect(dialogContent).not.toBeNull();
+    expect(
+      dialogContent.ownerDocument.defaultView?.getComputedStyle(dialogContent)
+        .overflowY
+    ).toBe("visible");
+    expect(suggestion.getBoundingClientRect().bottom).toBeGreaterThan(
+      dialogContent.getBoundingClientRect().bottom
+    );
+  }
+};
+
 export const ShowsDefaultNameWhenTripNotFound: Story = {
   parameters: { initialTripId: "999" },
   play: async ({ canvasElement }) => {

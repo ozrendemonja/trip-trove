@@ -5,6 +5,7 @@ export const useClasses = makeStyles({
   root: {
     ...shorthands.padding("12px"),
     maxWidth: "1200px",
+    boxSizing: "border-box",
     ...shorthands.borderRadius("30px"),
     backgroundColor: tokens.colorNeutralBackground1,
     display: "flex",
@@ -36,9 +37,32 @@ export const useClasses = makeStyles({
   row: {
     marginTop: tokens.spacingVerticalL
   },
+  nameRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    columnGap: "48px",
+    alignItems: "end",
+    "@media (max-width: 900px)": {
+      gridTemplateColumns: "minmax(0, 1fr)",
+      rowGap: tokens.spacingVerticalS
+    }
+  },
+  addressRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 300px",
+    columnGap: "48px",
+    alignItems: "end",
+    "@media (max-width: 900px)": {
+      gridTemplateColumns: "minmax(0, 1fr)",
+      rowGap: tokens.spacingVerticalM
+    }
+  },
   attractionName: {
-    width: "90vh",
-    maxWidth: "1200px"
+    width: "100%",
+    maxWidth: "none"
+  },
+  geoLocation: {
+    width: "100%"
   },
   inputToggle: {
     marginTop: "26px"

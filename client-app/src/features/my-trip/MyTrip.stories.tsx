@@ -52,6 +52,7 @@ const meta: Meta<typeof MyTrip> = {
         <>
           <MemoryRouter initialEntries={[`/my-trips/${initialTripId}`]}>
             <Routes>
+              <Route path="/" element={<div>Home page</div>} />
               <Route path="/my-trips" element={<div>My Trips list page</div>} />
               <Route path="/my-trips/:tripId" element={<Story />} />
             </Routes>
@@ -178,6 +179,20 @@ export const BackButtonReturnsToTripsList: Story = {
     await expect(await canvas.findByText("My Trips list page")).toBeVisible();
     await expect(
       canvas.queryByRole("button", { name: "My Trips" })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const TripTroveButtonReturnsHome: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+
+    await user.click(await canvas.findByRole("button", { name: "Trip Trove" }));
+
+    await expect(await canvas.findByText("Home page")).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Trip Trove" })
     ).not.toBeInTheDocument();
   }
 };

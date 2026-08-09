@@ -265,6 +265,11 @@ const sortOptions: SelectChoice[] = [
   { value: "ASC" as OrderOptions, label: "Oldest" }
 ];
 
+const virtualization = {
+  estimatedRowHeight: 64,
+  overscan: 2
+};
+
 export const AttractionList: React.FunctionComponent = () => {
   const classes = useClasses();
   const pageClasses = useListPageClasses();
@@ -288,10 +293,9 @@ export const AttractionList: React.FunctionComponent = () => {
       setLoading();
       setLastElement(toLastReadAttraction(data));
       const attractionRows = data.map(AttractionRow.from);
-      setAttractionCustomizer(
-        attractionCustomizer.withPagedRows(attractionRows)
-      );
-      attractionCustomizer.createColumns();
+      const nextCustomizer = attractionCustomizer.withPagedRows(attractionRows);
+      nextCustomizer.createColumns();
+      setAttractionCustomizer(nextCustomizer);
       setNotLoading();
     });
   }, [reloadData]);
@@ -316,6 +320,7 @@ export const AttractionList: React.FunctionComponent = () => {
             rootClassName={classes.headerRoot}
             tableContainerClassName={classes.listViewport}
             tableClassName={classes.table}
+            virtualization={virtualization}
             listHeader={{
               text: listHeader.text ?? "All attractions",
               showSearchBar: listHeader.showSearchBar ?? true,

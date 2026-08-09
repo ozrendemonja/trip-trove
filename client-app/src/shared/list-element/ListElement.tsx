@@ -7,10 +7,14 @@ import ListHeader from "./ui/list-header/ListHeader";
 import { Flex } from "../ui/Flex";
 import { mergeClasses } from "@fluentui/react-components";
 
-export const ListElement = <T,>(props: ListElementProps<T>) => {
+export const ListElement = <T,>(
+  props: ListElementProps<T>
+): React.ReactElement => {
   const classes = useClasses();
   const sortedItems = props.items;
   const columns = props.columns;
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const isVirtualized = props.virtualization !== undefined;
 
   const [haveSelectedItem, setHaveSelectedItem] = useState(true);
   const [selectedItemName, setSelectedItemName] = useState("");
@@ -37,6 +41,8 @@ export const ListElement = <T,>(props: ListElementProps<T>) => {
       selectionButtonAriaLabel="select row"
       onLoadMore={props.onLoadMore}
       renderCell={props.renderCell}
+      virtualization={props.virtualization}
+      scrollContainerRef={isVirtualized ? tableContainerRef : undefined}
     />
   );
 
@@ -56,8 +62,10 @@ export const ListElement = <T,>(props: ListElementProps<T>) => {
           }}
         />
       </Flex>
-      {props.tableContainerClassName ? (
-        <div className={props.tableContainerClassName}>{table}</div>
+      {props.tableContainerClassName || isVirtualized ? (
+        <div ref={tableContainerRef} className={props.tableContainerClassName}>
+          {table}
+        </div>
       ) : (
         table
       )}

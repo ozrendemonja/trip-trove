@@ -8,6 +8,7 @@ import {
   TableRow,
   tokens
 } from "@fluentui/react-components";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { CSSProperties, ReactElement, ReactNode } from "react";
 
 export interface DataColumn {
@@ -101,6 +102,11 @@ export class DataSelection<T = unknown> {
   }
 }
 
+export interface DataTableVirtualizationOptions {
+  estimatedRowHeight: number;
+  overscan: number;
+}
+
 export interface DataTableProps<T> {
   rows?: Array<T | null | undefined>;
   columns?: DataColumn[];
@@ -112,6 +118,8 @@ export interface DataTableProps<T> {
   onLoadMore?: (index: number) => void;
   renderCell?: (row: T, index: number, column: DataColumn) => ReactNode;
   getRowClassName?: (row: T, index: number) => string | undefined;
+  virtualization?: DataTableVirtualizationOptions;
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 const MissingListItem: React.FC<{
@@ -157,9 +165,18 @@ export const DataTable = <T,>({
   selectionButtonAriaLabel = "select row",
   onLoadMore,
   renderCell,
-  getRowClassName
+  getRowClassName,
+  virtualization,
+  scrollContainerRef
 }: DataTableProps<T>): ReactElement => {
   const [, rerender] = React.useReducer((value) => value + 1, 0);
+  const isVirtualized = virtualization !== undefined;
+  const rowVirtualizer = useVirtualizer({
+    count: isVirtualized ? rows.length : 0,
+    getScrollElement: () => scrollContainerRef?.current ?? null,
+    estimateSize: () => virtualization?.estimatedRowHeight ?? 0,
+    overscan: virtualization?.overscan ?? 0
+  });
 
   React.useLayoutEffect(() => {
     const selectedRows = selection?.selectedRows() ?? [];
@@ -181,6 +198,23 @@ export const DataTable = <T,>({
     if (!selection || !rows[index]) return;
     selection.selectIndex(index, !selection.isSelected(index));
   };
+
+  const virtualItems = isVirtualized ? rowVirtualizer.getVirtualItems() : [];
+  const rowIndexes = isVirtualized
+    ? virtualItems.length > 0
+      ? virtualItems.map((item) => item.index)
+      : rows.slice(0, 5).map((_row, index) => index)
+    : rows.map((_row, index) => index);
+  const paddingTop = virtualItems[0]?.start ?? 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? Math.max(
+          0,
+          rowVirtualizer.getTotalSize() -
+            virtualItems[virtualItems.length - 1].end
+        )
+      : 0;
+  const columnCount = columns.length + (isSelectable ? 1 : 0);
 
   return (
     <Table
@@ -231,7 +265,16 @@ export const DataTable = <T,>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, index) => {
+        {paddingTop > 0 && (
+          <tr aria-hidden="true" style={{ height: paddingTop }}>
+            <td
+              colSpan={columnCount}
+              style={{ height: paddingTop, padding: 0, border: 0 }}
+            />
+          </tr>
+        )}
+        {rowIndexes.map((index) => {
+          const row = rows[index];
           if (!row) {
             return (
               <MissingListItem
@@ -247,7 +290,14 @@ export const DataTable = <T,>({
           return (
             <TableRow
               key={index}
+              ref={
+                isVirtualized
+                  ? (element) => rowVirtualizer.measureElement(element)
+                  : undefined
+              }
+              data-index={isVirtualized ? index : undefined}
               role="row"
+              aria-rowindex={isVirtualized ? index + 2 : undefined}
               aria-selected={selected}
               appearance={selected ? "brand" : "none"}
               className={getRowClassName?.(row, index)}
@@ -326,6 +376,14 @@ export const DataTable = <T,>({
             </TableRow>
           );
         })}
+        {paddingBottom > 0 && (
+          <tr aria-hidden="true" style={{ height: paddingBottom }}>
+            <td
+              colSpan={columnCount}
+              style={{ height: paddingBottom, padding: 0, border: 0 }}
+            />
+          </tr>
+        )}
       </TableBody>
     </Table>
   );

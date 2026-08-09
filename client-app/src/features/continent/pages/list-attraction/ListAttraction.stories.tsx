@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, fireEvent, waitFor, within } from "storybook/test";
 import AttractionList from "./ListAttraction";
 import {
   withFreshServer,
@@ -9,6 +9,8 @@ import {
   searchFor,
   openAttractionNameEditor,
   waitForAllAttractionsToLoad,
+  scrollUntilAttractionIsRendered,
+  expectRenderedRowsWithinBuffer,
   expectSuggestionBelowInput,
   updateButton,
   cancelButton,
@@ -25,6 +27,49 @@ const meta: Meta<typeof AttractionList> = {
 export default meta;
 
 export const Primary: Story = {};
+
+export const VirtualizesLongAttractionList: Story = {
+  parameters: { additionalAttractionCount: 24 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grid = await canvas.findByRole("grid", { name: "Item details" });
+    const viewport = grid.parentElement as HTMLElement;
+
+    expect(
+      canvas.queryAllByRole("button", {
+        name: /^Change attraction details from /
+      }).length
+    ).toBeGreaterThan(0);
+
+    await waitFor(
+      () =>
+        expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight),
+      { timeout: 12000 }
+    );
+
+    expect(grid.querySelectorAll("tbody > tr[data-index]").length).toBeLessThan(
+      24
+    );
+    expect(
+      canvas.queryByRole("button", {
+        name: "Change attraction details from Virtual attraction 0"
+      })
+    ).not.toBeInTheDocument();
+
+    const lastAttraction = await scrollUntilAttractionIsRendered(
+      canvasElement,
+      viewport,
+      "Virtual attraction 0"
+    );
+
+    expect(lastAttraction).toBeInTheDocument();
+
+    viewport.scrollTop = viewport.scrollHeight / 2;
+    fireEvent.scroll(viewport);
+
+    await expectRenderedRowsWithinBuffer(grid, viewport, 4);
+  }
+};
 
 export const PermanentlyClosedStatusIsVisible: Story = {
   tags: ["closure-status"],

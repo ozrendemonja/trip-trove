@@ -16,12 +16,14 @@ export const useClasses = makeStyles({
   },
   listViewport: {
     width: "calc(100% - 19px)",
+    height: "calc(100vh - 118px)",
     ...shorthands.overflow("auto"),
     ...shorthands.borderRadius(0, 0, "20px", "20px"),
     paddingBottom: "20px",
     backgroundColor: tokens.colorNeutralBackground1,
     "@media (max-width: 700px)": {
-      width: "calc(100% - 8px)"
+      width: "calc(100% - 8px)",
+      height: "70vh"
     }
   },
   table: {

@@ -1,5 +1,5 @@
 import { Decorator } from "@storybook/react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 
@@ -10,6 +10,29 @@ const styleOverrides = `
 
 let server: ReturnType<typeof makeServer>;
 
+const seedAdditionalAttractions = (
+  targetServer: ReturnType<typeof makeServer>,
+  count: number
+): void => {
+  for (let index = 0; index < count; index += 1) {
+    targetServer.db.attractions.insert({
+      attractionId: 1000 + index,
+      cityName: "Virtual City",
+      regionName: "Virtual Region",
+      countryName: "Virtual Country",
+      isCountrywide: false,
+      attractionName: `Virtual attraction ${index}`,
+      attractionCategory: "HISTORIC_SITE",
+      attractionType: "STABLE",
+      mustVisit: false,
+      isTraditional: false,
+      infoFrom: "Storybook",
+      infoRecorded: "2025-01-01",
+      changedOn: `2025-01-${String(index + 1).padStart(2, "0")}T08:00:00.0000000`
+    });
+  }
+};
+
 // Tear down the previous story's Mirage server before starting a new one;
 // otherwise multiple Pretender instances stack up and corrupt paginated
 // reloads (sort/delete) when the runner plays stories back to back.
@@ -18,11 +41,14 @@ export const withFreshServer: Decorator = (Story, context) => {
     .permanentlyClosedAttractionId as number | undefined;
   const updateAttractionStatus = context.parameters.updateAttractionStatus as
     number | undefined;
+  const additionalAttractionCount = context.parameters
+    .additionalAttractionCount as number | undefined;
   server?.shutdown();
   server = makeServer({
     permanentlyClosedAttractionId: closedAttractionId,
     updateAttractionStatus
   });
+  seedAdditionalAttractions(server, additionalAttractionCount ?? 0);
   return (
     <>
       <MemoryRouter initialEntries={["/"]}>
@@ -86,6 +112,48 @@ export const waitForAllAttractionsToLoad = (
     { name: "Change attraction details from Casino of Monte-Carlo" },
     { timeout: 8000 }
   );
+
+export const scrollUntilAttractionIsRendered = async (
+  canvasElement: HTMLElement,
+  viewport: HTMLElement,
+  attractionName: string
+): Promise<HTMLElement | null> => {
+  let attraction: HTMLElement | null = null;
+
+  for (let attempt = 0; attempt < 12 && !attraction; attempt += 1) {
+    viewport.scrollTop = viewport.scrollHeight;
+    fireEvent.scroll(viewport);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    attraction = within(canvasElement).queryByRole("button", {
+      name: `Change attraction details from ${attractionName}`
+    });
+  }
+
+  return attraction;
+};
+
+export const expectRenderedRowsWithinBuffer = async (
+  grid: HTMLElement,
+  viewport: HTMLElement,
+  maximumBufferedRowCount: number
+): Promise<void> => {
+  await waitFor(() => {
+    const viewportRect = viewport.getBoundingClientRect();
+    const renderedRows = Array.from(
+      grid.querySelectorAll<HTMLElement>("tbody > tr[data-index]")
+    );
+    const visibleRows = renderedRows.filter((row) => {
+      const rowRect = row.getBoundingClientRect();
+      return (
+        rowRect.bottom > viewportRect.top && rowRect.top < viewportRect.bottom
+      );
+    });
+
+    expect(renderedRows.length - visibleRows.length).toBeLessThanOrEqual(
+      maximumBufferedRowCount
+    );
+  });
+};
 
 export const rowOf = (
   canvasElement: HTMLElement,

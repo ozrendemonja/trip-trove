@@ -44,6 +44,10 @@ export const useClasses = makeStyles({
     position: "absolute",
     left: "50%"
   },
+  searchModalContent: {
+    overflowX: "visible",
+    overflowY: "visible"
+  },
   backButton: {
     marginLeft: 4
   },

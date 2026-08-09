@@ -72,8 +72,12 @@ const SearchAttractionsModal: React.FunctionComponent<
       isFormValid={selectedId != undefined}
       contentClassName={classes.searchModalContent}
     >
-      <Flex gap={0}>
-        <div role="toolbar" aria-label="Search options">
+      <Flex gap={0} className={classes.searchModalLayout}>
+        <div
+          role="toolbar"
+          aria-label="Search options"
+          className={classes.searchOptions}
+        >
           {searchOptions
             .map((option): SearchOptionAction => ({
               key: option.key,

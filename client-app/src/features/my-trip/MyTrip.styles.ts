@@ -1,8 +1,7 @@
 import { makeStyles, shorthands } from "@fluentui/react-components";
 
 const defaultSearchOption = {
-  marginRight: 12,
-  marginBottom: -10
+  marginRight: "12px"
 };
 
 export const useClasses = makeStyles({
@@ -46,7 +45,20 @@ export const useClasses = makeStyles({
   },
   searchModalContent: {
     overflowX: "visible",
-    overflowY: "visible"
+    overflowY: "visible",
+    paddingTop: "12px",
+    paddingBottom: "8px"
+  },
+  searchModalLayout: {
+    width: "100%",
+    minWidth: 0
+  },
+  searchOptions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    width: "100%",
+    minWidth: 0
   },
   backButton: {
     marginLeft: 4

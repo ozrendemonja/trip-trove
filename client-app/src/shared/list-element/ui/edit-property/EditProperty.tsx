@@ -11,7 +11,6 @@ import {
   mergeClasses
 } from "@fluentui/react-components";
 import { Dismiss24Regular, Edit16Regular } from "@fluentui/react-icons";
-import { Flex } from "../../../ui/Flex";
 import { useBooleanState } from "../../../hooks/useBooleanState";
 import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
@@ -32,10 +31,6 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
 
   const isControlled = props.isOpen !== undefined;
   const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
-
-  useEffect(() => {
-    setSubmitError(undefined);
-  }, [props.submitErrorResetKey]);
 
   useEffect(() => {
     setSubmitError(undefined);
@@ -63,14 +58,16 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
         handleClose();
       }
     } catch (error) {
-      const isNameConflict = getApiErrorCode(error) === "NAME_CONFLICT";
+      const isConflict =
+        getApiErrorCode(error) ===
+        (props.conflictErrorCode ?? "NAME_CONFLICT");
       setSubmitError(
-        isNameConflict && props.conflictErrorMessage
+        isConflict && props.conflictErrorMessage
           ? props.conflictErrorMessage
           : (props.saveErrorMessage ??
               "The changes weren't saved. Your details are still here, so you can review or edit them and try again.")
       );
-      if (isNameConflict) {
+      if (isConflict) {
         formRef.current
           ?.querySelector<HTMLElement>(
             'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]'
@@ -128,8 +125,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
             <DialogContent
               className={mergeClasses(classes.content, props.contentClassName)}
             >
-              <Flex
-                gap={12}
+              <div
                 className={classes.form}
                 ref={formRef}
                 onChange={() => setSubmitError(undefined)}
@@ -140,7 +136,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
                     <MessageBarBody>{submitError}</MessageBarBody>
                   </MessageBar>
                 )}
-              </Flex>
+              </div>
             </DialogContent>
             <DialogActions className={classes.footer}>
               <Button

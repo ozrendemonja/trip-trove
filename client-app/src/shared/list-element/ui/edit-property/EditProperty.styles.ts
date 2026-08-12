@@ -24,6 +24,9 @@ export const useClasses = makeStyles({
     paddingTop: "4px"
   },
   form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
     width: "100%",
     minWidth: 0
   },

@@ -535,6 +535,34 @@ export const UpdatesCountryIsoCode: Story = {
   }
 };
 
+export const ShowsConflictWhenUpdatedCountryIsoCodeAlreadyExists: Story = {
+  parameters: { updateCountryStatus: 409 },
+  play: async ({ canvasElement }) => {
+    const modal = overlay(canvasElement);
+    const user = setupUser();
+    await waitForCountriesToLoad(canvasElement);
+    await openCountryIsoCodeEditor(canvasElement, user, "Monaco");
+
+    await selectIsoCode(canvasElement, user, "Andorra (AD)");
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    expect(
+      await modal.findByText("A country with this ISO code already exists.")
+    ).toBeInTheDocument();
+    const field = modal.getByRole("combobox", { name: "ISO code" });
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    await selectIsoCode(canvasElement, user, "Italy (IT)");
+    await waitFor(() =>
+      expect(
+        modal.queryByText("A country with this ISO code already exists.")
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
 export const KeepsCountryIsoCodeWhenCancelled: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

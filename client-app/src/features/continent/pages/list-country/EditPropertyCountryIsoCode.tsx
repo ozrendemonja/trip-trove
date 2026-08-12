@@ -21,6 +21,8 @@ const EditPropertyCountryIsoCode: React.FunctionComponent<
         props.onUpdateClick();
       }}
       isFormValid={isFormValid}
+      conflictErrorCode="ISO_CODE_CONFLICT"
+      conflictErrorMessage="A country with this ISO code already exists."
     >
       <ComboBoxField {...formFields.isoCode!} />
     </EditProperty>

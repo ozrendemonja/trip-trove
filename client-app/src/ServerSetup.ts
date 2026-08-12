@@ -46,6 +46,7 @@ export default function makeServer(options?: {
   saveContinentStatus?: number;
   updateContinentStatus?: number;
   saveCountryStatus?: number;
+  saveCountryErrorCode?: "NAME_CONFLICT" | "ISO_CODE_CONFLICT";
   updateCountryStatus?: number;
   saveRegionStatus?: number;
   updateRegionStatus?: number;
@@ -574,16 +575,20 @@ export default function makeServer(options?: {
         () => {
           const status = options?.saveCountryStatus;
           if (status && status >= 400) {
+            const errorCode =
+              options?.saveCountryErrorCode ??
+              (status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR");
             return new MirageResponse(
               status,
               {},
               {
-                errorCode:
-                  status === 409 ? "NAME_CONFLICT" : "INTERNAL_SERVER_ERROR",
+                errorCode,
                 errorMessage:
-                  status === 409
-                    ? "The given name is not valid as it already exists"
-                    : "Something went wrong while saving the country"
+                  errorCode === "ISO_CODE_CONFLICT"
+                    ? "The given ISO code is not valid as it already exists"
+                    : status === 409
+                      ? "The given name is not valid as it already exists"
+                      : "Something went wrong while saving the country"
               }
             );
           }
@@ -683,6 +688,24 @@ export default function makeServer(options?: {
       this.put(
         "/countries/:id/iso-code",
         (schema, request) => {
+          const status = options?.updateCountryStatus;
+          if (status && status >= 400) {
+            return new MirageResponse(
+              status,
+              {},
+              {
+                errorCode:
+                  status === 409
+                    ? "ISO_CODE_CONFLICT"
+                    : "INTERNAL_SERVER_ERROR",
+                errorMessage:
+                  status === 409
+                    ? "The given ISO code is not valid as it already exists"
+                    : "Something went wrong while updating the country ISO code"
+              }
+            );
+          }
+
           const id = request.params.id;
           const newIsoCode = (
             JSON.parse(request.requestBody) as { isoCode: string }

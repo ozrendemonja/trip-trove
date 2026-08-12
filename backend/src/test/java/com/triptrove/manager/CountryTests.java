@@ -117,6 +117,25 @@ class CountryTests extends AbstractIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+        @Test
+        void countrySaveRequestShouldFailWhenIsoCodeAlreadyExistsIgnoringCase() throws Exception {
+                var request = new SaveCountryRequest(CONTINENT_NAME_1, "Country with duplicate ISO code", "AA");
+
+                var jsonResponse = mockMvc.perform(post("/countries")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .header("x-api-version", "1")
+                                                .content(mapper.writeValueAsString(request)))
+                                .andExpect(status().isConflict())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+                assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.ISO_CODE_CONFLICT);
+                assertThat(actual.errorMessage()).isEqualTo("The given ISO code is not valid as it already exists");
+                assertThat(countryRepo.findByName("Country with duplicate ISO code")).isEmpty();
+        }
+
     @Test
     void countryShouldBeSavedWhenGivenCountryNameAlreadyExistsUnderDifferentContinent() throws Exception {
         var request = new SaveCountryRequest(CONTINENT_NAME_1, "Test country 0", "us");
@@ -563,6 +582,27 @@ class CountryTests extends AbstractIntegrationTest {
         assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(originalName);
         assertThat(countryRepo.findById(1).map(Country::getContinent).map(Continent::getName)).hasValue(originalContinentName);
     }
+
+        @Test
+        void countryIsoCodeUpdateShouldFailWhenIsoCodeAlreadyExistsIgnoringCase() throws Exception {
+                var originalIsoCode = countryRepo.findById(1).map(Country::getIsoCode).orElseThrow();
+                var duplicateIsoCode = countryRepo.findById(2).map(Country::getIsoCode).orElseThrow().toUpperCase();
+                var update = new UpdateCountryIsoCodeRequest(duplicateIsoCode);
+
+                var jsonResponse = mockMvc.perform(put("/countries/1/iso-code")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .header("x-api-version", "1")
+                                                .content(mapper.writeValueAsString(update)))
+                                .andExpect(status().isConflict())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+                assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.ISO_CODE_CONFLICT);
+                assertThat(actual.errorMessage()).isEqualTo("The given ISO code is not valid as it already exists");
+                assertThat(countryRepo.findById(1).map(Country::getIsoCode)).hasValue(originalIsoCode);
+        }
 
     @Test
     void errorShouldBeReturnedWhenNonExistingCountryIsoCodeIsRequestedToBeUpdated() throws Exception {

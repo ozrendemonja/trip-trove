@@ -22,7 +22,10 @@ import { getContinents, saveNewCountry } from "../../infra/ManagerApi";
 import { useCountryFormField } from "./AddCountry.config";
 import { useClasses } from "./AddCountry.styles";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
-import { useSaveError } from "../../../../shared/hooks/UseSaveError";
+import {
+  getApiErrorCode,
+  useSaveError
+} from "../../../../shared/hooks/UseSaveError";
 import { Flex, FlexItem } from "../../../../shared/ui/Flex";
 
 const createOptions = (continents: Continent[]): SelectChoice[] => {
@@ -37,19 +40,25 @@ export const AddCountry: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useCountryFormField();
   const [continents, setContinents] = useState<Continent[]>([]);
+  const [isoCodeConflict, setIsoCodeConflict] = useState<string>();
   const nameFieldRef = useRef<InputFieldHandle>(null);
   const navigate = useNavigate();
-  const { nameConflict, saveError, handleSaveError } = useSaveError({
-    nameConflictMessage: "A country with this name already exists.",
-    saveErrorMessage:
-      "The country wasn't saved. Your details are still here, so you can review or edit them and try again.",
-    focusRef: nameFieldRef,
-    resetKey: formFields.countryName?.value
-  });
+  const { nameConflict, saveError, handleSaveError, clearSaveErrors } =
+    useSaveError({
+      nameConflictMessage: "A country with this name already exists.",
+      saveErrorMessage:
+        "The country wasn't saved. Your details are still here, so you can review or edit them and try again.",
+      focusRef: nameFieldRef,
+      resetKey: formFields.countryName?.value
+    });
 
   useEffect(() => {
     getContinents().then(setContinents);
   }, []);
+
+  useEffect(() => {
+    setIsoCodeConflict(undefined);
+  }, [formFields.isoCode?.value]);
 
   const handleSave = async (): Promise<void> => {
     if (!isFormValid) {
@@ -67,6 +76,13 @@ export const AddCountry: React.FunctionComponent = () => {
     try {
       await saveNewCountry(countryName, continentName, isoCode);
     } catch (error) {
+      if (getApiErrorCode(error) === "ISO_CODE_CONFLICT") {
+        clearSaveErrors();
+        setIsoCodeConflict("A country with this ISO code already exists.");
+        return;
+      }
+
+      setIsoCodeConflict(undefined);
       handleSaveError(error);
       return;
     }
@@ -102,7 +118,10 @@ export const AddCountry: React.FunctionComponent = () => {
             />
           </FlexItem>
           <FlexItem grow={1}>
-            <ComboBoxField {...formFields.isoCode!} />
+            <ComboBoxField
+              {...formFields.isoCode!}
+              errorMessage={isoCodeConflict ?? formFields.isoCode?.errorMessage}
+            />
           </FlexItem>
         </Flex>
         {saveError && (

@@ -34,10 +34,13 @@ let server: ReturnType<typeof makeServer> | undefined;
 
 /* eslint-disable react/display-name */
 const withServer =
-  (saveCountryStatus?: number): Decorator =>
+  (
+    saveCountryStatus?: number,
+    saveCountryErrorCode?: "NAME_CONFLICT" | "ISO_CODE_CONFLICT"
+  ): Decorator =>
   (Story) => {
     server?.shutdown();
-    server = makeServer({ saveCountryStatus });
+    server = makeServer({ saveCountryStatus, saveCountryErrorCode });
     return <Story />;
   };
 /* eslint-enable react/display-name */
@@ -97,6 +100,30 @@ export const ShowsInlineNameConflictWhenCountryAlreadyExists: Story = {
     await waitFor(() =>
       expect(
         screen.queryByText("A country with this name already exists.")
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
+export const ShowsInlineIsoCodeConflictWhenIsoCodeAlreadyExists: Story = {
+  decorators: [withServer(409, "ISO_CODE_CONFLICT")],
+  play: async () => {
+    const user = setupUser();
+
+    await user.type(countryNameField(), "Another country");
+    await selectOption(user, "Select a continent", "Europe");
+    await selectOption(user, "ISO code", "Monaco (MC)");
+    await user.click(saveButton());
+
+    expect(
+      await screen.findByText("A country with this ISO code already exists.")
+    ).toBeInTheDocument();
+    expect(countryNameField()).toHaveValue("Another country");
+
+    await selectOption(user, "ISO code", "Italy (IT)");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("A country with this ISO code already exists.")
       ).not.toBeInTheDocument()
     );
   }

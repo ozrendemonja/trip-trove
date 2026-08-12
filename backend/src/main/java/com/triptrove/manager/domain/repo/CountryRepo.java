@@ -52,6 +52,13 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
         return isNameAlreadyUsedInContinent(country.getName(), continentName, country.getId());
     }
 
+        @Query("SELECT COUNT(c) > 0 FROM Country c WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)")
+        boolean isIsoCodeAlreadyUsed(String isoCode, Integer excludeId);
+
+        default boolean isIsoCodeAlreadyUsed(String isoCode) {
+                return isIsoCodeAlreadyUsed(isoCode, null);
+        }
+
     void deleteById(Integer id);
 
     @Query("""

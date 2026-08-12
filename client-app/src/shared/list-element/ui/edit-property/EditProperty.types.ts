@@ -19,19 +19,19 @@ export interface EditPropertyProps {
   onUpdateClick: () => Promise<void | boolean>;
 
   /**
-   * Message shown when the API rejects an update with NAME_CONFLICT.
+   * Message shown when the API rejects an update with the configured conflict code.
    */
   conflictErrorMessage?: string;
+
+  /**
+   * API error code treated as a field conflict. Defaults to NAME_CONFLICT.
+   */
+  conflictErrorCode?: string;
 
   /**
    * Fallback shown when an update fails for another reason.
    */
   saveErrorMessage?: string;
-
-  /**
-   * Clears the submit error when this value changes.
-   */
-  submitErrorResetKey?: unknown;
 
   /**
    * Clears the submit error when this value changes.

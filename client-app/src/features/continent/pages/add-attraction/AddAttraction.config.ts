@@ -193,7 +193,8 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
         ...values,
         category: inputValue ? CategoryType[inputValue] : undefined
       });
-    }
+    },
+    value: values.category
   };
 
   const typeDropdown: Omit<SelectFieldProps, "choices"> & {

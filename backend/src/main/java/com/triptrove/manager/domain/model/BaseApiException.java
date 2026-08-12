@@ -7,6 +7,7 @@ public class BaseApiException extends RuntimeException {
     public enum ErrorCode {
         GENERAL,
         DUPLICATE_NAME(409),
+        DUPLICATE_ISO_CODE(409),
         ATTRACTION_ALREADY_ADDED_TO_TRIP(409),
         HAS_CHILDREN(409),
         OBJECT_NOT_FOUND(404),

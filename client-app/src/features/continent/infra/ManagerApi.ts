@@ -320,7 +320,7 @@ export const changeCountryIsoCode = async (
   });
 
   if (error) {
-    throw new Error("Error while updating country ISO code", error);
+    throw new Error("Error while updating country ISO code", { cause: error });
   }
 };
 

@@ -10,6 +10,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode;
 
@@ -29,11 +30,16 @@ public class CountryServiceImpl implements CountryService {
         }
         log.atInfo().log("Given country name is unique");
 
+        String normalizedIsoCode = isoCode.toLowerCase(Locale.ROOT);
+        if (countryRepo.isIsoCodeAlreadyUsed(normalizedIsoCode)) {
+            throw new BaseApiException("Country ISO code '%s' already exists in the database.".formatted(isoCode), ErrorCode.DUPLICATE_ISO_CODE);
+        }
+
         var continent = continentRepo.findByName(continentName).orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName), ErrorCode.OBJECT_NOT_FOUND));
 
         var country = new Country();
         country.setName(countryName);
-        country.setIsoCode(isoCode.toLowerCase());
+        country.setIsoCode(normalizedIsoCode);
         country.setContinent(continent);
         var result = countryRepo.save(country);
 
@@ -134,7 +140,10 @@ public class CountryServiceImpl implements CountryService {
         log.atInfo().log("Updating ISO code for country '{}' to '{}'", countryId, isoCode);
         var country = countryRepo.findById(countryId)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
-        country.setIsoCode(isoCode.toLowerCase());
+        if (countryRepo.isIsoCodeAlreadyUsed(isoCode, countryId)) {
+            throw new BaseApiException("Country ISO code '%s' already exists in the database.".formatted(isoCode), ErrorCode.DUPLICATE_ISO_CODE);
+        }
+        country.setIsoCode(isoCode.toLowerCase(Locale.ROOT));
         countryRepo.save(country);
         log.atInfo().log("ISO code updated for country '{}'", countryId);
     }

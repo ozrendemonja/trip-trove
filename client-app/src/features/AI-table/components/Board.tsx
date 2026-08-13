@@ -106,6 +106,10 @@ const Board: React.FC<BoardProps> = ({
   const [cityPendingRemoval, setCityPendingRemoval] = useState<string | null>(
     null
   );
+  const [attractionPendingRemoval, setAttractionPendingRemoval] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [itinerarySelection, setItinerarySelection] = useState<
     Record<number, boolean>
   >({});
@@ -729,6 +733,23 @@ const Board: React.FC<BoardProps> = ({
     [canManageAttractions, persistImmediately, tripId]
   );
 
+  const requestAttractionRemoval = useCallback(
+    (attractionId: number) => {
+      if (!canManageAttractions) return;
+      const attraction = cities
+        .flatMap((city) => city.columns)
+        .flatMap((column) => column.tasks)
+        .find((task) => task.id === attractionId);
+      if (attraction) {
+        setAttractionPendingRemoval({
+          id: attraction.id,
+          name: attraction.name
+        });
+      }
+    },
+    [canManageAttractions, cities]
+  );
+
   const removeAllFromCity = useCallback(
     (cityName: string) => {
       if (!canManageAttractions) return;
@@ -1177,7 +1198,7 @@ const Board: React.FC<BoardProps> = ({
                             ? toggleAttractionPermanentlyClosed
                             : undefined
                         }
-                        onDeleteTask={removeAttraction}
+                        onDeleteTask={requestAttractionRemoval}
                         updateById={updateAttractionById}
                         upsertAttractions={upsertAttractions}
                         isInItinerary={(id) => !!itinerarySelection[id]}
@@ -1209,6 +1230,21 @@ const Board: React.FC<BoardProps> = ({
           setCityPendingRemoval(null);
         }}
         onDismiss={() => setCityPendingRemoval(null)}
+      />
+      <ConfirmDeleteDialog
+        name={
+          attractionPendingRemoval
+            ? `${attractionPendingRemoval.name} from trip`
+            : ""
+        }
+        hidden={attractionPendingRemoval === null}
+        onConfirm={() => {
+          if (attractionPendingRemoval) {
+            removeAttraction(attractionPendingRemoval.id);
+          }
+          setAttractionPendingRemoval(null);
+        }}
+        onDismiss={() => setAttractionPendingRemoval(null)}
       />
     </div>
   );

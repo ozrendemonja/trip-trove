@@ -1,14 +1,15 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.SortDirection;
 
 import java.util.List;
 
 public interface ContinentService {
-    Continent saveContinent(Continent continent);
+    ContinentName saveContinent(ContinentName continentName);
     List<Continent> getAllContinents(SortDirection sortDirection);
-    void deleteContinent(Continent continent);
-    Continent getContinent(Continent continent);
-    void updateContinent(Continent oldContinent, Continent newContinent);
+    void deleteContinent(ContinentName continentName);
+    Continent getContinent(ContinentName continentName);
+    void updateContinent(ContinentName oldName, ContinentName newName);
 }

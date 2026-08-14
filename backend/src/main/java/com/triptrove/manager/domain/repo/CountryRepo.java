@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
-import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.ContinentName;
+import com.triptrove.manager.domain.CountryName;
 import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
@@ -42,11 +43,11 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 
-        @Query("SELECT COUNT(c) > 0 FROM Country c WHERE c.name = :#{#country.name} AND c.continent.name = :#{#continent.name} AND (:excludeId IS NULL OR c.id <> :excludeId)")
-        boolean isNameAlreadyUsedInContinent(Country country, Continent continent, Integer excludeId);
+        @Query("SELECT COUNT(c) > 0 FROM Country c WHERE c.name = :#{#countryName.name()} AND c.continent.name = :#{#continentName.name()} AND (:excludeId IS NULL OR c.id <> :excludeId)")
+        boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName, Integer excludeId);
 
-        default boolean isNameAlreadyUsedInContinent(Country country, Continent continent) {
-                return isNameAlreadyUsedInContinent(country, continent, country.getId());
+        default boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName) {
+                return isNameAlreadyUsedInContinent(countryName, continentName, null);
     }
 
         @Query("SELECT COUNT(c) > 0 FROM Country c WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)")

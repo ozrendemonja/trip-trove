@@ -9,7 +9,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -46,13 +45,6 @@ public class Country {
             mappedBy = "country",
             cascade = CascadeType.PERSIST)
     private List<Attraction> attractions;
-
-    public Country() {
-    }
-
-    public Country(String name) {
-        this.name = Objects.requireNonNull(name, "Country name cannot be null");
-    }
 
     public Optional<LocalDateTime> getUpdatedOn() {
         return Optional.ofNullable(updatedOn);

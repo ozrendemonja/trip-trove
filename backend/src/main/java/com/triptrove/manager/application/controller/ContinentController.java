@@ -4,7 +4,7 @@ import com.triptrove.manager.application.dto.GetContinentResponse;
 import com.triptrove.manager.application.dto.SaveContinentRequest;
 import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.application.dto.UpdateContinentRequest;
-import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.service.ContinentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,11 +33,11 @@ public class ContinentController {
             @ApiResponse(description = "Continent already exists", responseCode = "409")
     })
     public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
-        Continent continent = continentService.saveContinent(new Continent(saveContinentRequest.continentName()));
+        ContinentName continentName = continentService.saveContinent(new ContinentName(saveContinentRequest.continentName()));
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{country}")
-                .buildAndExpand(continent.getName())
+                .buildAndExpand(continentName.name())
                 .toUri();
         return ResponseEntity.created(location).build();
     }
@@ -58,7 +58,7 @@ public class ContinentController {
             @ApiResponse(description = "Deleted continent by name", responseCode = "204"),
     })
     public void deleteContinent(@PathVariable String name) {
-                continentService.deleteContinent(new Continent(name));
+                continentService.deleteContinent(new ContinentName(name));
     }
 
     @GetMapping("/{name}")
@@ -66,7 +66,7 @@ public class ContinentController {
             @ApiResponse(description = "Requested continent", responseCode = "200"),
     })
     public GetContinentResponse getContinent(@PathVariable String name) {
-                var continent = continentService.getContinent(new Continent(name));
+                var continent = continentService.getContinent(new ContinentName(name));
         return new GetContinentResponse(continent.getName());
     }
 
@@ -76,6 +76,6 @@ public class ContinentController {
             @ApiResponse(description = "Continent name is updated", responseCode = "204"),
     })
     public void updateContinent(@PathVariable String name, @RequestBody @Valid UpdateContinentRequest request) {
-                continentService.updateContinent(new Continent(name), new Continent(request.continentName()));
+                continentService.updateContinent(new ContinentName(name), new ContinentName(request.continentName()));
     }
 }

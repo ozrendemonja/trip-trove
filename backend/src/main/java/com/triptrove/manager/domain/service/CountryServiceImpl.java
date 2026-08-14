@@ -1,6 +1,11 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.*;
+import com.triptrove.manager.domain.ContinentName;
+import com.triptrove.manager.domain.CountryName;
+import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.ScrollPosition;
+import com.triptrove.manager.domain.model.SortDirection;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -23,10 +28,10 @@ public class CountryServiceImpl implements CountryService {
     private final ManagerProperties managerProperties;
 
     @Override
-    public Country saveCountry(Continent continent, Country country, String isoCode) {
-        log.atInfo().log("Processing save country request for country '{}'", country.getName());
-        if (countryRepo.isNameAlreadyUsedInContinent(country, continent)) {
-            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(country.getName(), continent.getName()), ErrorCode.DUPLICATE_NAME);
+    public Country saveCountry(ContinentName continentName, CountryName countryName, String isoCode) {
+        log.atInfo().log("Processing save country request for country '{}'", countryName.name());
+        if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName)) {
+            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName.name(), continentName.name()), ErrorCode.DUPLICATE_NAME);
         }
         log.atInfo().log("Given country name is unique");
 
@@ -35,12 +40,14 @@ public class CountryServiceImpl implements CountryService {
             throw new BaseApiException("Country ISO code '%s' already exists in the database.".formatted(isoCode), ErrorCode.DUPLICATE_ISO_CODE);
         }
 
-        var storedContinent = continentRepo.findByName(continent.getName())
-            .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continent.getName()), ErrorCode.OBJECT_NOT_FOUND));
+        var storedContinent = continentRepo.findByName(continentName.name())
+            .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName.name()), ErrorCode.OBJECT_NOT_FOUND));
 
-        country.setIsoCode(normalizedIsoCode);
-        country.setContinent(storedContinent);
-        var result = countryRepo.save(country);
+        var countryEntity = new Country();
+        countryEntity.setName(countryName.name());
+        countryEntity.setIsoCode(normalizedIsoCode);
+        countryEntity.setContinent(storedContinent);
+        var result = countryRepo.save(countryEntity);
 
         log.atInfo().log("Country '{}' successfully saved", result.getName());
 
@@ -95,37 +102,39 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public void updateCountryDetails(Integer id, Country updatedCountry) {
-        String name = updatedCountry.getName();
+    public void updateCountryDetails(Integer id, CountryName updatedCountryName) {
+        String name = updatedCountryName.name();
         log.atInfo().log("Updating the country name to '{}'", name);
 
-        var country = countryRepo.findById(id)
+        var countryEntity = countryRepo.findById(id)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
 
-        if (countryRepo.isNameAlreadyUsedInContinent(updatedCountry, country.getContinent(), country.getId())) {
-            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(name, country.getContinent().getName()), ErrorCode.DUPLICATE_NAME);
+        var continentName = new ContinentName(countryEntity.getContinent().getName());
+        if (countryRepo.isNameAlreadyUsedInContinent(updatedCountryName, continentName, countryEntity.getId())) {
+            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(name, continentName.name()), ErrorCode.DUPLICATE_NAME);
         }
 
-        country.setName(name);
-        countryRepo.save(country);
+        countryEntity.setName(name);
+        countryRepo.save(countryEntity);
         log.atInfo().log("Country name has been updated to '{}'", name);
     }
 
     @Override
-    public void updateCountryContinentDetails(Integer countryId, Continent continent) {
-        log.atInfo().log("Updating the country to belong to the '{}' continent", continent.getName());
-        Continent newContinent = continentRepo.findByName(continent.getName())
-                .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continent.getName()), ErrorCode.OBJECT_NOT_FOUND));
-        Country country = countryRepo.findById(countryId)
+    public void updateCountryContinentDetails(Integer countryId, ContinentName continentName) {
+        log.atInfo().log("Updating the country to belong to the '{}' continent", continentName.name());
+        var newContinent = continentRepo.findByName(continentName.name())
+                .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName.name()), ErrorCode.OBJECT_NOT_FOUND));
+        var countryEntity = countryRepo.findById(countryId)
                 .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
 
-        if (countryRepo.isNameAlreadyUsedInContinent(country, continent)) {
-            throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continent.getName()), ErrorCode.DUPLICATE_NAME);
+        var countryName = new CountryName(countryEntity.getName());
+        if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName, countryEntity.getId())) {
+            throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continentName.name()), ErrorCode.DUPLICATE_NAME);
         }
-        country.setContinent(newContinent);
+        countryEntity.setContinent(newContinent);
 
-        countryRepo.save(country);
-        log.atInfo().log("Updated the country to belong to the '{}' continent", continent.getName());
+        countryRepo.save(countryEntity);
+        log.atInfo().log("Updated the country to belong to the '{}' continent", continentName.name());
     }
 
     @Override

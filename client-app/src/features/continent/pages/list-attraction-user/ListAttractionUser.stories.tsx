@@ -59,11 +59,7 @@ const overlay = (canvasElement: HTMLElement): ReturnType<typeof within> =>
 const waitForAttractionsToLoad = (
   canvasElement: HTMLElement
 ): Promise<HTMLElement> =>
-  within(canvasElement).findByRole(
-    "gridcell",
-    { name: /Casino of Monte-Carlo \(part of Casino Square\)/ },
-    { timeout: 5000 }
-  );
+  within(canvasElement).findByText("Vilnius Old Town", {}, { timeout: 5000 });
 
 const openFilters = async (
   canvasElement: HTMLElement,

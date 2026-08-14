@@ -1,6 +1,8 @@
 package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.*;
+import com.triptrove.manager.domain.model.Continent;
+import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.service.CountryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,7 +31,10 @@ public class CountryController {
             @ApiResponse(description = "Country already exists", responseCode = "409")
     })
     public ResponseEntity<Void> saveCountry(@RequestBody @Valid SaveCountryRequest countryRequest) {
-        var result = countryService.saveCountry(countryRequest.continentName(), countryRequest.countryName(), countryRequest.isoCode());
+        var result = countryService.saveCountry(
+                new Continent(countryRequest.continentName()),
+                new Country(countryRequest.countryName()),
+                countryRequest.isoCode());
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -78,7 +83,7 @@ public class CountryController {
             @ApiResponse(description = "Country details are updated", responseCode = "204"),
     })
     public void updateCountryDetail(@PathVariable String id, @Valid @RequestBody UpdateCountryDetailsRequest countryDetailsRequest) {
-        countryService.updateCountryDetails(Integer.valueOf(id), countryDetailsRequest.countryName());
+                countryService.updateCountryDetails(Integer.valueOf(id), new Country(countryDetailsRequest.countryName()));
     }
 
     @PutMapping("/{id:\\d+}/continent")
@@ -87,7 +92,7 @@ public class CountryController {
             @ApiResponse(description = "Country details are updated", responseCode = "204"),
     })
     public void updateCountryContinent(@PathVariable String id, @Valid @RequestBody UpdateCountryContinentRequest countryContinentRequest) {
-        countryService.updateCountryContinentDetails(Integer.valueOf(id), countryContinentRequest.continentName());
+                countryService.updateCountryContinentDetails(Integer.valueOf(id), new Continent(countryContinentRequest.continentName()));
     }
 
     @PutMapping("/{id:\\d+}/iso-code")

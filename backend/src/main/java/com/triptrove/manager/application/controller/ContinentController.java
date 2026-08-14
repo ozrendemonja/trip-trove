@@ -33,14 +33,11 @@ public class ContinentController {
             @ApiResponse(description = "Continent already exists", responseCode = "409")
     })
     public ResponseEntity<Void> saveContinent(@RequestBody @Valid SaveContinentRequest saveContinentRequest) {
-        Continent continent = new Continent();
-        continent.setName(saveContinentRequest.continentName());
-
-        String continentName = continentService.saveContinent(continent);
+        Continent continent = continentService.saveContinent(new Continent(saveContinentRequest.continentName()));
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{country}")
-                .buildAndExpand(continentName)
+                .buildAndExpand(continent.getName())
                 .toUri();
         return ResponseEntity.created(location).build();
     }
@@ -61,7 +58,7 @@ public class ContinentController {
             @ApiResponse(description = "Deleted continent by name", responseCode = "204"),
     })
     public void deleteContinent(@PathVariable String name) {
-        continentService.deleteContinent(name);
+                continentService.deleteContinent(new Continent(name));
     }
 
     @GetMapping("/{name}")
@@ -69,7 +66,7 @@ public class ContinentController {
             @ApiResponse(description = "Requested continent", responseCode = "200"),
     })
     public GetContinentResponse getContinent(@PathVariable String name) {
-        var continent = continentService.getContinent(name);
+                var continent = continentService.getContinent(new Continent(name));
         return new GetContinentResponse(continent.getName());
     }
 
@@ -79,6 +76,6 @@ public class ContinentController {
             @ApiResponse(description = "Continent name is updated", responseCode = "204"),
     })
     public void updateContinent(@PathVariable String name, @RequestBody @Valid UpdateContinentRequest request) {
-        continentService.updateContinent(name, request.continentName());
+                continentService.updateContinent(new Continent(name), new Continent(request.continentName()));
     }
 }

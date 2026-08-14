@@ -6,9 +6,9 @@ import com.triptrove.manager.domain.model.SortDirection;
 import java.util.List;
 
 public interface ContinentService {
-    String saveContinent(Continent continent);
+    Continent saveContinent(Continent continent);
     List<Continent> getAllContinents(SortDirection sortDirection);
-    void deleteContinent(String name);
-    Continent getContinent(String name);
-    void updateContinent(String oldName, String newName);
+    void deleteContinent(Continent continent);
+    Continent getContinent(Continent continent);
+    void updateContinent(Continent oldContinent, Continent newContinent);
 }

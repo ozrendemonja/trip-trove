@@ -8,13 +8,14 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import EditContinentDetails from "./EditContinentDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Continent";
 import { Continent, OrderOptions } from "../../domain/Continent.types";
-import { ContinentListCustomizer } from "../../domain/ContinentListCustomizer";
+import { ContinentListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { Suggestion } from "../../domain/Suggestion.types.";
 import { getContinents, searchContinent } from "../../infra/ManagerApi";
 import { listHeader, onRenderWhenNoMoreItems } from "./ListContinent.config";
@@ -70,7 +71,12 @@ export const ContinentList: React.FunctionComponent = () => {
   useEffect(() => {
     getContinents(order).then((data) => {
       setIsLoading(true);
-      new ContinentListCustomizer(data, setItems, setColumns).createColumns();
+      const customizer = new ListCustomizer(
+        setItems,
+        setColumns,
+        new ContinentListCustomizerConfiguration()
+      ).withFixedRows(data);
+      customizer.createColumns();
       setIsLoading(false);
     });
   }, [reloadData]);
@@ -107,11 +113,11 @@ export const ContinentList: React.FunctionComponent = () => {
               },
               onFindItem: (id) => {
                 if (typeof id !== "string") return;
-                const customizer = new ContinentListCustomizer(
-                  [{ name: id }],
+                const customizer = new ListCustomizer(
                   setItems,
-                  setColumns
-                );
+                  setColumns,
+                  new ContinentListCustomizerConfiguration()
+                ).withFixedRows([{ name: id }]);
                 customizer.createColumns();
                 setSuggestions([]);
               }

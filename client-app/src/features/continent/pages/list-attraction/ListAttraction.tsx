@@ -9,14 +9,15 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/Attraction";
 import { LastReadAttraction } from "../../domain/Attraction.types";
-import { AttractionListCustomizer } from "../../domain/AttractionListCustomizer";
 import { OrderOptions } from "../../domain/Continent.types";
+import { AttractionListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { Suggestion } from "../../domain/Suggestion.types.";
 import {
   getAttractionById,
@@ -284,9 +285,19 @@ export const AttractionList: React.FunctionComponent = () => {
     LastReadAttraction | undefined
   >(undefined);
   const navigate = useNavigate();
+  const createAttractionCustomizer = (): ListCustomizer<AttractionRow> =>
+    new ListCustomizer(
+      setItems,
+      setColumns,
+      new AttractionListCustomizerConfiguration()
+    );
   const [attractionCustomizer, setAttractionCustomizer] = useState(
-    new AttractionListCustomizer(setItems, setColumns)
+    createAttractionCustomizer
   );
+  const resetAttractionPagination = (): void => {
+    setAttractionCustomizer(createAttractionCustomizer());
+    setLastElement(undefined);
+  };
 
   useEffect(() => {
     getPagedAttractions(lastElement, order).then((data) => {
@@ -327,9 +338,7 @@ export const AttractionList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                setAttractionCustomizer(
-                  new AttractionListCustomizer(setItems, setColumns)
-                );
+                resetAttractionPagination();
                 toggleReloadData();
               },
               sortOptions: sortOptions,
@@ -345,10 +354,9 @@ export const AttractionList: React.FunctionComponent = () => {
                 if (typeof id !== "number") return;
                 getAttractionById(id).then((data) => {
                   setAttractionCustomizer(() => {
-                    return new AttractionListCustomizer(
-                      setItems,
-                      setColumns
-                    ).withFixedRows([AttractionRow.from(data)]);
+                    return createAttractionCustomizer().withFixedRows([
+                      AttractionRow.from(data)
+                    ]);
                   });
                   setSuggestions([]);
                 });
@@ -362,9 +370,7 @@ export const AttractionList: React.FunctionComponent = () => {
               text: "Delete attraction",
               onDeleteRow: async (selection: DataSelection<AttractionRow>) => {
                 await deleteRows(selection.selectedRows());
-                setAttractionCustomizer(
-                  new AttractionListCustomizer(setItems, setColumns)
-                );
+                resetAttractionPagination();
                 toggleReloadData();
               }
             }}
@@ -380,17 +386,15 @@ export const AttractionList: React.FunctionComponent = () => {
               renderCellContent(
                 classes.linkField,
                 () => {
-                  setAttractionCustomizer(
-                    new AttractionListCustomizer(setItems, setColumns)
-                  );
-                  setLastElement(undefined);
+                  resetAttractionPagination();
                   toggleReloadData();
                 },
                 (attractionId, permanentlyClosedAt) =>
                   setAttractionCustomizer(
-                    attractionCustomizer.withPermanentClosure(
-                      attractionId,
-                      permanentlyClosedAt
+                    attractionCustomizer.withMappedRows((item) =>
+                      item.id === attractionId
+                        ? item.withPermanentlyClosedAt(permanentlyClosedAt)
+                        : item
                     )
                   ),
                 item,

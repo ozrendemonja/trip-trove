@@ -8,13 +8,14 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
+import { RegionListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { deleteRows } from "../../domain/Region";
 import { LastReadRegion, Region } from "../../domain/Region.types";
-import { RegionListCustomizer } from "../../domain/RegionListCustomizer";
 import {
   getRegionById,
   getRegions,
@@ -90,17 +91,28 @@ export const RegionList: React.FunctionComponent = () => {
     undefined
   );
   const navigate = useNavigate();
+  const createRegionCustomizer = (): ListCustomizer<RegionRow> =>
+    new ListCustomizer(
+      setItems,
+      setColumns,
+      new RegionListCustomizerConfiguration()
+    );
   const [regionCustomizer, setRegionCustomizer] = useState(
-    new RegionListCustomizer(setItems, setColumns)
+    createRegionCustomizer
   );
+  const resetRegionPagination = (): void => {
+    setRegionCustomizer(createRegionCustomizer());
+    setLastElement(undefined);
+  };
 
   useEffect(() => {
     getRegions(lastElement, order).then((data) => {
       setLoading();
       setLastElement(toLastReadRegion(data));
       const regionRows = data.map(RegionRow.from);
-      setRegionCustomizer(regionCustomizer.withPagedRows(regionRows));
-      regionCustomizer.createColumns();
+      const nextCustomizer = regionCustomizer.withPagedRows(regionRows);
+      nextCustomizer.createColumns();
+      setRegionCustomizer(nextCustomizer);
       setNotLoading();
     });
   }, [reloadData]);
@@ -127,9 +139,7 @@ export const RegionList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                setRegionCustomizer(
-                  new RegionListCustomizer(setItems, setColumns)
-                );
+                resetRegionPagination();
                 toggleReloadData();
               },
               sortOptions: sortOptions,
@@ -145,10 +155,9 @@ export const RegionList: React.FunctionComponent = () => {
                 if (typeof id !== "number") return;
                 getRegionById(id).then((data) => {
                   setRegionCustomizer(() => {
-                    return new RegionListCustomizer(
-                      setItems,
-                      setColumns
-                    ).withFixedRows([RegionRow.from(data)]);
+                    return createRegionCustomizer().withFixedRows([
+                      RegionRow.from(data)
+                    ]);
                   });
                   setSuggestions([]);
                 });
@@ -162,9 +171,7 @@ export const RegionList: React.FunctionComponent = () => {
               text: "Delete region",
               onDeleteRow: async (selection: DataSelection<RegionRow>) => {
                 await deleteRows(selection.selectedRows());
-                setRegionCustomizer(
-                  new RegionListCustomizer(setItems, setColumns)
-                );
+                resetRegionPagination();
                 toggleReloadData();
               }
             }}
@@ -175,9 +182,7 @@ export const RegionList: React.FunctionComponent = () => {
               renderCellContent(
                 classes.linkField,
                 () => {
-                  setRegionCustomizer(
-                    new RegionListCustomizer(setItems, setColumns)
-                  );
+                  resetRegionPagination();
                   toggleReloadData();
                 },
                 item,

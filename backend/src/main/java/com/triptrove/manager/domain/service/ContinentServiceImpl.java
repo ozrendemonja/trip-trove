@@ -1,5 +1,6 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.Continent;
 import com.triptrove.manager.domain.model.SortDirection;
@@ -20,15 +21,18 @@ public class ContinentServiceImpl implements ContinentService {
     private final ContinentRepo continentRepo;
 
     @Override
-    public String saveContinent(Continent continent) {
-        log.atInfo().log("Processing save continent request for '{}'", continent.getName());
-        if (continentRepo.findByName(continent.getName()).isPresent()) {
+    public ContinentName saveContinent(ContinentName continentName) {
+        String name = continentName.name();
+        log.atInfo().log("Processing save continent request for '{}'", name);
+        if (continentRepo.findByName(name).isPresent()) {
             throw new BaseApiException("Continent already exists in the database", ErrorCode.DUPLICATE_NAME);
         }
-        continentRepo.save(continent);
+        var continentEntity = new Continent();
+        continentEntity.setName(name);
+        continentRepo.save(continentEntity);
 
-        log.atInfo().log("Continent '{}' successfully saved", continent.getName());
-        return continent.getName();
+        log.atInfo().log("Continent '{}' successfully saved", name);
+        return continentName;
     }
 
     @Override
@@ -41,7 +45,8 @@ public class ContinentServiceImpl implements ContinentService {
     }
 
     @Override
-    public void deleteContinent(String name) {
+    public void deleteContinent(ContinentName continentName) {
+        String name = continentName.name();
         log.atInfo().log("Deleting continent '{}'", name);
         if (continentRepo.hasContinentCountries(name)) {
             throw new BaseApiException("Continent has countries under", ErrorCode.HAS_CHILDREN);
@@ -54,7 +59,8 @@ public class ContinentServiceImpl implements ContinentService {
     }
 
     @Override
-    public Continent getContinent(String name) {
+    public Continent getContinent(ContinentName continentName) {
+        String name = continentName.name();
         log.atInfo().log("Getting a continent with name '{}'", name);
         var continent = continentRepo.findByName(name)
                 .orElseThrow(() -> new BaseApiException("Continent '%s' does not exist in the database".formatted(name), ErrorCode.OBJECT_NOT_FOUND));
@@ -64,16 +70,16 @@ public class ContinentServiceImpl implements ContinentService {
     }
 
     @Override
-    public void updateContinent(String oldName, String newName) {
-        log.atInfo().log("Updating a continent with name '{}'", oldName);
-        if (continentRepo.findByName(newName).isPresent()) {
+    public void updateContinent(ContinentName oldName, ContinentName newName) {
+        log.atInfo().log("Updating a continent with name '{}'", oldName.name());
+        if (continentRepo.findByName(newName.name()).isPresent()) {
             throw new BaseApiException("Continent already exists in the database", ErrorCode.DUPLICATE_NAME);
         }
-        Continent continent = continentRepo.findByName(oldName)
+        var continent = continentRepo.findByName(oldName.name())
                 .orElseThrow(() -> new BaseApiException("Continent '%s' does not exist in the database".formatted(oldName), ErrorCode.OBJECT_NOT_FOUND));
-        continent.setName(newName);
+        continent.setName(newName.name());
         continent.setUpdatedOn(LocalDateTime.now());
         continentRepo.save(continent);
-        log.atInfo().log("Continent name updated to '{}'", newName);
+        log.atInfo().log("Continent name updated to '{}'", newName.name());
     }
 }

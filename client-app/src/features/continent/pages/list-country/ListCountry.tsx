@@ -8,13 +8,14 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
 import { deleteRows } from "../../domain/Country";
 import { Country, LastReadCountry } from "../../domain/Country.types.";
-import { CountryListCustomizer } from "../../domain/CountryListCustomizer";
+import { CountryListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { Suggestion } from "../../domain/Suggestion.types.";
 import {
   getCountries,
@@ -102,17 +103,28 @@ export const CountryList: React.FunctionComponent = () => {
     undefined
   );
   const navigate = useNavigate();
+  const createCountryCustomizer = (): ListCustomizer<CountryRow> =>
+    new ListCustomizer(
+      setItems,
+      setColumns,
+      new CountryListCustomizerConfiguration()
+    );
   const [countryCustomizer, setCountryCustomizer] = useState(
-    new CountryListCustomizer(setItems, setColumns)
+    createCountryCustomizer
   );
+  const resetCountryPagination = (): void => {
+    setCountryCustomizer(createCountryCustomizer());
+    setLastElement(undefined);
+  };
 
   useEffect(() => {
     getCountries(lastElement, order).then((data) => {
       setLoading();
       setLastElement(toLastReadCountry(data));
       const countryRows = data.map(CountryRow.from);
-      setCountryCustomizer(countryCustomizer.withPagedRows(countryRows));
-      countryCustomizer.createColumns();
+      const nextCustomizer = countryCustomizer.withPagedRows(countryRows);
+      nextCustomizer.createColumns();
+      setCountryCustomizer(nextCustomizer);
       setNotLoading();
     });
   }, [reloadData]);
@@ -142,9 +154,7 @@ export const CountryList: React.FunctionComponent = () => {
               showSearchBar: true,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                setCountryCustomizer(
-                  new CountryListCustomizer(setItems, setColumns)
-                );
+                resetCountryPagination();
                 toggleReloadData();
               },
               sortOptions: sortOptions,
@@ -160,10 +170,9 @@ export const CountryList: React.FunctionComponent = () => {
                 if (typeof id !== "number") return;
                 getCountryById(id).then((data) => {
                   setCountryCustomizer(() => {
-                    return new CountryListCustomizer(
-                      setItems,
-                      setColumns
-                    ).withFixedRows([CountryRow.from(data)]);
+                    return createCountryCustomizer().withFixedRows([
+                      CountryRow.from(data)
+                    ]);
                   });
                   setSuggestions([]);
                 });
@@ -177,9 +186,7 @@ export const CountryList: React.FunctionComponent = () => {
               text: "Delete country",
               onDeleteRow: async (selection: DataSelection<CountryRow>) => {
                 await deleteRows(selection.selectedRows());
-                setCountryCustomizer(
-                  new CountryListCustomizer(setItems, setColumns)
-                );
+                resetCountryPagination();
                 toggleReloadData();
               }
             }}
@@ -190,9 +197,7 @@ export const CountryList: React.FunctionComponent = () => {
               renderCellContent(
                 classes.linkField,
                 () => {
-                  setCountryCustomizer(
-                    new CountryListCustomizer(setItems, setColumns)
-                  );
+                  resetCountryPagination();
                   toggleReloadData();
                 },
                 item,

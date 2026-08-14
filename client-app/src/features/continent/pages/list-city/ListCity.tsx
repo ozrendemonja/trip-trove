@@ -8,13 +8,14 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/City";
 import { City, LastReadCity } from "../../domain/City.types";
-import { CityListCustomizer } from "../../domain/CityListCustomizer";
 import { OrderOptions } from "../../domain/Continent.types";
+import { CityListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { Suggestion } from "../../domain/Suggestion.types.";
 import { getCities, getCityById, searchCity } from "../../infra/ManagerApi";
 import { CityRow } from "../list-city/ListCity.types";
@@ -88,17 +89,26 @@ export const CityList: React.FunctionComponent = () => {
     undefined
   );
   const navigate = useNavigate();
-  const [cityCustomizer, setCityCustomizer] = useState(
-    new CityListCustomizer(setItems, setColumns)
-  );
+  const createCityCustomizer = (): ListCustomizer<CityRow> =>
+    new ListCustomizer(
+      setItems,
+      setColumns,
+      new CityListCustomizerConfiguration()
+    );
+  const [cityCustomizer, setCityCustomizer] = useState(createCityCustomizer);
+  const resetCityPagination = (): void => {
+    setCityCustomizer(createCityCustomizer());
+    setLastElement(undefined);
+  };
 
   useEffect(() => {
     getCities(lastElement, order).then((data) => {
       setLoading();
       setLastElement(toLastReadCity(data));
       const cityRows = data.map(CityRow.from);
-      setCityCustomizer(cityCustomizer.withPagedRows(cityRows));
-      cityCustomizer.createColumns();
+      const nextCustomizer = cityCustomizer.withPagedRows(cityRows);
+      nextCustomizer.createColumns();
+      setCityCustomizer(nextCustomizer);
       setNotLoading();
     });
   }, [reloadData]);
@@ -125,7 +135,7 @@ export const CityList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                setCityCustomizer(new CityListCustomizer(setItems, setColumns));
+                resetCityPagination();
                 toggleReloadData();
               },
               sortOptions: sortOptions,
@@ -141,10 +151,9 @@ export const CityList: React.FunctionComponent = () => {
                 if (typeof id !== "number") return;
                 getCityById(id).then((data) => {
                   setCityCustomizer(() => {
-                    return new CityListCustomizer(
-                      setItems,
-                      setColumns
-                    ).withFixedRows([CityRow.from(data)]);
+                    return createCityCustomizer().withFixedRows([
+                      CityRow.from(data)
+                    ]);
                   });
                   setSuggestions([]);
                 });
@@ -158,7 +167,7 @@ export const CityList: React.FunctionComponent = () => {
               text: "Delete city",
               onDeleteRow: async (selection: DataSelection<CityRow>) => {
                 await deleteRows(selection.selectedRows());
-                setCityCustomizer(new CityListCustomizer(setItems, setColumns));
+                resetCityPagination();
                 toggleReloadData();
               }
             }}
@@ -169,9 +178,7 @@ export const CityList: React.FunctionComponent = () => {
               renderCellContent(
                 classes.linkField,
                 () => {
-                  setCityCustomizer(
-                    new CityListCustomizer(setItems, setColumns)
-                  );
+                  resetCityPagination();
                   toggleReloadData();
                 },
                 item,

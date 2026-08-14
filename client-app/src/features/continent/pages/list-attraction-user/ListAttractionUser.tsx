@@ -14,6 +14,7 @@ import { Link, SearchBox, Text } from "@fluentui/react-components";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
+import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { ListElementUser } from "../../../../shared/list-element/ListElementUser";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
@@ -22,7 +23,7 @@ import {
   AttractionVisitStatus,
   LastReadAttraction
 } from "../../domain/Attraction.types";
-import { AttractionListCustomizerUser } from "../../domain/AttractionListCustomizerUser";
+import { AttractionUserListCustomizerConfiguration } from "../../domain/ListCustomizerConfigurations";
 import { onRenderWhenNoMoreItems } from "../list-attraction/ListAttraction.config";
 import {
   AttractionRow,
@@ -233,8 +234,14 @@ export const AttractionListUser: React.FunctionComponent = () => {
   const [lastElement, setLastElement] = useState<
     LastReadAttraction | undefined
   >(undefined);
+  const createAttractionCustomizer = (): ListCustomizer<AttractionRow> =>
+    new ListCustomizer(
+      setItems,
+      setColumns,
+      new AttractionUserListCustomizerConfiguration()
+    );
   const [attractionCustomizer, setAttractionCustomizer] = useState(
-    new AttractionListCustomizerUser(setItems, setColumns)
+    createAttractionCustomizer
   );
 
   const { whereToSearch, id } = useParams();
@@ -261,10 +268,9 @@ export const AttractionListUser: React.FunctionComponent = () => {
       setLoading();
       setLastElement(toLastReadAttraction(data));
       const attractionRows = data.map(AttractionRow.from);
-      setAttractionCustomizer(
-        attractionCustomizer.withPagedRows(attractionRows)
-      );
-      attractionCustomizer.createColumns();
+      const nextCustomizer = attractionCustomizer.withPagedRows(attractionRows);
+      nextCustomizer.createColumns();
+      setAttractionCustomizer(nextCustomizer);
       setNotLoading();
     });
   }, [reloadData]);
@@ -274,9 +280,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
       searchParams.has(param) && searchParams.get(param) === value,
     onClick: (filterValue: string) => {
       toggleQueryParam(param, filterValue, searchParams, setSearchParams);
-      setAttractionCustomizer(
-        new AttractionListCustomizerUser(setItems, setColumns)
-      );
+      setAttractionCustomizer(createAttractionCustomizer());
       setLastElement(undefined);
       toggleReloadData();
     }

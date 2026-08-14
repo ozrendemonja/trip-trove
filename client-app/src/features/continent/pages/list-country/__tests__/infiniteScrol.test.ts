@@ -1,7 +1,18 @@
 import { Country, LastReadCountry } from "../../../domain/Country.types.";
-import { CountryListCustomizer } from "../../../domain/CountryListCustomizer";
+import { CountryListCustomizerConfiguration } from "../../../domain/ListCustomizerConfigurations";
+import { ListCustomizer } from "../../../../../shared/list-element/ListCustomizer";
 import { CountryRow } from "../ListCountry.types";
 import { toLastReadCountry } from "../ListCountry.utils";
+
+const createCountryCustomizer = (
+  notifyItemsChanged: (items: CountryRow[]) => void,
+  notifyColumnsChanged: () => void
+): ListCustomizer<CountryRow> =>
+  new ListCustomizer(
+    notifyItemsChanged,
+    notifyColumnsChanged,
+    new CountryListCustomizerConfiguration()
+  );
 
 test("Last read country should be undefined when there are no countries in the list", () => {
   const countries: Country[] = [];
@@ -66,10 +77,10 @@ test("Country row list should include a flag that triggers infinite scroll when 
     { continent: "Europe", name: "Monaco" },
     null
   ] as CountryRow[];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
   const countryRows = [expected[0]];
 
-  const customizer = new CountryListCustomizer(listColumnChanged, () => {});
+  const customizer = createCountryCustomizer(listColumnChanged, () => {});
   customizer.withPagedRows(countryRows);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
@@ -78,10 +89,10 @@ test("Country row list should include a flag that triggers infinite scroll when 
 test("Country row list should not include a flag that triggers infinite scroll when more no more pages exist", () => {
   const input0 = [{ continent: "Europe", name: "Monaco" }] as CountryRow[];
   const input1 = [{ continent: "Europe", name: "San Marino" }] as CountryRow[];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
   const expected = [...input0, ...input1];
 
-  let customizer = new CountryListCustomizer(listColumnChanged, () => {});
+  let customizer = createCountryCustomizer(listColumnChanged, () => {});
   customizer = customizer.withPagedRows(input0);
   customizer = customizer.withPagedRows(input1);
   listColumnChanged.mockClear();
@@ -96,9 +107,9 @@ test("Country row list should include newly added countries when it previously h
     { continent: "Europe", name: "San Marino" }
   ] as CountryRow[];
   const expected = [...input, null];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
 
-  new CountryListCustomizer(listColumnChanged, () => {}).withPagedRows(input);
+  createCountryCustomizer(listColumnChanged, () => {}).withPagedRows(input);
 
   expect(listColumnChanged).toHaveBeenCalledWith(expected);
 });
@@ -113,9 +124,9 @@ test("Country row list should preserve previous data and include newly added cou
     { continent: "Oceania", name: "Palau" }
   ] as CountryRow[];
   const expected = [...input0, ...input1, null];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
 
-  const customizer = new CountryListCustomizer(
+  const customizer = createCountryCustomizer(
     listColumnChanged,
     () => {}
   ).withPagedRows(input0);
@@ -130,9 +141,9 @@ test("Country row list should preserve previous data when the newly added countr
     { continent: "Europe", name: "San Marino" }
   ] as CountryRow[];
   const expected = [...input];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
 
-  const customizer = new CountryListCustomizer(
+  const customizer = createCountryCustomizer(
     listColumnChanged,
     () => {}
   ).withPagedRows(input);
@@ -143,9 +154,9 @@ test("Country row list should preserve previous data when the newly added countr
 
 test("Country row list should be empty when the newly added country list is empty", () => {
   const expected: CountryRow[] = [];
-  const listColumnChanged = jest.fn((items: CountryRow[]) => {});
+  const listColumnChanged = jest.fn((_items: CountryRow[]) => {});
 
-  const customizer = new CountryListCustomizer(
+  const customizer = createCountryCustomizer(
     listColumnChanged,
     () => {}
   ).withPagedRows([]);

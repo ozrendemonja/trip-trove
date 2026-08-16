@@ -1431,6 +1431,41 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void movingAttractionOnBoardShouldPreserveRequestedOrder() throws Exception {
+        var addRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
+        mockMvc.perform(post("/trips/1/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(addRequest)))
+                .andExpect(status().isNoContent());
+
+        var moveRequest = new MoveAttractionOnBoardRequest(
+                TripAttractionGroupDTO.PRIMARY, null, 1L);
+        mockMvc.perform(put("/trips/1/board/attractions/4")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1")
+                        .content(mapper.writeValueAsString(moveRequest)))
+                .andExpect(status().isNoContent());
+
+        var jsonResponse = mockMvc.perform(get("/trips/1/attractions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
+        var primaryAttractions = java.util.Arrays.stream(response)
+                .filter(item -> item.attractionGroup() == TripAttractionGroupDTO.PRIMARY)
+                .filter(item -> "Test city 0".equals(item.cityName()))
+                .toList();
+        assertThat(primaryAttractions)
+                .extracting(GetTripAttractionResponse::attractionId)
+                .containsExactly(4L, 1L);
+    }
+
+    @Test
     void attractionGroupShouldNotBeUpdatedWhenTripIdDoesNotExist() throws Exception {
         var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
 

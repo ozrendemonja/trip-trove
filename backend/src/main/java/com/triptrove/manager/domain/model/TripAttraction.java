@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -59,6 +60,9 @@ public class TripAttraction {
     @Enumerated(EnumType.STRING)
     @Column(name = "attraction_group", nullable = false)
     private TripAttractionGroup attractionGroup;
+
+    @Column(name = "board_position", nullable = false, columnDefinition = "NUMERIC")
+    private BigDecimal boardPosition;
 
     @Column(name = "must_visit")
     private boolean mustVisit;

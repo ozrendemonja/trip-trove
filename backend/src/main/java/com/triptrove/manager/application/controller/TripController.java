@@ -2,6 +2,7 @@ package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.TripBoardItem;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -143,6 +144,38 @@ public class TripController {
     })
     public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateAttractionGroupRequest request) {
         tripService.updateAttractionGroup(id, attractionId, request.attractionGroup().toGroup());
+    }
+
+        @PutMapping("/{id:\\d+}/board/attractions/{attractionId:\\d+}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Move attraction on trip board",
+            description = "Moves an attraction to the target board group between the requested neighboring attractions.",
+            responses = {
+                    @ApiResponse(description = "Attraction moved successfully", responseCode = "204"),
+                    @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                            {@Content(mediaType = "application/json", schema =
+                            @Schema(implementation = ErrorResponse.class))})
+            })
+    public void moveAttractionOnBoard(@PathVariable Long id, @PathVariable Long attractionId,
+                                      @RequestBody @Valid MoveAttractionOnBoardRequest request) {
+        tripService.moveAttractionOnBoard(id, attractionId, request.targetGroup().toGroup(),
+                request.previousAttractionId(), request.nextAttractionId());
+    }
+
+        @PutMapping("/{id:\\d+}/board")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    @Operation(summary = "Arrange trip board", responses = {
+            @ApiResponse(description = "Trip board arranged successfully", responseCode = "204"),
+            @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = ErrorResponse.class))})
+    })
+    public void arrangeTripBoard(@PathVariable Long id, @RequestBody @Valid ArrangeTripBoardRequest request) {
+        var boardItems = request.attractions().stream()
+                .map(item -> new TripBoardItem(item.attractionId(), item.group().toGroup()))
+                .toList();
+        tripService.arrangeTripBoard(id, boardItems);
     }
 
     @PutMapping("/{id:\\d+}/attractions/{attractionId:\\d+}/must-visit")

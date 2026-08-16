@@ -77,12 +77,12 @@ INSERT INTO trip(name, trip_start_date, trip_end_date, created_on, archived)
     ('Test trip name 2', '2025-12-14T09:47:23', '2025-12-17T23:11:32', '2025-11-02T04:17:22', false)
      ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, must_visit, attraction_group)
+INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, must_visit, attraction_group, board_position)
 	VALUES
-	('2024-08-20T22:32:11', 1, 1, 'PLANNED', 'EXCELLENT', null, null, false, 'PRIMARY'),
-    ('2025-09-10T08:12:43', 2, 1, 'PLANNED', 'AVERAGE', null, null, false, 'SECONDARY'),
-    ('2025-09-12T08:12:43', 3, 1, 'PLANNED', 'EXCELLENT', 'test note', null, true, 'PRIMARY'),
-    ('2025-10-14T09:47:23', 1, 2, 'VISITED', 'VERY_GOOD', null, 'Great experience', true, 'PRIMARY'),
-    ('2025-12-14T09:47:23', 1, 5, 'PLANNED', 'EXCELLENT', null, null, false, 'PRIMARY'),
-    ('2025-12-14T09:47:24', 3, 5, 'PLANNED', null, null, null, false, 'PRIMARY')
+	('2024-08-20T22:32:11', 1, 1, 'PLANNED', 'EXCELLENT', null, null, false, 'PRIMARY', 1),
+    ('2025-09-10T08:12:43', 2, 1, 'PLANNED', 'AVERAGE', null, null, false, 'SECONDARY', 2),
+    ('2025-09-12T08:12:43', 3, 1, 'PLANNED', 'EXCELLENT', 'test note', null, true, 'PRIMARY', 3),
+    ('2025-10-14T09:47:23', 1, 2, 'VISITED', 'VERY_GOOD', null, 'Great experience', true, 'PRIMARY', 1),
+    ('2025-12-14T09:47:23', 1, 5, 'PLANNED', 'EXCELLENT', null, null, false, 'PRIMARY', 1),
+    ('2025-12-14T09:47:24', 3, 5, 'PLANNED', null, null, null, false, 'PRIMARY', 2)
      ON CONFLICT (id) DO NOTHING;

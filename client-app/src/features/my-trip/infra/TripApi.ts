@@ -17,6 +17,11 @@ import { chunk } from "../../../shared/utils/chunk";
 export type TripAttractionStatus = "PLANNED" | "VISITED";
 export type TripAttractionGroup = "PRIMARY" | "SECONDARY" | "EXCLUDED";
 
+export interface TripBoardItem {
+  attractionId: number;
+  group: TripAttractionGroup;
+}
+
 export interface TripAttractionFromServer {
   attractionId: number;
   attractionName: string;
@@ -282,6 +287,47 @@ export const updateAttractionGroup = async (
 
   if (error) {
     console.error("Error while updating attraction group", error);
+  }
+};
+
+export const moveAttractionOnBoard = async (
+  tripId: number,
+  attractionId: number,
+  targetGroup: TripAttractionGroup,
+  previousAttractionId?: number,
+  nextAttractionId?: number
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/board/attractions/${attractionId}`,
+    body: {
+      targetGroup,
+      previousAttractionId: previousAttractionId ?? null,
+      nextAttractionId: nextAttractionId ?? null
+    },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    throw new Error("Error while moving attraction on trip board", {
+      cause: error
+    });
+  }
+};
+
+export const arrangeTripBoard = async (
+  tripId: number,
+  attractions: TripBoardItem[]
+): Promise<void> => {
+  const { error } = await client.put({
+    url: `/trips/${tripId}/board`,
+    body: { attractions },
+    headers: { "x-api-version": "1", "Content-Type": "application/json" }
+  });
+
+  if (error) {
+    throw new Error("Error while arranging trip board", {
+      cause: error
+    });
   }
 };
 

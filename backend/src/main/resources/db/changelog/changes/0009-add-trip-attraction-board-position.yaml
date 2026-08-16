@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0009-add-trip-attraction-board-position
+      author: trip-trove
+      comment: Persist each attraction's position on a trip board.
+      preConditions:
+        - onFail: MARK_RAN
+          onFailMessage: >-
+            trip_attraction.board_position column already exists - assuming the
+            change has already been applied; marking as ran.
+          not:
+            - columnExists:
+                tableName: trip_attraction
+                columnName: board_position
+      changes:
+        - addColumn:
+            tableName: trip_attraction
+            columns:
+              - column:
+                  name: board_position
+                  type: NUMERIC
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE trip_attraction AS target
+              SET board_position = positioned.board_position
+              FROM (
+                SELECT id,
+                       ROW_NUMBER() OVER (PARTITION BY trip_id ORDER BY id) AS board_position
+                FROM trip_attraction
+              ) AS positioned
+              WHERE target.id = positioned.id
+        - addNotNullConstraint:
+            tableName: trip_attraction
+            columnName: board_position
+            columnDataType: NUMERIC
+        - createIndex:
+            tableName: trip_attraction
+            indexName: idx_trip_attraction_board_position
+            columns:
+              - column:
+                  name: trip_id
+              - column:
+                  name: board_position
+              - column:
+                  name: id

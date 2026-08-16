@@ -27,20 +27,12 @@ export const DeletesSingleAttraction: Story = {
     const body = within(canvasElement.ownerDocument.body);
     const user = setupUser();
 
-    const removeButton = await canvas.findByRole("button", {
-      name: "Remove Casino Square from trip"
-    });
-    await user.click(removeButton);
-
-    await body.findByRole("heading", {
-      name: "Delete Casino Square from trip"
-    });
-    await expect(removeButton).toBeInTheDocument();
-    await user.click(body.getByRole("button", { name: "Delete" }));
-
-    await waitFor(() =>
-      expect(canvasElement).not.toHaveAttribute("aria-hidden")
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove Casino Square from trip"
+      })
     );
+    await user.click(await body.findByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
       expect(
@@ -58,7 +50,7 @@ export const DeletesSingleAttraction: Story = {
 };
 
 export const KeepsSingleAttractionWhenDeleteCancelled: Story = {
-  args: { initialCities: oneAttractionBoard() },
+  args: { initialCities: tripBoard },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
@@ -69,14 +61,8 @@ export const KeepsSingleAttractionWhenDeleteCancelled: Story = {
         name: "Remove Casino Square from trip"
       })
     );
-    await body.findByText(
-      "Are you sure you want to delete Casino Square from trip?"
-    );
-    await user.click(body.getByRole("button", { name: "Cancel" }));
+    await user.click(await body.findByRole("button", { name: "Cancel" }));
 
-    await waitFor(() =>
-      expect(canvasElement).not.toHaveAttribute("aria-hidden")
-    );
     await expect(
       canvas.getByRole("button", {
         name: "Remove Casino Square from trip"

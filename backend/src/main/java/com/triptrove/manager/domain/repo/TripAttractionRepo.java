@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,7 +16,16 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
 
     Optional<TripAttraction> findByTripIdAndAttractionId(Long tripId, Long attractionId);
 
-    List<TripAttraction> findByTripId(Long tripId);
+        @Query("""
+            SELECT ta
+            FROM TripAttraction ta
+            WHERE ta.trip.id = :tripId
+            ORDER BY ta.boardPosition, ta.id
+            """)
+        List<TripAttraction> findBoardAttractionsByTripId(@Param("tripId") Long tripId);
+
+    @Query("SELECT MAX(ta.boardPosition) FROM TripAttraction ta WHERE ta.trip.id = :tripId")
+    Optional<BigDecimal> findLastBoardPositionByTripId(@Param("tripId") Long tripId);
 
     @Query("""
                 SELECT COUNT(DISTINCT ta.attraction.country)

@@ -28,6 +28,11 @@ public interface TripService {
 
     void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
 
+    void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup,
+                               Long previousAttractionId, Long nextAttractionId);
+
+    void arrangeTripBoard(Long tripId, List<TripBoardItem> boardItems);
+
     void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit);
 
     void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours);

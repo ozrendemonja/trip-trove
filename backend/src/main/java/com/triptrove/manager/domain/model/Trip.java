@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public class Trip {
     )
     private List<TripAttraction> attractions = new ArrayList<>();
 
-    public void attachAttraction(Attraction attraction, TripAttractionGroup attractionGroup) {
+    public void attachAttraction(Attraction attraction, TripAttractionGroup attractionGroup, BigDecimal boardPosition) {
         Objects.requireNonNull(attraction, "attraction must not be null");
 
         TripAttraction tripAttraction = new TripAttraction();
@@ -58,6 +59,7 @@ public class Trip {
         tripAttraction.setTrip(this);
         tripAttraction.setStatus(TripAttractionStatus.PLANNED);
         tripAttraction.setAttractionGroup(attractionGroup);
+        tripAttraction.setBoardPosition(boardPosition);
         tripAttraction.setMustVisit(attraction.isMustVisit());
         tripAttraction.setNote(attraction.getTip().orElse(null));
         attractions.add(tripAttraction);

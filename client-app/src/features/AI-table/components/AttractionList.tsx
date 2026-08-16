@@ -40,7 +40,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
           <li
             className="attraction"
             draggable
-            onDragStart={onDragStart(idx)}
+            onDragStart={onDragStart(attraction.id)}
             data-column={columnId}
             data-id={attraction.id}
           >

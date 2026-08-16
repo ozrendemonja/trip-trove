@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { expect, within } from "storybook/test";
+import { expect, fireEvent, within } from "storybook/test";
 import Board from "./Board";
 import type { Attraction } from "./AttractionList.types";
 import type { TouristDestination } from "./Board.types";
@@ -130,6 +130,56 @@ export const FiltersByMustVisit: Story = {
     await expect(
       canvas.getByRole("link", { name: negativeAttractionName })
     ).toBeInTheDocument();
+  }
+};
+
+export const ReordersVisibleAttractionWithoutMovingFilteredCards: Story = {
+  args: {
+    initialCities: [
+      {
+        name: "Monaco",
+        columns: [
+          {
+            id: "monaco_top",
+            title: "Top Attractions",
+            tasks: [
+              attractionMatchingNegativeFilters,
+              attractionMatchingPositiveFilters,
+              { ...attractionMatchingPositiveFilters, id: 3, name: "Old Town" }
+            ]
+          },
+          { id: "monaco_secondary", title: "Secondary Spots", tasks: [] },
+          { id: "monaco_excluded", title: "Excluded Attractions", tasks: [] }
+        ]
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const mustVisitFilter = canvas.getByRole("combobox", {
+      name: /Must Visit/
+    });
+    await user.selectOptions(mustVisitFilter, MustVisit);
+
+    const topColumn = canvas
+      .getByRole("heading", { name: "Top Attractions" })
+      .closest(".attraction-board-column") as HTMLElement;
+    const oldTownCard = topColumn.querySelector(
+      'li.attraction[data-id="3"]'
+    ) as HTMLElement;
+    const dataTransfer = new DataTransfer();
+    fireEvent.dragStart(oldTownCard, { dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.dragOver(topColumn, { clientY: -1, dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.drop(topColumn, { dataTransfer });
+
+    await user.selectOptions(mustVisitFilter, Any);
+    const attractionIds = Array.from(
+      topColumn.querySelectorAll("li.attraction")
+    ).map((element) => element.getAttribute("data-id"));
+    await expect(attractionIds).toEqual(["2", "3", "1"]);
   }
 };
 

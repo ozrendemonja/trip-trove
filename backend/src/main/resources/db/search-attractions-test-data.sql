@@ -65,8 +65,8 @@ INSERT INTO trip(name, trip_start_date, trip_end_date, created_on, archived)
 	('Visit status earlier trip', '2025-04-20T00:00:00', '2025-05-01T00:00:00', '2025-05-02T10:00:00', false),
     ('Visit status latest trip', '2025-06-01T00:00:00', '2025-06-15T00:00:00', '2025-06-16T10:00:00', false);
 
-INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, would_visit_again, must_visit, attraction_group)
+INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, would_visit_again, must_visit, attraction_group, board_position)
 	VALUES
-	('2025-05-02T10:00:00', 1, 1, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY'),
-    ('2025-06-16T10:00:00', 1, 2, 'VISITED', 'EXCELLENT', null, null, true, true, 'PRIMARY'),
-    ('2025-06-16T10:00:00', 4, 2, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY');
+	('2025-05-02T10:00:00', 1, 1, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY', 1),
+    ('2025-06-16T10:00:00', 1, 2, 'VISITED', 'EXCELLENT', null, null, true, true, 'PRIMARY', 1),
+    ('2025-06-16T10:00:00', 4, 2, 'VISITED', 'AVERAGE', null, null, false, false, 'PRIMARY', 2);

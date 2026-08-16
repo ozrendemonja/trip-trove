@@ -1,10 +1,12 @@
 package com.triptrove.manager.domain.service;
 
+import com.triptrove.manager.domain.algorithm.FractionalIndexing;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.infra.ManagerProperties;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.domain.Limit;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -100,7 +103,9 @@ public class TripServiceImpl implements TripService {
         var attraction = attractionRepo.findById(attractionId)
                 .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
 
-        trip.attachAttraction(attraction, attractionGroup);
+        var boardPosition = FractionalIndexing.indexAfter(
+            tripAttractionRepo.findLastBoardPositionByTripId(tripId).orElse(null));
+        trip.attachAttraction(attraction, attractionGroup, boardPosition);
         tripRepo.save(trip);
         tripRepo.recomputeArchived(tripId);
 
@@ -138,6 +143,50 @@ public class TripServiceImpl implements TripService {
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
         log.atInfo().log("Attraction group updated for attraction '{}' under trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    @Transactional
+    public void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup,
+                                      Long previousAttractionId, Long nextAttractionId) {
+        log.atInfo().log("Moving attraction '{}' on board for trip '{}'", attractionId, tripId);
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var previousAttraction = previousAttractionId == null ? null
+                : tripAttractionRepo.findByTripIdAndAttractionId(tripId, previousAttractionId)
+                    .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var nextAttraction = nextAttractionId == null ? null
+                : tripAttractionRepo.findByTripIdAndAttractionId(tripId, nextAttractionId)
+                    .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var previousGroup = attraction.getAttractionGroup();
+        TripBoard.moveAttraction(attraction, targetGroup, previousAttraction, nextAttraction);
+        tripAttractionRepo.save(attraction);
+        if (previousGroup != attraction.getAttractionGroup()) {
+            tripRepo.recomputeArchived(tripId);
+        }
+        log.atInfo().log("Attraction '{}' moved on board for trip '{}'", attractionId, tripId);
+    }
+
+    @Override
+    @Transactional
+    public void arrangeTripBoard(Long tripId, List<TripBoardItem> boardItems) {
+        if (!tripRepo.existsById(tripId)) {
+            throw new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+        }
+
+        var currentBoardAttractions = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
+        var currentGroupsByAttractionId = currentBoardAttractions.stream()
+                .collect(Collectors.toMap(
+                        attraction -> attraction.getAttraction().getId(),
+                        TripAttraction::getAttractionGroup));
+        var changedAttractions = TripBoard.arrange(currentBoardAttractions, boardItems);
+        tripAttractionRepo.saveAll(changedAttractions);
+        var hasAttractionGroupChanged = changedAttractions.stream().anyMatch(attraction ->
+                currentGroupsByAttractionId.get(attraction.getAttraction().getId())
+                != attraction.getAttractionGroup());
+        if (hasAttractionGroupChanged) {
+            tripRepo.recomputeArchived(tripId);
+        }
     }
 
     @Override
@@ -207,7 +256,7 @@ public class TripServiceImpl implements TripService {
         if (!tripRepo.existsById(tripId)) {
             throw new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
         }
-        var result = tripAttractionRepo.findByTripId(tripId);
+        var result = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
         log.atInfo().log("Found '{}' attractions for trip", result.size());
         return result;
     }

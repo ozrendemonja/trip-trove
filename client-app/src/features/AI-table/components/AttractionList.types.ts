@@ -24,7 +24,7 @@ export interface AttractionListProps {
   showPlaceholder: boolean;
   insertionIndex: number;
   placeholderHeight?: number;
-  onDragStart: (taskIndex: number) => (e: React.DragEvent) => void;
+  onDragStart: (attractionId: number) => (e: React.DragEvent) => void;
   columnId: string;
   locationHint?: string; // city name or region name
   onUpdateNote: (columnId: string, index: number, newNote: string) => void;

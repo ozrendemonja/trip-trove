@@ -1,7 +1,7 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 const defaultSearchOption = {
-  marginRight: "12px"
+  marginRight: tokens.spacingHorizontalM
 };
 
 export const useClasses = makeStyles({
@@ -9,33 +9,33 @@ export const useClasses = makeStyles({
     ...defaultSearchOption,
     ...shorthands.textDecoration("underline"),
     "&:focus": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     "&:active": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     "&:hover": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     }
   },
   selectedSearchOption: {
     ...defaultSearchOption,
-    color: "black",
+    color: tokens.colorNeutralForeground1,
     ...shorthands.textDecoration("none"),
-    fontWeight: "bold",
+    fontWeight: tokens.fontWeightBold,
     "&:focus": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     "&:active": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     "&:hover": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     }
   },
@@ -46,8 +46,8 @@ export const useClasses = makeStyles({
   searchModalContent: {
     overflowX: "visible",
     overflowY: "visible",
-    paddingTop: "12px",
-    paddingBottom: "8px"
+    paddingTop: tokens.spacingVerticalM,
+    paddingBottom: tokens.spacingVerticalS
   },
   searchModalLayout: {
     width: "100%",
@@ -61,10 +61,10 @@ export const useClasses = makeStyles({
     minWidth: 0
   },
   backButton: {
-    marginLeft: 4
+    marginLeft: tokens.spacingHorizontalXS
   },
   tripName: {
     fontSize: 30,
-    ...shorthands.paddingInline(10)
+    ...shorthands.paddingInline(tokens.spacingHorizontalMNudge)
   }
 });

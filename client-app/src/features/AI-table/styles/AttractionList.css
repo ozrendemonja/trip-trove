@@ -1,13 +1,13 @@
 .attractions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--spacingVerticalS);
   list-style: none;
   padding: 0;
 }
 
 .attraction {
-  background-color: transparent;
+  background-color: var(--colorTransparentBackground);
   border: none;
   padding: 0;
   cursor: grab;
@@ -17,8 +17,8 @@
 
 .placeholder {
   box-sizing: border-box;
-  border: 1px solid #d9d9d9; /* light solid border */
-  border-radius: 3px;
-  background-color: #f5f8ff;
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  background-color: var(--colorBrandBackground2);
   width: 100%;
 }

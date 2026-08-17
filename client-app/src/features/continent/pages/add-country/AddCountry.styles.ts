@@ -3,7 +3,7 @@ import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 export const useClasses = makeStyles({
   // TODO Repeating
   root: {
-    ...shorthands.padding("12px"),
+    ...shorthands.padding(tokens.spacingVerticalM),
     maxHeight: "90vh",
     maxWidth: "1200px",
     ...shorthands.borderRadius("30px"),
@@ -15,11 +15,11 @@ export const useClasses = makeStyles({
     fontSize: "30px",
     marginLeft: "25px",
     marginTop: "5px",
-    fontWeight: "600"
+    fontWeight: tokens.fontWeightSemibold
   },
   headerDivider: {
-    marginTop: "16px",
-    marginBottom: "16px"
+    marginTop: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalL
   },
   formText: {
     maxWidth: "1200px",
@@ -30,7 +30,7 @@ export const useClasses = makeStyles({
     width: "300px"
   },
   saveError: {
-    marginTop: "24px",
+    marginTop: tokens.spacingVerticalXXL,
     marginLeft: "25px",
     maxWidth: "1200px"
   },

@@ -9,7 +9,6 @@ const EditAttractionMustVisit: React.FunctionComponent<
   return (
     <EditProperty
       editIcon={props?.mustVisit ? <Star24Filled /> : <StarAdd24Regular />}
-      // styles: { root: { color: "#fec703", fontSize: 20 } }
       editIconAriaLabel={`Change attraction visit preferences for ${props.attractionName} ${props.mustVisit ? "to optional visit" : "to must visit"}`}
       text={props.mustVisit ? "to optional visit" : "to must visit"}
       onUpdateClick={async () => {

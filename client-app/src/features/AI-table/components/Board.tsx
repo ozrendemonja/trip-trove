@@ -1054,15 +1054,7 @@ const Board: React.FC<BoardProps> = ({
           style={{ display: "none" }}
           onChange={handleImportChange}
         />
-        <div
-          className="filters-row"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.5rem",
-            marginTop: "6px"
-          }}
-        >
+        <div className="filters-row">
           <label>
             Countrywide
             <select

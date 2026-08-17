@@ -1,7 +1,7 @@
 .permanently-closed-status {
   align-items: center;
-  border: 1px solid transparent;
-  border-radius: 50%;
+  border: var(--strokeWidthThin) solid var(--colorTransparentStroke);
+  border-radius: var(--borderRadiusCircular);
   box-sizing: border-box;
   display: inline-flex;
   flex: 0 0 22px;
@@ -14,7 +14,7 @@
 
 .permanently-closed-status svg {
   color: currentColor;
-  font-size: 16px;
+  font-size: var(--fontSizeBase400);
   height: 10px !important;
   line-height: 1;
   margin: 0;
@@ -24,34 +24,34 @@
 .permanently-closed-status.is-closed {
   background: var(--colorPaletteRedForeground1);
   border-color: var(--colorPaletteRedForeground1);
-  box-shadow: 0 0 0 2px #fff1f0;
-  color: #ffffff;
+  box-shadow: 0 0 0 var(--strokeWidthThick) var(--colorStatusDangerBackground1);
+  color: var(--colorNeutralForegroundStaticInverted);
 }
 
 button.permanently-closed-status.is-closed:hover,
 button.permanently-closed-status.is-closed:focus-visible {
   background: var(--colorPaletteRedForeground1);
   border-color: var(--colorPaletteRedForeground1);
-  color: #ffffff;
+  color: var(--colorNeutralForegroundStaticInverted);
 }
 
 .permanently-closed-status.is-open {
-  background: #ffffff;
-  border-color: #d0d5dd;
-  color: #667085;
+  background: var(--colorNeutralBackground1);
+  border-color: var(--colorNeutralStroke1);
+  color: var(--colorNeutralForeground3);
   opacity: 0.65;
 }
 
 .permanently-closed-status.is-open:hover,
 .permanently-closed-status.is-open:focus-visible {
-  background: #fff1f0;
-  border-color: #fda29b;
+  background: var(--colorStatusDangerBackground1);
+  border-color: var(--colorStatusDangerBorder1);
   color: var(--colorPaletteRedForeground1);
   opacity: 1;
 }
 
 .permanently-closed-status:focus-visible {
-  outline: 2px solid #344054;
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
   outline-offset: 2px;
 }
 
@@ -71,15 +71,15 @@ button.permanently-closed-status.is-closed:focus-visible {
 }
 
 .permanently-closed-list-name {
-  color: #7a271a;
+  color: var(--colorStatusDangerForeground1);
   text-decoration-color: var(--colorPaletteRedForeground1);
   text-decoration-line: line-through;
   text-decoration-thickness: 1px;
 }
 
 .permanently-closed-since {
-  color: #7a271a;
+  color: var(--colorStatusDangerForeground1);
   display: block;
-  font-size: 10px;
+  font-size: var(--fontSizeBase100);
   line-height: 12px;
 }

@@ -6,12 +6,20 @@ export const useClasses = makeStyles({
     maxWidth: "none",
     minHeight: "86px",
     boxSizing: "border-box",
-    ...shorthands.padding("8px", "12px", 0),
+    ...shorthands.padding(
+      tokens.spacingVerticalS,
+      tokens.spacingHorizontalM,
+      0
+    ),
     ...shorthands.borderRadius("20px", "20px", 0, 0),
     "@media (max-width: 700px)": {
       width: "calc(100% - 8px)",
       minHeight: "176px",
-      ...shorthands.padding("10px", "12px", 0)
+      ...shorthands.padding(
+        tokens.spacingVerticalMNudge,
+        tokens.spacingHorizontalM,
+        0
+      )
     }
   },
   listViewport: {
@@ -19,7 +27,7 @@ export const useClasses = makeStyles({
     height: "calc(100vh - 118px)",
     ...shorthands.overflow("auto"),
     ...shorthands.borderRadius(0, 0, "20px", "20px"),
-    paddingBottom: "20px",
+    paddingBottom: tokens.spacingVerticalXL,
     backgroundColor: tokens.colorNeutralBackground1,
     "@media (max-width: 700px)": {
       width: "calc(100% - 8px)",
@@ -36,7 +44,7 @@ export const useClasses = makeStyles({
     ...shorthands.borderRadius(0),
     "& th": {
       height: "34px",
-      ...shorthands.padding(0, "10px"),
+      ...shorthands.padding(0, tokens.spacingHorizontalMNudge),
       color: tokens.colorNeutralForeground2,
       fontSize: tokens.fontSizeBase200,
       fontWeight: tokens.fontWeightSemibold,
@@ -50,7 +58,7 @@ export const useClasses = makeStyles({
       ...shorthands.padding("9px", "8px"),
       borderBottomColor: tokens.colorNeutralStroke2,
       borderBottomStyle: "solid",
-      borderBottomWidth: "1px",
+      borderBottomWidth: tokens.strokeWidthThin,
       lineHeight: tokens.lineHeightBase200,
       overflowWrap: "anywhere",
       verticalAlign: "top"

@@ -1,4 +1,4 @@
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, tokens } from "@fluentui/react-components";
 import {
   DateInput,
   defaultDatePickerStrings
@@ -10,8 +10,8 @@ import { Flex } from "../../../ui/Flex";
 const useStyles = makeStyles({
   dateInput: {
     width: "100px",
-    color: "#fec703",
-    backgroundColor: "white"
+    color: tokens.colorBrandBackground,
+    backgroundColor: tokens.colorNeutralBackground1
   }
 });
 
@@ -49,7 +49,7 @@ const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
         <ArrowRight24Regular
           aria-label="Compass"
           style={{
-            color: "#fec703",
+            color: tokens.colorBrandBackground,
             position: "relative",
             top: "calc(50% - 10px)"
           }}

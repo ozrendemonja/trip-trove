@@ -1,4 +1,4 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useListPageClasses = makeStyles({
   pageLayout: {
@@ -12,7 +12,10 @@ export const useListPageClasses = makeStyles({
       boxSizing: "border-box",
       marginRight: "30px",
       flexShrink: 0,
-      ...shorthands.padding("8px", "6px")
+      ...shorthands.padding(
+        tokens.spacingVerticalS,
+        tokens.spacingHorizontalSNudge
+      )
     },
     "& > :first-child > :last-child": {
       marginTop: "36px",
@@ -23,7 +26,7 @@ export const useListPageClasses = makeStyles({
       marginTop: "18px"
     },
     "& > :first-child [aria-label='Navigation menu'] > div": {
-      marginBottom: "24px"
+      marginBottom: tokens.spacingVerticalXXL
     },
     "& > :first-child [aria-label='Navigation menu'] > div:last-child": {
       marginBottom: 0
@@ -32,8 +35,8 @@ export const useListPageClasses = makeStyles({
       {
         minHeight: "32px",
         columnGap: "7px",
-        fontSize: "12px",
-        ...shorthands.padding(0, "6px")
+        fontSize: tokens.fontSizeBase200,
+        ...shorthands.padding(0, tokens.spacingHorizontalSNudge)
       },
     "& > :first-child [aria-label='Navigation menu'] > div > div": {
       rowGap: 0
@@ -54,13 +57,13 @@ export const useListPageClasses = makeStyles({
         maxWidth: "none",
         height: "auto",
         marginRight: 0,
-        marginBottom: "12px"
+        marginBottom: tokens.spacingVerticalM
       },
       "& > :first-child [aria-label='Navigation menu']": {
         maxWidth: "none"
       },
       "& > :first-child > :last-child": {
-        marginTop: "16px"
+        marginTop: tokens.spacingVerticalL
       }
     }
   },

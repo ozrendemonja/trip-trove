@@ -1,32 +1,32 @@
 .visit-history-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacingHorizontalXS);
   margin: 0;
-  padding: 1px 6px;
-  border-radius: 10px;
+  padding: 1px var(--spacingHorizontalSNudge);
+  border-radius: var(--borderRadiusCircular);
   font-size: 11px;
   line-height: 1.3;
   cursor: help;
 }
 
 .visit-history-badge.good {
-  background: #e6f4ea;
-  color: #0b6a0b;
-  border: 1px solid #9bd29b;
+  background: var(--colorStatusSuccessBackground1);
+  color: var(--colorStatusSuccessForeground1);
+  border: var(--strokeWidthThin) solid var(--colorStatusSuccessBorder1);
 }
 
 .visit-history-badge.poor {
-  background: #fde7e9;
-  color: #a4262c;
-  border: 1px solid #f3b1b6;
+  background: var(--colorStatusDangerBackground1);
+  color: var(--colorStatusDangerForeground1);
+  border: var(--strokeWidthThin) solid var(--colorStatusDangerBorder1);
 }
 
 .attraction-visit-history {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacingHorizontalXS);
   cursor: help;
 }
 
@@ -36,37 +36,37 @@
   justify-content: center;
   min-width: 22px;
   height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 1px solid #cbd5e1;
-  background: #f1f5f9;
-  color: #475569;
-  font-size: 10px;
-  font-weight: 600;
+  padding: 0 var(--spacingHorizontalSNudge);
+  border-radius: var(--borderRadiusCircular);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  background: var(--colorNeutralBackground3);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase100);
+  font-weight: var(--fontWeightSemibold);
   line-height: 1;
   cursor: pointer;
 }
 
 .visit-history-more:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  color: #1e293b;
+  background: var(--colorNeutralBackground3Hover);
+  border-color: var(--colorNeutralStroke1Hover);
+  color: var(--colorNeutralForeground1);
 }
 
 .visit-history-more:focus-visible {
   outline: none;
-  border-color: #64748b;
-  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.25);
+  border-color: var(--colorStrokeFocus2);
+  box-shadow: 0 0 0 var(--strokeWidthThick) var(--colorStrokeFocus1);
 }
 
 .visit-history-badge .visit-check {
-  font-weight: 700;
+  font-weight: var(--fontWeightBold);
   font-size: 11px;
   opacity: 0.8;
 }
 
 .visit-history-badge .visit-trip-name {
-  font-weight: 600;
+  font-weight: var(--fontWeightSemibold);
   font-style: italic;
   max-width: 140px;
   overflow: hidden;
@@ -76,11 +76,11 @@
 
 .visit-history-badge .visit-sep {
   opacity: 0.55;
-  font-weight: 400;
+  font-weight: var(--fontWeightRegular);
 }
 
 .visit-history-badge .visit-rating {
-  font-weight: 500;
+  font-weight: var(--fontWeightMedium);
 }
 
 .visit-history-badge .visit-again-inline {
@@ -90,20 +90,20 @@
   margin-left: 2px;
   padding: 0 5px;
   height: 16px;
-  border-radius: 999px;
-  font-size: 10px;
+  border-radius: var(--borderRadiusCircular);
+  font-size: var(--fontSizeBase100);
   line-height: 1;
-  border: 1px solid currentColor;
-  background: rgba(255, 255, 255, 0.55);
+  border: var(--strokeWidthThin) solid currentColor;
+  background: var(--colorNeutralBackgroundAlpha);
 }
 
 .visit-history-badge .visit-again-inline.yes {
-  color: #1b5e20;
-  border-color: rgba(46, 125, 50, 0.45);
+  color: var(--colorStatusSuccessForeground1);
+  border-color: var(--colorStatusSuccessBorder1);
 }
 
 .visit-history-badge .visit-again-inline.no {
-  color: #b71c1c;
-  border-color: rgba(198, 40, 40, 0.45);
+  color: var(--colorStatusDangerForeground1);
+  border-color: var(--colorStatusDangerBorder1);
 }
 

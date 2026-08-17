@@ -19,11 +19,16 @@ export const useClasses = makeStyles({
     alignItems: "center",
     minHeight: "76px",
     boxSizing: "border-box",
-    ...shorthands.padding("8px", "10px", "8px", "20px"),
+    ...shorthands.padding(
+      tokens.spacingVerticalS,
+      tokens.spacingHorizontalMNudge,
+      tokens.spacingVerticalS,
+      tokens.spacingHorizontalXL
+    ),
     "& h2": {
       ...shorthands.margin(0),
-      fontSize: "20px",
-      lineHeight: "28px",
+      fontSize: tokens.fontSizeBase500,
+      lineHeight: tokens.lineHeightBase500,
       fontWeight: tokens.fontWeightSemibold,
       letterSpacing: 0
     }
@@ -32,7 +37,7 @@ export const useClasses = makeStyles({
     display: "grid",
     gridTemplateColumns:
       "minmax(120px, 1fr) minmax(111px, 0.92fr) minmax(67px, 0.56fr) minmax(215px, 1.8fr) minmax(127px, 1.06fr)",
-    columnGap: "24px",
+    columnGap: tokens.spacingHorizontalXXL,
     alignItems: "start",
     minWidth: 0,
     width: "100%",
@@ -56,16 +61,16 @@ export const useClasses = makeStyles({
     "& > * [data-fluent-link]": {
       width: "fit-content",
       maxWidth: "100%",
-      marginTop: "8px",
-      fontSize: "12px",
-      lineHeight: "16px",
+      marginTop: tokens.spacingVerticalS,
+      fontSize: tokens.fontSizeBase200,
+      lineHeight: tokens.lineHeightBase200,
       letterSpacing: 0,
       whiteSpace: "nowrap"
     },
     "& > * h3": {
       fontWeight: tokens.fontWeightSemibold,
-      fontSize: "12px",
-      lineHeight: "16px",
+      fontSize: tokens.fontSizeBase200,
+      lineHeight: tokens.lineHeightBase200,
       letterSpacing: 0,
       ...shorthands.margin(0)
     },
@@ -106,7 +111,7 @@ export const useClasses = makeStyles({
   filterElementClearIcon: {
     width: "14px",
     height: "14px",
-    marginLeft: "6px",
+    marginLeft: tokens.spacingHorizontalSNudge,
     flexShrink: 0
   }
 });

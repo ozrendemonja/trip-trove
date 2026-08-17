@@ -1,4 +1,4 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   modalContainer: {
@@ -9,36 +9,36 @@ export const useClasses = makeStyles({
     ...shorthands.borderRadius("30px")
   },
   heading: {
-    fontWeight: "600",
+    fontWeight: tokens.fontWeightSemibold,
     fontSize: "30px",
-    lineHeight: "36px",
+    lineHeight: tokens.lineHeightHero700,
     overflowWrap: "anywhere",
     ...shorthands.margin(0),
     "@media (max-width: 480px)": {
-      fontSize: "24px",
+      fontSize: tokens.fontSizeBase600,
       lineHeight: "30px"
     }
   },
   content: {
     minWidth: 0,
-    paddingTop: "4px"
+    paddingTop: tokens.spacingVerticalXS
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "12px",
+    gap: tokens.spacingVerticalM,
     width: "100%",
     minWidth: 0
   },
   editIcon: {
-    color: "#fec703"
+    color: tokens.colorBrandBackground
   },
   footer: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "flex-end",
-    gap: "12px",
-    paddingTop: "8px",
+    gap: tokens.spacingHorizontalM,
+    paddingTop: tokens.spacingVerticalS,
     "& > button": {
       minWidth: "112px"
     },

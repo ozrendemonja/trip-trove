@@ -14,7 +14,8 @@ import {
   MessageBar,
   MessageBarBody,
   Switch,
-  Text
+  Text,
+  tokens
 } from "@fluentui/react-components";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useCallback, useRef, useState } from "react";
@@ -216,7 +217,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               className={classes.checkbox}
               label="Nationally Recognized Attraction"
               onChange={toggleIsCountrywide}
-              style={{ marginTop: 10 }}
+              style={{ marginTop: tokens.spacingVerticalMNudge }}
               checked={isCountrywide}
             />
           </Flex>

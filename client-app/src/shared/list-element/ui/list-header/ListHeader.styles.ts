@@ -1,4 +1,4 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 const useClasses = makeStyles({
   root: {
@@ -10,16 +10,16 @@ const useClasses = makeStyles({
     fontSize: "30px",
     marginLeft: "25px",
     marginTop: "5px",
-    fontWeight: "600"
+    fontWeight: tokens.fontWeightSemibold
   },
   dropdown: {
     marginTop: "25px",
-    ...shorthands.borderColor("transparent"),
+    ...shorthands.borderColor(tokens.colorTransparentStroke),
     width: "200px",
     '& [role="combobox"]': {
-      backgroundColor: "#F9FBFF",
+      backgroundColor: tokens.colorNeutralBackground2,
       ...shorthands.borderRadius("10px"),
-      ...shorthands.borderColor("transparent")
+      ...shorthands.borderColor(tokens.colorTransparentStroke)
     }
   }
 });

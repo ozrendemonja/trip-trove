@@ -1,4 +1,4 @@
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   fields: {
@@ -6,7 +6,7 @@ export const useClasses = makeStyles({
     gridTemplateColumns: "minmax(0, 1fr) 192px",
     alignItems: "start",
     columnGap: "48px",
-    rowGap: "16px",
+    rowGap: tokens.spacingVerticalL,
     "@media (max-width: 600px)": {
       gridTemplateColumns: "minmax(0, 1fr)"
     }

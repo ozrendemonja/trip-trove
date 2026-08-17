@@ -1,4 +1,4 @@
-import { FluentProvider } from "@fluentui/react-components";
+import { FluentProvider, tokens } from "@fluentui/react-components";
 import { ComponentType } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
@@ -125,7 +125,10 @@ const styleOverrides = `
     }`;
 
 root.render(
-  <FluentProvider theme={appTheme} style={{ backgroundColor: "transparent" }}>
+  <FluentProvider
+    theme={appTheme}
+    style={{ backgroundColor: tokens.colorTransparentBackground }}
+  >
     <RouterProvider router={router} useTransitions />
     <style>{styleOverrides}</style>
   </FluentProvider>

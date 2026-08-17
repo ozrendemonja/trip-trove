@@ -1,15 +1,5 @@
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
-// Colours borrowed from the countries map so the list tells the same story:
-// gold marks a place you still long for, grey a place you've already had your
-// fill of. Keeping the language consistent means neither view needs a legend.
-const RETURN_ICON = "#c98a00";
-// A soft, restful grey — clearly "set aside / seen" without the heaviness of the
-// map's full grey. The colour alone carries the message; no rule or icon needed.
-const DONE_BG = "#eaedf0";
-const DONE_BG_HOVER = "#e1e5e9";
-const DONE_INK = "#5b666c";
-
 export const useClasses = makeStyles({
   pageLayout: {
     display: "flex",
@@ -22,7 +12,10 @@ export const useClasses = makeStyles({
       boxSizing: "border-box",
       marginRight: "30px",
       flexShrink: 0,
-      ...shorthands.padding("8px", "6px")
+      ...shorthands.padding(
+        tokens.spacingVerticalS,
+        tokens.spacingHorizontalSNudge
+      )
     },
     "& > :first-child > :last-child": {
       marginTop: "36px",
@@ -33,7 +26,7 @@ export const useClasses = makeStyles({
       marginTop: "18px"
     },
     "& > :first-child [aria-label='Navigation menu'] > div": {
-      marginBottom: "24px"
+      marginBottom: tokens.spacingVerticalXXL
     },
     "& > :first-child [aria-label='Navigation menu'] > div:last-child": {
       marginBottom: 0
@@ -42,8 +35,8 @@ export const useClasses = makeStyles({
       {
         minHeight: "32px",
         columnGap: "7px",
-        fontSize: "12px",
-        ...shorthands.padding(0, "6px")
+        fontSize: tokens.fontSizeBase200,
+        ...shorthands.padding(0, tokens.spacingHorizontalSNudge)
       },
     "& > :first-child [aria-label='Navigation menu'] > div > div": {
       rowGap: 0
@@ -66,7 +59,7 @@ export const useClasses = makeStyles({
     alignItems: "center",
     justifyContent: "space-between",
     flexWrap: "nowrap",
-    ...shorthands.padding(0, "12px"),
+    ...shorthands.padding(0, tokens.spacingHorizontalM),
     minHeight: "72px",
     boxSizing: "border-box",
     width: "calc(100% - 19px)",
@@ -81,14 +74,14 @@ export const useClasses = makeStyles({
     },
     "& > .fui-SearchBox input": {
       height: "26px",
-      fontSize: "12px"
+      fontSize: tokens.fontSizeBase200
     },
     "& > div:last-child > button": {
       width: "76px",
       minWidth: "76px",
       height: "28px",
       marginTop: "0 !important",
-      fontSize: "12px"
+      fontSize: tokens.fontSizeBase200
     },
     "& > div:last-child > button svg": {
       width: "14px",
@@ -99,24 +92,24 @@ export const useClasses = makeStyles({
     width: "calc(100% - 19px)",
     ...shorthands.overflow("auto"),
     ...shorthands.borderRadius(0, 0, "20px", "20px"),
-    paddingBottom: "20px",
+    paddingBottom: tokens.spacingVerticalXL,
     backgroundColor: tokens.colorNeutralBackground1,
     "& [role='grid']": {
       width: "100%",
       maxWidth: "none",
-      color: "#323130",
-      fontSize: "12px"
+      color: tokens.colorNeutralForeground1,
+      fontSize: tokens.fontSizeBase200
     },
     "& [role='columnheader']": {
       height: "34px",
       fontSize: "11px",
-      fontWeight: 600,
-      color: "#4a4a4a"
+      fontWeight: tokens.fontWeightSemibold,
+      color: tokens.colorNeutralForeground2
     },
     "& [role='gridcell']": {
       boxSizing: "border-box",
       verticalAlign: "top",
-      lineHeight: "16px",
+      lineHeight: tokens.lineHeightBase200,
       ...shorthands.padding("9px", "8px")
     },
     "& th:nth-child(1), & td:nth-child(1)": {
@@ -166,47 +159,47 @@ export const useClasses = makeStyles({
   returnIcon: {
     width: "14px",
     height: "14px",
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: RETURN_ICON,
+    fontSize: tokens.fontSizeBase300,
+    fontWeight: tokens.fontWeightBold,
+    color: tokens.colorBrandForeground2,
     flexShrink: 0
   },
   pinIcon: {
     width: "12px",
     height: "12px",
-    color: "#d13438",
+    color: tokens.colorStatusDangerForeground1,
     flexShrink: 0
   },
   traditionalIcon: {
     width: "14px",
     height: "14px",
     marginLeft: "3px",
-    color: "#d9a300",
+    color: tokens.colorStatusWarningForeground1,
     flexShrink: 0
   },
   flagIcon: {
     width: "14px",
     height: "14px",
     marginLeft: "4px",
-    color: "#107c10",
+    color: tokens.colorStatusSuccessForeground1,
     flexShrink: 0
   },
   changeSoonIcon: {
     width: "14px",
     height: "14px",
     marginLeft: "4px",
-    color: "#d13438",
+    color: tokens.colorStatusDangerForeground1,
     flexShrink: 0
   },
   changePotentialIcon: {
     width: "14px",
     height: "14px",
     marginLeft: "4px",
-    color: "#d9a300",
+    color: tokens.colorStatusWarningForeground1,
     flexShrink: 0
   },
   infoText: {
-    color: "black"
+    color: tokens.colorNeutralForeground1
   },
   categoryText: {
     maxWidth: "100%",
@@ -215,48 +208,48 @@ export const useClasses = makeStyles({
   pageInfo: {
     alignItems: "center",
     fontSize: "22px",
-    lineHeight: "28px",
-    marginBottom: "24px",
+    lineHeight: tokens.lineHeightBase500,
+    marginBottom: tokens.spacingVerticalXXL,
     "& > svg": {
       width: "22px",
       height: "22px"
     },
     "& > span": {
       fontSize: "22px",
-      lineHeight: "28px"
+      lineHeight: tokens.lineHeightBase500
     }
   },
   pageName: {
     fontSize: "22px",
-    lineHeight: "28px"
+    lineHeight: tokens.lineHeightBase500
   },
   pageUnder: {
     fontSize: "22px",
-    lineHeight: "28px",
-    color: "gray"
+    lineHeight: tokens.lineHeightBase500,
+    color: tokens.colorNeutralForeground3
   },
   heading: {
     marginTop: 0,
     marginBottom: 0,
     paddingLeft: "2px",
-    fontSize: "20px",
+    fontSize: tokens.fontSizeBase500,
     lineHeight: "26px",
-    fontWeight: 500
+    fontWeight: tokens.fontWeightMedium
   },
   searchBox: {
     marginTop: 0,
     width: "320px"
   },
   doneRow: {
-    backgroundColor: DONE_BG,
+    backgroundColor: tokens.colorNeutralBackground2,
     "&:hover": {
-      backgroundColor: DONE_BG_HOVER
+      backgroundColor: tokens.colorNeutralBackground2Hover
     },
     '& [role="gridcell"]': {
-      color: DONE_INK
+      color: tokens.colorNeutralForeground2
     },
     "& [data-fluent-link]": {
-      color: DONE_INK
+      color: tokens.colorNeutralForeground2
     }
   }
 });

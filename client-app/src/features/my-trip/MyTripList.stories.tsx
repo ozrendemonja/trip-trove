@@ -222,6 +222,15 @@ export const CreatesTripAndShowsNewCard: Story = {
     await waitFor(() => expect(createBtn).toBeEnabled());
     await user.click(createBtn);
 
+    const creatingButton = await modal.findByRole("button", {
+      name: "Creating..."
+    });
+    await expect(creatingButton).toBeDisabled();
+    await expect(
+      within(creatingButton).getByRole("progressbar")
+    ).toBeInTheDocument();
+    await expect(modal.getByRole("button", { name: "Cancel" })).toBeDisabled();
+
     const newCard = await findTripCard(canvasElement, "Greek Islands", 8000);
     await expect(
       within(newCard).getByText("Greek Islands")

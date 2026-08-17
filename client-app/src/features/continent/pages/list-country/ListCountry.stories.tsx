@@ -21,8 +21,7 @@ const meta: Meta<typeof CountryList> = {
       server?.shutdown();
       server = makeServer({
         updateCountryStatus: context.parameters.updateCountryStatus as
-          | number
-          | undefined
+          number | undefined
       });
       return (
         <>
@@ -723,6 +722,13 @@ export const RemovesCountryWhenDeleted: Story = {
       overlay(canvasElement).getByRole("button", { name: "Delete" })
     );
 
+    await waitFor(() =>
+      expect(
+        overlay(canvasElement).queryByRole("button", { name: "Delete" })
+      ).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+
     await waitFor(
       () =>
         expect(
@@ -732,9 +738,11 @@ export const RemovesCountryWhenDeleted: Story = {
         ).not.toBeInTheDocument(),
       { timeout: 5000 }
     );
-    await within(canvasElement).findByRole("button", {
-      name: "Change country name for San Marino"
-    });
+    await within(canvasElement).findByRole(
+      "button",
+      { name: "Change country name for San Marino" },
+      { timeout: 5000 }
+    );
   }
 };
 
@@ -773,7 +781,7 @@ export const DisablesUpdateAndCancelButtonsWhileUpdatingCountryName: Story = {
     );
     await waitFor(() =>
       expect(
-        overlay(canvasElement).getByRole("button", { name: "Update" })
+        overlay(canvasElement).getByRole("button", { name: "Updating..." })
       ).toBeDisabled()
     );
   }
@@ -814,7 +822,7 @@ export const DisablesCountryContinentButtonsWhileUpdating: Story = {
     );
     await waitFor(() =>
       expect(
-        overlay(canvasElement).getByRole("button", { name: "Update" })
+        overlay(canvasElement).getByRole("button", { name: "Updating..." })
       ).toBeDisabled()
     );
   }

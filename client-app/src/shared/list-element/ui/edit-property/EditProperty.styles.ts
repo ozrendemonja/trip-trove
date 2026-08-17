@@ -42,6 +42,9 @@ export const useClasses = makeStyles({
     "& > button": {
       minWidth: "112px"
     },
+    "& > button:first-child": {
+      minWidth: "128px"
+    },
     "@media (max-width: 480px)": {
       "& > button": {
         flexGrow: 1

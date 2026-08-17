@@ -216,7 +216,9 @@ export const DisablesAttractionDestinationButtonsWhileUpdating: Story = {
     await user.click(updateButton(canvasElement));
 
     await waitFor(() => expect(cancelButton(canvasElement)).toBeDisabled());
-    await waitFor(() => expect(updateButton(canvasElement)).toBeDisabled());
+    await waitFor(() =>
+      expect(updateButton(canvasElement, true)).toBeDisabled()
+    );
   }
 };
 

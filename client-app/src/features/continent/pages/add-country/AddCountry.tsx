@@ -27,6 +27,7 @@ import {
   useSaveError
 } from "../../../../shared/hooks/UseSaveError";
 import { Flex, FlexItem } from "../../../../shared/ui/Flex";
+import { PendingButton } from "../../../../shared/ui/PendingButton";
 
 const createOptions = (continents: Continent[]): SelectChoice[] => {
   return continents
@@ -41,6 +42,7 @@ export const AddCountry: React.FunctionComponent = () => {
   const { formFields, isFormValid } = useCountryFormField();
   const [continents, setContinents] = useState<Continent[]>([]);
   const [isoCodeConflict, setIsoCodeConflict] = useState<string>();
+  const [isSaving, setIsSaving] = useState(false);
   const nameFieldRef = useRef<InputFieldHandle>(null);
   const navigate = useNavigate();
   const { nameConflict, saveError, handleSaveError, clearSaveErrors } =
@@ -61,7 +63,7 @@ export const AddCountry: React.FunctionComponent = () => {
   }, [formFields.isoCode?.value]);
 
   const handleSave = async (): Promise<void> => {
-    if (!isFormValid) {
+    if (isSaving || !isFormValid) {
       return;
     }
 
@@ -73,8 +75,10 @@ export const AddCountry: React.FunctionComponent = () => {
       return;
     }
 
+    setIsSaving(true);
     try {
       await saveNewCountry(countryName, continentName, isoCode);
+      navigate(-1);
     } catch (error) {
       if (getApiErrorCode(error) === "ISO_CODE_CONFLICT") {
         clearSaveErrors();
@@ -84,10 +88,9 @@ export const AddCountry: React.FunctionComponent = () => {
 
       setIsoCodeConflict(undefined);
       handleSaveError(error);
-      return;
+    } finally {
+      setIsSaving(false);
     }
-
-    navigate(-1);
   };
 
   useSaveShortcut(() => void handleSave());
@@ -137,16 +140,22 @@ export const AddCountry: React.FunctionComponent = () => {
           className={classes.footer}
           gap={12}
         >
-          <Button appearance="secondary" onClick={() => navigate(-1)}>
+          <Button
+            appearance="secondary"
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
-          <Button
+          <PendingButton
             appearance="primary"
+            pending={isSaving}
+            pendingText="Saving..."
             onClick={() => void handleSave()}
             disabled={!isFormValid}
           >
             Save
-          </Button>
+          </PendingButton>
         </Flex>
       </Flex>
     </>

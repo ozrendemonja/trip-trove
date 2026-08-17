@@ -140,12 +140,13 @@ export const DisablesButtonsWhileDeletingAttraction: Story = {
       overlay(canvasElement).getByRole("button", { name: "Delete" })
     );
 
+    const deletingButton = await overlay(canvasElement).findByRole("button", {
+      name: "Deleting..."
+    });
+
+    expect(deletingButton).toBeDisabled();
+    expect(within(deletingButton).getByRole("progressbar")).toBeInTheDocument();
     await waitFor(() => expect(cancelButton(canvasElement)).toBeDisabled());
-    await waitFor(() =>
-      expect(
-        overlay(canvasElement).getByRole("button", { name: "Delete" })
-      ).toBeDisabled()
-    );
   }
 };
 

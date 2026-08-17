@@ -9,7 +9,7 @@ import {
   Text
 } from "@fluentui/react-components";
 import { Button } from "@fluentui/react-components";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { SearchText } from "../../../../shared/search-text/SearchText";
@@ -19,11 +19,13 @@ import { useClasses } from "./AddCity.styles";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 import { useSaveError } from "../../../../shared/hooks/UseSaveError";
 import { Flex, FlexItem } from "../../../../shared/ui/Flex";
+import { PendingButton } from "../../../../shared/ui/PendingButton";
 
 export const AddCity: React.FunctionComponent = () => {
   const classes = useClasses();
   const { formFields, isFormValid } = useCityFormField();
   const navigate = useNavigate();
+  const [isSaving, setIsSaving] = useState(false);
   const nameFieldRef = useRef<InputFieldHandle>(null);
   const { nameConflict, saveError, handleSaveError } = useSaveError({
     nameConflictMessage: "A city with this name already exists.",
@@ -34,18 +36,19 @@ export const AddCity: React.FunctionComponent = () => {
   });
 
   const handleSave = async (): Promise<void> => {
-    if (!isFormValid) {
+    if (isSaving || !isFormValid) {
       return;
     }
 
+    setIsSaving(true);
     try {
       await saveNewCity(formFields.cityName.value!, formFields.regionId.value!);
+      navigate(-1);
     } catch (error) {
       handleSaveError(error);
-      return;
+    } finally {
+      setIsSaving(false);
     }
-
-    navigate(-1);
   };
 
   useSaveShortcut(() => void handleSave());
@@ -84,16 +87,22 @@ export const AddCity: React.FunctionComponent = () => {
           className={classes.footer}
           gap={12}
         >
-          <Button appearance="secondary" onClick={() => navigate(-1)}>
+          <Button
+            appearance="secondary"
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
-          <Button
+          <PendingButton
             appearance="primary"
+            pending={isSaving}
+            pendingText="Saving..."
             onClick={() => void handleSave()}
             disabled={!isFormValid}
           >
             Save
-          </Button>
+          </PendingButton>
         </Flex>
       </Flex>
     </>

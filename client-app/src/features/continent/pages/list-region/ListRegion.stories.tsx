@@ -720,7 +720,7 @@ export const DisablesRegionCountryButtonsWhileUpdating: Story = {
     );
     await waitFor(() =>
       expect(
-        overlay(canvasElement).getByRole("button", { name: "Update" })
+        overlay(canvasElement).getByRole("button", { name: "Updating..." })
       ).toBeDisabled()
     );
   }

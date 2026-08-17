@@ -8,7 +8,7 @@ export const useClasses = makeStyles({
     height: "calc(100vh - 16px)",
     boxSizing: "border-box",
     ...shorthands.border("1px", "solid", tokens.colorNeutralBackground1),
-    ...shorthands.padding("10px"),
+    ...shorthands.padding(tokens.spacingVerticalMNudge),
     backgroundColor: tokens.colorNeutralBackground1,
     float: "left",
     position: "sticky",
@@ -36,10 +36,10 @@ export const useClasses = makeStyles({
     ...shorthands.borderStyle("none"),
     background: "none",
     "&:hover": {
-      backgroundColor: "transparent"
+      backgroundColor: tokens.colorTransparentBackground
     },
     "&:active": {
-      backgroundColor: "transparent"
+      backgroundColor: tokens.colorTransparentBackground
     }
   },
   nav: {
@@ -49,7 +49,7 @@ export const useClasses = makeStyles({
     overflowY: "auto",
     backgroundColor: tokens.colorNeutralBackground1,
     "& > div": {
-      marginBottom: "24px"
+      marginBottom: tokens.spacingVerticalXXL
     },
     "& > div:last-child": {
       marginBottom: 0
@@ -57,7 +57,7 @@ export const useClasses = makeStyles({
     "& > div > div": {
       display: "flex",
       flexDirection: "column",
-      rowGap: "4px"
+      rowGap: tokens.spacingVerticalXS
     },
     "& a, & button": {
       width: "100%",
@@ -66,8 +66,8 @@ export const useClasses = makeStyles({
       display: "flex",
       alignItems: "center",
       justifyContent: "flex-start",
-      columnGap: "10px",
-      paddingInlineEnd: "12px",
+      columnGap: tokens.spacingHorizontalMNudge,
+      paddingInlineEnd: tokens.spacingHorizontalM,
       color: tokens.colorNeutralForeground1,
       fontSize: tokens.fontSizeBase300,
       lineHeight: tokens.lineHeightBase300,
@@ -95,7 +95,7 @@ export const useClasses = makeStyles({
     },
     "& .navigationHeaders": {
       marginLeft: "5px",
-      marginBottom: "4px",
+      marginBottom: tokens.spacingVerticalXS,
       fontWeight: tokens.fontWeightBold
     }
   }

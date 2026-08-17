@@ -49,7 +49,7 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
       <div
         key={`command-bar-${props.selectedItem.haveSelectedItem}`}
         role="menubar"
-        style={{ display: "flex", gap: 4 }}
+        style={{ display: "flex", gap: tokens.spacingHorizontalXS }}
       >
         <Button
           role="menuitem"

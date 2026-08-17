@@ -1,4 +1,4 @@
-import { Button } from "@fluentui/react-components";
+import { Button, tokens } from "@fluentui/react-components";
 import {
   CheckboxChecked24Regular,
   CheckboxUnchecked24Regular
@@ -20,7 +20,10 @@ const CheckboxButton: React.FunctionComponent<CheckboxButtonProps> = (
             <CheckboxUnchecked24Regular />
           )
         }
-        style={{ color: "#fec703", fontSize: 24 }}
+        style={{
+          color: tokens.colorBrandBackground,
+          fontSize: tokens.fontSizeBase600
+        }}
       />
     </Flex>
   );

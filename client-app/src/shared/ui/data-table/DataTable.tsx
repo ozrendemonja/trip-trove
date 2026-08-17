@@ -339,14 +339,14 @@ export const DataTable = <T,>({
                           color: selected
                             ? tokens.colorCompoundBrandBackground
                             : undefined,
-                          borderRadius: "50%",
-                          border: "1px solid currentColor",
+                          borderRadius: tokens.borderRadiusCircular,
+                          border: `${tokens.strokeWidthThin} solid currentColor`,
                           boxShadow: selected
                             ? "inset 0 0 0 3px var(--colorNeutralBackground1)"
                             : undefined,
                           backgroundColor: selected
                             ? "currentColor"
-                            : "transparent"
+                            : tokens.colorTransparentBackground
                         }}
                       />
                     }

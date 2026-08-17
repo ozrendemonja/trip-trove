@@ -2,7 +2,11 @@ import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   root: {
-    ...shorthands.padding("12px", "12px", 0),
+    ...shorthands.padding(
+      tokens.spacingVerticalM,
+      tokens.spacingHorizontalM,
+      0
+    ),
     boxSizing: "border-box",
     maxHeight: "90%",
     maxWidth: "85%",
@@ -17,9 +21,9 @@ export const useClasses = makeStyles({
     "& > div:first-child > h1": {
       marginTop: 0,
       marginBottom: 0,
-      marginLeft: "10px",
-      fontSize: "20px",
-      lineHeight: "28px",
+      marginLeft: tokens.spacingHorizontalMNudge,
+      fontSize: tokens.fontSizeBase500,
+      lineHeight: tokens.lineHeightBase500,
       fontWeight: tokens.fontWeightSemibold
     },
     "& .fui-SearchBox": {
@@ -30,7 +34,7 @@ export const useClasses = makeStyles({
     },
     "& .fui-SearchBox input": {
       height: "26px",
-      fontSize: "12px"
+      fontSize: tokens.fontSizeBase200
     },
     "& > div:first-child > div:last-child": {
       width: "156px",
@@ -45,27 +49,27 @@ export const useClasses = makeStyles({
       minWidth: 0,
       minHeight: "28px",
       height: "28px",
-      fontSize: "12px",
+      fontSize: tokens.fontSizeBase200,
       whiteSpace: "nowrap"
     },
     "& [role='menubar']": {
       minHeight: "32px",
       alignItems: "center",
-      columnGap: "2px !important",
-      marginLeft: "6px"
+      columnGap: `${tokens.spacingHorizontalXXS} !important`,
+      marginLeft: tokens.spacingHorizontalSNudge
     },
     "& [role='menubar'] > button": {
       minWidth: "auto",
       minHeight: "28px",
       height: "28px",
-      ...shorthands.padding(0, "8px"),
-      ...shorthands.borderColor("transparent"),
-      backgroundColor: "transparent",
+      ...shorthands.padding(0, tokens.spacingHorizontalS),
+      ...shorthands.borderColor(tokens.colorTransparentStroke),
+      backgroundColor: tokens.colorTransparentBackground,
       fontSize: tokens.fontSizeBase200,
       fontWeight: tokens.fontWeightRegular
     },
     "& [role='menubar'] > button:hover": {
-      ...shorthands.borderColor("transparent"),
+      ...shorthands.borderColor(tokens.colorTransparentStroke),
       backgroundColor: tokens.colorNeutralBackground1Hover
     },
     "& [role='menubar'] > button:last-child:not(:disabled):hover": {
@@ -77,9 +81,9 @@ export const useClasses = makeStyles({
       }
     },
     "& [role='menubar'] > button:disabled": {
-      ...shorthands.borderColor("transparent"),
+      ...shorthands.borderColor(tokens.colorTransparentStroke),
       color: tokens.colorNeutralForegroundDisabled,
-      backgroundColor: "transparent",
+      backgroundColor: tokens.colorTransparentBackground,
       opacity: 1
     },
     "& [role='menubar'] > button:first-child svg": {
@@ -98,7 +102,7 @@ export const useClasses = makeStyles({
         minHeight: "126px",
         flexWrap: "wrap",
         alignContent: "flex-start",
-        rowGap: "8px"
+        rowGap: tokens.spacingVerticalS
       },
       "& > div:first-child > h1": {
         width: "100%",
@@ -123,7 +127,7 @@ export const useClasses = makeStyles({
     maxWidth: "85%",
     ...shorthands.overflow("auto"),
     ...shorthands.borderRadius(0, 0, "30px", "30px"),
-    paddingBottom: "24px",
+    paddingBottom: tokens.spacingVerticalXXL,
     backgroundColor: tokens.colorNeutralBackground1
   }
 });

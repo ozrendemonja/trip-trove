@@ -1,19 +1,15 @@
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
-const TRIP_GREEN_LIGHT = "#e6f4ea";
-const TRIP_GREEN_DARK = "#2e7d32";
 const TRIP_TEAL_LIGHT = "#61A9B4";
 const TRIP_TEAL_DARK = "#3d7f8a";
-const TRIP_ORANGE_LIGHT = "#fff3e0";
-const TRIP_ORANGE_DARK = "#e65100";
 
 export const useTripCardClasses = makeStyles({
   card: {
     width: "220px",
-    ...shorthands.borderRadius("8px"),
+    ...shorthands.borderRadius(tokens.borderRadiusXLarge),
     ...shorthands.overflow("hidden"),
     backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+    boxShadow: tokens.shadow8,
     cursor: "pointer",
     ...shorthands.transition([
       ["box-shadow", "0.2s", "0s", "ease"],
@@ -21,7 +17,7 @@ export const useTripCardClasses = makeStyles({
     ]),
     position: "relative",
     "&:hover": {
-      boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+      boxShadow: tokens.shadow16,
       transform: "translateY(-3px)"
     }
   },
@@ -38,35 +34,39 @@ export const useTripCardClasses = makeStyles({
     color: tokens.colorNeutralBackground1
   },
   cardBody: {
-    ...shorthands.padding("10px", "16px", "14px")
+    ...shorthands.padding(
+      tokens.spacingVerticalMNudge,
+      tokens.spacingHorizontalL,
+      "14px"
+    )
   },
   tripName: {
     fontSize: "18px",
-    fontWeight: 600,
+    fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground1,
-    marginBottom: "4px"
+    marginBottom: tokens.spacingVerticalXS
   },
   dateText: {
-    fontSize: "12px",
+    fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground2
   },
   statusBadge: {
     display: "inline-block",
     fontSize: "11px",
-    fontWeight: 600,
-    ...shorthands.borderRadius("4px"),
+    fontWeight: tokens.fontWeightSemibold,
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
     ...shorthands.padding("2px", "7px"),
-    marginTop: "6px",
+    marginTop: tokens.spacingVerticalSNudge,
     textTransform: "uppercase",
     letterSpacing: "0.04em"
   },
   statusActive: {
-    backgroundColor: TRIP_GREEN_LIGHT,
-    color: TRIP_GREEN_DARK
+    backgroundColor: tokens.colorStatusSuccessBackground1,
+    color: tokens.colorStatusSuccessForeground1
   },
   statusPast: {
-    backgroundColor: TRIP_ORANGE_LIGHT,
-    color: TRIP_ORANGE_DARK
+    backgroundColor: tokens.colorStatusWarningBackground1,
+    color: tokens.colorStatusWarningForeground1
   },
   statusArchived: {
     backgroundColor: tokens.colorNeutralBackground2,
@@ -76,29 +76,29 @@ export const useTripCardClasses = makeStyles({
     position: "absolute",
     top: "6px",
     backgroundColor: "rgba(0,0,0,0.45)",
-    ...shorthands.borderRadius("4px"),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
     width: "28px",
     height: "28px",
     minWidth: "28px",
     ...shorthands.padding(0),
     "& svg": {
-      color: tokens.colorNeutralBackground1,
+      color: tokens.colorNeutralForegroundInverted,
       fontSize: "13px"
     },
     "&:hover svg": {
-      color: tokens.colorNeutralBackground1
+      color: tokens.colorNeutralForegroundInverted
     },
     "&:active svg": {
-      color: tokens.colorNeutralBackground1
+      color: tokens.colorNeutralForegroundInverted
     }
   },
   editButton: {
     right: "40px",
     "&:hover": {
-      backgroundColor: "rgba(0,80,180,0.85)"
+      backgroundColor: tokens.colorBrandBackgroundHover
     },
     "&:active": {
-      backgroundColor: "rgba(0,60,140,1)"
+      backgroundColor: tokens.colorBrandBackgroundPressed
     }
   },
   deleteButton: {

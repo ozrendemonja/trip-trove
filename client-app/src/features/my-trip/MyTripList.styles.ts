@@ -3,43 +3,50 @@ import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 export const useMyTripListClasses = makeStyles({
   pageContainer: {
     ...shorthands.overflow("hidden"),
-    ...shorthands.padding("24px", "32px"),
-    ...shorthands.margin("16px"),
+    ...shorthands.padding(
+      tokens.spacingVerticalXXL,
+      tokens.spacingHorizontalXXXL
+    ),
+    ...shorthands.margin(tokens.spacingVerticalL),
     boxSizing: "border-box",
     ...shorthands.borderRadius("30px"),
     backgroundColor: tokens.colorNeutralBackground1
   },
   pageHeader: {
-    marginBottom: "32px"
+    marginBottom: tokens.spacingVerticalXXXL
   },
   pageTitle: {
-    fontSize: "28px",
+    fontSize: tokens.fontSizeHero700,
     fontWeight: tokens.fontWeightBold,
     color: tokens.colorNeutralForeground1
   },
   emptyState: {
     marginTop: "60px",
     ...shorthands.padding("40px"),
-    ...shorthands.borderRadius("8px"),
+    ...shorthands.borderRadius(tokens.borderRadiusXLarge),
     backgroundColor: tokens.colorNeutralBackground1,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+    boxShadow: tokens.shadow4,
     maxWidth: "420px",
     textAlign: "center"
   },
   emptyIcon: {
     fontSize: "48px",
     color: tokens.colorNeutralForeground4,
-    marginBottom: "16px"
+    marginBottom: tokens.spacingVerticalL
   },
   emptyText: {
-    fontSize: "16px",
+    fontSize: tokens.fontSizeBase400,
     color: tokens.colorNeutralForeground3,
-    marginBottom: "20px"
+    marginBottom: tokens.spacingVerticalXL
   },
   dateArrow: {
     fontSize: "18px",
     color: tokens.colorNeutralForeground3,
-    ...shorthands.padding(0, "4px", "6px"),
+    ...shorthands.padding(
+      0,
+      tokens.spacingHorizontalXS,
+      tokens.spacingVerticalSNudge
+    ),
     flexShrink: 0,
     userSelect: "none" as const,
     alignSelf: "flex-end"

@@ -1,12 +1,12 @@
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   fields: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
     alignItems: "end",
-    columnGap: "32px",
-    rowGap: "16px",
+    columnGap: tokens.spacingHorizontalXXXL,
+    rowGap: tokens.spacingVerticalL,
     "@media (max-width: 600px)": {
       gridTemplateColumns: "minmax(0, 1fr)",
       alignItems: "start"
@@ -20,7 +20,7 @@ export const useClasses = makeStyles({
   },
   inputToggle: {
     alignSelf: "end",
-    marginBottom: "4px",
+    marginBottom: tokens.spacingVerticalXS,
     "@media (max-width: 600px)": {
       alignSelf: "start",
       marginBottom: 0

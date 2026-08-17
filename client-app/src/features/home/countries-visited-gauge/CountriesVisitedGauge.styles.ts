@@ -27,6 +27,6 @@ export const useClasses = makeStyles({
   },
   subtitleText: {
     color: tokens.colorNeutralForeground3,
-    marginTop: "2px"
+    marginTop: tokens.spacingVerticalXXS
   }
 });

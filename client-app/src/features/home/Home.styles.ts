@@ -1,7 +1,7 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 const defaultSearchOption = {
-  marginRight: "12px",
+  marginRight: tokens.spacingHorizontalM,
   marginBottom: "-10px"
 };
 
@@ -43,33 +43,33 @@ export const useClasses = makeStyles({
     ...defaultSearchOption,
     ...shorthands.textDecoration("underline"),
     ":focus": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     ":active": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     ":hover": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     }
   },
   selectedSearchOption: {
     ...defaultSearchOption,
-    color: "black",
+    color: tokens.colorNeutralForeground1,
     ...shorthands.textDecoration("none"),
-    fontWeight: "bold",
+    fontWeight: tokens.fontWeightBold,
     ":focus": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     ":active": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     },
     ":hover": {
-      color: "black",
+      color: tokens.colorNeutralForeground1,
       ...shorthands.textDecoration("none")
     }
   },
@@ -81,7 +81,7 @@ export const useClasses = makeStyles({
       width: "calc(100% - 32px)",
       alignItems: "stretch",
       alignSelf: "center",
-      marginTop: "12px",
+      marginTop: tokens.spacingVerticalM,
       "& [role='grid']": {
         width: "100%"
       },
@@ -101,33 +101,37 @@ export const useClasses = makeStyles({
     right: "24px",
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap("20px"),
+    ...shorthands.gap(tokens.spacingHorizontalXL),
     "@media (max-width: 760px)": {
       position: "static",
       alignSelf: "flex-end",
-      marginRight: "12px"
+      marginRight: tokens.spacingHorizontalM
     }
   },
   mapIconButton: {
-    backgroundColor: "transparent",
+    backgroundColor: tokens.colorTransparentBackground,
     ...shorthands.border(0, "none"),
-    ...shorthands.padding(4),
+    ...shorthands.padding(tokens.spacingVerticalXS),
     cursor: "pointer",
-    ...shorthands.borderRadius(8),
+    ...shorthands.borderRadius(tokens.borderRadiusXLarge),
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     ":hover": {
-      backgroundColor: "rgba(255,255,255,0.4)"
+      backgroundColor: tokens.colorSubtleBackgroundLightAlphaHover
     },
     ":focus": {
-      ...shorthands.outline("2px", "solid", "#fec703"),
+      ...shorthands.outline(
+        tokens.strokeWidthThick,
+        "solid",
+        tokens.colorBrandBackground
+      ),
       outlineOffset: 2
     }
   },
   headerRow: {
-    fontSize: "40px",
-    paddingBottom: "20px",
+    fontSize: tokens.fontSizeHero900,
+    paddingBottom: tokens.spacingVerticalXL,
     paddingLeft: "20%",
     "@media (max-width: 760px)": {
       alignItems: "center",
@@ -144,11 +148,11 @@ export const useClasses = makeStyles({
     }
   },
   headerText: {
-    fontSize: "40px",
+    fontSize: tokens.fontSizeHero900,
     marginLeft: "15px",
     "@media (max-width: 760px)": {
-      fontSize: "32px",
-      lineHeight: "40px"
+      fontSize: tokens.fontSizeHero800,
+      lineHeight: tokens.lineHeightHero800
     }
   }
 });

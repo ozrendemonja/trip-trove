@@ -1,4 +1,4 @@
-import { makeStyles, shorthands } from "@fluentui/react-components";
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   container: {
@@ -10,27 +10,39 @@ export const useClasses = makeStyles({
     flexDirection: "column"
   },
   header: {
-    fontSize: 24,
+    fontSize: tokens.fontSizeBase600,
     ...shorthands.margin(0),
-    ...shorthands.padding("12px", "16px", "8px")
+    ...shorthands.padding(
+      tokens.spacingVerticalM,
+      tokens.spacingHorizontalL,
+      tokens.spacingVerticalS
+    )
   },
   legend: {
     display: "flex",
-    ...shorthands.gap(16),
-    ...shorthands.padding(0, "16px", "8px"),
+    ...shorthands.gap(tokens.spacingHorizontalL),
+    ...shorthands.padding(
+      0,
+      tokens.spacingHorizontalL,
+      tokens.spacingVerticalS
+    ),
     flexWrap: "wrap"
   },
   legendItem: {
     display: "flex",
     alignItems: "center",
-    ...shorthands.gap(8),
-    fontSize: 14
+    ...shorthands.gap(tokens.spacingHorizontalS),
+    fontSize: tokens.fontSizeBase300
   },
   legendSwatch: {
     width: 16,
     height: 16,
     ...shorthands.borderRadius(3),
-    ...shorthands.border("1px", "solid", "rgba(0,0,0,0.1)")
+    ...shorthands.border(
+      tokens.strokeWidthThin,
+      "solid",
+      tokens.colorNeutralStroke2
+    )
   },
   mapAndDetails: {
     position: "relative",
@@ -66,24 +78,28 @@ export const useClasses = makeStyles({
     zIndex: 2,
     display: "flex",
     flexDirection: "column",
-    ...shorthands.gap(4)
+    ...shorthands.gap(tokens.spacingVerticalXS)
   },
   zoomButton: {
     width: "40px",
     height: "40px",
-    ...shorthands.border("1px", "solid", "rgba(0,0,0,0.15)"),
-    backgroundColor: "rgba(255,255,255,0.95)",
-    ...shorthands.borderRadius(4),
+    ...shorthands.border(
+      tokens.strokeWidthThin,
+      "solid",
+      tokens.colorNeutralStroke1
+    ),
+    backgroundColor: tokens.colorNeutralBackgroundAlpha2,
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
     cursor: "pointer",
-    fontSize: "20px",
-    fontWeight: 600,
+    fontSize: tokens.fontSizeBase500,
+    fontWeight: tokens.fontWeightSemibold,
     lineHeight: "1",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+    boxShadow: tokens.shadow4,
     ":hover": {
-      backgroundColor: "#fff"
+      backgroundColor: tokens.colorNeutralBackground1
     }
   },
   detailsPanel: {
@@ -93,37 +109,41 @@ export const useClasses = makeStyles({
     width: 320,
     maxHeight: "calc(100% - 24px)",
     overflowY: "auto",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    ...shorthands.padding(16),
-    ...shorthands.borderRadius(8),
-    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+    backgroundColor: tokens.colorNeutralBackgroundAlpha2,
+    ...shorthands.padding(tokens.spacingVerticalL),
+    ...shorthands.borderRadius(tokens.borderRadiusXLarge),
+    boxShadow: tokens.shadow8,
     zIndex: 3
   },
   detailRow: {
     display: "flex",
     justifyContent: "space-between",
-    ...shorthands.padding("6px", 0),
-    ...shorthands.borderBottom("1px", "solid", "rgba(0,0,0,0.06)")
+    ...shorthands.padding(tokens.spacingVerticalSNudge, 0),
+    ...shorthands.borderBottom(
+      tokens.strokeWidthThin,
+      "solid",
+      tokens.colorNeutralStroke2
+    )
   },
   detailLabel: {
-    color: "#444"
+    color: tokens.colorNeutralForeground1
   },
   detailValue: {
-    fontWeight: 600
+    fontWeight: tokens.fontWeightSemibold
   },
   placeholder: {
-    color: "#666",
+    color: tokens.colorNeutralForeground2,
     fontStyle: "italic"
   },
   tooltip: {
     position: "fixed",
     pointerEvents: "none",
     zIndex: 4,
-    backgroundColor: "rgba(33, 33, 33, 0.92)",
-    color: "#fff",
-    ...shorthands.padding("4px", "8px"),
-    ...shorthands.borderRadius(4),
-    fontSize: 12,
+    backgroundColor: tokens.colorNeutralBackgroundInverted,
+    color: tokens.colorNeutralForegroundInverted,
+    ...shorthands.padding(tokens.spacingVerticalXS, tokens.spacingHorizontalS),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
+    fontSize: tokens.fontSizeBase200,
     whiteSpace: "nowrap",
     transform: "translate(12px, 12px)"
   }

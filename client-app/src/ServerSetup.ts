@@ -54,6 +54,7 @@ export default function makeServer(options?: {
   updateCityStatus?: number;
   updateAttractionStatus?: number;
   permanentlyClosedAttractionId?: number;
+  listAttractionTiming?: number;
 }): ReturnType<typeof createServer> {
   const server = createServer({
     models: {
@@ -1136,7 +1137,7 @@ export default function makeServer(options?: {
           }
           return result.slice(0, 2);
         },
-        { timing: 600 }
+        { timing: options?.listAttractionTiming ?? 600 }
       );
 
       this.post(

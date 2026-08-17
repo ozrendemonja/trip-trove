@@ -29,7 +29,10 @@ export default meta;
 export const Primary: Story = {};
 
 export const VirtualizesLongAttractionList: Story = {
-  parameters: { additionalAttractionCount: 24 },
+  parameters: {
+    additionalAttractionCount: 24,
+    listAttractionTiming: 50
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const grid = await canvas.findByRole("grid", { name: "Item details" });
@@ -401,7 +404,9 @@ export const DisablesAttractionNameButtonsWhileUpdating: Story = {
     await user.click(updateButton(canvasElement));
 
     await waitFor(() => expect(cancelButton(canvasElement)).toBeDisabled());
-    await waitFor(() => expect(updateButton(canvasElement)).toBeDisabled());
+    await waitFor(() =>
+      expect(updateButton(canvasElement, true)).toBeDisabled()
+    );
   }
 };
 

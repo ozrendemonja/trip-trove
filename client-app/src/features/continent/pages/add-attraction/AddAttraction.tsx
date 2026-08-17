@@ -34,6 +34,7 @@ import GoogleMapsImport, { GoogleMapsImportHandle } from "./GoogleMapsImport";
 import { useSaveShortcut } from "../../../../shared/hooks/UseSaveShortcut";
 import { useSaveError } from "../../../../shared/hooks/UseSaveError";
 import { Flex } from "../../../../shared/ui/Flex";
+import { PendingButton } from "../../../../shared/ui/PendingButton";
 
 const categoryOptions = Object.values(CategoryType)
   .filter((x) => typeof x !== "number")
@@ -78,6 +79,7 @@ export const AddAttraction: React.FunctionComponent = () => {
     { setFalse: setNonTraditional, toggle: toggleIsTraditional }
   ] = useBooleanState(false);
   const [iteration, setIteration] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
   const nameFieldRef = useRef<InputFieldHandle>(null);
   const addressFieldRef = useRef<InputFieldHandle>(null);
   const googleMapsImportRef = useRef<GoogleMapsImportHandle>(null);
@@ -91,7 +93,7 @@ export const AddAttraction: React.FunctionComponent = () => {
     });
 
   const handleSave = useCallback(async () => {
-    if (!isFormValid) {
+    if (isSaving || !isFormValid) {
       return;
     }
     const attractionLocation = formFields.geoLocation?.value
@@ -131,35 +133,41 @@ export const AddAttraction: React.FunctionComponent = () => {
       infoRecorded: formFields.sourceFrom.value!.toISOString(),
       optimalVisitPeriod: optimalVisitPeriod
     };
+    setIsSaving(true);
     try {
-      await saveNewAttraction(newAttraction);
-    } catch (error) {
-      handleSaveError(error);
-      return;
-    }
-
-    clearSaveErrors();
-
-    if (!isMultipleSubmissions) {
-      navigate(-1);
-    } else {
-      const googleMapsHadValue =
-        googleMapsImportRef.current?.hasValue() ?? false;
-      prepareForNextSubimssion();
-      setNotPartOfAttraction();
-      setNotCountrywide();
-      setMustVisitTrue();
-      setNonTraditional();
-      setIteration(iteration + 1); // Hack to force empty values to clear state
-      googleMapsImportRef.current?.clear();
-      if (googleMapsHadValue) {
-        googleMapsImportRef.current?.focus();
-      } else {
-        nameFieldRef.current?.focus();
+      try {
+        await saveNewAttraction(newAttraction);
+      } catch (error) {
+        handleSaveError(error);
+        return;
       }
+
+      clearSaveErrors();
+
+      if (!isMultipleSubmissions) {
+        navigate(-1);
+      } else {
+        const googleMapsHadValue =
+          googleMapsImportRef.current?.hasValue() ?? false;
+        prepareForNextSubimssion();
+        setNotPartOfAttraction();
+        setNotCountrywide();
+        setMustVisitTrue();
+        setNonTraditional();
+        setIteration(iteration + 1); // Hack to force empty values to clear state
+        googleMapsImportRef.current?.clear();
+        if (googleMapsHadValue) {
+          googleMapsImportRef.current?.focus();
+        } else {
+          nameFieldRef.current?.focus();
+        }
+      }
+    } finally {
+      setIsSaving(false);
     }
   }, [
     isFormValid,
+    isSaving,
     formFields,
     isCountrywide,
     isReginal,
@@ -369,16 +377,22 @@ export const AddAttraction: React.FunctionComponent = () => {
           className={classes.footer}
           gap={12}
         >
-          <Button appearance="secondary" onClick={() => navigate(-1)}>
+          <Button
+            appearance="secondary"
+            onClick={() => navigate(-1)}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
-          <Button
+          <PendingButton
             appearance="primary"
+            pending={isSaving}
+            pendingText="Saving..."
             onClick={() => void handleSave()}
             disabled={!isFormValid}
           >
             Save
-          </Button>
+          </PendingButton>
         </Flex>
       </Flex>
     </>

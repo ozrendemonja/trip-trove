@@ -11,6 +11,7 @@ import {
   tokens
 } from "@fluentui/react-components";
 import { useBooleanState } from "../../../hooks/useBooleanState";
+import { PendingButton } from "../../../ui/PendingButton";
 import React from "react";
 
 const useStyles = makeStyles({
@@ -60,18 +61,23 @@ const ConfirmDeleteDialog: React.FunctionComponent<ConfirmDeleteDialogProps> = (
           <DialogTitle>{`Delete ${props.name}`}</DialogTitle>
           <DialogContent>{`Are you sure you want to delete ${props.name}?`}</DialogContent>
           <DialogActions>
-            <Button
+            <PendingButton
               appearance="primary"
               className={styles.deleteButton}
+              pending={blockButton}
+              pendingText="Deleting..."
+              spinnerAppearance="inverted"
               onClick={async () => {
                 disableButtons();
-                await props.onConfirm();
-                enableButtons();
+                try {
+                  await props.onConfirm();
+                } finally {
+                  enableButtons();
+                }
               }}
-              disabled={blockButton}
             >
               Delete
-            </Button>
+            </PendingButton>
             <Button
               appearance="secondary"
               onClick={handleDismiss}

@@ -104,6 +104,25 @@ export const SaveEnabledWhenNameValid: Story = {
   }
 };
 
+export const ShowsProgressWhileSaving: Story = {
+  decorators: [withServer(200)],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+
+    await user.type(nameField(canvasElement), "New continent");
+    await user.click(saveButton(canvasElement));
+
+    const savingButton = await canvas.findByRole("button", {
+      name: "Saving..."
+    });
+    expect(savingButton).toBeDisabled();
+    expect(savingButton).toHaveAttribute("aria-busy", "true");
+    expect(within(savingButton).getByRole("progressbar")).toBeInTheDocument();
+    expect(canvas.getByRole("button", { name: "Cancel" })).toBeDisabled();
+  }
+};
+
 export const ShowsRequiredErrorWhenNameCleared: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

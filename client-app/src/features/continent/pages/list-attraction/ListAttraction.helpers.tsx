@@ -43,10 +43,13 @@ export const withFreshServer: Decorator = (Story, context) => {
     number | undefined;
   const additionalAttractionCount = context.parameters
     .additionalAttractionCount as number | undefined;
+  const listAttractionTiming = context.parameters.listAttractionTiming as
+    number | undefined;
   server?.shutdown();
   server = makeServer({
     permanentlyClosedAttractionId: closedAttractionId,
-    updateAttractionStatus
+    updateAttractionStatus,
+    listAttractionTiming
   });
   seedAdditionalAttractions(server, additionalAttractionCount ?? 0);
   return (
@@ -235,8 +238,13 @@ export const expectSuggestionBelowInput = (
   expect(Math.abs(suggestionRect.top - inputRect.bottom)).toBeLessThan(1);
 };
 
-export const updateButton = (canvasElement: HTMLElement): HTMLElement =>
-  overlay(canvasElement).getByRole("button", { name: "Update" });
+export const updateButton = (
+  canvasElement: HTMLElement,
+  pending = false
+): HTMLElement =>
+  overlay(canvasElement).getByRole("button", {
+    name: pending ? "Updating..." : "Update"
+  });
 
 export const cancelButton = (canvasElement: HTMLElement): HTMLElement =>
   overlay(canvasElement).getByRole("button", { name: "Cancel" });

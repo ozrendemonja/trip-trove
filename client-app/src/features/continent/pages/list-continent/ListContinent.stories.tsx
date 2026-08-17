@@ -526,6 +526,11 @@ export const DisablesContinentNameButtonsWhileUpdating: Story = {
       overlay(canvasElement).getByRole("button", { name: "Update" })
     );
 
+    const updatingButton = await overlay(canvasElement).findByRole("button", {
+      name: "Updating..."
+    });
+    expect(updatingButton).toBeDisabled();
+    expect(within(updatingButton).getByRole("progressbar")).toBeInTheDocument();
     await waitFor(() =>
       expect(
         overlay(canvasElement).getByRole("button", { name: "Cancel" })

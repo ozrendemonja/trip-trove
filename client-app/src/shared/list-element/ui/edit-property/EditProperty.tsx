@@ -16,6 +16,7 @@ import { useClasses } from "./EditProperty.styles";
 import { EditPropertyProps } from "./EditProperty.types";
 import { useSaveShortcut } from "../../../hooks/UseSaveShortcut";
 import { getApiErrorCode } from "../../../hooks/UseSaveError";
+import { PendingButton } from "../../../ui/PendingButton";
 import { useEffect, useId, useRef, useState } from "react";
 
 const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
@@ -31,6 +32,10 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
 
   const isControlled = props.isOpen !== undefined;
   const isModalOpen = isControlled ? (props.isOpen ?? false) : !hideDialog;
+  const submitText = props.submitText ?? "Update";
+  const pendingSubmitText =
+    props.pendingSubmitText ??
+    (submitText === "Create" ? "Creating..." : "Updating...");
 
   useEffect(() => {
     setSubmitError(undefined);
@@ -59,8 +64,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
       }
     } catch (error) {
       const isConflict =
-        getApiErrorCode(error) ===
-        (props.conflictErrorCode ?? "NAME_CONFLICT");
+        getApiErrorCode(error) === (props.conflictErrorCode ?? "NAME_CONFLICT");
       setSubmitError(
         isConflict && props.conflictErrorMessage
           ? props.conflictErrorMessage
@@ -139,13 +143,15 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
               </div>
             </DialogContent>
             <DialogActions className={classes.footer}>
-              <Button
+              <PendingButton
                 appearance="primary"
+                pending={blockButton}
+                pendingText={pendingSubmitText}
                 onClick={handleSubmit}
-                disabled={blockButton || !props.isFormValid}
+                disabled={!props.isFormValid}
               >
-                {props.submitText ?? "Update"}
-              </Button>
+                {submitText}
+              </PendingButton>
               <Button
                 appearance="secondary"
                 onClick={handleClose}

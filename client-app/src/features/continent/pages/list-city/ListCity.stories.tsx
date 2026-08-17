@@ -633,14 +633,15 @@ export const DisablesDeleteButtonsWhileDeleting: Story = {
       overlay(canvasElement).getByRole("button", { name: "Delete" })
     );
 
+    const deletingButton = await overlay(canvasElement).findByRole("button", {
+      name: "Deleting..."
+    });
+
+    expect(deletingButton).toBeDisabled();
+    expect(within(deletingButton).getByRole("progressbar")).toBeInTheDocument();
     await waitFor(() =>
       expect(
         overlay(canvasElement).getByRole("button", { name: "Cancel" })
-      ).toBeDisabled()
-    );
-    await waitFor(() =>
-      expect(
-        overlay(canvasElement).getByRole("button", { name: "Delete" })
       ).toBeDisabled()
     );
   }
@@ -705,7 +706,7 @@ export const DisablesCityNameButtonsWhileUpdating: Story = {
     );
     await waitFor(() =>
       expect(
-        overlay(canvasElement).getByRole("button", { name: "Update" })
+        overlay(canvasElement).getByRole("button", { name: "Updating..." })
       ).toBeDisabled()
     );
   }
@@ -746,7 +747,7 @@ export const DisablesCityRegionButtonsWhileUpdating: Story = {
     );
     await waitFor(() =>
       expect(
-        overlay(canvasElement).getByRole("button", { name: "Update" })
+        overlay(canvasElement).getByRole("button", { name: "Updating..." })
       ).toBeDisabled()
     );
   }

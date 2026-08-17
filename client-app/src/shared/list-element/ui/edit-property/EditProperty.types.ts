@@ -57,4 +57,9 @@ export interface EditPropertyProps {
    * Custom submit button text. Defaults to "Update".
    */
   submitText?: string;
+
+  /**
+   * Text shown while the submit action is pending.
+   */
+  pendingSubmitText?: string;
 }

@@ -1,7 +1,8 @@
-import { DataTable, DataSelection } from "../ui/data-table/DataTable";
+import { DataSelection } from "../ui/data-table/DataTable";
 import React, { useState } from "react";
 import { useClasses } from "./ListElement.styles";
 import { ListElementProps } from "./ListElement.types";
+import { ListTable } from "./ListTable";
 import DeleteDialog from "./ui/delete-dialog/DeleteDialog";
 import ListHeader from "./ui/list-header/ListHeader";
 import { Flex } from "../ui/Flex";
@@ -12,9 +13,6 @@ export const ListElement = <T,>(
 ): React.ReactElement => {
   const classes = useClasses();
   const sortedItems = props.items;
-  const columns = props.columns;
-  const tableContainerRef = React.useRef<HTMLDivElement>(null);
-  const isVirtualized = props.virtualization !== undefined;
 
   const [haveSelectedItem, setHaveSelectedItem] = useState(true);
   const [selectedItemName, setSelectedItemName] = useState("");
@@ -29,22 +27,6 @@ export const ListElement = <T,>(
     selection.replaceRows(sortedItems, false);
     return selection;
   }, []);
-
-  const table = (
-    <DataTable
-      className={mergeClasses(classes.listBody, props.tableClassName)}
-      rows={sortedItems ?? []}
-      selection={selection}
-      columns={columns}
-      selectable
-      aria-label="Item details"
-      selectionButtonAriaLabel="select row"
-      onLoadMore={props.onLoadMore}
-      renderCell={props.renderCell}
-      virtualization={props.virtualization}
-      scrollContainerRef={isVirtualized ? tableContainerRef : undefined}
-    />
-  );
 
   return (
     <>
@@ -62,13 +44,18 @@ export const ListElement = <T,>(
           }}
         />
       </Flex>
-      {props.tableContainerClassName || isVirtualized ? (
-        <div ref={tableContainerRef} className={props.tableContainerClassName}>
-          {table}
-        </div>
-      ) : (
-        table
-      )}
+      <ListTable
+        items={sortedItems}
+        columns={props.columns}
+        tableContainerClassName={props.tableContainerClassName}
+        tableClassName={props.tableClassName}
+        virtualization={props.virtualization}
+        selection={selection}
+        selectable
+        onLoadMore={props.onLoadMore}
+        renderCell={props.renderCell}
+        getRowClassName={props.getRowClassName}
+      />
     </>
   );
 };

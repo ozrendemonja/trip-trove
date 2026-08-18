@@ -10,6 +10,7 @@ import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { deleteRows } from "../../domain/City";
@@ -83,7 +84,6 @@ export const CityList: React.FunctionComponent = () => {
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBooleanState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadCity | undefined>(
     undefined
@@ -100,6 +100,11 @@ export const CityList: React.FunctionComponent = () => {
     setCityCustomizer(createCityCustomizer());
     setLastElement(undefined);
   };
+  const {
+    reloadData,
+    loadMore,
+    reload: reloadCities
+  } = useListReload(resetCityPagination);
 
   useEffect(() => {
     getCities(lastElement, order).then((data) => {
@@ -135,8 +140,7 @@ export const CityList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                resetCityPagination();
-                toggleReloadData();
+                reloadCities();
               },
               sortOptions: sortOptions,
               selectedSortValue: order,
@@ -167,20 +171,14 @@ export const CityList: React.FunctionComponent = () => {
               text: "Delete city",
               onDeleteRow: async (selection: DataSelection<CityRow>) => {
                 await deleteRows(selection.selectedRows());
-                resetCityPagination();
-                toggleReloadData();
+                reloadCities();
               }
             }}
-            onLoadMore={(_index: number) =>
-              onRenderWhenNoMoreItems(toggleReloadData)
-            }
+            onLoadMore={(_index: number) => onRenderWhenNoMoreItems(loadMore)}
             renderCell={(item: CityRow, index: number, column: DataColumn) =>
               renderCellContent(
                 classes.linkField,
-                () => {
-                  resetCityPagination();
-                  toggleReloadData();
-                },
+                reloadCities,
                 item,
                 index,
                 column

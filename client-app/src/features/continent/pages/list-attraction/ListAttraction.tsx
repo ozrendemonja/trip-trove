@@ -11,6 +11,7 @@ import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -279,7 +280,6 @@ export const AttractionList: React.FunctionComponent = () => {
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBooleanState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<
     LastReadAttraction | undefined
@@ -298,6 +298,11 @@ export const AttractionList: React.FunctionComponent = () => {
     setAttractionCustomizer(createAttractionCustomizer());
     setLastElement(undefined);
   };
+  const {
+    reloadData,
+    loadMore,
+    reload: reloadAttractions
+  } = useListReload(resetAttractionPagination);
 
   useEffect(() => {
     getPagedAttractions(lastElement, order).then((data) => {
@@ -338,8 +343,7 @@ export const AttractionList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                resetAttractionPagination();
-                toggleReloadData();
+                reloadAttractions();
               },
               sortOptions: sortOptions,
               selectedSortValue: order,
@@ -370,12 +374,11 @@ export const AttractionList: React.FunctionComponent = () => {
               text: "Delete attraction",
               onDeleteRow: async (selection: DataSelection<AttractionRow>) => {
                 await deleteRows(selection.selectedRows());
-                resetAttractionPagination();
-                toggleReloadData();
+                reloadAttractions();
               }
             }}
             onLoadMore={(_index: number) => {
-              onRenderWhenNoMoreItems(toggleReloadData);
+              onRenderWhenNoMoreItems(loadMore);
               return null;
             }}
             renderCell={(
@@ -385,10 +388,7 @@ export const AttractionList: React.FunctionComponent = () => {
             ) =>
               renderCellContent(
                 classes.linkField,
-                () => {
-                  resetAttractionPagination();
-                  toggleReloadData();
-                },
+                reloadAttractions,
                 (attractionId, permanentlyClosedAt) =>
                   setAttractionCustomizer(
                     attractionCustomizer.withMappedRows((item) =>

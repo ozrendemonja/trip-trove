@@ -4,12 +4,12 @@ import {
 } from "../../../../shared/ui/data-table/DataTable";
 import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
 import { Link } from "@fluentui/react-components";
-import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import EditContinentDetails from "./EditContinentDetails";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -64,7 +64,7 @@ export const ContinentList: React.FunctionComponent = () => {
   const [items, setItems] = useState<Continent[]>([]);
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
+  const { reloadData, reload: reloadContinents } = useListReload();
   const [order, setOrder] = useState<OrderOptions>("ASC");
   const navigate = useNavigate();
 
@@ -102,7 +102,7 @@ export const ContinentList: React.FunctionComponent = () => {
               ...listHeader,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                toggleReloadData();
+                reloadContinents();
               },
               sortOptions: sortOptions,
               selectedSortValue: order,
@@ -130,14 +130,14 @@ export const ContinentList: React.FunctionComponent = () => {
               text: "Delete continent",
               onDeleteRow: async (selection: DataSelection<Continent>) => {
                 await deleteRows(selection.selectedRows());
-                toggleReloadData();
+                reloadContinents();
               }
             }}
             onLoadMore={onRenderWhenNoMoreItems}
             renderCell={(item: Continent, index: number, column: DataColumn) =>
               renderCellContent(
                 classes.linkField,
-                toggleReloadData,
+                reloadContinents,
                 item,
                 index,
                 column

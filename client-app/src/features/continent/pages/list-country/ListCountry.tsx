@@ -10,6 +10,7 @@ import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
@@ -97,7 +98,6 @@ export const CountryList: React.FunctionComponent = () => {
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBooleanState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadCountry | undefined>(
     undefined
@@ -116,6 +116,11 @@ export const CountryList: React.FunctionComponent = () => {
     setCountryCustomizer(createCountryCustomizer());
     setLastElement(undefined);
   };
+  const {
+    reloadData,
+    loadMore,
+    reload: reloadCountries
+  } = useListReload(resetCountryPagination);
 
   useEffect(() => {
     getCountries(lastElement, order).then((data) => {
@@ -154,8 +159,7 @@ export const CountryList: React.FunctionComponent = () => {
               showSearchBar: true,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                resetCountryPagination();
-                toggleReloadData();
+                reloadCountries();
               },
               sortOptions: sortOptions,
               selectedSortValue: order,
@@ -186,20 +190,14 @@ export const CountryList: React.FunctionComponent = () => {
               text: "Delete country",
               onDeleteRow: async (selection: DataSelection<CountryRow>) => {
                 await deleteRows(selection.selectedRows());
-                resetCountryPagination();
-                toggleReloadData();
+                reloadCountries();
               }
             }}
-            onLoadMore={(_index: number) =>
-              onRenderWhenNoMoreItems(toggleReloadData)
-            }
+            onLoadMore={(_index: number) => onRenderWhenNoMoreItems(loadMore)}
             renderCell={(item: Country, index: number, column: DataColumn) =>
               renderCellContent(
                 classes.linkField,
-                () => {
-                  resetCountryPagination();
-                  toggleReloadData();
-                },
+                reloadCountries,
                 item,
                 index,
                 column

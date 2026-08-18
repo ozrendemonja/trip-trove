@@ -10,6 +10,7 @@ import { useNavigate } from "react-router";
 import ListElement from "../../../../shared/list-element/ListElement";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
 import { useListPageClasses } from "../../../../shared/list-element/ListPage.styles";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
 import { OrderOptions } from "../../domain/Continent.types";
@@ -85,7 +86,6 @@ export const RegionList: React.FunctionComponent = () => {
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBooleanState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [order, setOrder] = useState<OrderOptions>("DESC");
   const [lastElement, setLastElement] = useState<LastReadRegion | undefined>(
     undefined
@@ -104,6 +104,11 @@ export const RegionList: React.FunctionComponent = () => {
     setRegionCustomizer(createRegionCustomizer());
     setLastElement(undefined);
   };
+  const {
+    reloadData,
+    loadMore,
+    reload: reloadRegions
+  } = useListReload(resetRegionPagination);
 
   useEffect(() => {
     getRegions(lastElement, order).then((data) => {
@@ -139,8 +144,7 @@ export const RegionList: React.FunctionComponent = () => {
               setItems: setSuggestions,
               onSortOptionChange: (_event, choice) => {
                 setOrder(choice!.value as OrderOptions);
-                resetRegionPagination();
-                toggleReloadData();
+                reloadRegions();
               },
               sortOptions: sortOptions,
               selectedSortValue: order,
@@ -171,20 +175,14 @@ export const RegionList: React.FunctionComponent = () => {
               text: "Delete region",
               onDeleteRow: async (selection: DataSelection<RegionRow>) => {
                 await deleteRows(selection.selectedRows());
-                resetRegionPagination();
-                toggleReloadData();
+                reloadRegions();
               }
             }}
-            onLoadMore={(_index: number) =>
-              onRenderWhenNoMoreItems(toggleReloadData)
-            }
+            onLoadMore={(_index: number) => onRenderWhenNoMoreItems(loadMore)}
             renderCell={(item: RegionRow, index: number, column: DataColumn) =>
               renderCellContent(
                 classes.linkField,
-                () => {
-                  resetRegionPagination();
-                  toggleReloadData();
-                },
+                reloadRegions,
                 item,
                 index,
                 column

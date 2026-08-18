@@ -15,7 +15,8 @@ import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { ListCustomizer } from "../../../../shared/list-element/ListCustomizer";
-import { ListElementUser } from "../../../../shared/list-element/ListElementUser";
+import { ListTable } from "../../../../shared/list-element/ListTable";
+import { useListReload } from "../../../../shared/list-element/UseListReload";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import { LoadingSpinner } from "../../../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../../../shared/navigation/Navigation";
@@ -230,7 +231,6 @@ export const AttractionListUser: React.FunctionComponent = () => {
   const [columns, setColumns] = useState<DataColumn[]>([]);
   const [isLoading, { setTrue: setLoading, setFalse: setNotLoading }] =
     useBooleanState(true);
-  const [reloadData, { toggle: toggleReloadData }] = useBooleanState(true);
   const [lastElement, setLastElement] = useState<
     LastReadAttraction | undefined
   >(undefined);
@@ -243,6 +243,15 @@ export const AttractionListUser: React.FunctionComponent = () => {
   const [attractionCustomizer, setAttractionCustomizer] = useState(
     createAttractionCustomizer
   );
+  const resetAttractionPagination = (): void => {
+    setAttractionCustomizer(createAttractionCustomizer());
+    setLastElement(undefined);
+  };
+  const {
+    reloadData,
+    loadMore,
+    reload: reloadAttractions
+  } = useListReload(resetAttractionPagination);
 
   const { whereToSearch, id } = useParams();
   const getPagedAttractions = (lastAttraction?: LastReadAttraction) =>
@@ -280,9 +289,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
       searchParams.has(param) && searchParams.get(param) === value,
     onClick: (filterValue: string) => {
       toggleQueryParam(param, filterValue, searchParams, setSearchParams);
-      setAttractionCustomizer(createAttractionCustomizer());
-      setLastElement(undefined);
-      toggleReloadData();
+      reloadAttractions();
     }
   });
 
@@ -333,11 +340,11 @@ export const AttractionListUser: React.FunctionComponent = () => {
               ></Filter>
             </Flex>
             <div className={classes.listViewport}>
-              <ListElementUser
+              <ListTable
                 items={orderedItems}
                 columns={columns}
                 onLoadMore={(_index: number) =>
-                  onRenderWhenNoMoreItems(toggleReloadData)
+                  onRenderWhenNoMoreItems(loadMore)
                 }
                 getRowClassName={(row) => getVisitStatusRowClass(classes, row)}
                 renderCell={(

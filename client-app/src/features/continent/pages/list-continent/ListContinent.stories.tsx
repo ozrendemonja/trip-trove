@@ -4,10 +4,7 @@ import makeServer from "../../../../ServerSetup";
 import ContinentList from "./ListContinent";
 import { MemoryRouter } from "react-router";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../../shared/storybook/StoryStyles";
 
 let server: ReturnType<typeof makeServer>;
 

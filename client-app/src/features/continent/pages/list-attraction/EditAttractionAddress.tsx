@@ -2,11 +2,13 @@ import { InputField } from "../../../../shared/ui/forms/InputField";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { changeAttractionAddress } from "../../infra/ManagerApi";
 import { useAttractionAddressFormField } from "../add-attraction/AddAttraction.config";
+import { useEditAttractionAddressStyles } from "./EditAttractionAddress.styles";
 import { EditAttractionAddressProps } from "./ListAttraction.types";
 
 const EditAttractionAddress: React.FunctionComponent<
   EditAttractionAddressProps
 > = (props) => {
+  const classes = useEditAttractionAddressStyles();
   const { formFields, isFormValid } = useAttractionAddressFormField();
 
   return (
@@ -28,12 +30,11 @@ const EditAttractionAddress: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
+      <InputField {...formFields.address} className={classes.addressField} />
       <InputField
-        {...formFields.address}
-        style={{ width: "100%" }}
-        // className={classes.attractionName}
+        {...formFields.geoLocation}
+        className={classes.geoLocationField}
       />
-      <InputField {...formFields.geoLocation} style={{ width: "200px" }} />
     </EditProperty>
   );
 };

@@ -108,6 +108,15 @@ export const useClasses = makeStyles({
   checkbox: {
     marginTop: "15px"
   },
+  compactSwitch: {
+    marginTop: "5px"
+  },
+  sectionSwitch: {
+    marginTop: tokens.spacingVerticalMNudge
+  },
+  formContent: {
+    marginLeft: "25px"
+  },
   formText: {
     maxWidth: "1200px",
     marginLeft: "25px"
@@ -132,5 +141,8 @@ export const useClasses = makeStyles({
     height: "40px",
     width: "100%",
     marginTop: "48px"
+  },
+  storyContainer: {
+    width: "1000px"
   }
 });

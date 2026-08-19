@@ -4,11 +4,18 @@ import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../ServerSetup";
 import { GetTripResponse } from "../../clients/manager";
 import MyTripList from "./MyTripList";
+import { useMyTripListClasses } from "./MyTripList.styles";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
+
+const TripPlannerPlaceholder = () => {
+  const classes = useMyTripListClasses();
+  return (
+    <div className={classes.storyRoutePlaceholder}>
+      Trip Planner (navigated)
+    </div>
+  );
+};
 
 // A trip's tab (active / past / archived) is derived from its end date relative
 // to the real clock (TripApi.computeStatus), so fixtures pin the status with a
@@ -86,9 +93,7 @@ const meta: Meta<typeof MyTripList> = {
               <Route path="/my-trips" element={<Story />} />
               <Route
                 path="/my-trips/:tripId"
-                element={
-                  <div style={{ padding: 40 }}>Trip Planner (navigated)</div>
-                }
+                element={<TripPlannerPlaceholder />}
               />
             </Routes>
           </MemoryRouter>

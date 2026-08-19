@@ -5,10 +5,7 @@ import EditTripDetails from "./EditTripDetails";
 import { Trip } from "./domain/Trip.types";
 import { ComponentProps, useState } from "react";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
 const sampleTrip: Trip = {
   id: 1,

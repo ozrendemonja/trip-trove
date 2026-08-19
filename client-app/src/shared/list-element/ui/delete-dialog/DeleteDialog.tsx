@@ -1,43 +1,12 @@
-import {
-  Button,
-  makeStyles,
-  shorthands,
-  tokens
-} from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import { Add16Regular, Delete16Regular } from "@fluentui/react-icons";
 import { useBooleanState } from "../../../hooks/useBooleanState";
 import { DeleteDialogProps, DeleteRowOptionsProps } from "./DeleteDialog.types";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
-
-const useStyles = makeStyles({
-  deleteButton: {
-    color: tokens.colorPaletteRedForeground1,
-    ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
-    transitionProperty: "none !important",
-    "& svg": {
-      color: tokens.colorPaletteRedForeground1
-    },
-    "&:hover, &:focus-visible": {
-      backgroundColor: `${tokens.colorPaletteRedForeground1} !important`,
-      ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
-      color: `${tokens.colorNeutralForegroundStaticInverted} !important`,
-      "& svg": {
-        color: `${tokens.colorNeutralForegroundStaticInverted} !important`
-      }
-    },
-    "&:disabled": {
-      color: tokens.colorPaletteRedForeground1,
-      ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
-      opacity: 0.4,
-      "& svg": {
-        color: tokens.colorPaletteRedForeground1
-      }
-    }
-  }
-});
+import { useDeleteDialogStyles } from "./DeleteDialog.styles";
 
 const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
-  const styles = useStyles();
+  const styles = useDeleteDialogStyles();
   const [hideDialog, { toggle: toggleHideDialog }] = useBooleanState(true);
   const deleteRowOptions: DeleteRowOptionsProps = {
     text: props.deleteRowOptions.text,
@@ -49,7 +18,7 @@ const DeleteDialog: React.FunctionComponent<DeleteDialogProps> = (props) => {
       <div
         key={`command-bar-${props.selectedItem.haveSelectedItem}`}
         role="menubar"
-        style={{ display: "flex", gap: tokens.spacingHorizontalXS }}
+        className={styles.commandBar}
       >
         <Button
           role="menuitem"

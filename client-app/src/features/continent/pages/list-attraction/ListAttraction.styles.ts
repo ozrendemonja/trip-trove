@@ -105,5 +105,10 @@ export const useClasses = makeStyles({
     "&:hover, &:active": {
       color: tokens.colorBrandBackgroundHover
     }
+  },
+  countrywideFlag: {
+    width: "12px",
+    height: "12px",
+    color: tokens.colorPaletteGreenForeground1
   }
 });

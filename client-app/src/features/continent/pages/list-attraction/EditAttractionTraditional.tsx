@@ -3,23 +3,14 @@ import {
   CheckboxChecked24Filled,
   CheckboxUnchecked24Regular
 } from "@fluentui/react-icons";
-import { makeStyles, tokens } from "@fluentui/react-components";
 import { changeAttractionTraditional } from "../../infra/ManagerApi";
+import { useEditAttractionTraditionalStyles } from "./EditAttractionTraditional.styles";
 import { EditAttractionTraditionalProps } from "./ListAttraction.types";
-
-const useStyles = makeStyles({
-  selectedIndicator: {
-    color: tokens.colorBrandBackground
-  },
-  unselectedIndicator: {
-    color: tokens.colorNeutralForeground3
-  }
-});
 
 const EditAttractionTraditional: React.FunctionComponent<
   EditAttractionTraditionalProps
 > = (props) => {
-  const classes = useStyles();
+  const classes = useEditAttractionTraditionalStyles();
 
   return (
     <EditProperty

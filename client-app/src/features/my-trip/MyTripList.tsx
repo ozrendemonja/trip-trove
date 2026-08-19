@@ -5,8 +5,7 @@ import {
   MessageBarBody,
   Tab,
   TabList,
-  Text,
-  tokens
+  Text
 } from "@fluentui/react-components";
 import { Add24Regular, TicketDiagonal24Regular } from "@fluentui/react-icons";
 import { useBooleanState } from "../../shared/hooks/useBooleanState";
@@ -158,7 +157,7 @@ export const MyTripList: React.FC = () => {
             onTabSelect={(_event, data) =>
               setActiveTab(data.value as TripStatus)
             }
-            style={{ marginBottom: tokens.spacingVerticalXXL }}
+            className={classes.tabList}
           >
             {TAB_CONFIG.map(({ status, label }) => {
               const count = trips.filter((t) => t.status === status).length;

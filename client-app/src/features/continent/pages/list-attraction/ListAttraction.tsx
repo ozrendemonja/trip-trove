@@ -3,7 +3,7 @@ import {
   DataSelection
 } from "../../../../shared/ui/data-table/DataTable";
 import { SelectChoice } from "../../../../shared/ui/forms/SelectField";
-import { Link, Text, tokens } from "@fluentui/react-components";
+import { Link, Text } from "@fluentui/react-components";
 import { Flag16Regular } from "@fluentui/react-icons";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useEffect, useState } from "react";
@@ -47,6 +47,7 @@ import { Flex } from "../../../../shared/ui/Flex";
 
 const renderCellContent = (
   className: string,
+  countrywideFlagClassName: string,
   onUpdateClick: () => void,
   onClosureChange: (attractionId: number, permanentlyClosedAt?: string) => void,
   atraction: AttractionRow,
@@ -125,13 +126,7 @@ const renderCellContent = (
             atraction?.destination.countryName}
         </Text>
         {atraction?.destination.isCountrywide && (
-          <Flag16Regular
-            style={{
-              color: tokens.colorPaletteGreenForeground1,
-              width: 12,
-              height: 12
-            }}
-          />
+          <Flag16Regular className={countrywideFlagClassName} />
         )}
         <EditAttractionDestination
           attractionId={atraction!.id}
@@ -388,6 +383,7 @@ export const AttractionList: React.FunctionComponent = () => {
             ) =>
               renderCellContent(
                 classes.linkField,
+                classes.countrywideFlag,
                 reloadAttractions,
                 (attractionId, permanentlyClosedAt) =>
                   setAttractionCustomizer(

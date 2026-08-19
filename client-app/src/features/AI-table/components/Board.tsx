@@ -36,6 +36,7 @@ import {
 } from "../utils/Mapper";
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
+import { useBoardStyles } from "./Board.styles";
 
 export type { Column, TouristDestination } from "./Board.types";
 
@@ -67,6 +68,7 @@ const Board: React.FC<BoardProps> = ({
   visitHistory,
   initialMode
 }) => {
+  const classes = useBoardStyles();
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
   );
@@ -1051,7 +1053,7 @@ const Board: React.FC<BoardProps> = ({
           ref={fileInputRef}
           type="file"
           accept="application/json"
-          style={{ display: "none" }}
+          className={classes.hiddenFileInput}
           onChange={handleImportChange}
         />
         <div className="filters-row">

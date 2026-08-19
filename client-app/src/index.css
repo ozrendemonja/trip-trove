@@ -1,0 +1,7 @@
+body {
+  background: radial-gradient(#c3e0e7, #61a9b4);
+}
+
+.fui-FluentProvider.app-provider {
+  background-color: transparent;
+}

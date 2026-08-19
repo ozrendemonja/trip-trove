@@ -1,4 +1,4 @@
-import { Divider, Switch, Text, tokens } from "@fluentui/react-components";
+import { Divider, Switch, Text } from "@fluentui/react-components";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
 import { SearchText } from "../../../../shared/search-text/SearchText";
@@ -36,19 +36,14 @@ const EditAttractionDestination: React.FunctionComponent<
     >
       <Divider />
       <Flex gap={36} direction="row">
-        <Text
-          as="h2"
-          style={{ textAlign: "end", fontSize: tokens.fontSizeBase500 }}
-          // className={classes.subHeader}
-        >
+        <Text as="h2" className={classes.sectionLabel}>
           Country
         </Text>
         <Switch
-          //   className={classes.checkbox}
           label="Nationally Recognized Attraction"
           onChange={toggleIsCountrywide}
           checked={isCountrywide}
-          style={{ marginBottom: 0, fontSize: tokens.fontSizeBase300 }}
+          className={classes.switchLabel}
         />
       </Flex>
       <div className={classes.searchField}>
@@ -59,19 +54,14 @@ const EditAttractionDestination: React.FunctionComponent<
       </div>
       <Divider />
       <Flex gap={36} direction="row">
-        <Text
-          as="h2"
-          style={{ textAlign: "end", fontSize: tokens.fontSizeBase500 }}
-          // className={classes.subHeader}
-        >
+        <Text as="h2" className={classes.sectionLabel}>
           {isReginal ? "Region" : "City"}
         </Text>
         <Switch
-          //   className={classes.checkbox}
           label="Attraction is region level"
           onChange={toggleReginal}
           checked={isReginal}
-          style={{ marginBottom: 0, fontSize: tokens.fontSizeBase300 }}
+          className={classes.switchLabel}
         />
       </Flex>
       <div className={classes.searchField}>

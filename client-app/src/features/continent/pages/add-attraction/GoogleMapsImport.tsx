@@ -22,6 +22,7 @@ import {
 } from "./parseGoogleMapsUrl";
 import { reverseGeocode } from "./reverseGeocode";
 import { Flex } from "../../../../shared/ui/Flex";
+import { useGoogleMapsImportStyles } from "./GoogleMapsImport.styles";
 
 export interface GoogleMapsImportPayload {
   name?: string;
@@ -51,6 +52,7 @@ export const GoogleMapsImport = forwardRef<
   GoogleMapsImportHandle,
   GoogleMapsImportProps
 >(({ onImport, className }, ref) => {
+  const classes = useGoogleMapsImportStyles();
   const [url, setUrl] = useState<string>("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const inputRef = useRef<InputFieldHandle>(null);
@@ -151,7 +153,7 @@ export const GoogleMapsImport = forwardRef<
   return (
     <Flex gap={8} className={className}>
       <Flex direction="row" align="flex-end" gap={12} wrap>
-        <Flex grow style={{ minWidth: 0, flexBasis: "480px" }}>
+        <Flex grow className={classes.inputContainer}>
           <InputField
             label="Import from Google Maps"
             ref={inputRef}
@@ -168,7 +170,7 @@ export const GoogleMapsImport = forwardRef<
               }
             }}
             onKeyDown={handleKeyDown}
-            style={{ width: "100%", minWidth: 0 }}
+            className={classes.input}
             disabled={status.kind === "loading"}
           />
         </Flex>

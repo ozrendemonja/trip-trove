@@ -4,10 +4,7 @@ import AddCountry from "./AddCountry";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../../shared/storybook/StoryStyles";
 
 const meta: Meta<typeof AddCountry> = {
   component: AddCountry,

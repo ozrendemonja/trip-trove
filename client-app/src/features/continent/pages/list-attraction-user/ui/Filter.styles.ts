@@ -99,6 +99,7 @@ export const useClasses = makeStyles({
   filterButton: {
     width: "128px",
     height: "38px",
+    marginTop: "30px",
     ...shorthands.borderRadius("25px")
   },
   filterElementSelected: {

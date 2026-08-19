@@ -1,10 +1,11 @@
-import { FluentProvider, tokens } from "@fluentui/react-components";
+import { FluentProvider } from "@fluentui/react-components";
 import { ComponentType } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { LoadingSpinner } from "./shared/loading-spinner/LoadingSpinner";
 import { appTheme } from "./shared/fluent/AppTheme";
+import "./index.css";
 
 const lazyComponent = (load: () => Promise<{ default: ComponentType }>) => ({
   Component: async () => (await load()).default
@@ -119,17 +120,8 @@ const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 
-const styleOverrides = `
-    body {
-      background: radial-gradient(#C3E0E7, #61A9B4);;
-    }`;
-
 root.render(
-  <FluentProvider
-    theme={appTheme}
-    style={{ backgroundColor: tokens.colorTransparentBackground }}
-  >
+  <FluentProvider theme={appTheme} className="app-provider">
     <RouterProvider router={router} useTransitions />
-    <style>{styleOverrides}</style>
   </FluentProvider>
 );

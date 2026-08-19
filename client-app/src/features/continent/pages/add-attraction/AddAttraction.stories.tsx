@@ -3,11 +3,9 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AddAttraction from "./AddAttraction";
+import { useClasses } from "./AddAttraction.styles";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../../shared/storybook/StoryStyles";
 
 const meta: Meta<typeof AddAttraction> = {
   component: AddAttraction,
@@ -49,6 +47,15 @@ const withServer =
     return <Story />;
   };
 /* eslint-enable react/display-name */
+
+const FixedWidthDecorator: Decorator = (Story) => {
+  const classes = useClasses();
+  return (
+    <div className={classes.storyContainer}>
+      <Story />
+    </div>
+  );
+};
 
 const getSaveButton = (): HTMLElement =>
   screen.getByRole("button", { name: "Save" });
@@ -255,14 +262,7 @@ export const SuggestionsMatchSearchWidth: Story = {
 };
 
 export const KeepsDetailControlsInsideForm: Story = {
-  decorators: [
-    withServer(),
-    (Story) => (
-      <div style={{ width: "1000px" }}>
-        <Story />
-      </div>
-    )
-  ],
+  decorators: [withServer(), FixedWidthDecorator],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const formRight = canvas

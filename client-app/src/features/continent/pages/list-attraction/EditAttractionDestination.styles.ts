@@ -1,6 +1,14 @@
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
+  sectionLabel: {
+    textAlign: "end",
+    fontSize: tokens.fontSizeBase500
+  },
+  switchLabel: {
+    marginBottom: 0,
+    fontSize: tokens.fontSizeBase300
+  },
   searchField: {
     width: "100%",
     minWidth: 0,

@@ -67,7 +67,6 @@ export const Filter: React.FunctionComponent<FilterProps> = (props) => {
         onClick={showModal}
         icon={<Filter24Regular />}
         className={classes.filterButton}
-        style={{ marginTop: 30 }}
       >
         Filters
       </Button>

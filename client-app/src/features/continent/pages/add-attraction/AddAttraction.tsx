@@ -14,8 +14,7 @@ import {
   MessageBar,
   MessageBarBody,
   Switch,
-  Text,
-  tokens
+  Text
 } from "@fluentui/react-components";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import React, { useCallback, useRef, useState } from "react";
@@ -197,27 +196,25 @@ export const AddAttraction: React.FunctionComponent = () => {
             Add Attraction
           </Text>
           <Switch
-            className={classes.checkbox}
             label={
               isMultipleSubmissions
                 ? "add series of attractions"
                 : "add one attraction"
             }
             onChange={toggleMultipleSubmissions}
-            style={{ marginTop: 5 }}
+            className={classes.compactSwitch}
           />
         </Flex>
         <Divider className={classes.headerDivider} />
-        <Flex style={{ marginLeft: "25px" }}>
+        <Flex className={classes.formContent}>
           <Flex gap={36} direction="row">
             <Text as="h1" className={classes.subHeader}>
               Country
             </Text>
             <Switch
-              className={classes.checkbox}
               label="Nationally Recognized Attraction"
               onChange={toggleIsCountrywide}
-              style={{ marginTop: tokens.spacingVerticalMNudge }}
+              className={classes.sectionSwitch}
               checked={isCountrywide}
             />
           </Flex>
@@ -233,10 +230,9 @@ export const AddAttraction: React.FunctionComponent = () => {
               {isReginal ? "Region" : "City"}
             </Text>
             <Switch
-              className={classes.checkbox}
               label="Attraction is region level"
               onChange={toggleReginal}
-              style={{ marginTop: 5 }}
+              className={classes.compactSwitch}
             />
           </Flex>
           {isReginal && (

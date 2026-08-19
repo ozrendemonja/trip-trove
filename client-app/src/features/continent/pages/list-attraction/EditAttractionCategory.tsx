@@ -3,6 +3,7 @@ import EditProperty from "../../../../shared/list-element/ui/edit-property/EditP
 import { CategoryType } from "../../domain/Attraction.types";
 import { changeAttractionCategory } from "../../infra/ManagerApi";
 import { useAttractionCategoryFormField } from "../add-attraction/AddAttraction.config";
+import { useEditAttractionCategoryStyles } from "./EditAttractionCategory.styles";
 import { EditAttractionCategoryProps } from "./ListAttraction.types";
 
 const categoryOptions = Object.values(CategoryType)
@@ -15,6 +16,7 @@ const categoryOptions = Object.values(CategoryType)
 const EditAttractionCategory: React.FunctionComponent<
   EditAttractionCategoryProps
 > = (props) => {
+  const classes = useEditAttractionCategoryStyles();
   const { formFields, _isFormValid } = useAttractionCategoryFormField();
 
   return (
@@ -33,8 +35,7 @@ const EditAttractionCategory: React.FunctionComponent<
       <SelectField
         {...formFields.category}
         choices={categoryOptions}
-        style={{ width: "300px" }}
-        // className={classes.dropdowns}
+        className={classes.select}
       />
     </EditProperty>
   );

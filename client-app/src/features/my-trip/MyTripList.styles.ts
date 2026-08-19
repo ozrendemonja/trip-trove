@@ -15,6 +15,9 @@ export const useMyTripListClasses = makeStyles({
   pageHeader: {
     marginBottom: tokens.spacingVerticalXXXL
   },
+  tabList: {
+    marginBottom: tokens.spacingVerticalXXL
+  },
   pageTitle: {
     fontSize: tokens.fontSizeHero700,
     fontWeight: tokens.fontWeightBold,
@@ -53,5 +56,8 @@ export const useMyTripListClasses = makeStyles({
   },
   dateField: {
     ...shorthands.flex(1)
+  },
+  storyRoutePlaceholder: {
+    padding: "40px"
   }
 });

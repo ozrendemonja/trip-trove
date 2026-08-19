@@ -4,10 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import makeServer from "../../../../ServerSetup";
 import AttractionListUser from "./ListAttractionUser";
 
-const styleOverrides = `
-    body {
-      background: radial-gradient(#C3E0E7, #61A9B4);
-    }`;
+import { RADIAL_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../../shared/storybook/StoryStyles";
 
 let server: ReturnType<typeof makeServer>;
 

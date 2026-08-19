@@ -4,10 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../ServerSetup";
 import { MyTrip } from "./MyTrip";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
 const TRIP_ID = "1";
 

@@ -6,10 +6,16 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  tokens
+  mergeClasses
 } from "@fluentui/react-components";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { CSSProperties, ReactElement, ReactNode } from "react";
+import React, { ReactElement, ReactNode } from "react";
+import {
+  getDataColumnStyle,
+  getDataTableStyle,
+  getVirtualSpacerStyle,
+  useDataTableStyles
+} from "./DataTable.styles";
 
 export interface DataColumn {
   id: string;
@@ -137,24 +143,6 @@ const MissingListItem: React.FC<{
   return null;
 };
 
-const COLUMN_ACTION_WIDTH = 40;
-
-const minWidthWithActions = (column: DataColumn): number =>
-  (column.minWidth ?? 100) + COLUMN_ACTION_WIDTH;
-
-const columnStyle = (column: DataColumn): CSSProperties => ({
-  minWidth: minWidthWithActions(column),
-  maxWidth:
-    column.maxWidth === undefined
-      ? undefined
-      : column.maxWidth + COLUMN_ACTION_WIDTH,
-  width:
-    column.maxWidth !== undefined && column.minWidth === column.maxWidth
-      ? column.maxWidth + COLUMN_ACTION_WIDTH
-      : undefined,
-  whiteSpace: column.multiline === false ? "nowrap" : undefined
-});
-
 export const DataTable = <T,>({
   rows = [],
   columns = [],
@@ -169,6 +157,7 @@ export const DataTable = <T,>({
   virtualization,
   scrollContainerRef
 }: DataTableProps<T>): ReactElement => {
+  const classes = useDataTableStyles();
   const [, rerender] = React.useReducer((value) => value + 1, 0);
   const isVirtualized = virtualization !== undefined;
   const rowVirtualizer = useVirtualizer({
@@ -223,29 +212,15 @@ export const DataTable = <T,>({
       aria-busy={rows.some((row) => !row)}
       className={className}
       data-automationid="DataGrid"
-      style={{
-        minWidth: columns.reduce(
-          (width, column) => width + minWidthWithActions(column),
-          isSelectable ? 44 : 0
-        )
-      }}
+      style={getDataTableStyle(columns, isSelectable)}
     >
       <TableHeader>
         <TableRow>
           {isSelectable && (
-            <TableHeaderCell
-              style={{
-                width: 44,
-                minWidth: 44,
-                position: "sticky",
-                left: 0,
-                zIndex: 2,
-                backgroundColor: "var(--colorNeutralBackground1)"
-              }}
-            />
+            <TableHeaderCell className={classes.selectionHeaderCell} />
           )}
           {columns.map((column) => (
-            <TableHeaderCell key={column.id} style={columnStyle(column)}>
+            <TableHeaderCell key={column.id} style={getDataColumnStyle(column)}>
               {column.renderHeader ? (
                 column.renderHeader()
               ) : column.onHeaderClick ? (
@@ -266,10 +241,11 @@ export const DataTable = <T,>({
       </TableHeader>
       <TableBody>
         {paddingTop > 0 && (
-          <tr aria-hidden="true" style={{ height: paddingTop }}>
+          <tr aria-hidden="true" style={getVirtualSpacerStyle(paddingTop)}>
             <td
               colSpan={columnCount}
-              style={{ height: paddingTop, padding: 0, border: 0 }}
+              className={classes.virtualSpacerCell}
+              style={getVirtualSpacerStyle(paddingTop)}
             />
           </tr>
         )}
@@ -311,16 +287,10 @@ export const DataTable = <T,>({
               {isSelectable && (
                 <TableCell
                   role="gridcell"
-                  style={{
-                    width: 44,
-                    minWidth: 44,
-                    position: "sticky",
-                    left: 0,
-                    zIndex: 1,
-                    backgroundColor: selected
-                      ? "var(--colorBrandBackground2)"
-                      : "var(--colorNeutralBackground1)"
-                  }}
+                  className={mergeClasses(
+                    classes.selectionCell,
+                    selected && classes.selectedSelectionCell
+                  )}
                 >
                   <Button
                     appearance="subtle"
@@ -333,29 +303,13 @@ export const DataTable = <T,>({
                     icon={
                       <span
                         aria-hidden="true"
-                        style={{
-                          width: 14,
-                          height: 14,
-                          color: selected
-                            ? tokens.colorCompoundBrandBackground
-                            : undefined,
-                          borderRadius: tokens.borderRadiusCircular,
-                          border: `${tokens.strokeWidthThin} solid currentColor`,
-                          boxShadow: selected
-                            ? "inset 0 0 0 3px var(--colorNeutralBackground1)"
-                            : undefined,
-                          backgroundColor: selected
-                            ? "currentColor"
-                            : tokens.colorTransparentBackground
-                        }}
+                        className={mergeClasses(
+                          classes.selectionIndicator,
+                          selected && classes.selectedSelectionIndicator
+                        )}
                       />
                     }
-                    style={{
-                      width: 24,
-                      minWidth: 24,
-                      height: 24,
-                      padding: 0
-                    }}
+                    className={classes.selectionButton}
                   />
                 </TableCell>
               )}
@@ -363,7 +317,7 @@ export const DataTable = <T,>({
                 <TableCell
                   role="gridcell"
                   key={column.id}
-                  style={columnStyle(column)}
+                  style={getDataColumnStyle(column)}
                 >
                   {renderCell?.(row, index, column) ??
                     String(
@@ -377,10 +331,11 @@ export const DataTable = <T,>({
           );
         })}
         {paddingBottom > 0 && (
-          <tr aria-hidden="true" style={{ height: paddingBottom }}>
+          <tr aria-hidden="true" style={getVirtualSpacerStyle(paddingBottom)}>
             <td
               colSpan={columnCount}
-              style={{ height: paddingBottom, padding: 0, border: 0 }}
+              className={classes.virtualSpacerCell}
+              style={getVirtualSpacerStyle(paddingBottom)}
             />
           </tr>
         )}

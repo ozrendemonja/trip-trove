@@ -1,14 +1,17 @@
-import { Button, tokens } from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import {
   CheckboxChecked24Regular,
   CheckboxUnchecked24Regular
 } from "@fluentui/react-icons";
 import { Flex } from "../../../ui/Flex";
+import { useCheckboxButtonStyles } from "./CheckboxButton.styles";
 import { CheckboxButtonProps } from "./CheckboxButton.types";
 
 const CheckboxButton: React.FunctionComponent<CheckboxButtonProps> = (
   props
 ) => {
+  const classes = useCheckboxButtonStyles();
+
   return (
     <Flex gap={15} direction="row">
       <Button
@@ -20,10 +23,7 @@ const CheckboxButton: React.FunctionComponent<CheckboxButtonProps> = (
             <CheckboxUnchecked24Regular />
           )
         }
-        style={{
-          color: tokens.colorBrandBackground,
-          fontSize: tokens.fontSizeBase600
-        }}
+        className={classes.button}
       />
     </Flex>
   );

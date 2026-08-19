@@ -2,6 +2,7 @@ import { FluentProvider } from "@fluentui/react-components";
 import type { Preview } from "@storybook/react";
 import { createElement } from "react";
 import { appTheme } from "../src/shared/fluent/AppTheme";
+import "./preview.css";
 
 let focusPrototypeReadGuarded = false;
 
@@ -45,7 +46,7 @@ const preview: Preview = {
       guardInstrumentedFocusPrototypeRead();
       return createElement(
         FluentProvider,
-        { theme: appTheme, style: { backgroundColor: "transparent" } },
+        { theme: appTheme, className: "storybook-provider" },
         createElement(Story)
       );
     }

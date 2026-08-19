@@ -1,6 +1,10 @@
 import { Button, Link } from "@fluentui/react-components";
 import { ChevronDown20Regular } from "@fluentui/react-icons";
 import React, { ReactElement, ReactNode } from "react";
+import {
+  getNavigationEntryStyle,
+  useNavigationMenuStyles
+} from "./NavigationMenu.styles";
 
 export interface NavigationEntry {
   label: string;
@@ -35,6 +39,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
   renderSectionHeader,
   onActivate
 }) => {
+  const classes = useNavigationMenuStyles();
+
   const renderEntry = (entry: NavigationEntry, depth = 0): ReactNode => {
     const content = (
       <>
@@ -42,7 +48,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
         {entry.label}
       </>
     );
-    const style = { paddingInlineStart: 12 + depth * 16 };
+    const style = getNavigationEntryStyle(depth);
 
     return (
       <React.Fragment key={entry.id ?? `${entry.label}-${entry.path}`}>
@@ -58,9 +64,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({
             <ChevronDown20Regular
               aria-hidden="true"
               data-navigation-chevron
-              style={{
-                transform: entry.expanded ? "rotate(180deg)" : undefined
-              }}
+              className={entry.expanded ? classes.expandedChevron : undefined}
             />
           </Button>
         ) : (

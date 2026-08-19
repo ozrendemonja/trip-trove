@@ -21,4 +21,5 @@
   border-radius: var(--borderRadiusMedium);
   background-color: var(--colorBrandBackground2);
   width: 100%;
+  height: attr(data-placeholder-height px, auto);
 }

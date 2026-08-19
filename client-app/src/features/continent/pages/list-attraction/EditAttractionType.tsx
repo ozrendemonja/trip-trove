@@ -4,6 +4,7 @@ import { EditAttractionTypeProps } from "./ListAttraction.types";
 import { AttractionType } from "../../domain/Attraction.types";
 import { useAttractionTypeFormField } from "../add-attraction/AddAttraction.config";
 import { changeAttractionType } from "../../infra/ManagerApi";
+import { useEditAttractionTypeStyles } from "./EditAttractionType.styles";
 
 const typeOptions = Object.values(AttractionType)
   .filter((x) => typeof x !== "number")
@@ -15,6 +16,7 @@ const typeOptions = Object.values(AttractionType)
 const EditAttractionType: React.FunctionComponent<EditAttractionTypeProps> = (
   props
 ) => {
+  const classes = useEditAttractionTypeStyles();
   const { formFields, isFormValid } = useAttractionTypeFormField();
 
   return (
@@ -33,8 +35,7 @@ const EditAttractionType: React.FunctionComponent<EditAttractionTypeProps> = (
       <SelectField
         {...formFields.type}
         choices={typeOptions}
-        style={{ width: "200px" }}
-        // className={classes.dropdowns}
+        className={classes.select}
       />
     </EditProperty>
   );

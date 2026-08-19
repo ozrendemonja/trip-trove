@@ -1,4 +1,3 @@
-import { makeStyles, tokens } from "@fluentui/react-components";
 import {
   DateInput,
   defaultDatePickerStrings
@@ -6,14 +5,7 @@ import {
 import { ArrowRight24Regular } from "@fluentui/react-icons";
 import { DateRangePickerProps } from "./DateRangePicker.types";
 import { Flex } from "../../../ui/Flex";
-
-const useStyles = makeStyles({
-  dateInput: {
-    width: "100px",
-    color: tokens.colorBrandBackground,
-    backgroundColor: tokens.colorNeutralBackground1
-  }
-});
+import { useDateRangePickerStyles } from "./DateRangePicker.styles";
 
 const formatDate = (date?: Date): string => {
   if (!date) return "";
@@ -26,7 +18,7 @@ const formatDate = (date?: Date): string => {
 const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
   props
 ) => {
-  const styles = useStyles();
+  const styles = useDateRangePickerStyles();
 
   return (
     <Flex gap={0} direction="row">
@@ -45,15 +37,8 @@ const DateRangePicker: React.FunctionComponent<DateRangePickerProps> = (
         disabled={props.disable}
         value={props.fromDate ? new Date(props.fromDate) : undefined}
       />
-      <div style={{ padding: "5px" }}>
-        <ArrowRight24Regular
-          aria-label="Compass"
-          style={{
-            color: tokens.colorBrandBackground,
-            position: "relative",
-            top: "calc(50% - 10px)"
-          }}
-        />
+      <div className={styles.arrowContainer}>
+        <ArrowRight24Regular aria-label="Compass" className={styles.arrow} />
       </div>
       <DateInput
         className={styles.dateInput}

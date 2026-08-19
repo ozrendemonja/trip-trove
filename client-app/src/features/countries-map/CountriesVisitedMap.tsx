@@ -1,4 +1,4 @@
-import { Text } from "@fluentui/react-components";
+import { mergeClasses, Text } from "@fluentui/react-components";
 import countries from "i18n-iso-countries";
 import React, { useCallback, useMemo, useEffect, useState } from "react";
 import {
@@ -18,6 +18,8 @@ import {
   COLOR_GOLD,
   COLOR_GRAY,
   COLOR_YELLOW,
+  getGeographyStyle,
+  getTooltipPositionStyle,
   useClasses
 } from "./CountriesVisitedMap.styles";
 import { Flex } from "../../shared/ui/Flex";
@@ -143,22 +145,28 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
         <div className={classes.legend}>
           <div className={classes.legendItem}>
             <span
-              className={classes.legendSwatch}
-              style={{ background: COLOR_GOLD }}
+              className={mergeClasses(
+                classes.legendSwatch,
+                classes.legendSwatchGold
+              )}
             />
             Not visited any must-visit
           </div>
           <div className={classes.legendItem}>
             <span
-              className={classes.legendSwatch}
-              style={{ background: COLOR_YELLOW }}
+              className={mergeClasses(
+                classes.legendSwatch,
+                classes.legendSwatchYellow
+              )}
             />
             Some must-visit visited
           </div>
           <div className={classes.legendItem}>
             <span
-              className={classes.legendSwatch}
-              style={{ background: COLOR_GRAY }}
+              className={mergeClasses(
+                classes.legendSwatch,
+                classes.legendSwatchGray
+              )}
             />
             All must-visit visited
           </div>
@@ -204,7 +212,7 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
               projectionConfig={{ scale: 140 }}
               width={800}
               height={500}
-              style={{ width: "100%", height: "100%" }}
+              className={classes.map}
             >
               <ZoomableGroup
                 center={position.coordinates}
@@ -233,15 +241,7 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
                           fill={fill}
                           stroke="rgba(0,0,0,0.55)"
                           strokeWidth={0.5}
-                          style={{
-                            default: { outline: "none" },
-                            hover: {
-                              fill,
-                              outline: "none",
-                              cursor: country ? "pointer" : "default"
-                            },
-                            pressed: { fill, outline: "none" }
-                          }}
+                          style={getGeographyStyle(fill, !!country)}
                           onMouseEnter={(e) => {
                             setTooltip({
                               x: e.clientX,
@@ -271,7 +271,7 @@ export const CountriesVisitedMap: React.FunctionComponent = () => {
             {tooltip && (
               <div
                 className={classes.tooltip}
-                style={{ left: tooltip.x, top: tooltip.y }}
+                style={getTooltipPositionStyle(tooltip.x, tooltip.y)}
               >
                 {tooltip.text}
               </div>

@@ -2,6 +2,7 @@ import { Avatar, Button } from "@fluentui/react-components";
 import { SignOut24Regular } from "@fluentui/react-icons";
 import { CurrentUserInfoProps } from "./CurrentUserInfo.types";
 import { Flex } from "../../../ui/Flex";
+import { getAvatarStyle } from "./CurrentUserInfo.styles";
 
 const CurrentUserInfo: React.FunctionComponent<CurrentUserInfoProps> = (
   props
@@ -16,12 +17,11 @@ const CurrentUserInfo: React.FunctionComponent<CurrentUserInfoProps> = (
           initials={props.imageInitials}
           name={props.text}
           aria-label={props.imageAlt ?? props.text}
-          style={{
-            width: avatarSize,
-            height: avatarSize,
-            backgroundColor: props.initialsColor,
-            color: props.initialsTextColor
-          }}
+          style={getAvatarStyle(
+            avatarSize,
+            props.initialsColor,
+            props.initialsTextColor
+          )}
         />
         <div>
           <div>{props.text}</div>

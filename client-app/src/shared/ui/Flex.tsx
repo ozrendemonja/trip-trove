@@ -1,4 +1,5 @@
 import React, { CSSProperties } from "react";
+import { getFlexItemStyle, getFlexStyle } from "./Flex.styles";
 
 export type FlexProps = React.HTMLAttributes<HTMLDivElement> & {
   direction?: "row" | "column";
@@ -9,14 +10,6 @@ export type FlexProps = React.HTMLAttributes<HTMLDivElement> & {
   align?: CSSProperties["alignItems"];
   fill?: boolean;
   grow?: boolean | number;
-};
-
-const toFlexGrow = (
-  grow: boolean | number | undefined
-): CSSProperties["flexGrow"] => {
-  if (grow === true) return 1;
-  if (typeof grow === "number") return grow;
-  return undefined;
 };
 
 export const Flex: React.FC<FlexProps> = ({
@@ -34,18 +27,10 @@ export const Flex: React.FC<FlexProps> = ({
 }) => (
   <div
     {...props}
-    style={{
-      display: "flex",
-      flexDirection: direction,
-      flexWrap: wrap ? "wrap" : undefined,
-      gap,
-      padding,
-      justifyContent: justify,
-      alignItems: align,
-      minHeight: fill ? "100%" : undefined,
-      flexGrow: toFlexGrow(grow),
-      ...style
-    }}
+    style={getFlexStyle(
+      { direction, wrap, gap, padding, justify, align, fill, grow },
+      style
+    )}
   >
     {children}
   </div>
@@ -61,13 +46,7 @@ export const FlexItem: React.FC<FlexItemProps> = ({
   children,
   ...props
 }) => (
-  <div
-    {...props}
-    style={{
-      flexGrow: toFlexGrow(grow),
-      ...style
-    }}
-  >
+  <div {...props} style={getFlexItemStyle(grow, style)}>
     {children}
   </div>
 );

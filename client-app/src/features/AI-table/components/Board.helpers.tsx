@@ -5,10 +5,7 @@ import type { Attraction } from "./AttractionList";
 import type { TouristDestination } from "./Board.types";
 
 // Blue page background shared by every Board story group.
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../shared/storybook/StoryStyles";
 
 export const styleDecorator: Decorator = (Story) => (
   <>

@@ -35,7 +35,10 @@ const AttractionList: React.FC<AttractionListProps> = ({
       {attractions.map((attraction, idx) => (
         <React.Fragment key={attraction.id}>
           {showPlaceholder && insertionIndex === idx && (
-            <li className="placeholder" style={{ height: placeholderHeight }} />
+            <li
+              className="placeholder"
+              data-placeholder-height={placeholderHeight}
+            />
           )}
           <li
             className="attraction"
@@ -101,7 +104,10 @@ const AttractionList: React.FC<AttractionListProps> = ({
         </React.Fragment>
       ))}
       {showPlaceholder && insertionIndex === attractions.length && (
-        <li className="placeholder" style={{ height: placeholderHeight }} />
+        <li
+          className="placeholder"
+          data-placeholder-height={placeholderHeight}
+        />
       )}
     </ul>
   );

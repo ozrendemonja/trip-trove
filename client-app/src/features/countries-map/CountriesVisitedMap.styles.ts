@@ -1,4 +1,34 @@
 import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
+import type { CSSProperties } from "react";
+
+export const COLOR_GRAY = "#9aa0a6";
+export const COLOR_YELLOW = "#FCE600";
+export const COLOR_GOLD = "#f4b400";
+export const COLOR_DEFAULT = "#FDEAD5";
+
+interface GeographyStyle {
+  default: CSSProperties;
+  hover: CSSProperties;
+  pressed: CSSProperties;
+}
+
+export const getGeographyStyle = (
+  fill: string,
+  isInteractive: boolean
+): GeographyStyle => ({
+  default: { outline: "none" },
+  hover: {
+    fill,
+    outline: "none",
+    cursor: isInteractive ? "pointer" : "default"
+  },
+  pressed: { fill, outline: "none" }
+});
+
+export const getTooltipPositionStyle = (
+  x: number,
+  y: number
+): CSSProperties => ({ left: x, top: y });
 
 export const useClasses = makeStyles({
   container: {
@@ -35,14 +65,27 @@ export const useClasses = makeStyles({
     fontSize: tokens.fontSizeBase300
   },
   legendSwatch: {
-    width: 16,
-    height: 16,
-    ...shorthands.borderRadius(3),
+    width: "16px",
+    height: "16px",
+    ...shorthands.borderRadius("3px"),
     ...shorthands.border(
       tokens.strokeWidthThin,
       "solid",
       tokens.colorNeutralStroke2
     )
+  },
+  legendSwatchGold: {
+    backgroundColor: COLOR_GOLD
+  },
+  legendSwatchYellow: {
+    backgroundColor: COLOR_YELLOW
+  },
+  legendSwatchGray: {
+    backgroundColor: COLOR_GRAY
+  },
+  map: {
+    width: "100%",
+    height: "100%"
   },
   mapAndDetails: {
     position: "relative",
@@ -73,8 +116,8 @@ export const useClasses = makeStyles({
   },
   zoomControls: {
     position: "absolute",
-    top: 8,
-    left: 8,
+    top: "8px",
+    left: "8px",
     zIndex: 2,
     display: "flex",
     flexDirection: "column",
@@ -104,9 +147,9 @@ export const useClasses = makeStyles({
   },
   detailsPanel: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    width: 320,
+    top: "12px",
+    right: "12px",
+    width: "320px",
     maxHeight: "calc(100% - 24px)",
     overflowY: "auto",
     backgroundColor: tokens.colorNeutralBackgroundAlpha2,
@@ -148,8 +191,3 @@ export const useClasses = makeStyles({
     transform: "translate(12px, 12px)"
   }
 });
-
-export const COLOR_GRAY = "#9aa0a6";
-export const COLOR_YELLOW = "#FCE600";
-export const COLOR_GOLD = "#f4b400";
-export const COLOR_DEFAULT = "#FDEAD5";

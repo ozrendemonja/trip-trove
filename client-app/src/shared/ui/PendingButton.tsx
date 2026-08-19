@@ -1,16 +1,6 @@
-import {
-  Button,
-  makeStyles,
-  mergeClasses,
-  Spinner
-} from "@fluentui/react-components";
+import { Button, mergeClasses, Spinner } from "@fluentui/react-components";
 import type { ButtonProps } from "@fluentui/react-components";
-
-const useStyles = makeStyles({
-  root: {
-    minWidth: "120px"
-  }
-});
+import { usePendingButtonStyles } from "./PendingButton.styles";
 
 export type PendingButtonProps = ButtonProps & {
   pending: boolean;
@@ -28,7 +18,7 @@ export const PendingButton: React.FunctionComponent<PendingButtonProps> = ({
   className,
   ...buttonProps
 }) => {
-  const classes = useStyles();
+  const classes = usePendingButtonStyles();
 
   return (
     <Button

@@ -3,10 +3,7 @@ import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import { MemoryRouter } from "react-router";
 import makeServer from "../../../../ServerSetup";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../../shared/storybook/StoryStyles";
 
 let server: ReturnType<typeof makeServer>;
 

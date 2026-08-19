@@ -4,10 +4,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import TripCard from "./TripCard";
 import { Trip } from "./domain/Trip.types";
 
-const styleOverrides = `
-    body {
-      background: #C3E0E7;
-    }`;
+import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
 const sampleTrip: Trip = {
   id: 1,

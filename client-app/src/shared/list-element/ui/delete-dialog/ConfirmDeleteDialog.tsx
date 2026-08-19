@@ -5,27 +5,12 @@ import {
   DialogBody,
   DialogContent,
   DialogSurface,
-  DialogTitle,
-  makeStyles,
-  shorthands,
-  tokens
+  DialogTitle
 } from "@fluentui/react-components";
 import { useBooleanState } from "../../../hooks/useBooleanState";
 import { PendingButton } from "../../../ui/PendingButton";
 import React from "react";
-
-const useStyles = makeStyles({
-  deleteButton: {
-    backgroundColor: tokens.colorPaletteRedForeground1,
-    ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
-    color: tokens.colorNeutralForegroundStaticInverted,
-    "&:hover, &:active": {
-      backgroundColor: tokens.colorPaletteRedForeground1,
-      ...shorthands.borderColor(tokens.colorPaletteRedForeground1),
-      color: tokens.colorNeutralForegroundStaticInverted
-    }
-  }
-});
+import { useConfirmDeleteDialogStyles } from "./DeleteDialog.styles";
 
 export interface ConfirmDeleteDialogProps {
   name: string;
@@ -37,7 +22,7 @@ export interface ConfirmDeleteDialogProps {
 const ConfirmDeleteDialog: React.FunctionComponent<ConfirmDeleteDialogProps> = (
   props
 ) => {
-  const styles = useStyles();
+  const styles = useConfirmDeleteDialogStyles();
   const [blockButton, { setTrue: disableButtons, setFalse: enableButtons }] =
     useBooleanState(false);
 

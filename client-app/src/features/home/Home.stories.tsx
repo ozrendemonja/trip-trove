@@ -4,10 +4,7 @@ import { MemoryRouter } from "react-router";
 import Home from "./Home";
 import makeServer from "../../ServerSetup";
 
-const styleOverrides = `
-    body {
-      background: radial-gradient(#C3E0E7, #61A9B4);
-    }`;
+import { RADIAL_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
 const meta: Meta<typeof Home> = {
   component: Home,

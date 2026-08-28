@@ -26,6 +26,7 @@ import {
   LastReadAttraction
 } from "../continent/domain/Attraction.types";
 import { Rating } from "./domain/Trip.types";
+import { getAttractionById } from "../continent/infra/ManagerApi";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
@@ -406,6 +407,10 @@ const loadAllAttractionsUnder = async (
   whereToSearch: string,
   id: number
 ): Promise<Attraction[]> => {
+  if (whereToSearch.toLocaleLowerCase() === "attraction") {
+    return [await getAttractionById(id)];
+  }
+
   let result: Attraction[] = [];
   let lastElement: LastReadAttraction | undefined = undefined;
   let hasMore = true;

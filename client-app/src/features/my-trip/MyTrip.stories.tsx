@@ -212,6 +212,9 @@ export const SearchModalShowsAllSearchOptionsWithConfirmDisabled: Story = {
     await expect(
       modal.getByRole("button", { name: "Main attraction" })
     ).toBeInTheDocument();
+    await expect(
+      modal.getByRole("button", { name: "Attraction" })
+    ).toBeInTheDocument();
     await expect(modal.getByRole("button", { name: "Update" })).toBeDisabled();
   }
 };
@@ -335,6 +338,38 @@ export const AddsAttractionsWhenSearchSubmitted: Story = {
     await expect(
       canvas.getByRole("button", { name: "Remove Casino Square from trip" })
     ).toBeInTheDocument();
+  }
+};
+
+export const AddsOnlySelectedAttractionWhenAttractionSearchSubmitted: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const modalElement = await openSearchForAttraction(canvasElement, user);
+    const modal = within(modalElement);
+
+    await user.click(modal.getByRole("button", { name: "Attraction" }));
+    await user.type(modal.getByRole("textbox"), "Casino of Monte");
+    await user.click(
+      await modal.findByRole(
+        "menuitem",
+        { name: "Casino of Monte-Carlo" },
+        { timeout: 5000 }
+      )
+    );
+    await user.click(modal.getByRole("button", { name: "Update" }));
+
+    const canvas = within(canvasElement);
+    await canvas.findByRole(
+      "link",
+      { name: "Casino of Monte-Carlo" },
+      { timeout: 8000 }
+    );
+    await expect(
+      canvas.queryByRole("link", { name: "Casino Square" })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("link", { name: "Larvotto Beach" })
+    ).not.toBeInTheDocument();
   }
 };
 

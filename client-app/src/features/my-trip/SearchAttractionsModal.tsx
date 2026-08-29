@@ -1,6 +1,7 @@
 import { Link } from "@fluentui/react-components";
 import { Search24Regular } from "@fluentui/react-icons";
 import {
+  searchAttraction,
   searchCity,
   searchCountry,
   searchMainAttraction,
@@ -41,6 +42,7 @@ const country = "Country";
 const region = "Region";
 const city = "City";
 const mainAttraction = "Main attraction";
+const attraction = "Attraction";
 const searchOptions = [
   { key: "country-search", name: country, searchQuery: searchCountry },
   { key: "region-search", name: region, searchQuery: searchRegion },
@@ -49,7 +51,8 @@ const searchOptions = [
     key: "main-attraction-search",
     name: mainAttraction,
     searchQuery: searchMainAttraction
-  }
+  },
+  { key: "attraction-search", name: attraction, searchQuery: searchAttraction }
 ];
 
 const SearchAttractionsModal: React.FunctionComponent<
@@ -85,6 +88,7 @@ const SearchAttractionsModal: React.FunctionComponent<
               onClick: () => {
                 setSearchQuery(() => option.searchQuery);
                 setSelected(option.name);
+                setSelectedId(undefined);
               },
               className:
                 selected == option.name
@@ -105,6 +109,7 @@ const SearchAttractionsModal: React.FunctionComponent<
             ))}
         </div>
         <SearchText
+          key={selected}
           {...searchConfig}
           getSuggestions={searchQuery}
           onSelectItem={(id: number | string | undefined) => {

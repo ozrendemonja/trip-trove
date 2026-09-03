@@ -49,5 +49,7 @@ public interface TripService {
 
     List<CountryVisitSummary> getCountryVisitSummaries();
 
+    List<Trip> getTripsContaining(LocalDate date);
+
     List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection);
 }

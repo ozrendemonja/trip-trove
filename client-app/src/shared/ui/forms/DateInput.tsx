@@ -9,7 +9,7 @@ type FluentDatePickerProps = React.ComponentProps<typeof DatePicker>;
 
 export type DateInputProps = Omit<
   FluentDatePickerProps,
-  "onSelectDate" | "value" | "required"
+  "onChange" | "onSelectDate" | "value" | "required"
 > & {
   label?: string;
   "aria-label"?: string;

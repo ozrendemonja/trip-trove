@@ -1,0 +1,74 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0010-create-bucket-list-item
+      author: trip-trove
+      changes:
+        - createTable:
+            tableName: bucket_list_item
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_on
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_on
+                  type: TIMESTAMP
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_on
+                  type: DATE
+              - column:
+                  name: city_id
+                  type: INTEGER
+              - column:
+                  name: region_id
+                  type: INTEGER
+              - column:
+                  name: trip_id
+                  type: BIGINT
+              - column:
+                  name: description
+                  type: VARCHAR(4096)
+        - addForeignKeyConstraint:
+            baseTableName: bucket_list_item
+            baseColumnNames: city_id
+            referencedTableName: city
+            referencedColumnNames: id
+            constraintName: FK_bucket_list_item_city
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: bucket_list_item
+            baseColumnNames: region_id
+            referencedTableName: region
+            referencedColumnNames: id
+            constraintName: FK_bucket_list_item_region
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: bucket_list_item
+            baseColumnNames: trip_id
+            referencedTableName: trip
+            referencedColumnNames: id
+            constraintName: FK_bucket_list_item_trip
+            onDelete: SET NULL
+        - sql:
+            sql: >-
+              ALTER TABLE bucket_list_item
+              ADD CONSTRAINT CK_bucket_list_item_single_location
+              CHECK (city_id IS NULL OR region_id IS NULL)
+        - sql:
+            sql: >-
+              ALTER TABLE bucket_list_item
+              ADD CONSTRAINT CK_bucket_list_item_trip_requires_completion
+              CHECK ((trip_id IS NULL) = (completed_on IS NULL))

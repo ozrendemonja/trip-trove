@@ -181,6 +181,30 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void tripsContainingDateShouldBeReturnedWithoutPagination() throws Exception {
+        var selectedDate = LocalDate.of(2025, Month.SEPTEMBER, 15);
+
+        var jsonResponse = mockMvc.perform(get("/trips")
+                        .param("date", selectedDate.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
+        assertThat(response)
+                .hasSize(2)
+                .allSatisfy(trip -> {
+                    assertThat(trip.fromDate()).isBeforeOrEqualTo(selectedDate);
+                    assertThat(trip.toDate()).isAfterOrEqualTo(selectedDate);
+                });
+        assertThat(response).extracting(GetTripResponse::tripName)
+                .containsExactlyInAnyOrder("Test trip name 2", "Test trip name 3");
+    }
+
+    @Test
     void tripShouldBeSuccessfullySavedWhenNameAndRangeIsNotPresent() throws Exception {
         String tripName = "Test trip name";
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());

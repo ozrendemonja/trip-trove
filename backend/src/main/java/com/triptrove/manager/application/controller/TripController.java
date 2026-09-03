@@ -14,10 +14,12 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -48,11 +50,19 @@ public class TripController {
     @Operation(summary = "List paginable trips, sorted by their last updated time. If the trip was never updated, sort by the creation time. " +
             "Order by the given sort direction, or ascending if none is provided.", parameters = {
             @Parameter(name = "sd", description = "Direction of ordering trips using last updated time, or by creation time if not updated."),
-            @Parameter(name = "after", description = "Last trip retrieved on the previous page. Leave empty if this is the first page.")
+            @Parameter(name = "after", description = "Last trip retrieved on the previous page. Leave empty if this is the first page."),
+            @Parameter(name = "date", description = "Return only trips whose date range includes this date.")
     })
     public List<GetTripResponse> getTrips(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             TripParameter after) {
+        if (date != null) {
+            return tripService.getTripsContaining(date).stream()
+                    .map(GetTripResponse::from)
+                    .toList();
+        }
         var afterTrip = after.tripId() != null ? after.toScrollPosition() : null;
         return tripService.getTrips(afterTrip, sortDirection.toSortDirection())
                 .stream()

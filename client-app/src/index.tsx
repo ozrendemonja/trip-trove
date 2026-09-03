@@ -37,6 +37,11 @@ const router = createBrowserRouter([
     lazy: lazyComponent(() => import("./features/my-trip/MyTrip"))
   },
   {
+    path: "/bucket-list",
+    HydrateFallback: RouteFallback,
+    lazy: lazyComponent(() => import("./features/bucket-list/BucketList"))
+  },
+  {
     path: "/continents",
     HydrateFallback: RouteFallback,
     lazy: lazyComponent(

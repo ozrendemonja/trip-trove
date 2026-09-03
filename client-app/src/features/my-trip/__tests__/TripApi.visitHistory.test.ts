@@ -1,4 +1,5 @@
 import {
+  fetchTripsContainingDate,
   fetchAttractionsVisitHistory,
   VISIT_HISTORY_MAX_BATCH_SIZE
 } from "../infra/TripApi";
@@ -6,7 +7,7 @@ import type { AttractionVisitHistory } from "../domain/VisitHistory.types";
 import { client } from "../../../clients/manager";
 
 jest.mock("../../../clients/manager", () => ({
-  client: { post: jest.fn() }
+  client: { get: jest.fn(), post: jest.fn() }
 }));
 
 jest.mock("../../../config/ClientsApiConfig", () => ({
@@ -15,6 +16,7 @@ jest.mock("../../../config/ClientsApiConfig", () => ({
 }));
 
 const mockedPost = client.post as jest.Mock;
+const mockedGet = client.get as jest.Mock;
 
 type PostCallArg = { url: string; body: { attractionIds: number[] } };
 
@@ -22,7 +24,39 @@ const buildIds = (count: number): number[] =>
   Array.from({ length: count }, (_, i) => i + 1);
 
 beforeEach(() => {
+  mockedGet.mockReset();
   mockedPost.mockReset();
+});
+
+test("fetches only trips containing the selected date", async () => {
+  mockedGet.mockResolvedValueOnce({
+    data: [
+      {
+        tripId: 7,
+        tripName: "Italy",
+        fromDate: "2026-06-10",
+        toDate: "2026-06-24"
+      }
+    ],
+    error: undefined
+  });
+
+  const result = await fetchTripsContainingDate("2026-06-15");
+
+  expect(mockedGet).toHaveBeenCalledTimes(1);
+  expect(mockedGet).toHaveBeenCalledWith({
+    url: "/trips",
+    headers: { "x-api-version": "1" },
+    query: { date: "2026-06-15" }
+  });
+  expect(result).toEqual([
+    expect.objectContaining({
+      id: 7,
+      name: "Italy",
+      startDate: "2026-06-10",
+      endDate: "2026-06-24"
+    })
+  ]);
 });
 
 test("makes no request when attractionIds is empty", async () => {

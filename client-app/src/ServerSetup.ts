@@ -29,6 +29,14 @@ import {
   UpdateTripNameRequest,
   UpdateTripRangeRequest
 } from "./clients/manager";
+import {
+  BucketListItem,
+  SaveBucketListItem,
+  UpdateBucketListItemCompletion,
+  UpdateBucketListItemDescription,
+  UpdateBucketListItemLocation,
+  UpdateBucketListItemName
+} from "./features/bucket-list/BucketList.types";
 
 const attractionVisitStatuses: Record<number, string> = {
   0: "VISITED_WANT_RETURN",
@@ -38,6 +46,8 @@ const attractionVisitStatuses: Record<number, string> = {
 type AttractionResponseWithClosure = GetAttractionResponse & {
   permanentlyClosedAt?: string | null;
 };
+
+type TripDateOverride = Pick<GetTripResponse, "tripId" | "fromDate" | "toDate">;
 
 export default function makeServer(options?: {
   saveTripStatus?: number;
@@ -55,6 +65,7 @@ export default function makeServer(options?: {
   updateAttractionStatus?: number;
   permanentlyClosedAttractionId?: number;
   listAttractionTiming?: number;
+  tripDateOverrides?: TripDateOverride[];
 }): ReturnType<typeof createServer> {
   const server = createServer({
     models: {
@@ -63,6 +74,18 @@ export default function makeServer(options?: {
       region: Model.extend<GetRegionResponse>({}),
       city: Model.extend<GetCityResponse>({}),
       attraction: Model.extend<AttractionResponseWithClosure>({}),
+      bucketListItem: Model.extend({
+        name: "",
+        completedOn: null as string | null,
+        cityId: null as number | null,
+        cityName: null as string | null,
+        regionId: null as number | null,
+        regionName: null as string | null,
+        description: null as string | null,
+        tripId: null as number | null,
+        tripName: null as string | null,
+        changedOn: ""
+      }),
       trip: Model.extend<GetTripResponse>({}),
       visitHistory: Model.extend<GetAttractionVisitHistoryResponse>({})
     },
@@ -151,6 +174,31 @@ export default function makeServer(options?: {
         changedOn: "2024-12-26T08:01:02.0000000"
       });
 
+      server.create("bucketListItem", {
+        id: 1,
+        name: "Paragliding",
+        completedOn: null,
+        cityId: null,
+        cityName: null,
+        regionId: 3,
+        regionName: "Dzūkija",
+        description: "Fly above the hills on a clear summer morning.",
+        changedOn: "2026-08-20T10:00:00.0000000"
+      });
+      server.create("bucketListItem", {
+        id: 2,
+        name: "Zorbing",
+        completedOn: "2026-06-14",
+        cityId: 2,
+        cityName: "Kaunas",
+        regionId: null,
+        regionName: "Aukštaitija",
+        description: "Chaotic, funny, and much faster than expected.",
+        tripId: 1,
+        tripName: "Italy",
+        changedOn: "2026-06-14T18:30:00.0000000"
+      });
+
       server.create("attraction", {
         attractionId: 0,
         cityName: "Monaco",
@@ -220,26 +268,35 @@ export default function makeServer(options?: {
         changedOn: "2024-12-26T08:01:02.0000000"
       });
 
+      const tripDateOverrides = new Map(
+        (options?.tripDateOverrides ?? []).map(
+          ({ tripId, ...dates }) => [tripId, dates] as const
+        )
+      );
+
       server.create("trip", {
         tripId: 1,
         tripName: "Italy",
         fromDate: "2026-06-10",
         toDate: "2026-06-24",
-        changedOn: "2026-03-01T10:00:00.0000000"
+        changedOn: "2026-03-01T10:00:00.0000000",
+        ...tripDateOverrides.get(1)
       });
       server.create("trip", {
         tripId: 2,
         tripName: "Japan 2026",
         fromDate: "2026-10-01",
         toDate: "2026-10-14",
-        changedOn: "2026-04-05T08:30:00.0000000"
+        changedOn: "2026-04-05T08:30:00.0000000",
+        ...tripDateOverrides.get(2)
       });
       server.create("trip", {
         tripId: 3,
         tripName: "Road Trip USA",
         fromDate: "2025-07-04",
         toDate: "2025-07-20",
-        changedOn: "2025-08-10T14:00:00.0000000"
+        changedOn: "2025-08-10T14:00:00.0000000",
+        ...tripDateOverrides.get(3)
       });
 
       server.create("visitHistory", {
@@ -287,10 +344,241 @@ export default function makeServer(options?: {
       this.urlPrefix = "http://localhost:8080";
 
       this.get(
+        "/bucket-list/items",
+        (schema, request) => {
+          const itemId = Number(request.queryParams.itemId);
+          const updatedOn = request.queryParams.updatedOn;
+          return (schema.db.bucketListItems as BucketListItem[])
+            .toSorted((left: BucketListItem, right: BucketListItem) => {
+              const changedOnComparison = right.changedOn.localeCompare(
+                left.changedOn
+              );
+              return changedOnComparison || Number(right.id) - Number(left.id);
+            })
+            .filter(
+              (item: BucketListItem) =>
+                !updatedOn ||
+                item.changedOn < updatedOn ||
+                (item.changedOn === updatedOn && Number(item.id) < itemId)
+            )
+            .slice(0, 20)
+            .map((item: BucketListItem) => ({
+              ...item,
+              id: Number(item.id)
+            }));
+        },
+        { timing: 200 }
+      );
+
+      this.get(
+        "/bucket-list/items/:id",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (!item) {
+            return new MirageResponse(404);
+          }
+
+          return { ...item, id: Number(item.id) };
+        },
+        { timing: 200 }
+      );
+
+      this.post(
+        "/bucket-list/items",
+        (schema, request) => {
+          const body = JSON.parse(request.requestBody) as SaveBucketListItem;
+          const city = body.cityId
+            ? schema.db.cities.findBy(
+                (item: GetCityResponse) => item.cityId === body.cityId
+              )
+            : undefined;
+          const region = body.regionId
+            ? schema.db.regions.findBy(
+                (item: GetRegionResponse) => item.regionId === body.regionId
+              )
+            : undefined;
+          const trip = body.tripId
+            ? schema.db.trips.findBy(
+                (item: GetTripResponse) => item.tripId === body.tripId
+              )
+            : undefined;
+          const existingIds = (
+            schema.db.bucketListItems as BucketListItem[]
+          ).map((item: BucketListItem) => Number(item.id));
+          const id = existingIds.length ? Math.max(...existingIds) + 1 : 1;
+
+          schema.db.bucketListItems.insert({
+            id,
+            ...body,
+            completedOn: body.completedOn ?? null,
+            cityId: body.cityId ?? null,
+            cityName: city?.cityName ?? null,
+            regionId: body.regionId ?? null,
+            regionName: city?.regionName ?? region?.regionName ?? null,
+            description: body.description ?? null,
+            tripId: body.tripId ?? null,
+            tripName: trip?.tripName ?? null,
+            changedOn: new Date().toISOString()
+          });
+          return new MirageResponse(201, {
+            Location: `/bucket-list/items/${id}`
+          });
+        },
+        { timing: 200 }
+      );
+
+      this.put(
+        "/bucket-list/items/:id/name",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (!item) {
+            return new MirageResponse(404);
+          }
+
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateBucketListItemName;
+          schema.db.bucketListItems.update(item.id, {
+            name: body.name,
+            changedOn: new Date().toISOString()
+          });
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+
+      this.put(
+        "/bucket-list/items/:id/location",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (!item) {
+            return new MirageResponse(404);
+          }
+
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateBucketListItemLocation;
+          const city =
+            body.cityId !== undefined
+              ? schema.db.cities.findBy(
+                  (candidate: GetCityResponse) =>
+                    candidate.cityId === body.cityId
+                )
+              : undefined;
+          const region =
+            body.regionId !== undefined
+              ? schema.db.regions.findBy(
+                  (candidate: GetRegionResponse) =>
+                    candidate.regionId === body.regionId
+                )
+              : undefined;
+
+          schema.db.bucketListItems.update(item.id, {
+            cityId: body.cityId ?? null,
+            cityName: city?.cityName ?? null,
+            regionId: body.regionId ?? null,
+            regionName: city?.regionName ?? region?.regionName ?? null,
+            changedOn: new Date().toISOString()
+          });
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+
+      this.put(
+        "/bucket-list/items/:id/description",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (!item) {
+            return new MirageResponse(404);
+          }
+
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateBucketListItemDescription;
+          schema.db.bucketListItems.update(item.id, {
+            description: body.description ?? null,
+            changedOn: new Date().toISOString()
+          });
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+
+      this.put(
+        "/bucket-list/items/:id/completion",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (!item) {
+            return new MirageResponse(404);
+          }
+
+          const body = JSON.parse(
+            request.requestBody
+          ) as UpdateBucketListItemCompletion;
+          const trip =
+            body.tripId !== undefined
+              ? schema.db.trips.findBy(
+                  (candidate: GetTripResponse) =>
+                    candidate.tripId === body.tripId
+                )
+              : undefined;
+          schema.db.bucketListItems.update(item.id, {
+            completedOn: body.completedOn ?? null,
+            tripId: body.tripId ?? null,
+            tripName: trip?.tripName ?? null,
+            changedOn: new Date().toISOString()
+          });
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+
+      this.delete(
+        "/bucket-list/items/:id",
+        (schema, request) => {
+          const item = schema.db.bucketListItems.findBy(
+            (candidate: BucketListItem) =>
+              Number(candidate.id) === Number(request.params.id)
+          );
+          if (item) {
+            schema.db.bucketListItems.remove(item);
+          }
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+
+      this.get(
         "/trips",
         (schema, request) => {
           const sortDirection = request.queryParams.sd;
           let result = schema.db.trips.sort() as GetTripResponse[];
+          const date = request.queryParams.date;
+          if (date) {
+            result = result.filter(
+              (trip) =>
+                trip.fromDate !== undefined &&
+                trip.toDate !== undefined &&
+                trip.fromDate <= date &&
+                date <= trip.toDate
+            );
+          }
           if (sortDirection !== "ASC") {
             result = result.toReversed();
           }

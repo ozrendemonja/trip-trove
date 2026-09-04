@@ -6,6 +6,7 @@ import {
   Luggage24Regular,
   Save24Regular,
   Search24Regular,
+  Star24Regular,
   Settings24Regular
 } from "@fluentui/react-icons";
 import React from "react";
@@ -29,6 +30,12 @@ export const navLinkGroups = (expanded: boolean): NavigationSection[] => [
         path: "#",
         id: "organizer-key",
         icon: React.createElement(Location24Regular)
+      },
+      {
+        label: "Bucket list",
+        path: "/bucket-list",
+        id: "bucket-list-key",
+        icon: React.createElement(Star24Regular)
       }
     ]
   },

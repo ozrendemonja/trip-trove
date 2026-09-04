@@ -1,21 +1,26 @@
-import { InputField } from "../ui/forms/InputField";
-import { Button, mergeClasses } from "@fluentui/react-components";
-import { useBooleanState } from "../hooks/useBooleanState";
-import { useEffect, useRef, useState } from "react";
+import { mergeClasses } from "@fluentui/react-components";
+import React, { useState } from "react";
 import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import { Autocomplete } from "../search/Autocomplete";
+import {
+  AutocompleteController,
+  FormSearchPolicy
+} from "../search/AutocompleteController";
+import { InputField } from "../ui/forms/InputField";
 import { useClasses } from "./SearchText.styles";
 import { SearchTextProps } from "./SearchText.types";
-import { FocusRegion, FocusRegionHandle } from "../ui/FocusRegion";
 
 export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
   const classes = useClasses();
-
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [
-    isSuggestionChosen,
-    { setFalse: deselectSuggestion, setTrue: selectSuggestion }
-  ] = useBooleanState(false);
+  const [controller] = useState(() => {
+    const nextController = new AutocompleteController<Suggestion>(
+      new FormSearchPolicy()
+    );
+    if (props.initialValue) {
+      nextController.selectSuggestion({ id: 0, value: props.initialValue });
+    }
+    return nextController;
+  });
   const rootClassName = mergeClasses(
     classes.root,
     props.suggestionsInFlow ? classes.inFlowRoot : undefined,
@@ -26,71 +31,52 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
     props.suggestionsInFlow ? classes.inFlowSearchBox : undefined,
     props.searchBoxClassName
   );
-  const dropdownClassName = mergeClasses(
-    classes.dropdown,
-    props.suggestionsInFlow ? classes.inFlowDropdown : undefined
-  );
+  const dropdownClassName = props.suggestionsInFlow
+    ? classes.inFlowDropdown
+    : undefined;
   const buttonClassName = mergeClasses(
     classes.button,
     props.suggestionsInFlow ? classes.inFlowButton : undefined
   );
 
-  useEffect(() => {
-    if (isSuggestionChosen) {
-      return;
-    } else if (query && query.trim().length >= 3) {
-      props.getSuggestions(query).then(setSuggestions);
-    }
-  }, [query]);
-
-  const focusZoneRef = useRef<FocusRegionHandle>(null);
-  const handleTextFieldKeyDown = (event) => {
-    if (event.key === "ArrowDown") {
-      focusZoneRef.current!.focus();
-    }
-  };
-
   return (
     <div className={rootClassName}>
-      <InputField
-        onKeyDown={handleTextFieldKeyDown}
-        label={props.label}
-        placeholder={props.placeholder}
-        required={props.required}
-        showRequiredIndicator={props.showRequiredIndicator}
-        multiline={props.multiline}
-        onChange={(_event, newValue: string | undefined): void => {
-          if (isSuggestionChosen) {
-            props.onSelectItem(undefined);
-          }
-          setQuery(newValue ?? "");
-          props.onSelectValue?.(newValue ?? "");
-          deselectSuggestion();
+      <Autocomplete
+        controller={controller}
+        getSuggestions={props.getSuggestions}
+        dropdownClassName={dropdownClassName}
+        suggestionClassName={buttonClassName}
+        onSuggestionSelected={(suggestion) => {
+          props.onSelectItem(suggestion.id as number);
+          props.onSelectValue?.(suggestion.value);
         }}
-        className={searchBoxClassName}
-        value={query}
-        validate={props.validate}
-      />
-      <FocusRegion ref={focusZoneRef} role="grid" className={dropdownClassName}>
-        {suggestions.map((item) => (
-          <Button
-            key={`${item.value}-${item.id}`}
-            role="menuitem"
-            appearance="secondary"
-            className={buttonClassName}
-            aria-label={item.value}
-            onClick={(_event) => {
-              selectSuggestion();
-              setQuery(item.value);
-              props.onSelectItem(item.id);
-              props.onSelectValue?.(item.value);
-              setSuggestions([]);
+        renderInput={({
+          query,
+          hasSelectedSuggestion,
+          onQueryChange,
+          onKeyDown
+        }) => (
+          <InputField
+            onKeyDown={onKeyDown}
+            label={props.label}
+            placeholder={props.placeholder}
+            required={props.required}
+            showRequiredIndicator={props.showRequiredIndicator}
+            multiline={props.multiline}
+            onChange={(_event, newValue: string | undefined): void => {
+              if (hasSelectedSuggestion) {
+                props.onSelectItem(undefined);
+              }
+              const nextQuery = newValue ?? "";
+              onQueryChange(nextQuery);
+              props.onSelectValue?.(nextQuery);
             }}
-          >
-            {item.value}
-          </Button>
-        ))}
-      </FocusRegion>
+            className={searchBoxClassName}
+            value={query}
+            validate={props.validate}
+          />
+        )}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
+import { makeStyles, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   root: {
@@ -21,16 +21,6 @@ export const useClasses = makeStyles({
     boxShadow: tokens.shadow4,
     width: "100%"
   },
-  dropdown: {
-    width: "100%",
-    ...shorthands.borderRadius("10px"),
-    ...shorthands.borderColor(tokens.colorTransparentStroke),
-    boxShadow: tokens.shadow8,
-    zIndex: "333",
-    position: "absolute",
-    top: "100%",
-    left: 0
-  },
   inFlowSearchBox: {
     width: "100%",
     maxWidth: "400px",
@@ -42,11 +32,7 @@ export const useClasses = makeStyles({
     maxWidth: "400px"
   },
   button: {
-    width: "100%",
-    ...shorthands.border("0px", "solid"),
-    justifyContent: "flex-start",
-    zIndex: "9999",
-    textAlign: "left"
+    zIndex: "9999"
   },
   inFlowButton: {
     width: "100%"

@@ -10,6 +10,8 @@ export interface SearchTextProps {
 
   required: boolean;
 
+  initialValue?: string;
+
   showRequiredIndicator?: boolean;
 
   onSelectItem: (id: number | undefined) => void;

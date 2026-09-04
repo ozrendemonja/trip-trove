@@ -139,6 +139,24 @@ export const fetchTrips = async (
   return Array.from(tripsById.values());
 };
 
+export const fetchTripsContainingDate = async (
+  date: string
+): Promise<Trip[]> => {
+  const { data, error } = await client.get<GetTripResponse[]>({
+    url: "/trips",
+    headers: { "x-api-version": "1" },
+    query: { date }
+  });
+
+  if (error) {
+    throw new Error("Error while finding trips for date", { cause: error });
+  }
+
+  return (data ?? [])
+    .map(toTrip)
+    .filter((trip): trip is Trip => trip !== undefined);
+};
+
 export const saveTripToApi = async (
   name: string,
   startDate: string,

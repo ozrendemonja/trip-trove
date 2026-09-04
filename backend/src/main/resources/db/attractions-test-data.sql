@@ -1,3 +1,4 @@
+DELETE FROM bucket_list_item;
 DELETE FROM trip_attraction;
 DELETE FROM trip;
 DELETE FROM attraction WHERE id = 5;
@@ -8,6 +9,7 @@ DELETE FROM country;
 DELETE FROM continent;
 DELETE FROM information_provider;
 
+ALTER SEQUENCE bucket_list_item_id_seq RESTART 1;
 ALTER SEQUENCE trip_attraction_id_seq RESTART 1;
 ALTER SEQUENCE trip_id_seq RESTART 1;
 ALTER SEQUENCE continent_id_seq RESTART 1;
@@ -75,6 +77,13 @@ INSERT INTO trip(name, trip_start_date, trip_end_date, created_on, archived)
     ('Test trip name 2', '2025-09-10T08:12:43', '2025-09-19T08:12:43', '2025-11-01T06:05:48', true),
     ('Test trip name 2', '2025-10-14T09:47:23', '2025-10-19T17:41:12', '2025-11-02T04:17:21', false),
     ('Test trip name 2', '2025-12-14T09:47:23', '2025-12-17T23:11:32', '2025-11-02T04:17:22', false)
+     ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO bucket_list_item(created_on, updated_on, name, completed_on, city_id, region_id, trip_id, description)
+    VALUES
+    ('2025-12-20T10:00:00', null, 'First item', null, null, null, null, null),
+    ('2025-12-20T10:00:01', null, 'Second item', null, null, null, null, null),
+    ('2025-12-20T10:00:02', null, 'Third item', null, null, null, null, null)
      ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO trip_attraction(created_on, attraction_id, trip_id, status, rating, note, review_note, must_visit, attraction_group, board_position)

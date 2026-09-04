@@ -336,6 +336,12 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    public List<Trip> getTripsContaining(LocalDate date) {
+        log.atInfo().log("Getting trips containing date '{}'", date);
+        return tripRepo.findAllContainingDate(date);
+    }
+
+    @Override
     public List<Trip> getTrips(ScrollPosition afterTrip, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getTripAfter(afterTrip);

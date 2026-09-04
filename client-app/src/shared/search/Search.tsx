@@ -1,55 +1,44 @@
-import { Button, SearchBox } from "@fluentui/react-components";
-import { useRef, useState } from "react";
+import { SearchBox, mergeClasses } from "@fluentui/react-components";
+import React, { useState } from "react";
+import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import { Flex } from "../ui/Flex";
+import { Autocomplete } from "./Autocomplete";
+import {
+  AutocompleteController,
+  ListSearchPolicy
+} from "./AutocompleteController";
 import { useClasses } from "./Search.styles";
 import { SearchProps } from "./Search.types";
-import { Flex } from "../ui/Flex";
-import { FocusRegion, FocusRegionHandle } from "../ui/FocusRegion";
 
 export const Search: React.FunctionComponent<SearchProps> = (props) => {
-  const [value, setValue] = useState("");
   const classes = useClasses();
-
-  const focusZoneRef = useRef<FocusRegionHandle>(null);
-  const handleTextFieldKeyDown = (event) => {
-    if (event.key === "ArrowDown") {
-      focusZoneRef.current!.focus();
-    }
-  };
+  const [controller] = useState(
+    () => new AutocompleteController<Suggestion>(new ListSearchPolicy())
+  );
 
   return (
     <Flex align="center" className={classes.container}>
-      <SearchBox
-        onKeyDown={handleTextFieldKeyDown}
-        placeholder="Search"
-        dismiss={{ role: "button", "aria-label": "Clear text" }}
-        onChange={(event, data) => {
-          setValue(data.value);
-          props.onSearchTyped(event, data.value);
-          if (!data.value) {
-            props.setItems([]);
-          }
-        }}
-        className={classes.searchBox}
-        value={value}
-      />
-      <FocusRegion role="grid" className={classes.dropdown} ref={focusZoneRef}>
-        {props.items.map((item) => (
-          <Button
-            key={`${item.value}-${item.id}`}
-            role="menuitem"
-            appearance="secondary"
-            className={classes.button}
-            aria-label={item.value}
-            onFocus={() => setValue(item.value)}
-            onClick={(_event) => {
-              props.onFindItem(item.id);
-              setValue("");
+      <Autocomplete
+        controller={controller}
+        suggestions={props.items}
+        onSuggestionSelected={(suggestion) => props.onFindItem(suggestion.id)}
+        renderInput={({ query, onQueryChange, onKeyDown }) => (
+          <SearchBox
+            onKeyDown={onKeyDown}
+            placeholder="Search"
+            dismiss={{ role: "button", "aria-label": "Clear text" }}
+            onChange={(event, data) => {
+              onQueryChange(data.value);
+              props.onSearchTyped(event, data.value);
+              if (!data.value) {
+                props.setItems([]);
+              }
             }}
-          >
-            {item.value}
-          </Button>
-        ))}
-      </FocusRegion>
+            className={mergeClasses(classes.searchBox, props.className)}
+            value={query}
+          />
+        )}
+      />
     </Flex>
   );
 };

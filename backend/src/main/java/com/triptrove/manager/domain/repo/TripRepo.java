@@ -27,6 +27,13 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
             """)
     boolean existsByNameAndDatesBetween(String name, LocalDate startDate, LocalDate endDate);
 
+    @Query("""
+            SELECT t FROM Trip t
+            WHERE t.from <= :date AND t.to >= :date
+            ORDER BY t.createdOn DESC
+            """)
+    List<Trip> findAllContainingDate(LocalDate date);
+
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

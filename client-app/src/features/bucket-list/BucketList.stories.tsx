@@ -49,6 +49,19 @@ const waitForCanvasToBecomeAccessible = async (
   );
 };
 
+const findDialog = async (
+  canvasElement: HTMLElement,
+  heading: string
+): Promise<HTMLElement> => {
+  const title = await within(canvasElement.ownerDocument.body).findByRole(
+    "heading",
+    { name: heading }
+  );
+  const dialog = title.closest('[role="dialog"]');
+  if (!dialog) throw new Error(`${heading} dialog was not found`);
+  return dialog as HTMLElement;
+};
+
 const completeParaglidingToday = async (
   canvasElement: HTMLElement
 ): Promise<{
@@ -122,6 +135,19 @@ export const Primary: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("Paragliding")).toBeVisible();
     await expect(canvas.getByText("Zorbing")).toBeVisible();
+    await expect(
+      canvas.getByRole("columnheader", { name: "Name" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("columnheader", { name: "Location" })
+    ).toBeVisible();
+    const paraglidingRow = canvas.getByText("Paragliding").closest("tr");
+    if (!paraglidingRow) throw new Error("Paragliding row was not found");
+    const cells = within(paraglidingRow).getAllByRole("cell");
+    await expect(cells).toHaveLength(6);
+    await expect(cells[0]).toHaveTextContent(/^Paragliding$/);
+    await expect(within(cells[1]).getByText("Dzūkija")).toBeVisible();
+    await expect(within(cells[1]).getByText("Region")).toBeVisible();
     await expect(canvas.getByRole("tab", { name: "To do (1)" })).toBeVisible();
     await expect(
       canvas.getByRole("tab", { name: "Completed (1)" })
@@ -194,24 +220,170 @@ export const CanCompleteItemOnTripDateAndResetIt: Story = {
   }
 };
 
+export const CanEditCompletionDetails: Story = {
+  play: async ({ canvasElement }) => {
+    const { user, paraglidingRow, todayIso } =
+      await completeParaglidingToday(canvasElement);
+    const overlay = within(canvasElement.ownerDocument.body);
+
+    await user.click(
+      within(paraglidingRow()).getByRole("button", {
+        name: "Change completion details for Paragliding"
+      })
+    );
+
+    const dialogElement = await findDialog(
+      canvasElement,
+      "Edit completion for Paragliding"
+    );
+    const dialog = within(dialogElement);
+    await waitFor(
+      () =>
+        expect(dialog.queryByText("Finding trip...")).not.toBeInTheDocument(),
+      { timeout: 3000 }
+    );
+    await expect(dialog.getByText("Italy")).toBeVisible();
+    await user.click(dialog.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(
+        overlay.queryByRole("heading", {
+          name: "Edit completion for Paragliding"
+        })
+      ).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await expect(within(paraglidingRow()).getByText("Completed")).toBeVisible();
+
+    const savedItem = server?.db.bucketListItems.findBy(
+      (item: BucketListItem) => Number(item.id) === 1
+    );
+    expect(savedItem?.completedOn).toBe(todayIso);
+    expect(savedItem?.tripId).toBe(1);
+  }
+};
+
+export const CanEditItemName: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    const row = canvas.getByText("Paragliding").closest("tr");
+    if (!row) throw new Error("Paragliding row was not found");
+
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Change bucket list item name from Paragliding"
+      })
+    );
+    const nameDialog = within(
+      await findDialog(canvasElement, "Modifying Paragliding")
+    );
+    const nameInput = nameDialog.getByRole("textbox", { name: "Name" });
+    await user.clear(nameInput);
+    await user.type(nameInput, "Hang gliding");
+    await user.click(nameDialog.getByRole("button", { name: "Update" }));
+    await waitFor(() =>
+      expect(canvas.getByText("Hang gliding")).toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+
+    const savedItem = server?.db.bucketListItems.findBy(
+      (item: BucketListItem) => Number(item.id) === 1
+    );
+    expect(savedItem?.name).toBe("Hang gliding");
+  }
+};
+
+export const CanEditItemLocation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const itemName = await canvas.findByText("Paragliding");
+    const row = itemName.closest("tr");
+    if (!row) throw new Error("Paragliding row was not found");
+
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Change bucket list item location from Dzūkija"
+      })
+    );
+    const locationDialog = within(
+      await findDialog(canvasElement, "Modifying Dzūkija")
+    );
+    await user.click(locationDialog.getByRole("radio", { name: "Anywhere" }));
+    await user.click(locationDialog.getByRole("button", { name: "Update" }));
+    await waitFor(() =>
+      expect(within(row).getByText("Anywhere")).toBeVisible()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    const locationCell = within(row).getAllByRole("cell")[1];
+    await expect(within(locationCell).getByText("Anywhere")).toBeVisible();
+    await expect(
+      within(locationCell).queryByText(/^(City|Region)$/)
+    ).not.toBeInTheDocument();
+
+    const savedItem = server?.db.bucketListItems.findBy(
+      (item: BucketListItem) => Number(item.id) === 1
+    );
+    expect(savedItem?.cityId).toBeNull();
+    expect(savedItem?.regionId).toBeNull();
+  }
+};
+
+export const CanEditItemDescription: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const itemName = await canvas.findByText("Paragliding");
+    const row = itemName.closest("tr");
+    if (!row) throw new Error("Paragliding row was not found");
+
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Change description for Paragliding"
+      })
+    );
+    const descriptionDialog = within(
+      await findDialog(canvasElement, "Modifying Paragliding description")
+    );
+    const descriptionInput = descriptionDialog.getByRole("textbox", {
+      name: "Description"
+    });
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "Best at sunset.");
+    await user.click(descriptionDialog.getByRole("button", { name: "Update" }));
+    await waitFor(() =>
+      expect(canvas.getByText("Best at sunset.")).toBeVisible()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+
+    const savedItem = server?.db.bucketListItems.findBy(
+      (item: BucketListItem) => Number(item.id) === 1
+    );
+    expect(savedItem?.description).toBe("Best at sunset.");
+  }
+};
+
 export const CanSortByExperienceAndStatus: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
     await canvas.findByText("Paragliding");
 
-    const experienceHeader = canvas.getByRole("columnheader", {
-      name: "Experience"
+    const nameHeader = canvas.getByRole("columnheader", {
+      name: "Name"
     });
     const statusHeader = canvas.getByRole("columnheader", { name: "Status" });
     const firstDataRow = (): HTMLElement => canvas.getAllByRole("row")[1];
 
-    await user.click(canvas.getByRole("button", { name: "Experience" }));
-    await expect(experienceHeader).toHaveAttribute("aria-sort", "ascending");
+    await user.click(canvas.getByRole("button", { name: "Name" }));
+    await expect(nameHeader).toHaveAttribute("aria-sort", "ascending");
     await expect(firstDataRow()).toHaveTextContent("Paragliding");
 
-    await user.click(canvas.getByRole("button", { name: "Experience" }));
-    await expect(experienceHeader).toHaveAttribute("aria-sort", "descending");
+    await user.click(canvas.getByRole("button", { name: "Name" }));
+    await expect(nameHeader).toHaveAttribute("aria-sort", "descending");
     await expect(firstDataRow()).toHaveTextContent("Zorbing");
 
     await user.click(canvas.getByRole("button", { name: "Status" }));

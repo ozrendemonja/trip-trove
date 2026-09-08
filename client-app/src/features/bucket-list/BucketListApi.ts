@@ -45,10 +45,10 @@ export const getBucketListItem = async (
     headers
   });
 
-  if (error || !data) {
+  if (error) {
     throwApiError("Error while loading bucket list item", error);
   }
-  return data;
+  return data ?? throwApiError("Bucket list item response was empty", data);
 };
 
 export const createBucketListItem = async (
@@ -127,26 +127,6 @@ export const updateBucketListItemCompletion = async (
   if (error) {
     throwApiError("Error while updating bucket list item completion", error);
   }
-};
-
-export const updateBucketListItem = async (
-  id: number,
-  request: SaveBucketListItem
-): Promise<BucketListItem> => {
-  await updateBucketListItemName(id, { name: request.name });
-  await updateBucketListItemLocation(id, {
-    cityId: request.cityId,
-    regionId: request.regionId
-  });
-  await updateBucketListItemDescription(id, {
-    description: request.description
-  });
-  await updateBucketListItemCompletion(id, {
-    completedOn: request.completedOn,
-    tripId: request.tripId
-  });
-
-  return getBucketListItem(id);
 };
 
 export const deleteBucketListItem = async (id: number): Promise<void> => {

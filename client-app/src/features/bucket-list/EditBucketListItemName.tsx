@@ -6,7 +6,7 @@ import type { BucketListItem } from "./BucketList.types";
 
 interface EditBucketListItemNameProps {
   item: BucketListItem;
-  onUpdated: () => void;
+  onUpdated: () => Promise<void>;
 }
 
 const EditBucketListItemName: React.FunctionComponent<
@@ -25,7 +25,7 @@ const EditBucketListItemName: React.FunctionComponent<
       submitErrorResetKey={name}
       onUpdateClick={async () => {
         await updateBucketListItemName(item.id, { name: trimmedName });
-        onUpdated();
+        await onUpdated();
       }}
     >
       <InputField

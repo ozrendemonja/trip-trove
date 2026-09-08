@@ -30,7 +30,8 @@ import {
   ArrowReset20Regular,
   CheckmarkCircle20Regular,
   Delete20Regular,
-  Edit20Regular,
+  Edit16Regular,
+  Location16Regular,
   Star24Regular
 } from "@fluentui/react-icons";
 import React, { useEffect, useRef, useState } from "react";
@@ -52,7 +53,6 @@ import {
   deleteBucketListItem,
   getBucketListItem,
   getBucketListItems,
-  updateBucketListItem,
   updateBucketListItemCompletion
 } from "./BucketListApi";
 import { useBucketListClasses } from "./BucketList.styles";
@@ -64,6 +64,9 @@ import {
   BucketListLocationType,
   SaveBucketListItem
 } from "./BucketList.types";
+import EditBucketListItemDescription from "./EditBucketListItemDescription";
+import EditBucketListItemLocation from "./EditBucketListItemLocation";
+import EditBucketListItemName from "./EditBucketListItemName";
 
 type BucketListSort = {
   column: "experience" | "status";
@@ -76,18 +79,6 @@ const emptyDraft = (): BucketListDraft => ({
   locationType: "none",
   locationLabel: "",
   description: ""
-});
-
-const draftFromItem = (item: BucketListItem): BucketListDraft => ({
-  name: item.name,
-  completedOn: item.completedOn ?? "",
-  locationType:
-    item.cityId != null ? "city" : item.regionId != null ? "region" : "none",
-  locationLabel: item.cityName ?? item.regionName ?? "",
-  cityId: item.cityId ?? undefined,
-  regionId: item.regionId ?? undefined,
-  description: item.description ?? "",
-  tripId: item.tripId ?? undefined
 });
 
 const toRequest = (draft: BucketListDraft): SaveBucketListItem => ({
@@ -146,7 +137,6 @@ export const BucketList: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<BucketListItem>();
   const [draft, setDraft] = useState<BucketListDraft>(emptyDraft);
   const [formKey, setFormKey] = useState(0);
   const [itemToDelete, setItemToDelete] = useState<BucketListItem>();
@@ -200,35 +190,29 @@ export const BucketList: React.FC = () => {
     }
   };
 
+  const refreshItem = async (id: number): Promise<void> => {
+    const updatedItem = await getBucketListItem(id);
+    setItems((current) =>
+      current.map((item) => (item.id === id ? updatedItem : item))
+    );
+  };
+
   useEffect(() => {
     void loadItems();
   }, []);
 
   const openCreate = (): void => {
-    setEditingItem(undefined);
     setDraft(emptyDraft());
-    setFormKey((value) => value + 1);
-    setIsEditorOpen(true);
-  };
-
-  const openEdit = (item: BucketListItem): void => {
-    setEditingItem(item);
-    setDraft(draftFromItem(item));
     setFormKey((value) => value + 1);
     setIsEditorOpen(true);
   };
 
   const closeEditor = (): void => {
     setIsEditorOpen(false);
-    setEditingItem(undefined);
   };
 
   const saveItem = async (): Promise<void> => {
-    if (editingItem) {
-      await updateBucketListItem(editingItem.id, toRequest(draft));
-    } else {
-      await createBucketListItem(toRequest(draft));
-    }
+    await createBucketListItem(toRequest(draft));
     await loadItems();
   };
 
@@ -254,13 +238,17 @@ export const BucketList: React.FC = () => {
 
   const openCompletionDialog = (item: BucketListItem): void => {
     tripLookupId.current += 1;
+    const completedOn = item.completedOn ?? "";
     setCompletionItem(item);
     setMatchingTrips([]);
-    setCompletionDate("");
-    setSelectedTripId(undefined);
+    setCompletionDate(completedOn);
+    setSelectedTripId(item.tripId ?? undefined);
     setIsTripsLoading(false);
     setTripsLoadError(false);
     setCompletionError(false);
+    if (completedOn) {
+      void loadTripsForCompletion(completedOn);
+    }
   };
 
   const closeCompletionDialog = (): void => {
@@ -282,15 +270,10 @@ export const BucketList: React.FC = () => {
     setChangingId(item.id);
     try {
       await updateBucketListItemCompletion(item.id, {
-        completedOn: item.completedOn ? undefined : completedOn,
-        tripId: item.completedOn ? undefined : tripId
+        completedOn,
+        tripId
       });
-      const updatedItem = await getBucketListItem(item.id);
-      setItems((current) =>
-        current.map((candidate) =>
-          candidate.id === updatedItem.id ? updatedItem : candidate
-        )
-      );
+      await refreshItem(item.id);
       return true;
     } catch {
       return false;
@@ -362,6 +345,7 @@ export const BucketList: React.FC = () => {
   }));
   const completionTripId =
     matchingTrips.length === 1 ? matchingTrips[0].id : selectedTripId;
+  const isEditingCompletion = !!completionItem?.completedOn;
 
   return (
     <div className={pageClasses.pageLayout}>
@@ -449,15 +433,15 @@ export const BucketList: React.FC = () => {
                       aria-sort={
                         sort?.column === "experience" ? sort.direction : "none"
                       }
-                      style={{ width: "29%" }}
+                      style={{ width: "22%" }}
                     >
                       <Button
                         appearance="subtle"
                         className={classes.sortButton}
-                        aria-label="Experience"
+                        aria-label="Name"
                         onClick={() => changeSort("experience")}
                       >
-                        Experience
+                        Name
                         {sort?.column === "experience"
                           ? sort.direction === "ascending"
                             ? " ↑"
@@ -465,11 +449,14 @@ export const BucketList: React.FC = () => {
                           : null}
                       </Button>
                     </TableHeaderCell>
+                    <TableHeaderCell style={{ width: "20%" }}>
+                      Location
+                    </TableHeaderCell>
                     <TableHeaderCell
                       aria-sort={
                         sort?.column === "status" ? sort.direction : "none"
                       }
-                      style={{ width: "15%" }}
+                      style={{ width: "12%" }}
                     >
                       <Button
                         appearance="subtle"
@@ -485,10 +472,10 @@ export const BucketList: React.FC = () => {
                           : null}
                       </Button>
                     </TableHeaderCell>
-                    <TableHeaderCell style={{ width: "20%" }}>
+                    <TableHeaderCell style={{ width: "19%" }}>
                       Completed
                     </TableHeaderCell>
-                    <TableHeaderCell style={{ width: "36%" }}>
+                    <TableHeaderCell style={{ width: "27%" }}>
                       Notes
                     </TableHeaderCell>
                     <TableHeaderCell style={{ width: "120px" }}>
@@ -500,7 +487,7 @@ export const BucketList: React.FC = () => {
                   {visibleItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        <Flex className={classes.nameCell} gap={2}>
+                        <div className={classes.editableCell}>
                           <Text
                             className={
                               item.completedOn
@@ -510,7 +497,41 @@ export const BucketList: React.FC = () => {
                           >
                             {item.name}
                           </Text>
-                        </Flex>
+                          <EditBucketListItemName
+                            item={item}
+                            onUpdated={() => refreshItem(item.id)}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className={classes.editableCell}>
+                          <div className={classes.locationDetails}>
+                            <Location16Regular
+                              className={classes.locationIcon}
+                              aria-hidden="true"
+                            />
+                            <Flex gap={2}>
+                              <Text
+                                className={
+                                  item.cityName || item.regionName
+                                    ? classes.location
+                                    : classes.muted
+                                }
+                              >
+                                {item.cityName ?? item.regionName ?? "Anywhere"}
+                              </Text>
+                              {(item.cityName || item.regionName) && (
+                                <Text className={classes.locationType}>
+                                  {item.cityName ? "City" : "Region"}
+                                </Text>
+                              )}
+                            </Flex>
+                          </div>
+                          <EditBucketListItemLocation
+                            item={item}
+                            onUpdated={() => refreshItem(item.id)}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -521,31 +542,51 @@ export const BucketList: React.FC = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Flex gap={2}>
-                          <Text
-                            className={
-                              !item.completedOn ? classes.muted : undefined
-                            }
-                          >
-                            {formatDate(item.completedOn)}
-                          </Text>
-                          {item.tripName && (
-                            <Text className={classes.tripName}>
-                              {item.tripName}
+                        <div className={classes.editableCell}>
+                          <Flex gap={2}>
+                            <Text
+                              className={
+                                !item.completedOn ? classes.muted : undefined
+                              }
+                            >
+                              {formatDate(item.completedOn)}
                             </Text>
-                          )}
-                        </Flex>
+                            {item.tripName && (
+                              <Text className={classes.tripName}>
+                                {item.tripName}
+                              </Text>
+                            )}
+                          </Flex>
+                          <Tooltip
+                            content={`Change completion details for ${item.name}`}
+                            relationship="label"
+                          >
+                            <Button
+                              appearance="subtle"
+                              className={classes.propertyEditButton}
+                              data-list-edit-trigger
+                              icon={<Edit16Regular />}
+                              onClick={() => openCompletionDialog(item)}
+                            />
+                          </Tooltip>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Text
-                          className={
-                            item.description
-                              ? classes.description
-                              : classes.muted
-                          }
-                        >
-                          {item.description || "No notes yet"}
-                        </Text>
+                        <div className={classes.editableCell}>
+                          <Text
+                            className={
+                              item.description
+                                ? classes.description
+                                : classes.muted
+                            }
+                          >
+                            {item.description || "No notes yet"}
+                          </Text>
+                          <EditBucketListItemDescription
+                            item={item}
+                            onUpdated={() => refreshItem(item.id)}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className={classes.actions}>
                         <Flex direction="row" gap={4}>
@@ -570,22 +611,15 @@ export const BucketList: React.FC = () => {
                               disabled={changingId === item.id}
                               onClick={() => {
                                 if (item.completedOn) {
-                                  void changeCompletion(item);
+                                  void changeCompletion(
+                                    item,
+                                    undefined,
+                                    undefined
+                                  );
                                 } else {
                                   openCompletionDialog(item);
                                 }
                               }}
-                            />
-                          </Tooltip>
-                          <Tooltip
-                            content={`Edit ${item.name}`}
-                            relationship="label"
-                          >
-                            <Button
-                              appearance="subtle"
-                              className={classes.iconButton}
-                              icon={<Edit20Regular />}
-                              onClick={() => openEdit(item)}
                             />
                           </Tooltip>
                           <Tooltip
@@ -643,7 +677,9 @@ export const BucketList: React.FC = () => {
           <DialogBody>
             <DialogTitle>
               {completionItem
-                ? `Complete ${completionItem.name}`
+                ? isEditingCompletion
+                  ? `Edit completion for ${completionItem.name}`
+                  : `Complete ${completionItem.name}`
                 : "Complete bucket list item"}
             </DialogTitle>
             <DialogContent className={classes.completionContent}>
@@ -718,7 +754,7 @@ export const BucketList: React.FC = () => {
               {completionError && (
                 <MessageBar intent="error">
                   <MessageBarBody>
-                    The item could not be marked as completed.
+                    The completion details could not be saved.
                   </MessageBarBody>
                 </MessageBar>
               )}
@@ -736,8 +772,10 @@ export const BucketList: React.FC = () => {
                 onClick={() => void completeItem()}
               >
                 {changingId === completionItem?.id
-                  ? "Completing..."
-                  : "Mark completed"}
+                  ? "Saving..."
+                  : isEditingCompletion
+                    ? "Save"
+                    : "Mark completed"}
               </Button>
               <Button
                 appearance="secondary"
@@ -752,17 +790,15 @@ export const BucketList: React.FC = () => {
       </Dialog>
 
       <EditProperty
-        text={editingItem?.name ?? "bucket list item"}
-        title={
-          editingItem ? `Edit ${editingItem.name}` : "Add bucket list item"
-        }
+        text="bucket list item"
+        title="Add bucket list item"
         editIconAriaLabel="Edit bucket list item"
         isOpen={isEditorOpen}
         onDismiss={closeEditor}
         isFormValid={isFormValid}
         onUpdateClick={saveItem}
-        submitText={editingItem ? "Update" : "Create"}
-        pendingSubmitText={editingItem ? "Updating..." : "Creating..."}
+        submitText="Create"
+        pendingSubmitText="Creating..."
         saveErrorMessage="The bucket list item wasn't saved. Your details are still here, so you can try again."
         submitErrorResetKey={`${draft.name}\u0000${draft.completedOn}\u0000${draft.locationType}\u0000${draft.locationLabel}\u0000${draft.description}\u0000${draft.tripId ?? ""}`}
         contentClassName={classes.form}

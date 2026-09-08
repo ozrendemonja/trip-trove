@@ -1,5 +1,5 @@
 import { Field, Radio, RadioGroup } from "@fluentui/react-components";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import { SearchText } from "../../shared/search-text/SearchText";
 import { searchCity, searchRegion } from "../continent/infra/ManagerApi";
@@ -12,7 +12,7 @@ import type {
 
 interface EditBucketListItemLocationProps {
   item: BucketListItem;
-  onUpdated: () => void;
+  onUpdated: () => Promise<void>;
 }
 
 const getLocationType = (item: BucketListItem): BucketListLocationType =>
@@ -33,6 +33,13 @@ const EditBucketListItemLocation: React.FunctionComponent<
     item.regionId ?? undefined
   );
 
+  useEffect(() => {
+    setLocationType(getLocationType(item));
+    setLocationLabel(item.cityName ?? item.regionName ?? "");
+    setCityId(item.cityId ?? undefined);
+    setRegionId(item.regionId ?? undefined);
+  }, [item]);
+
   const isFormValid =
     locationType === "none" ||
     (locationType === "city" && cityId !== undefined) ||
@@ -50,7 +57,7 @@ const EditBucketListItemLocation: React.FunctionComponent<
           cityId: locationType === "city" ? cityId : undefined,
           regionId: locationType === "region" ? regionId : undefined
         });
-        onUpdated();
+        await onUpdated();
       }}
     >
       <Field label="Location" className={classes.locationField}>

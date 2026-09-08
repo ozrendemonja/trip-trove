@@ -7,7 +7,7 @@ import type { BucketListItem } from "./BucketList.types";
 
 interface EditBucketListItemDescriptionProps {
   item: BucketListItem;
-  onUpdated: () => void;
+  onUpdated: () => Promise<void>;
 }
 
 const EditBucketListItemDescription: React.FunctionComponent<
@@ -29,7 +29,7 @@ const EditBucketListItemDescription: React.FunctionComponent<
         await updateBucketListItemDescription(item.id, {
           description: description.trim() || undefined
         });
-        onUpdated();
+        await onUpdated();
       }}
     >
       <InputField

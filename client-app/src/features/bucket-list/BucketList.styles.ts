@@ -108,7 +108,7 @@ export const useBucketListClasses = makeStyles({
   },
   editableCell: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 28px",
+    gridTemplateColumns: "minmax(0, 1fr) 32px",
     alignItems: "center",
     columnGap: tokens.spacingHorizontalXS,
     minWidth: 0
@@ -118,11 +118,26 @@ export const useBucketListClasses = makeStyles({
     color: tokens.colorNeutralForeground1
   },
   completedName: {
+    fontWeight: tokens.fontWeightSemibold,
     color: tokens.colorNeutralForeground3,
     textDecorationLine: "line-through"
   },
+  locationDetails: {
+    display: "grid",
+    gridTemplateColumns: "16px minmax(0, 1fr)",
+    alignItems: "center",
+    columnGap: tokens.spacingHorizontalSNudge,
+    minWidth: 0
+  },
+  locationIcon: {
+    color: tokens.colorNeutralForeground3
+  },
   location: {
     color: tokens.colorNeutralForeground2
+  },
+  locationType: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase100
   },
   description: {
     display: "-webkit-box",
@@ -146,6 +161,14 @@ export const useBucketListClasses = makeStyles({
     minWidth: "28px",
     height: "28px",
     minHeight: "28px",
+    ...shorthands.padding(0)
+  },
+  propertyEditButton: {
+    width: "32px",
+    minWidth: "32px",
+    height: "32px",
+    minHeight: "32px",
+    color: tokens.colorBrandForeground1,
     ...shorthands.padding(0)
   },
   emptyState: {

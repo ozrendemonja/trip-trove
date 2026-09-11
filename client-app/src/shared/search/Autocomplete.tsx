@@ -98,7 +98,8 @@ export const Autocomplete = <TSuggestion extends AutocompleteSuggestion>(
   ]);
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLElement> = (event) => {
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" && snapshot.suggestions.length > 0) {
+      event.preventDefault();
       focusRegionRef.current?.focus();
     }
   };

@@ -192,6 +192,49 @@ export const SearchShowsSubstringMatches: Story = {
   }
 };
 
+export const SearchSupportsKeyboardNavigation: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    await waitForCitiesToLoad(canvasElement);
+
+    server.db.cities.update(
+      { cityName: "Kaunas" },
+      { cityName: "Vilnius North" }
+    );
+    await searchFor(canvasElement, user, "Viln");
+
+    const canvas = within(canvasElement);
+    const firstSuggestion = await canvas.findByRole("menuitem", {
+      name: "Vilnius North, Aukštaitija, Lithuania"
+    });
+    const secondSuggestion = await canvas.findByRole("menuitem", {
+      name: "Vilnius , Dzūkija, Lithuania"
+    });
+
+    await user.keyboard("{ArrowDown}");
+    expect(firstSuggestion).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(secondSuggestion).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(firstSuggestion).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(firstSuggestion).not.toBeInTheDocument();
+      expect(secondSuggestion).not.toBeInTheDocument();
+      expect(canvas.getByRole("searchbox")).toHaveValue("");
+      expect(
+        canvas.queryByRole("button", { name: "Change city name for Vilnius" })
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      canvas.getByRole("button", {
+        name: "Change city name for Vilnius North"
+      })
+    ).toBeInTheDocument();
+  }
+};
+
 export const ClearsSearchInputAndSuggestions: Story = {
   play: async ({ canvasElement }) => {
     const user = setupUser();

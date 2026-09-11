@@ -1,3 +1,4 @@
+import { useArrowNavigationGroup } from "@fluentui/react-components";
 import React from "react";
 
 export interface FocusRegionHandle {
@@ -9,6 +10,9 @@ export const FocusRegion = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(function FocusRegion({ children, ...props }, focusRegionRef) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const arrowNavigationAttributes = useArrowNavigationGroup({
+    axis: "vertical"
+  });
 
   React.useImperativeHandle(focusRegionRef, () => ({
     focus: () =>
@@ -18,7 +22,7 @@ export const FocusRegion = React.forwardRef<
   }));
 
   return (
-    <div {...props} ref={containerRef}>
+    <div {...arrowNavigationAttributes} {...props} ref={containerRef}>
       {children}
     </div>
   );

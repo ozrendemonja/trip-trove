@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogBody,
@@ -145,6 +146,7 @@ export const BucketList: React.FC = () => {
   const [matchingTrips, setMatchingTrips] = useState<Trip[]>([]);
   const [completionDate, setCompletionDate] = useState("");
   const [selectedTripId, setSelectedTripId] = useState<number>();
+  const [wouldRepeat, setWouldRepeat] = useState(false);
   const [isTripsLoading, setIsTripsLoading] = useState(false);
   const [tripsLoadError, setTripsLoadError] = useState(false);
   const [completionError, setCompletionError] = useState(false);
@@ -243,6 +245,7 @@ export const BucketList: React.FC = () => {
     setMatchingTrips([]);
     setCompletionDate(completedOn);
     setSelectedTripId(item.tripId ?? undefined);
+    setWouldRepeat(item.wouldRepeat ?? false);
     setIsTripsLoading(false);
     setTripsLoadError(false);
     setCompletionError(false);
@@ -257,6 +260,7 @@ export const BucketList: React.FC = () => {
     setMatchingTrips([]);
     setCompletionDate("");
     setSelectedTripId(undefined);
+    setWouldRepeat(false);
     setIsTripsLoading(false);
     setTripsLoadError(false);
     setCompletionError(false);
@@ -265,13 +269,15 @@ export const BucketList: React.FC = () => {
   const changeCompletion = async (
     item: BucketListItem,
     completedOn?: string,
-    tripId?: number
+    tripId?: number,
+    wouldRepeat: boolean | null = null
   ): Promise<boolean> => {
     setChangingId(item.id);
     try {
       await updateBucketListItemCompletion(item.id, {
         completedOn,
-        tripId
+        tripId,
+        wouldRepeat
       });
       await refreshItem(item.id);
       return true;
@@ -291,7 +297,12 @@ export const BucketList: React.FC = () => {
     if (
       completionDate &&
       tripId !== undefined &&
-      (await changeCompletion(completionItem, completionDate, tripId))
+      (await changeCompletion(
+        completionItem,
+        completionDate,
+        tripId,
+        wouldRepeat
+      ))
     ) {
       closeCompletionDialog();
     } else {
@@ -556,6 +567,15 @@ export const BucketList: React.FC = () => {
                                 {item.tripName}
                               </Text>
                             )}
+                            {item.completedOn && (
+                              <Text size={200}>
+                                {item.wouldRepeat === true
+                                  ? "Would do again"
+                                  : item.wouldRepeat === false
+                                    ? "Would not do again"
+                                    : "Repeat: not answered"}
+                              </Text>
+                            )}
                           </Flex>
                           <Tooltip
                             content={`Change completion details for ${item.name}`}
@@ -704,6 +724,15 @@ export const BucketList: React.FC = () => {
                     tripLookupId.current += 1;
                     setIsTripsLoading(false);
                   }
+                }}
+              />
+              <Checkbox
+                label="Would do again"
+                checked={wouldRepeat}
+                disabled={changingId === completionItem?.id}
+                onChange={(_event, data) => {
+                  setWouldRepeat(data.checked === true);
+                  setCompletionError(false);
                 }}
               />
               {isTripsLoading && (

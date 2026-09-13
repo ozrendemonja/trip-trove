@@ -14,6 +14,7 @@ public record GetBucketListItemResponse(
         String name,
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate completedOn,
+        Boolean wouldRepeat,
         Integer cityId,
         String cityName,
         Integer regionId,
@@ -36,6 +37,7 @@ public record GetBucketListItemResponse(
                 item.getId(),
                 item.getName(),
                 item.getCompletedOn(),
+                item.getWouldRepeat(),
                 city != null ? city.getId() : null,
                 city != null ? city.getName() : null,
                 region != null ? region.getId() : null,

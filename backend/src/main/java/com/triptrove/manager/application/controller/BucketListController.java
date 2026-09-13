@@ -154,7 +154,8 @@ public class BucketListController {
     public void updateItemCompletion(
             @PathVariable Long id,
             @RequestBody @Valid UpdateBucketListItemCompletionRequest request) {
-        bucketListService.updateItemCompletion(id, request.completedOn(), request.tripId());
+        bucketListService.updateItemCompletion(
+                                                                id, request.completedOn(), request.tripId(), request.wouldRepeat());
     }
 
     @DeleteMapping("/{id}")

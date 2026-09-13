@@ -77,6 +77,7 @@ export default function makeServer(options?: {
       bucketListItem: Model.extend({
         name: "",
         completedOn: null as string | null,
+        wouldRepeat: null as boolean | null,
         cityId: null as number | null,
         cityName: null as string | null,
         regionId: null as number | null,
@@ -178,6 +179,7 @@ export default function makeServer(options?: {
         id: 1,
         name: "Paragliding",
         completedOn: null,
+        wouldRepeat: null,
         cityId: null,
         cityName: null,
         regionId: 3,
@@ -189,6 +191,7 @@ export default function makeServer(options?: {
         id: 2,
         name: "Zorbing",
         completedOn: "2026-06-14",
+        wouldRepeat: null,
         cityId: 2,
         cityName: "Kaunas",
         regionId: null,
@@ -414,6 +417,7 @@ export default function makeServer(options?: {
             id,
             ...body,
             completedOn: body.completedOn ?? null,
+            wouldRepeat: null,
             cityId: body.cityId ?? null,
             cityName: city?.cityName ?? null,
             regionId: body.regionId ?? null,
@@ -531,6 +535,17 @@ export default function makeServer(options?: {
           const body = JSON.parse(
             request.requestBody
           ) as UpdateBucketListItemCompletion;
+          if (body.completedOn && typeof body.wouldRepeat !== "boolean") {
+            return new MirageResponse(
+              400,
+              {},
+              {
+                errorCode: "BAD_REQUEST",
+                errorMessage:
+                  "A completed bucket list item must have a repeat preference"
+              }
+            );
+          }
           const trip =
             body.tripId !== undefined
               ? schema.db.trips.findBy(
@@ -540,6 +555,7 @@ export default function makeServer(options?: {
               : undefined;
           schema.db.bucketListItems.update(item.id, {
             completedOn: body.completedOn ?? null,
+            wouldRepeat: body.completedOn ? (body.wouldRepeat ?? null) : null,
             tripId: body.tripId ?? null,
             tripName: trip?.tripName ?? null,
             changedOn: new Date().toISOString()

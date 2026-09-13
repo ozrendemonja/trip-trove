@@ -63,7 +63,8 @@ const findDialog = async (
 };
 
 const completeParaglidingToday = async (
-  canvasElement: HTMLElement
+  canvasElement: HTMLElement,
+  wouldRepeat = false
 ): Promise<{
   canvas: ReturnType<typeof within>;
   user: ReturnType<typeof userEvent.setup>;
@@ -112,6 +113,13 @@ const completeParaglidingToday = async (
     { timeout: 3000 }
   );
   await expect(await dialog.findByText("Italy")).toBeVisible();
+  const repeatCheckbox = dialog.getByRole("checkbox", {
+    name: "Would do again"
+  });
+  await expect(repeatCheckbox).not.toBeChecked();
+  if (wouldRepeat) {
+    await user.click(repeatCheckbox);
+  }
   await user.click(dialog.getByText("Mark completed", { selector: "button" }));
 
   await waitFor(() =>
@@ -148,6 +156,9 @@ export const Primary: Story = {
     await expect(cells[0]).toHaveTextContent(/^Paragliding$/);
     await expect(within(cells[1]).getByText("Dzūkija")).toBeVisible();
     await expect(within(cells[1]).getByText("Region")).toBeVisible();
+    await expect(
+      within(paraglidingRow).queryByText(/Would.*do again|Repeat: not answered/)
+    ).not.toBeInTheDocument();
     await expect(canvas.getByRole("tab", { name: "To do (1)" })).toBeVisible();
     await expect(
       canvas.getByRole("tab", { name: "Completed (1)" })
@@ -171,6 +182,7 @@ export const CanCompleteItemOnTripDate: Story = {
       expect(row.getByText("Completed")).toBeVisible();
       expect(row.getByText(completedDate)).toBeVisible();
       expect(row.getByText("Italy")).toBeVisible();
+      expect(row.getByText("Would not do again")).toBeVisible();
       expect(
         row.getByRole("button", { name: "Move back to bucket list" })
       ).toBeEnabled();
@@ -186,13 +198,42 @@ export const CanCompleteItemOnTripDate: Story = {
     expect(savedItem?.completedOn).toBe(todayIso);
     expect(savedItem?.tripId).toBe(1);
     expect(savedItem?.tripName).toBe("Italy");
+    expect(savedItem?.wouldRepeat).toBe(false);
+  }
+};
+
+export const CanCompleteItemAndChooseToRepeat: Story = {
+  play: async ({ canvasElement }) => {
+    const { paraglidingRow } = await completeParaglidingToday(
+      canvasElement,
+      true
+    );
+
+    await expect(
+      within(paraglidingRow()).getByText("Would do again")
+    ).toBeVisible();
+  }
+};
+
+export const CanCompleteItemAndChooseNotToRepeat: Story = {
+  play: async ({ canvasElement }) => {
+    const { paraglidingRow } = await completeParaglidingToday(
+      canvasElement,
+      false
+    );
+
+    await expect(
+      within(paraglidingRow()).getByText("Would not do again")
+    ).toBeVisible();
   }
 };
 
 export const CanCompleteItemOnTripDateAndResetIt: Story = {
   play: async ({ canvasElement }) => {
-    const { user, paraglidingRow } =
-      await completeParaglidingToday(canvasElement);
+    const { user, paraglidingRow } = await completeParaglidingToday(
+      canvasElement,
+      true
+    );
     await waitFor(() => {
       expect(within(paraglidingRow()).getByText("Italy")).toBeVisible();
     });
@@ -210,6 +251,11 @@ export const CanCompleteItemOnTripDateAndResetIt: Story = {
     await expect(
       within(paraglidingRow()).getByText("Not completed")
     ).toBeVisible();
+    await expect(
+      within(paraglidingRow()).queryByText(
+        /Would.*do again|Repeat: not answered/
+      )
+    ).not.toBeInTheDocument();
 
     const resetItem = server?.db.bucketListItems.findBy(
       (item: BucketListItem) => Number(item.id) === 1
@@ -217,13 +263,16 @@ export const CanCompleteItemOnTripDateAndResetIt: Story = {
     expect(resetItem?.completedOn).toBeNull();
     expect(resetItem?.tripId).toBeNull();
     expect(resetItem?.tripName).toBeNull();
+    expect(resetItem?.wouldRepeat).toBeNull();
   }
 };
 
 export const CanEditCompletionDetails: Story = {
   play: async ({ canvasElement }) => {
-    const { user, paraglidingRow, todayIso } =
-      await completeParaglidingToday(canvasElement);
+    const { user, paraglidingRow, todayIso } = await completeParaglidingToday(
+      canvasElement,
+      true
+    );
     const overlay = within(canvasElement.ownerDocument.body);
 
     await user.click(
@@ -243,6 +292,9 @@ export const CanEditCompletionDetails: Story = {
       { timeout: 3000 }
     );
     await expect(dialog.getByText("Italy")).toBeVisible();
+    await expect(
+      dialog.getByRole("checkbox", { name: "Would do again" })
+    ).toBeChecked();
     await user.click(dialog.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
@@ -260,6 +312,122 @@ export const CanEditCompletionDetails: Story = {
     );
     expect(savedItem?.completedOn).toBe(todayIso);
     expect(savedItem?.tripId).toBe(1);
+    expect(savedItem?.wouldRepeat).toBe(true);
+  }
+};
+
+export const CanCancelChangingRepeatPreference: Story = {
+  play: async ({ canvasElement }) => {
+    const { user, paraglidingRow } = await completeParaglidingToday(
+      canvasElement,
+      true
+    );
+    const overlay = within(canvasElement.ownerDocument.body);
+
+    await user.click(
+      within(paraglidingRow()).getByRole("button", {
+        name: "Change completion details for Paragliding"
+      })
+    );
+    const dialog = within(
+      await findDialog(canvasElement, "Edit completion for Paragliding")
+    );
+    const repeatCheckbox = dialog.getByRole("checkbox", {
+      name: "Would do again"
+    });
+    await expect(repeatCheckbox).toBeChecked();
+    await user.click(repeatCheckbox);
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(
+        overlay.queryByRole("heading", {
+          name: "Edit completion for Paragliding"
+        })
+      ).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await expect(
+      within(paraglidingRow()).getByText("Would do again")
+    ).toBeVisible();
+  }
+};
+
+export const CanChangeRepeatPreferenceToNo: Story = {
+  play: async ({ canvasElement }) => {
+    const { user, paraglidingRow } = await completeParaglidingToday(
+      canvasElement,
+      true
+    );
+    const overlay = within(canvasElement.ownerDocument.body);
+
+    await user.click(
+      within(paraglidingRow()).getByRole("button", {
+        name: "Change completion details for Paragliding"
+      })
+    );
+    const dialog = within(
+      await findDialog(canvasElement, "Edit completion for Paragliding")
+    );
+    const repeatCheckbox = dialog.getByRole("checkbox", {
+      name: "Would do again"
+    });
+    await expect(repeatCheckbox).toBeChecked();
+    await user.click(repeatCheckbox);
+    await waitFor(() =>
+      expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled()
+    );
+    await user.click(dialog.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(
+        overlay.queryByRole("heading", {
+          name: "Edit completion for Paragliding"
+        })
+      ).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await expect(
+      within(paraglidingRow()).getByText("Would not do again")
+    ).toBeVisible();
+  }
+};
+
+export const CanChangeRepeatPreferenceToYes: Story = {
+  play: async ({ canvasElement }) => {
+    const { user, paraglidingRow } =
+      await completeParaglidingToday(canvasElement);
+    const overlay = within(canvasElement.ownerDocument.body);
+
+    await user.click(
+      within(paraglidingRow()).getByRole("button", {
+        name: "Change completion details for Paragliding"
+      })
+    );
+    const dialog = within(
+      await findDialog(canvasElement, "Edit completion for Paragliding")
+    );
+    const repeatCheckbox = dialog.getByRole("checkbox", {
+      name: "Would do again"
+    });
+    await expect(repeatCheckbox).not.toBeChecked();
+    await user.click(repeatCheckbox);
+    await waitFor(() =>
+      expect(dialog.getByRole("button", { name: "Save" })).toBeEnabled()
+    );
+    await user.click(dialog.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(
+        overlay.queryByRole("heading", {
+          name: "Edit completion for Paragliding"
+        })
+      ).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await expect(
+      within(paraglidingRow()).getByText("Would do again")
+    ).toBeVisible();
   }
 };
 

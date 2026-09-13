@@ -20,7 +20,7 @@ public interface BucketListService {
 
     void updateItemDescription(long id, String description);
 
-    void updateItemCompletion(long id, LocalDate completedOn, Long tripId);
+    void updateItemCompletion(long id, LocalDate completedOn, Long tripId, Boolean wouldRepeat);
 
     void deleteItem(long id);
 }

@@ -2,6 +2,7 @@ export interface BucketListItem {
   id: number;
   name: string;
   completedOn?: string | null;
+  wouldRepeat?: boolean | null;
   cityId?: number | null;
   cityName?: string | null;
   regionId?: number | null;
@@ -39,6 +40,7 @@ export interface UpdateBucketListItemDescription {
 export interface UpdateBucketListItemCompletion {
   completedOn?: string;
   tripId?: number;
+  wouldRepeat?: boolean | null;
 }
 
 export type BucketListFilter = "all" | "todo" | "completed";

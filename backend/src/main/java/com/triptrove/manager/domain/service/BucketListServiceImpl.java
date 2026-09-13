@@ -126,9 +126,9 @@ public class BucketListServiceImpl implements BucketListService {
     }
 
     @Override
-    public void updateItemCompletion(long id, LocalDate completedOn, Long tripId) {
-        log.atInfo().log("Updating bucket list item completion: id={}, completedOn={}, tripId={}",
-                id, completedOn, tripId);
+    public void updateItemCompletion(long id, LocalDate completedOn, Long tripId, Boolean wouldRepeat) {
+        log.atInfo().log("Updating bucket list item completion: id={}, completedOn={}, tripId={}, wouldRepeat={}",
+                id, completedOn, tripId, wouldRepeat);
         validateTripAndCompletionDateAreProvidedTogether(completedOn, tripId);
 
         var trip = findTrip(tripId);
@@ -137,6 +137,7 @@ public class BucketListServiceImpl implements BucketListService {
         var item = findItem(id);
         item.setCompletedOn(completedOn);
         item.setTrip(trip);
+        item.setWouldRepeat(completedOn != null ? wouldRepeat : null);
         bucketListItemRepo.save(item);
         log.atInfo().log("Bucket list item completion updated: id={}", id);
     }

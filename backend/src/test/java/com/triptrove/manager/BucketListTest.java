@@ -1,6 +1,7 @@
 package com.triptrove.manager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.triptrove.manager.application.dto.CreateBucketListItemRequest;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -89,6 +92,7 @@ class BucketListTest extends AbstractIntegrationTest {
                     .hasValueSatisfying(
                             region -> assertThat(region.getId()).isEqualTo(request.regionId()));
             assertThat(savedItem.getDescription()).hasValue(request.description());
+            assertThat(savedItem.getWouldRepeat()).isNull();
         }
 
         @Test
@@ -483,50 +487,134 @@ class BucketListTest extends AbstractIntegrationTest {
 
     @Nested
     class UpdateItemCompletionTests {
-        @Test
-        void shouldCompleteBucketListItemOnFirstTripDay() throws Exception {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldCompleteBucketListItemOnFirstTripDay(Boolean wouldRepeat) throws Exception {
             var trip = tripRepo.findAll().getFirst();
-            var request = new UpdateBucketListItemCompletionRequest(trip.getFrom(), trip.getId());
+            var request =
+                new UpdateBucketListItemCompletionRequest(
+                    trip.getFrom(), trip.getId(), wouldRepeat);
 
             updateCompletion(FIRST_BUCKET_LIST_ITEM_ID, request);
 
             var updatedItem = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
             assertThat(updatedItem.getCompletedOn()).isEqualTo(trip.getFrom());
-            assertThat(updatedItem.getTrip()).hasValue(trip);
+            assertThat(updatedItem.getTrip())
+                .hasValueSatisfying(savedTrip -> assertThat(savedTrip.getId()).isEqualTo(trip.getId()));
+            assertThat(updatedItem.getWouldRepeat()).isEqualTo(wouldRepeat);
         }
 
         @Test
         void shouldCompleteBucketListItemOnLastTripDay() throws Exception {
             var trip = tripRepo.findAll().getFirst();
-            var request = new UpdateBucketListItemCompletionRequest(trip.getTo(), trip.getId());
+            var request = mapper.createObjectNode()
+                .put("completedOn", trip.getTo().toString())
+                .put("tripId", trip.getId())
+                .put("wouldRepeat", false);
 
-            updateCompletion(FIRST_BUCKET_LIST_ITEM_ID, request);
+            mockMvc.perform(
+                    put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
+                        .header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
 
             var updatedItem = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
             assertThat(updatedItem.getCompletedOn()).isEqualTo(trip.getTo());
-            assertThat(updatedItem.getTrip()).hasValue(trip);
+            assertThat(updatedItem.getTrip())
+                .hasValueSatisfying(savedTrip -> assertThat(savedTrip.getId()).isEqualTo(trip.getId()));
+            assertThat(updatedItem.getWouldRepeat()).isFalse();
         }
 
-        @Test
-        void shouldClearBucketListItemCompletion() throws Exception {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldUpdateRepeatPreferenceForCompletedItem(Boolean wouldRepeat) throws Exception {
             var trip = tripRepo.findAll().getFirst();
             var item = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
             item.setCompletedOn(trip.getFrom());
             item.setTrip(trip);
+            item.setWouldRepeat(!wouldRepeat);
             bucketListItemRepo.saveAndFlush(item);
-            var request = new UpdateBucketListItemCompletionRequest(null, null);
+
+            updateCompletion(
+                FIRST_BUCKET_LIST_ITEM_ID,
+                new UpdateBucketListItemCompletionRequest(
+                    trip.getFrom(), trip.getId(), wouldRepeat));
+
+            var updatedItem = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
+            assertThat(updatedItem.getWouldRepeat()).isEqualTo(wouldRepeat);
+            assertThat(updatedItem.getCompletedOn()).isEqualTo(trip.getFrom());
+            assertThat(updatedItem.getTrip())
+                .hasValueSatisfying(savedTrip -> assertThat(savedTrip.getId()).isEqualTo(trip.getId()));
+        }
+
+        @Test
+        void shouldRejectCompletionWithNullRepeatPreference() throws Exception {
+            var trip = tripRepo.findAll().getFirst();
+            var request = new UpdateBucketListItemCompletionRequest(
+                    trip.getFrom(), trip.getId(), null);
+
+            mockMvc.perform(
+                    put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
+                        .header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"));
+        }
+
+            @Test
+            void shouldRejectCompletionWithoutRepeatPreference() throws Exception {
+                var trip = tripRepo.findAll().getFirst();
+                var request = new UpdateBucketListItemCompletionRequest(
+                    trip.getFrom(), trip.getId(), null);
+                var requestJson = mapper.copy()
+                    .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                    .writeValueAsString(request);
+
+                mockMvc.perform(
+                    put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
+                    .header("x-api-version", "1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"));
+
+                var unchangedItem = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
+                assertThat(unchangedItem.getCompletedOn()).isNull();
+                assertThat(unchangedItem.getTrip()).isEmpty();
+                assertThat(unchangedItem.getWouldRepeat()).isNull();
+            }
+
+        @ParameterizedTest
+        @NullSource
+        @ValueSource(booleans = {true, false})
+        void shouldClearBucketListItemCompletion(Boolean wouldRepeat) throws Exception {
+            var trip = tripRepo.findAll().getFirst();
+            var item = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
+            item.setCompletedOn(trip.getFrom());
+            item.setTrip(trip);
+            item.setWouldRepeat(true);
+            bucketListItemRepo.saveAndFlush(item);
+            var request = new UpdateBucketListItemCompletionRequest(null, null, wouldRepeat);
 
             updateCompletion(FIRST_BUCKET_LIST_ITEM_ID, request);
 
             var updatedItem = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
             assertThat(updatedItem.getCompletedOn()).isNull();
             assertThat(updatedItem.getTrip()).isEmpty();
+            assertThat(updatedItem.getWouldRepeat()).isNull();
+            mockMvc.perform(
+                    get("/bucket-list/items/{id}", FIRST_BUCKET_LIST_ITEM_ID)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.wouldRepeat").value(nullValue()));
         }
 
         @Test
         void shouldRejectCompletionDateWithoutTrip() throws Exception {
             var trip = tripRepo.findAll().getFirst();
-            var request = new UpdateBucketListItemCompletionRequest(trip.getFrom(), null);
+            var request = new UpdateBucketListItemCompletionRequest(trip.getFrom(), null, false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
@@ -540,7 +628,7 @@ class BucketListTest extends AbstractIntegrationTest {
         @Test
         void shouldRejectTripWithoutCompletionDate() throws Exception {
             var trip = tripRepo.findAll().getFirst();
-            var request = new UpdateBucketListItemCompletionRequest(null, trip.getId());
+            var request = new UpdateBucketListItemCompletionRequest(null, trip.getId(), false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
@@ -556,7 +644,7 @@ class BucketListTest extends AbstractIntegrationTest {
             var trip = tripRepo.findAll().getFirst();
             var request =
                     new UpdateBucketListItemCompletionRequest(
-                            trip.getFrom().minusDays(1), trip.getId());
+                        trip.getFrom().minusDays(1), trip.getId(), false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
@@ -572,7 +660,7 @@ class BucketListTest extends AbstractIntegrationTest {
             var trip = tripRepo.findAll().getFirst();
             var request =
                     new UpdateBucketListItemCompletionRequest(
-                            trip.getTo().plusDays(1), trip.getId());
+                        trip.getTo().plusDays(1), trip.getId(), false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
@@ -587,7 +675,7 @@ class BucketListTest extends AbstractIntegrationTest {
         void shouldReturnNotFoundForUnknownTrip() throws Exception {
             var request =
                     new UpdateBucketListItemCompletionRequest(
-                            java.time.LocalDate.now(), UNKNOWN_ID);
+                        java.time.LocalDate.now(), UNKNOWN_ID, false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", FIRST_BUCKET_LIST_ITEM_ID)
@@ -601,7 +689,7 @@ class BucketListTest extends AbstractIntegrationTest {
         @Test
         void shouldReturnNotFoundWhenUpdatingCompletionOfUnknownItem() throws Exception {
             var trip = tripRepo.findAll().getFirst();
-            var request = new UpdateBucketListItemCompletionRequest(trip.getFrom(), trip.getId());
+            var request = new UpdateBucketListItemCompletionRequest(trip.getFrom(), trip.getId(), false);
 
             mockMvc.perform(
                             put("/bucket-list/items/{id}/completion", UNKNOWN_ID)
@@ -647,6 +735,25 @@ class BucketListTest extends AbstractIntegrationTest {
 
     @Nested
     class ListItemsTests {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldReturnRepeatPreferenceForCompletedItem(Boolean wouldRepeat) throws Exception {
+            var trip = tripRepo.findAll().getFirst();
+            var item = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
+            item.setCompletedOn(trip.getFrom());
+            item.setTrip(trip);
+            item.setWouldRepeat(wouldRepeat);
+            bucketListItemRepo.saveAndFlush(item);
+
+            var items = getItems(null, null, null);
+
+            assertThat(items)
+                    .filteredOn(response -> response.id() == FIRST_BUCKET_LIST_ITEM_ID)
+                    .singleElement()
+                    .extracting(GetBucketListItemResponse::wouldRepeat)
+                    .isEqualTo(wouldRepeat);
+        }
+
         @Test
         void shouldReturnItemsInPagesInDescendingOrderByDefault() throws Exception {
             var firstPage = getItems(null, null, null);
@@ -727,6 +834,7 @@ class BucketListTest extends AbstractIntegrationTest {
             assertThat(response.id()).isEqualTo(item.getId());
             assertThat(response.name()).isEqualTo(item.getName());
             assertThat(response.completedOn()).isNull();
+            assertThat(response.wouldRepeat()).isNull();
             assertThat(response.cityId()).isNull();
             assertThat(response.cityName()).isNull();
             assertThat(response.regionId()).isNull();
@@ -752,8 +860,10 @@ class BucketListTest extends AbstractIntegrationTest {
             assertThat(response.regionName()).isEqualTo(city.getRegion().getName());
         }
 
-        @Test
-        void shouldReturnRegionDescriptionAndTripCompletion() throws Exception {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldReturnRegionDescriptionTripCompletionAndRepeatPreference(Boolean wouldRepeat)
+                throws Exception {
             var region = regionRepo.findAll().getFirst();
             var trip = tripRepo.findAll().getFirst();
             var item = bucketListItemRepo.findById(FIRST_BUCKET_LIST_ITEM_ID).orElseThrow();
@@ -761,6 +871,7 @@ class BucketListTest extends AbstractIntegrationTest {
             item.setDescription("Fly over the mountains");
             item.setCompletedOn(trip.getFrom());
             item.setTrip(trip);
+            item.setWouldRepeat(wouldRepeat);
             bucketListItemRepo.saveAndFlush(item);
 
             var response = getItem(FIRST_BUCKET_LIST_ITEM_ID);
@@ -769,6 +880,7 @@ class BucketListTest extends AbstractIntegrationTest {
             assertThat(response.regionName()).isEqualTo(region.getName());
             assertThat(response.description()).isEqualTo(item.getDescription().orElseThrow());
             assertThat(response.completedOn()).isEqualTo(trip.getFrom());
+            assertThat(response.wouldRepeat()).isEqualTo(wouldRepeat);
             assertThat(response.tripId()).isEqualTo(trip.getId());
             assertThat(response.tripName()).isEqualTo(trip.getName());
             assertThat(response.changedOn()).isEqualTo(item.getUpdatedOn().orElseThrow());

@@ -43,6 +43,9 @@ public class BucketListItem {
     @Column(name = "completed_on")
     private LocalDate completedOn;
 
+    @Column(name = "would_repeat")
+    private Boolean wouldRepeat;
+
     @ManyToOne
     @JoinColumn(name = "city_id")
     private City city;

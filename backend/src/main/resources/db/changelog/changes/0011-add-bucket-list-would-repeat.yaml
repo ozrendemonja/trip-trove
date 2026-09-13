@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0011-add-bucket-list-would-repeat
+      author: trip-trove
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - columnExists:
+                tableName: bucket_list_item
+                columnName: would_repeat
+      changes:
+        - addColumn:
+            tableName: bucket_list_item
+            columns:
+              - column:
+                  name: would_repeat
+                  type: BOOLEAN
+                  constraints:
+                    nullable: true
+        - update:
+            tableName: bucket_list_item
+            columns:
+              - column:
+                  name: would_repeat
+                  valueBoolean: false
+            where: completed_on IS NOT NULL

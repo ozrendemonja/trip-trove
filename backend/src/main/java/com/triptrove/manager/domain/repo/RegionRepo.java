@@ -51,23 +51,32 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
             """)
     List<Region> findNewestBefore(ScrollPosition afterRegion, Limit limit);
 
-    @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(CONCAT(r.name, ', ', c.name), r.id)
-            FROM Region r
-            INNER JOIN r.country c
-            WHERE cast(function('normalize_search_text', r.name) as string) LIKE concat('%', :query,'%')
-            ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
-            """)
-    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Limit limit);
+    default List<Suggestion> searchRegionSuggestions(String query, Limit limit) {
+        return searchRegionSuggestions(query, null, limit);
+    }
+
+    default List<Suggestion> searchRegionSuggestions(String query, Integer countryId, Limit limit) {
+        String searchText = query.replace(',', ' ').strip();
+        if (searchText.isEmpty()) {
+            return List.of();
+        }
+        String[] terms = searchText.replace("!", "!!").replace("%", "!%").replace("_", "!_").split("\\s+");
+        return findByRegionAndCountryNames("%" + terms[0] + "%", "%" + String.join("%", terms) + "%", countryId, limit);
+    }
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.Suggestion(r.name, r.id)
+            SELECT new com.triptrove.manager.domain.model.Suggestion(
+                    CASE WHEN :countryId IS NULL THEN CONCAT(r.name, ', ', c.name) ELSE r.name END, r.id)
             FROM Region r
-            WHERE cast(function('normalize_search_text', r.name) as string) LIKE concat('%', :query,'%')
-            AND r.country.id = :countryId
+            INNER JOIN r.country c
+            WHERE (:countryId IS NULL OR c.id = :countryId)
+            AND cast(function('normalize_search_text', r.name) as string) LIKE :regionQuery ESCAPE '!'
+            AND cast(function('normalize_search_text', CONCAT(r.name, ' ', c.name)) as string) LIKE :query ESCAPE '!'
+            AND (cast(function('normalize_search_text', r.name) as string) LIKE :query ESCAPE '!'
+                    OR cast(function('normalize_search_text', c.name) as string) NOT LIKE :query ESCAPE '!')
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC
             """)
-    List<Suggestion> findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(String query, Integer countryId, Limit limit);
+    List<Suggestion> findByRegionAndCountryNames(String regionQuery, String query, Integer countryId, Limit limit);
 
     @Query("SELECT COUNT(c)>0 FROM City c INNER JOIN c.region r WHERE r.id = :id")
     boolean hasCitiesUnder(Integer id);

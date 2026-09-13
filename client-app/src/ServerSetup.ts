@@ -1061,9 +1061,32 @@ export default function makeServer(options?: {
 
           return { prefix: query, suggestions: result };
         } else if (inElement == "REGION") {
+          const terms = String(query ?? "")
+            .toLowerCase()
+            .split(/[\s,]+/)
+            .filter(Boolean);
+          const matchesTerms = (searchText: string): boolean => {
+            let position = 0;
+            return terms.every((term) => {
+              const matchPosition = searchText.indexOf(term, position);
+              position = matchPosition + term.length;
+              return matchPosition !== -1;
+            });
+          };
           const result = schema.db.regions
             .sort()
-            .filter((region) => region.regionName.includes(query))
+            .filter((region) => {
+              const regionName = region.regionName.toLowerCase();
+              if (!terms.length || !regionName.includes(terms[0])) {
+                return false;
+              }
+              const countryName = region.countryName.toLowerCase();
+              return (
+                matchesTerms(regionName) ||
+                (!matchesTerms(countryName) &&
+                  matchesTerms(`${regionName} ${countryName}`))
+              );
+            })
             .filter(
               (region) =>
                 underCountry == undefined ||

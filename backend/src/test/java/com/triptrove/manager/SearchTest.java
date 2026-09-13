@@ -242,6 +242,158 @@ public class SearchTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"South Italy", "south ita", "SOUTH ITALY", "South, Italy"})
+    void shouldFindRegionUsingCountrySuffixBeforeApplyingSuggestionLimit(String query) throws Exception {
+        Region target = createRegionInCountry("South", "Italy");
+
+        Country otherCountry = countryRepo.findByName("Test country 0").getFirst();
+        for (int index = 0; index < 12; index++) {
+            Region otherRegion = new Region();
+            otherRegion.setName("South " + index);
+            otherRegion.setCountry(otherCountry);
+            regionRepo.saveAndFlush(otherRegion);
+        }
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", query)
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.suggestions()).containsExactly(
+                new SuggestionDto("South, Italy", target.getId(), StrategyApiType.RANK));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideMatchingRegionAndCountryQueries")
+    void shouldSuggestRegionsMatchingRegionAndCountryTerms(String regionName, String countryName, String query) throws Exception {
+        Region target = createRegionInCountry(regionName, countryName);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", query)
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(query);
+        assertThat(response.suggestions()).containsExactly(new SuggestionDto(
+                regionName + ", " + countryName, target.getId(), StrategyApiType.RANK));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideMatchingRegionAndCountryQueries")
+    void shouldSuggestRegionsMatchingRegionAndCountryTermsWithinCountry(String regionName, String countryName, String query) throws Exception {
+        Region target = createRegionInCountry(regionName, countryName);
+
+        var jsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", query)
+                        .param("i", "REGION")
+                        .param("cid", target.getCountry().getId().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
+        assertThat(response.prefix()).isEqualTo(query);
+        assertThat(response.suggestions()).containsExactly(new SuggestionDto(
+                regionName, target.getId(), StrategyApiType.RANK));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideNonMatchingRegionAndCountryQueries")
+    void shouldReturnNoRegionSuggestionsForUnmatchedTerms(String regionName, String countryName, String query) throws Exception {
+        Region target = createRegionInCountry(regionName, countryName);
+
+        var unscopedJsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", query)
+                        .param("i", "REGION")
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse unscopedResponse = mapper.readValue(unscopedJsonResponse, GetSearchResponse.class);
+        assertThat(unscopedResponse.prefix()).isEqualTo(query);
+        assertThat(unscopedResponse.suggestions()).isEmpty();
+
+        var scopedJsonResponse = mockMvc.perform(get("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .param("q", query)
+                        .param("i", "REGION")
+                        .param("cid", target.getCountry().getId().toString())
+                        .header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        GetSearchResponse scopedResponse = mapper.readValue(scopedJsonResponse, GetSearchResponse.class);
+        assertThat(scopedResponse.prefix()).isEqualTo(query);
+        assertThat(scopedResponse.suggestions()).isEmpty();
+    }
+
+    private static Stream<Arguments> provideMatchingRegionAndCountryQueries() {
+        return Stream.of(
+                Arguments.of("South Western Coast", "United Kingdom", "South Western"),
+                Arguments.of("South Western Coast", "United Kingdom", "South Western Coast"),
+                Arguments.of("South Western Coast", "United Kingdom", "South United Kingdom"),
+                Arguments.of("South Western Coast", "United Kingdom", "South Western Coast United Kingdom"),
+                Arguments.of("South Western Coast", "United Kingdom", "South West United King"),
+                Arguments.of("South Western Coast", "United Kingdom", "  SOUTH   Western,   UNITED Kingdom  "),
+                Arguments.of("New Coast", "New Zealand", "New New Zealand"),
+                Arguments.of("New Zealand", "Australia", "New Zealand"),
+                Arguments.of("South_Zone", "Italy", "South_Zone Italy"),
+                Arguments.of("South%Zone", "Italy", "South%Zone Italy"),
+                Arguments.of("South!Zone", "Italy", "South!Zone Italy"),
+                Arguments.of("Šumadija", "Čile", "sumadija cile")
+        );
+    }
+
+    private static Stream<Arguments> provideNonMatchingRegionAndCountryQueries() {
+        return Stream.of(
+                Arguments.of("South Western Coast", "United Kingdom", "South Unknown"),
+                Arguments.of("South Western Coast", "United Kingdom", "United Kingdom"),
+                Arguments.of("South Western Coast", "United Kingdom", "United Kingdom South"),
+                Arguments.of("New Coast", "New Zealand", "New Zealand"),
+                Arguments.of("New Coast", "New Zealand", "New Zea"),
+                Arguments.of("South", "Italy", "Italy"),
+                Arguments.of("South", "Italy", "Italy South"),
+                Arguments.of("South", "Italy", "South Unknown Italy"),
+                Arguments.of("South", "Italy", ",,,"),
+                Arguments.of("South", "Italy", "% Italy"),
+                Arguments.of("South", "Italy", "_ Italy")
+        );
+    }
+
+    private Region createRegionInCountry(String regionName, String countryName) {
+        Country country = new Country();
+        country.setName(countryName);
+        country.setIsoCode("zz");
+        country.setContinent(continentRepo.findByName("Test continent 0").orElseThrow());
+        countryRepo.saveAndFlush(country);
+
+        Region region = new Region();
+        region.setName(regionName);
+        region.setCountry(country);
+        return regionRepo.saveAndFlush(region);
+    }
+
+    @ParameterizedTest
     @MethodSource("provideDiacriticNormalizationCases")
     void shouldFindCountryWhenSearchQueryUsesAsciiEquivalentOfAnyDiacritic(String storedName, String asciiQuery) throws Exception {
         Country country = new Country();

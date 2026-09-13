@@ -47,10 +47,10 @@ public class SearchServiceImpl implements SearchService {
             case REGION -> {
                 if (countryId == null) {
                     log.atInfo().log("Search for a region name");
-                    yield regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, limit);
+                    yield regionRepo.searchRegionSuggestions(normalizedQuery, limit);
                 }
                 log.atInfo().log("Search for a region name under given country");
-                yield regionRepo.findByNameContainingQueryOrderByUpdatedOnOrCreatedOnDesc(normalizedQuery, countryId, limit);
+                yield regionRepo.searchRegionSuggestions(normalizedQuery, countryId, limit);
             }
             case CITY -> {
                 if (countryId == null) {

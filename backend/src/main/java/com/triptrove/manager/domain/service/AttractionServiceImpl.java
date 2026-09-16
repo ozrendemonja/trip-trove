@@ -27,9 +27,13 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, String infoFrom, Attraction attraction) {
         log.atInfo().log("Processing save attraction request for attraction '{}'", attraction.getName());
-        assignAttractionTo(attraction, regionId, cityId);
-        addAttractionUnder(attraction, mainAttractionId);
-        attraction.setInformationProvider(findOrCreateInformationProvider(infoFrom));
+        var destination = resolveDestination(attraction.getName(), attraction.getId(), regionId, cityId);
+        var mainAttraction = resolveMainAttraction(attraction.getName(), attraction.getId(), destination.continent(), mainAttractionId);
+        var informationProvider = findOrCreateInformationProvider(infoFrom);
+
+        destination.assignTo(attraction);
+        attraction.setMain(mainAttraction);
+        attraction.setInformationProvider(informationProvider);
 
         var result = attractionRepo.save(attraction);
         log.atInfo().log("Attraction '{}' successfully saved", result.getName());
@@ -37,8 +41,7 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     private InformationProvider findOrCreateInformationProvider(String sourceName) {
-        return informationProviderRepo.findBySourceName(sourceName)
-                .orElseGet(() -> informationProviderRepo.save(new InformationProvider(sourceName)));
+        return informationProviderRepo.findBySourceName(sourceName).orElseGet(() -> informationProviderRepo.save(new InformationProvider(sourceName)));
     }
 
     private void deleteInformationProviderIfOrphan(InformationProvider informationProvider) {
@@ -51,41 +54,37 @@ public class AttractionServiceImpl implements AttractionService {
         }
     }
 
-    private void addAttractionUnder(Attraction attraction, Long mainAttractionId) {
+    private Attraction resolveMainAttraction(String attractionName, Long attractionId, Continent attractionContinent, Long mainAttractionId) {
         if (mainAttractionId == null) {
-            attraction.setMain(null);
-            return;
+            return null;
         }
 
-        if (attractionRepo.isNameAlreadyUsedUnderMain(attraction, mainAttractionId)) {
-            throw new BaseApiException("Attraction '%s' already exists under given main attraction.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        if (attractionRepo.isNameAlreadyUsedUnderMain(attractionName, mainAttractionId, attractionId)) {
+            throw new BaseApiException("Attraction name already exists under main attraction", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, attractionName, mainAttractionId);
         }
 
-        var mainAttraction = attractionRepo.findById(mainAttractionId).orElseThrow(() -> new BaseApiException("Main attraction not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        if (!attraction.isUnderContinent(mainAttraction.getCountry().getContinent())) {
-            throw new BaseApiException("Attraction '%s' is in different continent then '%s' main attraction.".formatted(attraction.getName(), mainAttraction.getName()), BaseApiException.ErrorCode.CONSTRAINT_VIOLATION);
+        var mainAttraction = attractionRepo.findById(mainAttractionId).orElseThrow(() -> new BaseApiException("Main attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, mainAttractionId));
+        if (!attractionContinent.getId().equals(mainAttraction.getCountry().getContinent().getId())) {
+            throw new BaseApiException(BaseApiException.ErrorCode.ATTRACTION_OUTSIDE_MAIN_ATTRACTION_CONTINENT, attractionName, mainAttraction.getName());
         }
-        attraction.setMain(mainAttraction);
+        return mainAttraction;
     }
 
-    private void assignAttractionTo(Attraction attraction, Integer regionId, Integer cityId) {
+    private AttractionDestination resolveDestination(String attractionName, Long attractionId, Integer regionId, Integer cityId) {
         if (cityId != null) {
-            if (attractionRepo.isNameAlreadyUsedInCity(attraction, cityId)) {
-                throw new BaseApiException("Attraction '%s' already exists under given city.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            if (attractionRepo.isNameAlreadyUsedInCity(attractionName, cityId, attractionId)) {
+                throw new BaseApiException("Attraction name already exists in city", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, attractionName, cityId);
             }
 
-            log.atInfo().log("Adding attraction under city");
-            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            attraction.underCity(city);
-        } else {
-            if (attractionRepo.isNameAlreadyUsedInRegion(attraction, regionId)) {
-                throw new BaseApiException("Attraction '%s' already exists under given region.".formatted(attraction.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
-            }
-
-            log.atInfo().log("Adding attraction under region");
-            var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-            attraction.underRegion(region);
+            var city = cityRepo.findById(cityId).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, cityId));
+            return new AttractionDestination(city, city.getRegion());
         }
+
+        if (attractionRepo.isNameAlreadyUsedInRegion(attractionName, regionId, attractionId)) {
+            throw new BaseApiException("Attraction name already exists in region", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, attractionName, regionId);
+        }
+        var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, regionId));
+        return new AttractionDestination(null, region);
     }
 
     @Override
@@ -126,10 +125,10 @@ public class AttractionServiceImpl implements AttractionService {
     public void deleteAttraction(Long id) {
         log.atInfo().log("Deleting attraction");
         if (attractionRepo.isMainAttraction(id)) {
-            throw new BaseApiException("Attraction has sub attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+            throw new BaseApiException("Attraction still has sub-attractions", BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, id);
         }
 
-        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         var previousProvider = attraction.getInformationProvider();
         attractionRepo.delete(attraction);
         attractionRepo.flush();
@@ -140,17 +139,16 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public Attraction getAttraction(Long id) {
         log.atInfo().log("Getting attraction with id '{}'", id);
-        return attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        return attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override
     public void updateAttractionDestination(long id, boolean countrywide, Integer cityId, Integer regionId) {
         log.atInfo().log("Updating the attraction destination");
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
 
-        assignAttractionTo(attraction, regionId, cityId);
+        var destination = resolveDestination(attraction.getName(), attraction.getId(), regionId, cityId);
+        destination.assignTo(attraction);
         attraction.setCountrywide(countrywide);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -159,17 +157,18 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionDetail(long id, String newAttractionName, Long mainAttractionId) {
         log.atInfo().log("Updating the attraction detail adding name {}", newAttractionName);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
 
-        if (attraction.getCity().isPresent() && attractionRepo.isNameAlreadyUsedInCity(newAttractionName, attraction.getCity().get().getId())) {
-            throw new BaseApiException("Attraction '%s' in '%s' city already exists in the database.".formatted(attraction.getName(), attraction.getCity().get().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        if (attraction.getCity().isPresent() && attractionRepo.isNameAlreadyUsedInCity(newAttractionName, attraction.getCity().get().getId(), attraction.getId())) {
+            throw new BaseApiException("Attraction name already exists in city", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, newAttractionName, attraction.getCity().get().getId());
         }
-        if (attractionRepo.isNameAlreadyUsedInRegion(newAttractionName, attraction.getRegion().getId())) {
-            throw new BaseApiException("Attraction '%s' in '%s' region already exists in the database.".formatted(attraction.getName(), attraction.getRegion().getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+        if (attractionRepo.isNameAlreadyUsedInRegion(newAttractionName, attraction.getRegion().getId(), attraction.getId())) {
+            throw new BaseApiException("Attraction name already exists in region", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, newAttractionName, attraction.getRegion().getId());
         }
+        var mainAttraction = resolveMainAttraction(newAttractionName, attraction.getId(), attraction.getCountry().getContinent(), mainAttractionId);
+
         attraction.setName(newAttractionName);
-        addAttractionUnder(attraction, mainAttractionId);
+        attraction.setMain(mainAttraction);
 
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -178,8 +177,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionTraditional(long id, boolean isTraditional) {
         log.atInfo().log("Updating the attraction detail setting  isTraditional to {}", isTraditional);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setTraditional(isTraditional);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -188,8 +186,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionLocation(long id, String newAddress, Double latitude, Double longitude) {
         log.atInfo().log("Updating the attraction location to '{}' address and lat '{}', long '{}'", newAddress, latitude, longitude);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         Location location = null;
         if (latitude != null && longitude != null) {
             location = new Location(latitude, longitude);
@@ -202,8 +199,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionCategory(long id, AttractionCategory attractionCategory) {
         log.atInfo().log("Updating the attraction category to '{}'", attractionCategory);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setCategory(attractionCategory);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -212,8 +208,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionType(long id, AttractionType attractionType) {
         log.atInfo().log("Updating the attraction type to '{}'", attractionType);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setType(attractionType);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -222,8 +217,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionVisit(long id, Boolean mustVisit) {
         log.atInfo().log("Updating the attraction must visit to '{}'", mustVisit);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setMustVisit(mustVisit);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -232,8 +226,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionPermanentlyClosed(long id, boolean isPermanentlyClosed) {
         log.atInfo().log("Updating attraction permanently closed status to '{}'", isPermanentlyClosed);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
 
         if (isPermanentlyClosed) {
             attraction.markPermanentlyClosed();
@@ -248,8 +241,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionTip(long id, String tip) {
         log.atInfo().log("Updating the attraction tip");
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setTip(tip);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -258,8 +250,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionVisitPeriod(long id, VisitPeriod visitPeriod) {
         log.atInfo().log("Updating the attraction visit period to {}", visitPeriod);
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         attraction.setOptimalVisitPeriod(visitPeriod);
         attractionRepo.save(attraction);
         log.atInfo().log("Attraction has been updated");
@@ -268,8 +259,7 @@ public class AttractionServiceImpl implements AttractionService {
     @Override
     public void updateAttractionInformationProvider(long id, String infoFrom, LocalDate infoRecorded) {
         log.atInfo().log("Updating the attraction information provider");
-        var attraction = attractionRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         var previousProvider = attraction.getInformationProvider();
         attraction.setInformationProvider(findOrCreateInformationProvider(infoFrom));
         attraction.setRecorded(infoRecorded);
@@ -279,6 +269,20 @@ public class AttractionServiceImpl implements AttractionService {
             deleteInformationProviderIfOrphan(previousProvider);
         }
         log.atInfo().log("Attraction has been updated");
+    }
+
+    private record AttractionDestination(City city, Region region) {
+        private Continent continent() {
+            return region.getCountry().getContinent();
+        }
+
+        private void assignTo(Attraction attraction) {
+            if (city == null) {
+                attraction.underRegion(region);
+            } else {
+                attraction.underCity(city);
+            }
+        }
     }
 
 }

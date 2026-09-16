@@ -18,6 +18,7 @@ public record SaveAttractionRequest(@NotNull Boolean isCountrywide,
                                     Long mainAttractionId,
                                     @Size(max = 512, message = "Attraction address may not be longer then {max}")
                                     String attractionAddress,
+                                    @Valid
                                     LocationDTO attractionLocation,
                                     @NotNull AttractionCategoryDTO attractionCategory,
                                     @NotNull AttractionTypeDTO attractionType,

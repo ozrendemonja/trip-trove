@@ -48,13 +48,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnContinentAttractionsInTwoPagesWhenSearchForAttractionUnderGivenContinent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(2);
@@ -67,15 +61,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 0");
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
 
-        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", response[1].attractionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -87,13 +73,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnAggregatedVisitStatusForContinentAttractions() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchAttractionResponse[] firstPage = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
 
@@ -103,15 +83,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(firstPage[1].attractionName()).isEqualTo("Test attraction 2");
         assertThat(firstPage[1].visitStatus()).isEqualTo(AttractionVisitStatusResponse.VISITED_DONE);
 
-        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", firstPage[1].attractionId().toString())
-                        .param("updatedOn", firstPage[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", firstPage[1].attractionId().toString()).param("updatedOn", firstPage[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchAttractionResponse[] secondPage = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
         assertThat(secondPage).hasSize(1);
@@ -122,13 +94,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideAttractionUris")
     void shouldReturnEmptyListWhenSearchForAttractionUnderNonExistingId(String uri) throws Exception {
-        var jsonResponse = mockMvc.perform(get(uri)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get(uri).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).isEmpty();
@@ -137,30 +103,23 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideInvalidQueries")
     void shouldReturnErrorWhenQueryingAttractionWithTooShortQuery(InvalidQuery query) throws Exception {
-        var jsonResponse = mockMvc.perform(get(query.url())
-                        .param("q", query.query)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get(query.url()).param("q", query.query).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder(query.errorMessages());
     }
 
-    private record InvalidQuery(String url, String query) {
+    private record InvalidQuery(String url, String query, String[] errorMessages) {
     }
 
     private static final List<String> urls = List.of("/search/continent/a/attractions", "/search/country/100/attractions", "/search/region/100/attractions", "/search/city/100/attractions", "/search/attraction/100/attractions");
 
     private static List<InvalidQuery> provideInvalidQueries() {
-        List<String> invalidQueries = List.of("", " ", "       ", "T", "Te");
-
-        return urls.stream()
-                .flatMap(url -> invalidQueries.stream().map(query -> new InvalidQuery(url, query)))
-                .toList();
+        String tooShort = "query = Query string must be at least 3 characters long";
+        String blank = "query = Query string must not be blank";
+        return urls.stream().flatMap(url -> List.of(new InvalidQuery(url, "", new String[]{tooShort, blank}), new InvalidQuery(url, " ", new String[]{tooShort, blank}), new InvalidQuery(url, "       ", new String[]{blank}), new InvalidQuery(url, "T", new String[]{tooShort}), new InvalidQuery(url, "Te", new String[]{tooShort})).stream()).toList();
     }
 
     private static List<String> provideAttractionUris() {
@@ -170,19 +129,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideAttractionFilterValues")
     void shouldReturnContinentAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenContinent(FilteredAttraction filters) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null)
-                        .param("category", filters.category != null ? filters.category : null)
-                        .param("type", filters.type != null ? filters.type : null)
-                        .param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null)
-                        .param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null)
-                        .param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null).param("category", filters.category != null ? filters.category : null).param("type", filters.type != null ? filters.type : null).param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null).param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null).param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -205,31 +152,16 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     }
 
     private record FilteredAttraction(Long attractionId, Boolean isCountrywide, String category, String type,
-                                      Boolean mustVisit,
-                                      Boolean isTraditional, String sourceNameQuery) {
+                                      Boolean mustVisit, Boolean isTraditional, String sourceNameQuery) {
     }
 
     private static Stream<FilteredAttraction> provideAttractionFilterValues() {
-        return Stream.of(new FilteredAttraction(1L, true, null, null, true, true, null),
-                new FilteredAttraction(4L, false, "HISTORIC_SITE", null, null, null, null),
-                new FilteredAttraction(1L, null, "HISTORIC_SITE", null, true, null, null),
-                new FilteredAttraction(1L, null, null, "STABLE", null, null, null),
-                new FilteredAttraction(5L, null, null, null, null, null, "tional Test 4"),
-                new FilteredAttraction(5L, null, null, null, null, null, "attraction 3"),
-                new FilteredAttraction(5L, null, null, null, null, null, "test attraction 3"),
-                new FilteredAttraction(4L, null, null, null, null, null, "tip n")
-        );
+        return Stream.of(new FilteredAttraction(1L, true, null, null, true, true, null), new FilteredAttraction(4L, false, "HISTORIC_SITE", null, null, null, null), new FilteredAttraction(1L, null, "HISTORIC_SITE", null, true, null, null), new FilteredAttraction(1L, null, null, "STABLE", null, null, null), new FilteredAttraction(5L, null, null, null, null, null, "tional Test 4"), new FilteredAttraction(5L, null, null, null, null, null, "attraction 3"), new FilteredAttraction(5L, null, null, null, null, null, "test attraction 3"), new FilteredAttraction(4L, null, null, null, null, null, "tip n"));
     }
 
     @Test
     void shouldReturnCountryAttractionsInTwoPagesWhenSearchForAttractionUnderGivenCountry() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(2);
@@ -242,15 +174,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 0");
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
 
-        jsonResponse = mockMvc.perform(get("/search/country/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", response[1].attractionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -263,19 +187,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideAttractionFilterValues")
     void shouldReturnCountryAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenCountry(FilteredAttraction filters) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null)
-                        .param("category", filters.category != null ? filters.category : null)
-                        .param("type", filters.type != null ? filters.type : null)
-                        .param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null)
-                        .param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null)
-                        .param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON).param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null).param("category", filters.category != null ? filters.category : null).param("type", filters.type != null ? filters.type : null).param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null).param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null).param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -299,13 +211,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnRegionAttractionsInTwoPagesWhenSearchForAttractionUnderGivenRegion() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/region/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(2);
@@ -318,15 +224,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 0");
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
 
-        jsonResponse = mockMvc.perform(get("/search/region/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", response[1].attractionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -339,19 +237,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideAttractionFilterValues")
     void shouldReturnRegionAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenRegion(FilteredAttraction filters) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/region/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null)
-                        .param("category", filters.category != null ? filters.category : null)
-                        .param("type", filters.type != null ? filters.type : null)
-                        .param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null)
-                        .param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null)
-                        .param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON).param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null).param("category", filters.category != null ? filters.category : null).param("type", filters.type != null ? filters.type : null).param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null).param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null).param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -375,13 +261,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnCityAttractionsInTwoPagesWhenSearchForAttractionUnderGiveCity() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/city/3/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/city/3/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(2);
@@ -394,15 +274,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo("Test country 1");
 
-        jsonResponse = mockMvc.perform(get("/search/city/3/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", response[1].attractionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/city/3/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -415,19 +287,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideCityAttractionFilterValues")
     void shouldReturnCityAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenCity(FilteredAttraction filters) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/city/3/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null)
-                        .param("category", filters.category != null ? filters.category : null)
-                        .param("type", filters.type != null ? filters.type : null)
-                        .param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null)
-                        .param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null)
-                        .param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/city/3/attractions").contentType(MediaType.APPLICATION_JSON).param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null).param("category", filters.category != null ? filters.category : null).param("type", filters.type != null ? filters.type : null).param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null).param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null).param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -450,27 +310,12 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     }
 
     private static Stream<FilteredAttraction> provideCityAttractionFilterValues() {
-        return Stream.of(
-                new FilteredAttraction(7L, false, null, null, true, true, null),
-                new FilteredAttraction(7L, false, null, null, null, true, null),
-                new FilteredAttraction(3L, null, "ART_MUSEUM", null, null, null, null),
-                new FilteredAttraction(6L, null, null, "POTENTIAL_CHANGE", false, false, null),
-                new FilteredAttraction(6L, null, null, null, false, false, "t 3 "),
-                new FilteredAttraction(7L, null, null, null, null, null, "ction 5"),
-                new FilteredAttraction(6L, null, null, null, null, null, "st t"),
-                new FilteredAttraction(7L, null, null, null, null, null, "functional Test 5")
-        );
+        return Stream.of(new FilteredAttraction(7L, false, null, null, true, true, null), new FilteredAttraction(7L, false, null, null, null, true, null), new FilteredAttraction(3L, null, "ART_MUSEUM", null, null, null, null), new FilteredAttraction(6L, null, null, "POTENTIAL_CHANGE", false, false, null), new FilteredAttraction(6L, null, null, null, false, false, "t 3 "), new FilteredAttraction(7L, null, null, null, null, null, "ction 5"), new FilteredAttraction(6L, null, null, null, null, null, "st t"), new FilteredAttraction(7L, null, null, null, null, null, "functional Test 5"));
     }
 
     @Test
     void shouldReturnMainAttractionAttractionsInTwoPagesWhenSearchForAttractionUnderGiveCity() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(2);
@@ -485,15 +330,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
         assertThat(response[1].mainAttractionName()).isEqualTo("Test attraction 0");
 
-        jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("attractionId", response[1].attractionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -507,19 +344,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideMainAttractionFilterValues")
     void shouldReturnMainAttractionsSatisfyingFilteringConditionsWhenSearchForAttractionUnderGivenMainAttraction(FilteredAttraction filters) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null)
-                        .param("category", filters.category != null ? filters.category : null)
-                        .param("type", filters.type != null ? filters.type : null)
-                        .param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null)
-                        .param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null)
-                        .param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions").contentType(MediaType.APPLICATION_JSON).param("isCountrywide", filters.isCountrywide != null ? filters.isCountrywide.toString() : null).param("category", filters.category != null ? filters.category : null).param("type", filters.type != null ? filters.type : null).param("mustVisit", filters.mustVisit != null ? filters.mustVisit.toString() : null).param("isTraditional", filters.isTraditional != null ? filters.isTraditional.toString() : null).param("q", filters.sourceNameQuery != null ? filters.sourceNameQuery : null).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -542,15 +367,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     }
 
     private static Stream<FilteredAttraction> provideMainAttractionFilterValues() {
-        return Stream.of(
-                new FilteredAttraction(4L, null, "HISTORIC_SITE", null, null, null, null),
-                new FilteredAttraction(4L, null, null, null, null, false, "st 3"),
-                new FilteredAttraction(3L, false, null, null, null, null, "Functional Test 2 n"),
-                new FilteredAttraction(5L, true, null, null, null, false, null),
-                new FilteredAttraction(5L, null, null, null, null, null, "on 3"),
-                new FilteredAttraction(4L, null, null, null, null, null, "new f"),
-                new FilteredAttraction(4L, null, null, null, null, null, "test tip")
-        );
+        return Stream.of(new FilteredAttraction(4L, null, "HISTORIC_SITE", null, null, null, null), new FilteredAttraction(4L, null, null, null, null, false, "st 3"), new FilteredAttraction(3L, false, null, null, null, null, "Functional Test 2 n"), new FilteredAttraction(5L, true, null, null, null, false, null), new FilteredAttraction(5L, null, null, null, null, null, "on 3"), new FilteredAttraction(4L, null, null, null, null, null, "new f"), new FilteredAttraction(4L, null, null, null, null, null, "test tip"));
     }
 
     @Autowired
@@ -587,56 +404,31 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
     }
 
     private void assertSearchFinds(DiacriticSearchCase testCase, String fieldUnderTest) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", testCase.asciiQuery)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON).param("q", testCase.asciiQuery).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionResponse[] response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
-        assertThat(response)
-                .as("query '%s' should match attraction whose %s is '%s'",
-                        testCase.asciiQuery, fieldUnderTest, testCase.storedValue)
-                .extracting(GetAttractionResponse::attractionId)
-                .contains(5L);
+        assertThat(response).as("query '%s' should match attraction whose %s is '%s'", testCase.asciiQuery, fieldUnderTest, testCase.storedValue).extracting(GetAttractionResponse::attractionId).contains(5L);
     }
 
     private record DiacriticSearchCase(String storedValue, String asciiQuery) {
     }
 
     private static Stream<DiacriticSearchCase> provideDiacriticNameSearchCases() {
-        return Stream.of(
-                new DiacriticSearchCase("Šumadijski sajam", "sumadijski"),
-                new DiacriticSearchCase("Đakovački sajam", "djakovacki")
-        );
+        return Stream.of(new DiacriticSearchCase("Šumadijski sajam", "sumadijski"), new DiacriticSearchCase("Đakovački sajam", "djakovacki"));
     }
 
     private static Stream<DiacriticSearchCase> provideDiacriticTipSearchCases() {
-        return Stream.of(
-                new DiacriticSearchCase("Žičara radi noću", "zicara"),
-                new DiacriticSearchCase("Češki kafić", "ceski kafic")
-        );
+        return Stream.of(new DiacriticSearchCase("Žičara radi noću", "zicara"), new DiacriticSearchCase("Češki kafić", "ceski kafic"));
     }
 
     private static Stream<DiacriticSearchCase> provideDiacriticSourceNameSearchCases() {
-        return Stream.of(
-                new DiacriticSearchCase("Ćosićeva enciklopedija", "cosiceva"),
-                new DiacriticSearchCase("ŠUMADIJA portal", "sumadija") // upper-case diacritics
+        return Stream.of(new DiacriticSearchCase("Ćosićeva enciklopedija", "cosiceva"), new DiacriticSearchCase("ŠUMADIJA portal", "sumadija") // upper-case diacritics
         );
     }
 
     @Test
     void shouldReturnEmptyListWhenSearchingAttractionsUnderNonExistingContinent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/continent/Nonexistent continent/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/continent/Nonexistent continent/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
         assertThat(response).isEmpty();
@@ -644,13 +436,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnEmptyListWhenSearchingAttractionsUnderNonExistingCountry() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/country/9999/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/country/9999/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
         assertThat(response).isEmpty();
@@ -658,14 +444,7 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnEmptyListWhenQueryMatchesNoAttractionUnderContinent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", "zzzznomatchxyz")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON).param("q", "zzzznomatchxyz").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchAttractionResponse[] response = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
         assertThat(response).isEmpty();

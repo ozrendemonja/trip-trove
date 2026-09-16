@@ -49,8 +49,8 @@ public class TripTest extends AbstractIntegrationTest {
     @Autowired
     private TripRepo tripRepo;
 
-        @Autowired
-        private AttractionRepo attractionRepo;
+    @Autowired
+    private AttractionRepo attractionRepo;
 
     @BeforeAll
     static void setupAll() {
@@ -68,13 +68,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void tripShouldBeReturnedInThreePagesInDescendingOrderWhenNoOrderIsSent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(2);
@@ -85,15 +79,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 14));
         assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 19));
 
-        jsonResponse = mockMvc.perform(get("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("tripId", response[1].tripId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips").contentType(MediaType.APPLICATION_JSON).param("tripId", response[1].tripId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(2);
@@ -104,15 +90,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 23));
         assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 12));
 
-        jsonResponse = mockMvc.perform(get("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("tripId", response[1].tripId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips").contentType(MediaType.APPLICATION_JSON).param("tripId", response[1].tripId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(1);
@@ -123,14 +101,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void tripShouldBeReturnedInThreePagesInAscendingOrderWhenASCOrderIsSent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips")
-                        .param("sd", "ASC")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips").param("sd", "ASC").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(2);
@@ -142,16 +113,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.SEPTEMBER, 12));
 
 
-        jsonResponse = mockMvc.perform(get("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("sd", "ASC")
-                        .param("tripId", response[1].tripId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips").contentType(MediaType.APPLICATION_JSON).param("sd", "ASC").param("tripId", response[1].tripId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(2);
@@ -162,16 +124,7 @@ public class TripTest extends AbstractIntegrationTest {
         assertThat(response[1].fromDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 14));
         assertThat(response[1].toDate()).isEqualTo(LocalDate.of(2025, Month.OCTOBER, 19));
 
-        jsonResponse = mockMvc.perform(get("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("sd", "ASC")
-                        .param("tripId", response[1].tripId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips").contentType(MediaType.APPLICATION_JSON).param("sd", "ASC").param("tripId", response[1].tripId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetTripResponse[].class);
         assertThat(response).hasSize(1);
@@ -184,24 +137,14 @@ public class TripTest extends AbstractIntegrationTest {
     void tripsContainingDateShouldBeReturnedWithoutPagination() throws Exception {
         var selectedDate = LocalDate.of(2025, Month.SEPTEMBER, 15);
 
-        var jsonResponse = mockMvc.perform(get("/trips")
-                        .param("date", selectedDate.toString())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips").param("date", selectedDate.toString()).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripResponse[] response = mapper.readValue(jsonResponse, GetTripResponse[].class);
-        assertThat(response)
-                .hasSize(2)
-                .allSatisfy(trip -> {
-                    assertThat(trip.fromDate()).isBeforeOrEqualTo(selectedDate);
-                    assertThat(trip.toDate()).isAfterOrEqualTo(selectedDate);
-                });
-        assertThat(response).extracting(GetTripResponse::tripName)
-                .containsExactlyInAnyOrder("Test trip name 2", "Test trip name 3");
+        assertThat(response).hasSize(2).allSatisfy(trip -> {
+            assertThat(trip.fromDate()).isBeforeOrEqualTo(selectedDate);
+            assertThat(trip.toDate()).isAfterOrEqualTo(selectedDate);
+        });
+        assertThat(response).extracting(GetTripResponse::tripName).containsExactlyInAnyOrder("Test trip name 2", "Test trip name 3");
     }
 
     @Test
@@ -209,12 +152,7 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name";
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());
 
-        mockMvc.perform(post("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/trips/" + tripRepo.findByName(tripName).getFirst().getId()));
+        mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/trips/" + tripRepo.findByName(tripName).getFirst().getId()));
 
         assertThat(tripRepo.findByName(tripName).getFirst().getName()).isEqualTo(tripName);
     }
@@ -224,12 +162,7 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 1";
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());
 
-        mockMvc.perform(post("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/trips/" + tripRepo.findByName(tripName).getLast().getId()));
+        mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/trips/" + tripRepo.findByName(tripName).getLast().getId()));
 
         assertThat(tripRepo.findByName(tripName).getLast().getName()).isEqualTo(tripName);
     }
@@ -239,18 +172,11 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 1";
         var request = new SaveTripRequest(tripName, LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8));
 
-        var jsonResponse = mockMvc.perform(post("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
-        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test trip name 1' is already in use. Please choose another name.");
     }
 
     private record InvalidTripData(String tripName, LocalDate fromDate, LocalDate toDate, String[] errorMessages) {
@@ -261,14 +187,7 @@ public class TripTest extends AbstractIntegrationTest {
     void tripShouldNotBeSavedWhenTripDetailsAreIncorrect(InvalidTripData input) throws Exception {
         var request = new SaveTripRequest(input.tripName, input.fromDate, input.toDate);
 
-        var jsonResponse = mockMvc.perform(post("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -277,13 +196,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnTripWhenGivenIdIsPresent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripResponse response = mapper.readValue(jsonResponse, GetTripResponse.class);
         assertThat(response.tripName()).isEqualTo("Test trip name 1");
@@ -294,16 +207,11 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnNotFoundWhenGivenIdIsNotPresent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 100)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 100).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -311,11 +219,7 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 2";
         var request = new UpdateTripNameRequest(tripName);
 
-        mockMvc.perform(put("/trips/" + 1 + "/name")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/name").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findByName(tripName).getFirst().getName()).isEqualTo(tripName);
     }
@@ -325,17 +229,11 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 2";
         var request = new UpdateTripNameRequest(tripName);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/name")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/name").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @ParameterizedTest
@@ -343,14 +241,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldNotUpdateTripNameWhenTripNameIsIncorrect(InvalidTripData input) throws Exception {
         var request = new UpdateTripNameRequest(input.tripName);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/name")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/name").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -361,12 +252,7 @@ public class TripTest extends AbstractIntegrationTest {
         String[] emptyStringMessage = {"tripName = Trip name may not be null or empty"};
         String[] tooLongNameMessage = {"tripName = Trip name may not be longer then 512"};
 
-        return Stream.of(
-                arguments(Named.of("null name", new InvalidTripData(null, LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))),
-                arguments(Named.of("empty name", new InvalidTripData("", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))),
-                arguments(Named.of("blank name", new InvalidTripData("      ", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))),
-                arguments(Named.of("Too long name", new InvalidTripData("abcd".repeat(128) + "e", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), tooLongNameMessage)))
-        );
+        return Stream.of(arguments(Named.of("null name", new InvalidTripData(null, LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))), arguments(Named.of("empty name", new InvalidTripData("", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))), arguments(Named.of("blank name", new InvalidTripData("      ", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), emptyStringMessage))), arguments(Named.of("Too long name", new InvalidTripData("abcd".repeat(128) + "e", LocalDate.of(2024, Month.SEPTEMBER, 1), LocalDate.of(2024, Month.SEPTEMBER, 8), tooLongNameMessage))));
     }
 
     @Test
@@ -374,17 +260,11 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 2";
         var request = new UpdateTripNameRequest(tripName);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 3 + "/name")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 3 + "/name").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test trip name 2' is already in use. Please choose another name.");
     }
 
     @Test
@@ -393,11 +273,7 @@ public class TripTest extends AbstractIntegrationTest {
         LocalDate toDate = LocalDate.now().minusDays(2);
         var request = new UpdateTripRangeRequest(fromDate, toDate);
 
-        mockMvc.perform(put("/trips/" + 1 + "/range")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/range").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(1L).get().getFrom()).isEqualTo(fromDate);
         assertThat(tripRepo.findById(1L).get().getTo()).isEqualTo(toDate);
@@ -409,17 +285,11 @@ public class TripTest extends AbstractIntegrationTest {
         LocalDate toDate = LocalDate.now().minusDays(2);
         var request = new UpdateTripRangeRequest(fromDate, toDate);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/range")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/range").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -428,17 +298,11 @@ public class TripTest extends AbstractIntegrationTest {
         LocalDate toDate = LocalDate.of(2025, Month.OCTOBER, 21);
         var request = new UpdateTripRangeRequest(fromDate, toDate);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 3 + "/range")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 3 + "/range").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test trip name 2' is already in use. Please choose another name.");
     }
 
     @ParameterizedTest
@@ -446,14 +310,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldNotUpdateTripRangeWhenNewRangeIsInvalid(InvalidTripData input) throws Exception {
         var request = new UpdateTripRangeRequest(input.fromDate, input.toDate);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 2 + "/range")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 2 + "/range").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -466,22 +323,14 @@ public class TripTest extends AbstractIntegrationTest {
         String[] toDateBeforeFromDateMessage = {"fromDateNotAfterToDate = fromDate must be on or before toDate"};
         String[] dateToEarlyInPastMessage = {"datesNotBefore1960 = Dates must not be before 1960-01-01"};
 
-        return Stream.of(
-                arguments(Named.of("null from date", new InvalidTripData("Test trip name", null, LocalDate.of(2024, Month.SEPTEMBER, 8), fromDateNullMessage))),
-                arguments(Named.of("null to date", new InvalidTripData("Test trip name", LocalDate.of(2024, Month.SEPTEMBER, 1), null, toDateNullMessage))),
-                arguments(Named.of("from date is too far in the past", new InvalidTripData("Test trip name", LocalDate.of(1959, Month.SEPTEMBER, 1), LocalDate.of(1960, Month.JANUARY, 1), dateToEarlyInPastMessage))),
-                arguments(Named.of("from date is after to date", new InvalidTripData("Test trip name", LocalDate.of(2024, Month.SEPTEMBER, 10), LocalDate.of(2024, Month.JANUARY, 1), toDateBeforeFromDateMessage)))
-        );
+        return Stream.of(arguments(Named.of("null from date", new InvalidTripData("Test trip name", null, LocalDate.of(2024, Month.SEPTEMBER, 8), fromDateNullMessage))), arguments(Named.of("null to date", new InvalidTripData("Test trip name", LocalDate.of(2024, Month.SEPTEMBER, 1), null, toDateNullMessage))), arguments(Named.of("from date is too far in the past", new InvalidTripData("Test trip name", LocalDate.of(1959, Month.SEPTEMBER, 1), LocalDate.of(1960, Month.JANUARY, 1), dateToEarlyInPastMessage))), arguments(Named.of("from date is after to date", new InvalidTripData("Test trip name", LocalDate.of(2024, Month.SEPTEMBER, 10), LocalDate.of(2024, Month.JANUARY, 1), toDateBeforeFromDateMessage))));
     }
 
     @Test
     void shouldDeleteTripWhenAllConditionsAreSatisfied() throws Exception {
         assertThat(tripRepo.findById(2L)).isNotEmpty();
 
-        mockMvc.perform(delete("/trips/" + 3)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + 3).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(3L)).isEmpty();
     }
@@ -490,41 +339,27 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldNotDeleteTripWhenTripIdIsUnknown() throws Exception {
         assertThat(tripRepo.findById(2L)).isNotEmpty();
 
-        var jsonResponse = mockMvc.perform(delete("/trips/" + 100)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/trips/" + 100).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void shouldNotDeleteTripWhenTripHasAttractionUnder() throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/trips/" + 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/trips/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
-        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
+        assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
     }
 
     @Test
     void attractionShouldBeAddedUnderTripWhenValidRequestIsSent() throws Exception {
         var request = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(4);
         assertThat(tripRepo.findById(1L).get().getAttractions().getLast().getAttraction().getId()).isEqualTo(4);
@@ -538,11 +373,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldInheritMustVisitFromAttractionWhenAttractionIsAddedUnderTrip() throws Exception {
         var request = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         var tripAttraction = tripRepo.findById(1L).get().getAttractions().getLast();
         assertThat(tripAttraction.getAttraction().getId()).isEqualTo(5);
@@ -553,24 +384,12 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldReturnMustVisitInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
-        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
-        var added = java.util.Arrays.stream(response)
-                .filter(r -> r.attractionId().equals(5L))
-                .findFirst().orElseThrow();
+        var added = java.util.Arrays.stream(response).filter(r -> r.attractionId().equals(5L)).findFirst().orElseThrow();
         assertThat(added.mustVisit()).isTrue();
     }
 
@@ -578,24 +397,14 @@ public class TripTest extends AbstractIntegrationTest {
     void mustVisitShouldNotChangeWhenAttractionMustVisitIsUpdatedAfterBeingAdded() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(5L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
         // Update must visit to false on the trip attraction
         var updateRequest = new UpdateTripAttractionMustVisitRequest(false);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 5 + "/must-visit")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 5 + "/must-visit").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(updateRequest))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(5L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(5L)).findFirst().orElseThrow();
         assertThat(tripAttraction.isMustVisit()).isFalse();
         // The base attraction should remain unchanged
         assertThat(tripAttraction.getAttraction().isMustVisit()).isTrue();
@@ -605,11 +414,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldInheritNoteFromAttractionTipWhenAttractionIsAddedUnderTrip() throws Exception {
         var request = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 3 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         var tripAttraction = tripRepo.findById(3L).get().getAttractions().getLast();
         assertThat(tripAttraction.getAttraction().getId()).isEqualTo(1);
@@ -620,24 +425,12 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldReturnNoteInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 3 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
-        var jsonResponse = mockMvc.perform(get("/trips/" + 3 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
-        var added = java.util.Arrays.stream(response)
-                .filter(r -> r.attractionId().equals(1L))
-                .findFirst().orElseThrow();
+        var added = java.util.Arrays.stream(response).filter(r -> r.attractionId().equals(1L)).findFirst().orElseThrow();
         assertThat(added.note()).isEqualTo("Test tip");
     }
 
@@ -645,24 +438,14 @@ public class TripTest extends AbstractIntegrationTest {
     void noteShouldNotChangeAttractionTipWhenNoteIsUpdatedAfterBeingAdded() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
-        mockMvc.perform(post("/trips/" + 3 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
         // Update note on the trip attraction
         var updateRequest = new UpdateTripAttractionNoteRequest("Custom note");
 
-        mockMvc.perform(put("/trips/" + 3 + "/attractions/" + 1 + "/note")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 3 + "/attractions/" + 1 + "/note").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(updateRequest))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(3L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(3L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getNote()).isEqualTo("Custom note");
         // The base attraction tip should remain unchanged
         assertThat(tripAttraction.getAttraction().getTip().orElse(null)).isEqualTo("Test tip");
@@ -673,23 +456,14 @@ public class TripTest extends AbstractIntegrationTest {
     void mustVisitShouldBeUpdatedWhenValidValueIsProvided(Boolean mustVisit) throws Exception {
         var request = new UpdateTripAttractionMustVisitRequest(mustVisit);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.isMustVisit()).isEqualTo(mustVisit);
     }
 
     private static Stream<Arguments> provideValidMustVisitValues() {
-        return Stream.of(
-                arguments(Named.of("must visit set to true", true)),
-                arguments(Named.of("must visit set to false", false))
-        );
+        return Stream.of(arguments(Named.of("must visit set to true", true)), arguments(Named.of("must visit set to false", false)));
     }
 
     @ParameterizedTest
@@ -697,41 +471,26 @@ public class TripTest extends AbstractIntegrationTest {
     void mustVisitShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionMustVisitRequest(false);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/must-visit")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/must-visit").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidMustVisitTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void mustVisitShouldNotBeUpdatedWhenValueIsNull() throws Exception {
         var request = new UpdateTripAttractionMustVisitRequest(null);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/must-visit").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{mustVisit = must not be null}");
     }
 
     @ParameterizedTest
@@ -739,45 +498,26 @@ public class TripTest extends AbstractIntegrationTest {
     void wouldVisitAgainShouldBeUpdatedWhenValidValueIsProvided(Boolean wouldVisitAgain) throws Exception {
         var request = new UpdateTripAttractionWouldVisitAgainRequest(wouldVisitAgain);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.isWouldVisitAgain()).isEqualTo(wouldVisitAgain);
     }
 
     private static Stream<Arguments> provideValidWouldVisitAgainValues() {
-        return Stream.of(
-                arguments(Named.of("would visit again set to true", true)),
-                arguments(Named.of("would visit again set to false", false))
-        );
+        return Stream.of(arguments(Named.of("would visit again set to true", true)), arguments(Named.of("would visit again set to false", false)));
     }
 
     @Test
     void wouldVisitAgainShouldBeReturnedInGetAttractionsResponse() throws Exception {
-        var existing = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var existing = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         existing.setWouldVisitAgain(true);
         tripRepo.save(tripRepo.findById(1L).get());
 
-        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
-        var updated = java.util.Arrays.stream(response)
-                .filter(r -> r.attractionId().equals(1L))
-                .findFirst().orElseThrow();
+        var updated = java.util.Arrays.stream(response).filter(r -> r.attractionId().equals(1L)).findFirst().orElseThrow();
         assertThat(updated.wouldVisitAgain()).isTrue();
     }
 
@@ -786,59 +526,37 @@ public class TripTest extends AbstractIntegrationTest {
     void wouldVisitAgainShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionWouldVisitAgainRequest(false);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/would-visit-again").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidWouldVisitAgainTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void wouldVisitAgainShouldNotBeUpdatedWhenValueIsNull() throws Exception {
         var request = new UpdateTripAttractionWouldVisitAgainRequest(null);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/would-visit-again").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{wouldVisitAgain = must not be null}");
     }
 
     @Test
     void wouldVisitAgainShouldBeClearedWhenReviewIsCleared() throws Exception {
-        var existing = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var existing = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         existing.setWouldVisitAgain(true);
         tripRepo.save(tripRepo.findById(1L).get());
 
-        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.isWouldVisitAgain()).isFalse();
     }
 
@@ -847,24 +565,15 @@ public class TripTest extends AbstractIntegrationTest {
     void workingHoursShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionWorkingHoursRequest("9-17");
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/working-hours")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/working-hours").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidWorkingHoursTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @ParameterizedTest
@@ -872,40 +581,25 @@ public class TripTest extends AbstractIntegrationTest {
     void workingHoursShouldBeUpdatedWhenValidValueIsProvided(String workingHours) throws Exception {
         var request = new UpdateTripAttractionWorkingHoursRequest(workingHours);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getWorkingHours()).isEqualTo(workingHours);
     }
 
     private static Stream<Arguments> provideValidWorkingHoursValues() {
-        return Stream.of(
-                arguments(Named.of("presented working hours", "9-17")),
-                arguments(Named.of("null working hours", (String) null))
-        );
+        return Stream.of(arguments(Named.of("presented working hours", "9-17")), arguments(Named.of("null working hours", (String) null)));
     }
 
     @Test
     void workingHoursShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
         var request = new UpdateTripAttractionWorkingHoursRequest("a".repeat(129));
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual2 = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual2.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual2.errorMessage()).isEqualTo("{workingHours = Working hours may not be longer then 128}");
     }
 
     @ParameterizedTest
@@ -913,23 +607,14 @@ public class TripTest extends AbstractIntegrationTest {
     void visitTimeShouldBeUpdatedWhenValidValueIsProvided(String visitTime) throws Exception {
         var request = new UpdateTripAttractionVisitTimeRequest(visitTime);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getVisitTime()).isEqualTo(visitTime);
     }
 
     private static Stream<Arguments> provideValidVisitTimeValues() {
-        return Stream.of(
-                arguments(Named.of("valid visit time", "2 hours")),
-                arguments(Named.of("null visit time", (String) null))
-        );
+        return Stream.of(arguments(Named.of("valid visit time", "2 hours")), arguments(Named.of("null visit time", (String) null)));
     }
 
     @ParameterizedTest
@@ -937,41 +622,26 @@ public class TripTest extends AbstractIntegrationTest {
     void visitTimeShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionVisitTimeRequest("2 hours");
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/visit-time")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/visit-time").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidVisitTimeTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void visitTimeShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
         var request = new UpdateTripAttractionVisitTimeRequest("a".repeat(65));
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{visitTime = Visit time may not be longer then 64}");
     }
 
     @ParameterizedTest
@@ -979,23 +649,14 @@ public class TripTest extends AbstractIntegrationTest {
     void noteShouldBeUpdatedWhenValidValueIsProvided(String note) throws Exception {
         var request = new UpdateTripAttractionNoteRequest(note);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getNote()).isEqualTo(note);
     }
 
     private static Stream<Arguments> provideValidNoteValues() {
-        return Stream.of(
-                arguments(Named.of("valid note", "Visit in the morning")),
-                arguments(Named.of("null note", (String) null))
-        );
+        return Stream.of(arguments(Named.of("valid note", "Visit in the morning")), arguments(Named.of("null note", (String) null)));
     }
 
     @ParameterizedTest
@@ -1003,95 +664,59 @@ public class TripTest extends AbstractIntegrationTest {
     void noteShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateTripAttractionNoteRequest("Visit in the morning");
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/note")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/note").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidNoteTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void noteShouldNotBeUpdatedWhenValueIsTooLong() throws Exception {
         var request = new UpdateTripAttractionNoteRequest("a".repeat(513));
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{note = Note may not be longer then 512}");
     }
 
     @Test
     void attractionShouldNotBeAddedUnderTripWhenInvalidTripIdIsSent() throws Exception {
         var request = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 100 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 100 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionShouldNotBeAddedUnderTripWhenInvalidAttractionIdIsSent() throws Exception {
         var request = new AddAttractionUnderTripRequest(100L, TripAttractionGroupDTO.PRIMARY);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionShouldNotBeAddedUnderTripWhenItsAlreadyThere() throws Exception {
         var request = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.ATTRACTION_ALREADY_ADDED_TO_TRIP);
-        assertThat(actual.errorMessage()).isEqualTo("This attraction has already been added to the trip");
+        assertThat(actual.errorMessage()).isEqualTo("This attraction is already part of the trip.");
     }
 
     @Test
@@ -1099,15 +724,9 @@ public class TripTest extends AbstractIntegrationTest {
         String updatedNote = "Updated note";
         var request = new ReviewTripAttractionRequest(RatingDTO.VERY_GOOD, updatedNote);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getRating()).isEqualTo(Rating.VERY_GOOD);
         assertThat(tripAttraction.getReviewNote()).isEqualTo(updatedNote);
         assertThat(tripAttraction.getStatus()).isEqualTo(TripAttractionStatus.VISITED);
@@ -1117,14 +736,7 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionShouldNotBeReviewedWhenTooLongNoteIsGiven() throws Exception {
         var request = new ReviewTripAttractionRequest(RatingDTO.EXCELLENT, "abcd".repeat(128) + "e");
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -1135,10 +747,7 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionShouldBeDeletedFromTripWhenValidRequestIsSent() throws Exception {
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
 
-        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 3)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 3).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(2);
         assertThat(tripRepo.findById(1L).get().getAttractions().getLast().getAttraction().getId()).isEqualTo(2);
@@ -1148,18 +757,12 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionShouldNotBeDeletedFromTripWhenAttractionIdDoestExist() throws Exception {
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
 
-        var jsonResponse = mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 10)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 10).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '10' could not be found. Please refresh and try again.");
     }
 
     @ParameterizedTest
@@ -1167,11 +770,7 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionShouldBeAddedWithCorrectGroupWhenGroupIsProvided(TripAttractionGroupDTO group) throws Exception {
         var request = new AddAttractionUnderTripRequest(4L, group);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         var tripAttraction = tripRepo.findById(1L).get().getAttractions().getLast();
         assertThat(tripAttraction.getAttraction().getId()).isEqualTo(4);
@@ -1183,54 +782,35 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     private static Stream<Arguments> provideAllAttractionGroups() {
-        return Stream.of(
-                arguments(Named.of("PRIMARY group", TripAttractionGroupDTO.PRIMARY)),
-                arguments(Named.of("SECONDARY group", TripAttractionGroupDTO.SECONDARY)),
-                arguments(Named.of("EXCLUDED group", TripAttractionGroupDTO.EXCLUDED))
-        );
+        return Stream.of(arguments(Named.of("PRIMARY group", TripAttractionGroupDTO.PRIMARY)), arguments(Named.of("SECONDARY group", TripAttractionGroupDTO.SECONDARY)), arguments(Named.of("EXCLUDED group", TripAttractionGroupDTO.EXCLUDED)));
     }
 
     @ParameterizedTest
     @MethodSource("provideInvalidAddAttractionRequests")
-    void attractionShouldNotBeAddedWhenRequiredFieldsAreMissing(AddAttractionUnderTripRequest request) throws Exception {
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    void attractionShouldNotBeAddedWhenRequiredFieldsAreMissing(AddAttractionUnderTripRequest request, String expectedMessage) throws Exception {
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo(expectedMessage);
     }
 
     private static Stream<Arguments> provideInvalidAddAttractionRequests() {
-        return Stream.of(
-                arguments(Named.of("null attractionId", new AddAttractionUnderTripRequest(null, TripAttractionGroupDTO.PRIMARY))),
-                arguments(Named.of("null attractionGroup", new AddAttractionUnderTripRequest(4L, null)))
-        );
+        return Stream.of(arguments(Named.of("null attractionId", new AddAttractionUnderTripRequest(null, TripAttractionGroupDTO.PRIMARY)), "{attractionId = must not be null}"), arguments(Named.of("null attractionGroup", new AddAttractionUnderTripRequest(4L, null)), "{attractionGroup = must not be null}"));
     }
 
     @Test
     void attractionNoteShouldBeClearedWhenReviewedWithNullNote() throws Exception {
         var request = new ReviewTripAttractionRequest(RatingDTO.DISLIKED, null);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 3 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 3 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(3L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(3L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getRating()).isEqualTo(Rating.DISLIKED);
         assertThat(tripAttraction.getReviewNote()).isNull();
     }
 
-    private record InvalidReviewTarget(Long tripId, Long attractionId) {
+    private record InvalidReviewTarget(Long tripId, Long attractionId, Long missingResourceId) {
     }
 
     @ParameterizedTest
@@ -1238,52 +818,31 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionShouldNotBeReviewedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new ReviewTripAttractionRequest(RatingDTO.VERY_GOOD, "Some note");
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidReviewTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void reviewNoteShouldNotAffectAttractionNoteWhenAttractionIsReviewed() throws Exception {
         var request = new ReviewTripAttractionRequest(RatingDTO.EXCELLENT, "Amazing place");
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 3 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 3 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(3L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(3L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getReviewNote()).isEqualTo("Amazing place");
         assertThat(tripAttraction.getNote()).isEqualTo("test note");
     }
 
     @Test
     void reviewNoteShouldBeReturnedInResponseWhenAttractionHasBeenReviewed() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 2 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 2 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         assertThat(response).hasSize(1);
@@ -1297,15 +856,10 @@ public class TripTest extends AbstractIntegrationTest {
     void clearReviewShouldKeepAttractionInTrip() throws Exception {
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
 
-        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(tripRepo.findById(1L).get().getAttractions()).hasSize(3);
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getStatus()).isEqualTo(TripAttractionStatus.PLANNED);
         assertThat(tripAttraction.getRating()).isNull();
         assertThat(tripAttraction.getReviewNote()).isNull();
@@ -1314,41 +868,25 @@ public class TripTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideInvalidReviewTargets")
     void clearReviewShouldReturnNotFoundWhenTripOrAttractionDoesNotExist(InvalidReviewTarget input) throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     @Test
     void attractionShouldNotBeDeletedFromTripWhenTripIdDoesNotExist() throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/trips/" + 100 + "/attractions/" + 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/trips/" + 100 + "/attractions/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '1' could not be found. Please refresh and try again.");
     }
 
     @Test
     void shouldReturnAllAttractionsWhenTripHasAttractions() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         assertThat(response).hasSize(3);
@@ -1371,13 +909,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnEmptyListWhenTripHasNoAttractions() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 3 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         assertThat(response).isEmpty();
@@ -1385,27 +917,16 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnNotFoundWhenGettingAttractionsForNonExistentTrip() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 100 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 100 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void countriesSummaryShouldCountAllCountriesWhenAtLeastOneMustVisitAttractionIsVisited() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/countries/summary")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/countries/summary").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
         assertThat(response.visitedCount()).isEqualTo(1);
@@ -1416,13 +937,7 @@ public class TripTest extends AbstractIntegrationTest {
     void countriesSummaryShouldCountOnlyCountriesWhenAtLeastOneMustVisitAttractionIsVisited() throws Exception {
         tripRepo.deleteTripAttraction(2L, 1L);
 
-        var jsonResponse = mockMvc.perform(get("/trips/countries/summary")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/countries/summary").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetCountriesSummaryResponse response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
         assertThat(response.visitedCount()).isEqualTo(0);
@@ -1434,110 +949,62 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionGroupShouldBeUpdatedWhenValidGroupIsProvided(TripAttractionGroupDTO group) throws Exception {
         var request = new UpdateAttractionGroupRequest(group);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getAttractionGroup()).isEqualTo(TripAttractionGroup.valueOf(group.name()));
     }
 
     private static Stream<Arguments> provideAllAttractionGroupsForUpdate() {
-        return Stream.of(
-                arguments(Named.of("PRIMARY group", TripAttractionGroupDTO.PRIMARY)),
-                arguments(Named.of("SECONDARY group", TripAttractionGroupDTO.SECONDARY)),
-                arguments(Named.of("EXCLUDED group", TripAttractionGroupDTO.EXCLUDED))
-        );
+        return Stream.of(arguments(Named.of("PRIMARY group", TripAttractionGroupDTO.PRIMARY)), arguments(Named.of("SECONDARY group", TripAttractionGroupDTO.SECONDARY)), arguments(Named.of("EXCLUDED group", TripAttractionGroupDTO.EXCLUDED)));
     }
 
     @Test
     void movingAttractionOnBoardShouldPreserveRequestedOrder() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
-        mockMvc.perform(post("/trips/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
-        var moveRequest = new MoveAttractionOnBoardRequest(
-                TripAttractionGroupDTO.PRIMARY, null, 1L);
-        mockMvc.perform(put("/trips/1/board/attractions/4")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(moveRequest)))
-                .andExpect(status().isNoContent());
+        var moveRequest = new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.PRIMARY, null, 1L);
+        mockMvc.perform(put("/trips/1/board/attractions/4").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(moveRequest))).andExpect(status().isNoContent());
 
-        var jsonResponse = mockMvc.perform(get("/trips/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
-        var primaryAttractions = java.util.Arrays.stream(response)
-                .filter(item -> item.attractionGroup() == TripAttractionGroupDTO.PRIMARY)
-                .filter(item -> "Test city 0".equals(item.cityName()))
-                .toList();
-        assertThat(primaryAttractions)
-                .extracting(GetTripAttractionResponse::attractionId)
-                .containsExactly(4L, 1L);
+        var primaryAttractions = java.util.Arrays.stream(response).filter(item -> item.attractionGroup() == TripAttractionGroupDTO.PRIMARY).filter(item -> "Test city 0".equals(item.cityName())).toList();
+        assertThat(primaryAttractions).extracting(GetTripAttractionResponse::attractionId).containsExactly(4L, 1L);
     }
 
     @Test
     void attractionGroupShouldNotBeUpdatedWhenTripIdDoesNotExist() throws Exception {
         var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/attractions/" + 1 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 100 + "/attractions/" + 1 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '1' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionGroupShouldNotBeUpdatedWhenAttractionIsNotUnderTrip() throws Exception {
         var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 4 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 4 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '4' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionGroupShouldNotBeUpdatedWhenGroupIsNull() throws Exception {
         var request = new UpdateAttractionGroupRequest(null);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{attractionGroup = must not be null}");
     }
 
 
@@ -1545,14 +1012,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldReturnPastVisitedAttractionsFromOtherTrips() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of(1L, 2L, 3L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).hasSize(1);
@@ -1571,22 +1031,11 @@ public class TripTest extends AbstractIntegrationTest {
     @Test
     void visitHistoryShouldReportWouldVisitAgainForPastVisit() throws Exception {
         // Flag the past visit (attraction 1 under trip 2) as "would visit again".
-        mockMvc.perform(put("/trips/" + 2 + "/attractions/" + 1 + "/would-visit-again")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(new UpdateTripAttractionWouldVisitAgainRequest(true))))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 2 + "/attractions/" + 1 + "/would-visit-again").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(new UpdateTripAttractionWouldVisitAgainRequest(true)))).andExpect(status().isNoContent());
 
         var request = new GetVisitHistoryRequest(List.of(1L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).hasSize(1);
@@ -1599,14 +1048,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldExcludeVisitsFromCurrentTrip() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of(1L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 2 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 2 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).isEmpty();
@@ -1617,14 +1059,7 @@ public class TripTest extends AbstractIntegrationTest {
         // Attractions 2 and 3 are only PLANNED (never VISITED) so no history should be returned.
         var request = new GetVisitHistoryRequest(java.util.List.of(2L, 3L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).isEmpty();
@@ -1634,14 +1069,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldReturnEmptyListWhenAttractionIdsIsEmpty() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of());
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).isEmpty();
@@ -1651,14 +1079,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldIgnoreUnknownAttractionIds() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of(1L, 999L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).hasSize(1);
@@ -1671,17 +1092,11 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldReturnBadRequestWhenAttractionIdsIsNull() throws Exception {
         var request = new GetVisitHistoryRequest(null);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{attractionIds = must not be null}");
     }
 
 
@@ -1693,17 +1108,11 @@ public class TripTest extends AbstractIntegrationTest {
         }
         var request = new GetVisitHistoryRequest(ids);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{attractionIds = attractionIds may not contain more than 100 elements}");
     }
 
     @Test
@@ -1714,37 +1123,18 @@ public class TripTest extends AbstractIntegrationTest {
         }
         var request = new GetVisitHistoryRequest(ids);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk());
     }
 
     @Test
     void tripShouldNotBeArchivedAfterClearingTheReviewOfAPrimaryAttraction() throws Exception {
         var tripId = 1L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
 
-        mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         GetTripResponse response = mapper.readValue(jsonResponse, GetTripResponse.class);
 
         assertThat(response.archived()).isFalse();
@@ -1753,159 +1143,70 @@ public class TripTest extends AbstractIntegrationTest {
     @Test
     void tripShouldBeArchivedAgainAfterTheLastMissingReviewIsAdded() throws Exception {
         var tripId = 5L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
 
         var reviewRequest = new ReviewTripAttractionRequest(RatingDTO.VERY_GOOD, "Re-reviewed");
-        mockMvc.perform(post("/trips/" + tripId + "/attractions/" + 3 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(reviewRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + tripId + "/attractions/" + 3 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(reviewRequest))).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
     }
 
     @Test
     void tripShouldNotBeArchivedAfterAttachingANewUnreviewedPrimaryAttraction() throws Exception {
         var tripId = 1L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
 
         var addRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
-        mockMvc.perform(post("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
     }
 
     @Test
     void tripShouldBeArchivedAgainAfterMovingTheLastUnreviewedAttractionToExcluded() throws Exception {
         var tripId = 5L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
 
         var groupRequest = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED);
-        mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 3 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(groupRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 3 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(groupRequest))).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
     }
 
     @Test
     void tripShouldBecomeUnarchivedWhenAnExcludedAttractionIsPromotedToPrimaryWithoutReview() throws Exception {
         var tripId = 1L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
 
         var addExcludedRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.EXCLUDED);
-        mockMvc.perform(post("/trips/" + tripId + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addExcludedRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + tripId + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addExcludedRequest))).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
 
         var promoteRequest = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.PRIMARY);
-        mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 4 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(promoteRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 4 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(promoteRequest))).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
     }
 
     @Test
     void tripShouldBeArchivedAfterDetachingTheLastUnreviewedAttraction() throws Exception {
         var tripId = 5L;
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
 
-        mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 3)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 3).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
-        jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
     }
 
@@ -1913,19 +1214,9 @@ public class TripTest extends AbstractIntegrationTest {
     void tripWithOnlyExcludedAttractionsShouldNotBeArchived() throws Exception {
         var tripId = 3L;
         var addRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.EXCLUDED);
-        mockMvc.perform(post("/trips/" + tripId + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(addRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + tripId + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
-        var jsonResponse = mockMvc.perform(get("/trips/" + tripId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
     }
 
@@ -1933,15 +1224,9 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldUpdateAttractionGroupWhenValidGroupIsSent() throws Exception {
         var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getAttractionGroup()).isEqualTo(TripAttractionGroup.SECONDARY);
     }
 
@@ -1950,68 +1235,40 @@ public class TripTest extends AbstractIntegrationTest {
     void attractionGroupShouldNotBeUpdatedWhenTripOrAttractionIsNotFound(InvalidReviewTarget input) throws Exception {
         var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.PRIMARY);
 
-        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/group")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/trips/" + input.tripId + "/attractions/" + input.attractionId + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '%d' could not be found. Please refresh and try again.".formatted(input.missingResourceId));
     }
 
     private static Stream<Arguments> provideInvalidAttractionGroupTargets() {
-        return Stream.of(
-                arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L))),
-                arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L)))
-        );
+        return Stream.of(arguments(Named.of("non-existent trip", new InvalidReviewTarget(100L, 1L, 1L))), arguments(Named.of("attraction not under trip", new InvalidReviewTarget(1L, 4L, 4L))));
     }
 
     @Test
     void shouldReturnAllAttractionsForTripWhenTripExists() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         assertThat(response).hasSize(3);
-        assertThat(java.util.Arrays.stream(response).map(GetTripAttractionResponse::attractionId))
-                .containsExactlyInAnyOrder(1L, 2L, 3L);
+        assertThat(java.util.Arrays.stream(response).map(GetTripAttractionResponse::attractionId)).containsExactlyInAnyOrder(1L, 2L, 3L);
     }
 
     @Test
     void shouldReturnNotFoundWhenGettingAttractionsForNonExistingTrip() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/" + 999 + "/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/" + 999 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '999' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionShouldNotBeReviewedWhenRatingIsNull() throws Exception {
         var request = new ReviewTripAttractionRequest(null, "Some note");
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -2022,14 +1279,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldReturnVisitHistoryForGivenAttractionsExcludingCurrentTrip() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of(1L));
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).hasSize(1);
@@ -2044,14 +1294,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldBeRejectedWhenAttractionIdsIsNull() throws Exception {
         var request = new GetVisitHistoryRequest(null);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -2063,14 +1306,7 @@ public class TripTest extends AbstractIntegrationTest {
         var tooMany = java.util.stream.LongStream.rangeClosed(1, 101).boxed().toList();
         var request = new GetVisitHistoryRequest(tooMany);
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -2081,14 +1317,7 @@ public class TripTest extends AbstractIntegrationTest {
     void visitHistoryShouldBeEmptyWhenNoAttractionIdsAreSent() throws Exception {
         var request = new GetVisitHistoryRequest(java.util.List.of());
 
-        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/trips/" + 1 + "/attractions/visit-history").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetAttractionVisitHistoryResponse[] response = mapper.readValue(jsonResponse, GetAttractionVisitHistoryResponse[].class);
         assertThat(response).isEmpty();
@@ -2096,13 +1325,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnCountriesSummary() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/countries/summary")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/countries/summary").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         var response = mapper.readValue(jsonResponse, GetCountriesSummaryResponse.class);
         assertThat(response.visitedCount()).isEqualTo(1);
@@ -2113,8 +1336,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldReturnCountryVisitSummaries() throws Exception {
         var response = getCountryVisitSummaries();
         assertThat(response).isNotEmpty();
-        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName))
-                .contains("Test country 0");
+        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName)).contains("Test country 0");
     }
 
     @ParameterizedTest
@@ -2136,42 +1358,28 @@ public class TripTest extends AbstractIntegrationTest {
 
         var response = getCountryVisitSummaries();
 
-        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName))
-                .doesNotContain("Test country 2");
+        assertThat(java.util.Arrays.stream(response).map(GetCountryVisitSummaryResponse::countryName)).doesNotContain("Test country 2");
     }
 
     @ParameterizedTest
-        @CsvSource({
-                        "true, 1, 0",
-                        "false, 0, 1"
-        })
-        void shouldReportVisitedPermanentlyClosedAttraction(
-                        boolean mustVisit, long expectedVisitedMustVisit, long expectedVisitedOther) throws Exception {
+    @CsvSource({"true, 1, 0", "false, 0, 1"})
+    void shouldReportVisitedPermanentlyClosedAttraction(boolean mustVisit, long expectedVisitedMustVisit, long expectedVisitedOther) throws Exception {
         permanentlyCloseAttraction(1L, mustVisit);
 
         var country = findCountryVisitSummary("Test country 0");
 
-                assertThat(country.visitedMustVisit()).isEqualTo(expectedVisitedMustVisit);
-                assertThat(country.visitedOther()).isEqualTo(expectedVisitedOther);
+        assertThat(country.visitedMustVisit()).isEqualTo(expectedVisitedMustVisit);
+        assertThat(country.visitedOther()).isEqualTo(expectedVisitedOther);
     }
 
     @Test
     void shouldExposePermanentClosureInTripAttractionResponse() throws Exception {
         permanentlyCloseAttraction(1L, true);
 
-        var jsonResponse = mockMvc.perform(get("/trips/1/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/1/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
 
-        assertThat(java.util.Arrays.stream(response)
-                .filter(attraction -> attraction.attractionId().equals(1L))
-                .map(GetTripAttractionResponse::permanentlyClosedAt))
-                .allMatch(java.util.Objects::nonNull);
+        assertThat(java.util.Arrays.stream(response).filter(attraction -> attraction.attractionId().equals(1L)).map(GetTripAttractionResponse::permanentlyClosedAt)).allMatch(java.util.Objects::nonNull);
     }
 
     private void permanentlyCloseAttraction(long attractionId, boolean mustVisit) throws Exception {
@@ -2180,28 +1388,15 @@ public class TripTest extends AbstractIntegrationTest {
         attractionRepo.saveAndFlush(attraction);
 
         var request = new UpdateAttractionPermanentlyClosedRequest(true);
-        mockMvc.perform(put("/attractions/" + attractionId + "/permanently-closed")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/" + attractionId + "/permanently-closed").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
     }
 
     private GetCountryVisitSummaryResponse findCountryVisitSummary(String countryName) throws Exception {
-        return java.util.Arrays.stream(getCountryVisitSummaries())
-                .filter(country -> country.countryName().equals(countryName))
-                .findFirst()
-                .orElseThrow();
+        return java.util.Arrays.stream(getCountryVisitSummaries()).filter(country -> country.countryName().equals(countryName)).findFirst().orElseThrow();
     }
 
     private GetCountryVisitSummaryResponse[] getCountryVisitSummaries() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/trips/countries/visit-summary")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/trips/countries/visit-summary").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return mapper.readValue(jsonResponse, GetCountryVisitSummaryResponse[].class);
     }
 
@@ -2210,11 +1405,7 @@ public class TripTest extends AbstractIntegrationTest {
         var tripName = "a".repeat(512);
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());
 
-        mockMvc.perform(post("/trips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated());
 
         assertThat(tripRepo.findByName(tripName).getFirst().getName()).isEqualTo(tripName);
     }
@@ -2224,15 +1415,9 @@ public class TripTest extends AbstractIntegrationTest {
         var reviewNote = "a".repeat(512);
         var request = new ReviewTripAttractionRequest(RatingDTO.EXCELLENT, reviewNote);
 
-        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/" + 1 + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getRating()).isEqualTo(Rating.EXCELLENT);
         assertThat(tripAttraction.getReviewNote()).isEqualTo(reviewNote);
     }
@@ -2242,15 +1427,9 @@ public class TripTest extends AbstractIntegrationTest {
         var note = "a".repeat(512);
         var request = new UpdateTripAttractionNoteRequest(note);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/note").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getNote()).isEqualTo(note);
     }
 
@@ -2259,15 +1438,9 @@ public class TripTest extends AbstractIntegrationTest {
         var visitTime = "a".repeat(64);
         var request = new UpdateTripAttractionVisitTimeRequest(visitTime);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/visit-time").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getVisitTime()).isEqualTo(visitTime);
     }
 
@@ -2276,15 +1449,9 @@ public class TripTest extends AbstractIntegrationTest {
         var workingHours = "a".repeat(128);
         var request = new UpdateTripAttractionWorkingHoursRequest(workingHours);
 
-        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/" + 1 + "/attractions/" + 1 + "/working-hours").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream()
-                .filter(ta -> ta.getAttraction().getId().equals(1L))
-                .findFirst().orElseThrow();
+        var tripAttraction = tripRepo.findById(1L).get().getAttractions().stream().filter(ta -> ta.getAttraction().getId().equals(1L)).findFirst().orElseThrow();
         assertThat(tripAttraction.getWorkingHours()).isEqualTo(workingHours);
     }
 }

@@ -143,10 +143,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInvalidQueries")
-    void userShouldGetConflictResponseWhenCountryQueryNameIsTooShort(String input) throws Exception {
+    void userShouldGetConflictResponseWhenCountryQueryNameIsTooShort(InvalidQuery input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
+                        .param("q", input.query())
                         .param("i", "COUNTRY")
                         .header("x-api-version", "1"))
                 .andExpect(status().isBadRequest())
@@ -156,18 +156,31 @@ public class SearchTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; "))
+                .containsExactlyInAnyOrder(input.errorMessages());
     }
 
-    private static Stream<String> provideInvalidQueries() {
-        return Stream.of("", " ", "       ", "T", "Te");
+    private record InvalidQuery(String query, String[] errorMessages) {
+    }
+
+    private static Stream<InvalidQuery> provideInvalidQueries() {
+        String tooShort = "query = Query string must be at least 3 characters long";
+        String blank = "query = must not be blank";
+        return Stream.of(
+                new InvalidQuery("", new String[]{tooShort, blank}),
+                new InvalidQuery(" ", new String[]{tooShort, blank}),
+                new InvalidQuery("       ", new String[]{blank}),
+                new InvalidQuery("T", new String[]{tooShort}),
+                new InvalidQuery("Te", new String[]{tooShort}));
     }
 
     @ParameterizedTest
     @MethodSource("provideInvalidQueries")
-    void userShouldGetConflictResponseWhenRegionQueryNameIsTooShort(String input) throws Exception {
+    void userShouldGetConflictResponseWhenRegionQueryNameIsTooShort(InvalidQuery input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
+                        .param("q", input.query())
                         .param("i", "REGION")
                         .header("x-api-version", "1"))
                 .andExpect(status().isBadRequest())
@@ -177,6 +190,9 @@ public class SearchTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; "))
+                .containsExactlyInAnyOrder(input.errorMessages());
     }
 
     @ParameterizedTest
@@ -488,10 +504,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInvalidQueries")
-    void userShouldGetConflictResponseWhenCityQueryNameIsTooShort(String input) throws Exception {
+    void userShouldGetConflictResponseWhenCityQueryNameIsTooShort(InvalidQuery input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
+                        .param("q", input.query())
                         .param("i", "CITY")
                         .header("x-api-version", "1"))
                 .andExpect(status().isBadRequest())
@@ -501,6 +517,9 @@ public class SearchTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; "))
+                .containsExactlyInAnyOrder(input.errorMessages());
     }
 
     @ParameterizedTest
@@ -569,10 +588,10 @@ public class SearchTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("provideInvalidQueries")
-    void userShouldGetConflictResponseWhenAttractionQueryNameIsTooShort(String input) throws Exception {
+    void userShouldGetConflictResponseWhenAttractionQueryNameIsTooShort(InvalidQuery input) throws Exception {
         var jsonResponse = mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
+                        .param("q", input.query())
                         .param("i", "ATTRACTION")
                         .header("x-api-version", "1"))
                 .andExpect(status().isBadRequest())
@@ -582,6 +601,9 @@ public class SearchTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; "))
+                .containsExactlyInAnyOrder(input.errorMessages());
     }
 
     @Test

@@ -59,12 +59,7 @@ public class RegionTest extends AbstractIntegrationTest {
     @MethodSource("provideValidRegionNames")
     void shouldSaveRegionWhenRegionNameIsValid(String regionName) throws Exception {
         var request = new SaveRegionRequest(regionName, 1);
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).getFirst().getId()));
+        mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).getFirst().getId()));
 
         assertThat(regionRepo.findByName(regionName)).hasSize(1);
         assertThat(regionRepo.findByName(regionName).getFirst().getName()).isEqualTo(regionName);
@@ -78,31 +73,18 @@ public class RegionTest extends AbstractIntegrationTest {
     void regionSaveRequestShouldBeRejectedWhenGivenCountryNotExist() throws Exception {
         var request = new SaveRegionRequest("Test region 0", 100);
 
-        var jsonResponse = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void regionSaveRequestShouldBeRejectedWhenCountryIdIsNull() throws Exception {
         var request = new SaveRegionRequest("Test region 9", null);
 
-        var jsonResponse = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -114,14 +96,7 @@ public class RegionTest extends AbstractIntegrationTest {
     void regionSaveRequestShouldBeRejectedWhenInvalidNameIsSent(InvalidRegionName input) throws Exception {
         var request = new SaveRegionRequest(input.regionName(), 0);
 
-        var jsonResponse = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -132,32 +107,18 @@ public class RegionTest extends AbstractIntegrationTest {
     }
 
     private static Stream<InvalidRegionName> provideInvalidRegionNames() {
-        return Stream.of(
-                new InvalidRegionName(null, "{regionName = Region name may not be null or empty}"),
-                new InvalidRegionName("", "{regionName = Region name may not be null or empty}"),
-                new InvalidRegionName("   ", "{regionName = Region name may not be null or empty}"),
-                new InvalidRegionName("\t", "{regionName = Region name may not be null or empty}"),
-                new InvalidRegionName("\n", "{regionName = Region name may not be null or empty}"),
-                new InvalidRegionName("a".repeat(257), "{regionName = Region name may not be longer then 256}"),
-                new InvalidRegionName("ab".repeat(256), "{regionName = Region name may not be longer then 256}")
-        );
+        return Stream.of(new InvalidRegionName(null, "{regionName = Region name may not be null or empty}"), new InvalidRegionName("", "{regionName = Region name may not be null or empty}"), new InvalidRegionName("   ", "{regionName = Region name may not be null or empty}"), new InvalidRegionName("\t", "{regionName = Region name may not be null or empty}"), new InvalidRegionName("\n", "{regionName = Region name may not be null or empty}"), new InvalidRegionName("a".repeat(257), "{regionName = Region name may not be longer then 256}"), new InvalidRegionName("ab".repeat(256), "{regionName = Region name may not be longer then 256}"));
     }
 
     @Test
     void regionSaveRequestShouldBeRejectedWhenGivenRegionNameUnderGivenCountryAlreadyExists() throws Exception {
         var request = new SaveRegionRequest("Test region 0", 1);
 
-        var jsonResponse = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test region 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -165,12 +126,7 @@ public class RegionTest extends AbstractIntegrationTest {
         String regionName = "Test region 0";
         var request = new SaveRegionRequest(regionName, 2);
 
-        mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).get(1).getId()));
+        mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/regions/" + regionRepo.findByName(regionName).get(1).getId()));
 
         assertThat(regionRepo.findByName(regionName).get(1).getName()).isEqualTo(regionName);
     }
@@ -181,13 +137,7 @@ public class RegionTest extends AbstractIntegrationTest {
         final String COUNTRY_NAME_3 = "Test country 2";
         final String COUNTRY_NAME_5 = "Test country 4";
 
-        var jsonResponse = mockMvc.perform(get("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
@@ -196,15 +146,7 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 4");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_5);
 
-        jsonResponse = mockMvc.perform(get("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("regionId", response[1].regionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/regions").contentType(MediaType.APPLICATION_JSON).param("regionId", response[1].regionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
@@ -213,15 +155,7 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
-        jsonResponse = mockMvc.perform(get("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("regionId", response[1].regionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/regions").contentType(MediaType.APPLICATION_JSON).param("regionId", response[1].regionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(1);
@@ -235,14 +169,7 @@ public class RegionTest extends AbstractIntegrationTest {
         final String COUNTRY_NAME_3 = "Test country 2";
         final String COUNTRY_NAME_5 = "Test country 4";
 
-        var jsonResponse = mockMvc.perform(get("/regions")
-                        .param("sd", "ASC")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/regions").param("sd", "ASC").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetRegionResponse[] response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
@@ -251,16 +178,7 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 1");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_0);
 
-        jsonResponse = mockMvc.perform(get("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("regionId", response[1].regionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .param("sd", "ASC")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/regions").contentType(MediaType.APPLICATION_JSON).param("regionId", response[1].regionId().toString()).param("updatedOn", response[1].changedOn().toString()).param("sd", "ASC").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(2);
@@ -269,16 +187,7 @@ public class RegionTest extends AbstractIntegrationTest {
         assertThat(response[1].regionName()).isEqualTo("Test region 4");
         assertThat(response[1].countryName()).isEqualTo(COUNTRY_NAME_5);
 
-        jsonResponse = mockMvc.perform(get("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("regionId", response[1].regionId().toString())
-                        .param("updatedOn", response[1].changedOn().toString())
-                        .param("sd", "ASC")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        jsonResponse = mockMvc.perform(get("/regions").contentType(MediaType.APPLICATION_JSON).param("regionId", response[1].regionId().toString()).param("updatedOn", response[1].changedOn().toString()).param("sd", "ASC").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetRegionResponse[].class);
         assertThat(response).hasSize(1);
@@ -288,10 +197,7 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void regionShouldBeDeletedWhenRequestIsSent() throws Exception {
-        mockMvc.perform(delete("/regions/" + 5)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/regions/" + 5).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(regionRepo.findAll()).hasSize(4);
         assertThat(regionRepo.findById(5)).isEmpty();
@@ -299,59 +205,35 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void errorShouldBeReturnedWhenRegionWithCitiesIsRequestedToBeDeleted() throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/regions/" + 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
-        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
-        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
+        assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
     }
 
     @Test
     void errorShouldBeReturnedWhenRegionWithAttractionsIsRequestedToBeDeleted() throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/regions/" + 4)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 4).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
-        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
-        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
+        assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
     }
 
     @Test
     void errorShouldBeReturnedWhenNonExistingRegionIsRequestedToBeDeleted() throws Exception {
-        var jsonResponse = mockMvc.perform(delete("/regions/" + 100)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(delete("/regions/" + 100).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
         assertThat(regionRepo.findAll()).hasSize(5);
     }
 
     @Test
     void regionShouldBeReturnedWhenValidIdIsSent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/regions/" + 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/regions/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetRegionResponse response = mapper.readValue(jsonResponse, GetRegionResponse.class);
         assertThat(response.regionName()).isEqualTo("Test region 0");
@@ -360,17 +242,11 @@ public class RegionTest extends AbstractIntegrationTest {
 
     @Test
     void errorShouldBeReturnedWhenNonExistingIdIsSent() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/regions/" + 100)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/regions/" + 100).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @ParameterizedTest
@@ -378,11 +254,7 @@ public class RegionTest extends AbstractIntegrationTest {
     void shouldUpdateRegionNameWhenNewNameIsValid(String newRegionName) throws Exception {
         var update = new UpdateRegionDetailsRequest(newRegionName);
 
-        mockMvc.perform(put("/regions/1/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/regions/1/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isNoContent());
 
         assertThat(regionRepo.findById(1).map(Region::getName)).hasValue(newRegionName);
         assertThat(regionRepo.findById(1).map(Region::getCountry).map(Country::getName)).hasValue(COUNTRY_NAME_0);
@@ -392,18 +264,11 @@ public class RegionTest extends AbstractIntegrationTest {
     void errorShouldBeReturnedWhenNonExistingRegionIsRequestedToBeUpdated() throws Exception {
         var update = new UpdateRegionDetailsRequest("New region name");
 
-        var jsonResponse = mockMvc.perform(put("/regions/123/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/123/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '123' could not be found. Please refresh and try again.");
     }
 
     @ParameterizedTest
@@ -411,14 +276,7 @@ public class RegionTest extends AbstractIntegrationTest {
     void errorShouldBeReturnedWhenNewNameIsInvalid(InvalidRegionName input) throws Exception {
         var update = new UpdateRegionDetailsRequest(input.regionName());
 
-        var jsonResponse = mockMvc.perform(put("/regions/1/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/1/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -429,29 +287,18 @@ public class RegionTest extends AbstractIntegrationTest {
     void errorShouldBeReturnedWhenNewRegionNameUnderGivenCountryAlreadyExists() throws Exception {
         var update = new UpdateRegionDetailsRequest("Test region 1");
 
-        var jsonResponse = mockMvc.perform(put("/regions/1/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/1/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
-        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test region 1' is already in use. Please choose another name.");
     }
 
     @Test
     void shouldUpdateRegionCountryNameWhileLeavingOriginalRegionNameWhenNewCountryIsGiven() throws Exception {
         var update = new UpdateRegionCountryRequest(2);
 
-        mockMvc.perform(put("/regions/" + 1 + "/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/regions/" + 1 + "/country").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isNoContent());
 
         assertThat(regionRepo.findById(1).map(Region::getCountry).map(Country::getName)).hasValue(COUNTRY_NAME_1);
         assertThat(countryRepo.findById(1).map(Country::getName)).hasValue(COUNTRY_NAME_0);
@@ -460,76 +307,43 @@ public class RegionTest extends AbstractIntegrationTest {
     @Test
     void errorShouldBeReturnedWhenCurrentCountryAlreadyContainsRegionName() throws Exception {
         var request = new SaveRegionRequest("Test region 0", 2);
-        var mvcResult = mockMvc.perform(post("/regions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        var mvcResult = mockMvc.perform(post("/regions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andReturn();
         int id = Integer.parseInt(mvcResult.getResponse().getHeader("Location").split("/")[4]);
         var update = new UpdateRegionCountryRequest(1);
 
-        var jsonResponse = mockMvc.perform(put("/regions/" + id + "/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/" + id + "/country").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
-        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test region 0' is already in use. Please choose another name.");
     }
 
     @Test
     void errorShouldBeReturnedWhenNonExistingCountryIsSentToBeUpdated() throws Exception {
         var update = new UpdateRegionCountryRequest(100);
 
-        var jsonResponse = mockMvc.perform(put("/regions/" + 1 + "/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/" + 1 + "/country").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void errorShouldBeReturnedWhenNonExistingRegionIdIsSent() throws Exception {
         var update = new UpdateRegionCountryRequest(1);
-        var jsonResponse = mockMvc.perform(put("/regions/" + 100 + "/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/" + 100 + "/country").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void errorShouldBeReturnedWhenNullCountryIdIsSentToUpdateRegionCountry() throws Exception {
         var update = new UpdateRegionCountryRequest(null);
 
-        var jsonResponse = mockMvc.perform(put("/regions/1/country")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(update)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(put("/regions/1/country").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(update))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -539,11 +353,7 @@ public class RegionTest extends AbstractIntegrationTest {
     @Test
     void allRegionsShouldBeReturnedAcrossPagesInDescOrderAfterAnUpdateShiftsItsPosition() throws Exception {
         // Update the oldest region (id=1, "Test region 0") so it jumps to the top of DESC ordering.
-        mockMvc.perform(put("/regions/1/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region"))))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/regions/1/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region")))).andExpect(status().isNoContent());
 
         var collected = new ArrayList<String>();
         GetRegionResponse[] page = fetchRegionsPage("DESC", null, null);
@@ -554,21 +364,12 @@ public class RegionTest extends AbstractIntegrationTest {
             stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
         }
 
-        assertThat(collected).containsExactly(
-                "Updated region",
-                "Test region 2",
-                "Test region 4",
-                "Test region 3",
-                "Test region 1");
+        assertThat(collected).containsExactly("Updated region", "Test region 2", "Test region 4", "Test region 3", "Test region 1");
     }
 
     @Test
     void allRegionsShouldBeReturnedAcrossPagesInAscOrderAfterAnUpdateShiftsItsPosition() throws Exception {
-        mockMvc.perform(put("/regions/1/details")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region"))))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/regions/1/details").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(new UpdateRegionDetailsRequest("Updated region")))).andExpect(status().isNoContent());
 
         var collected = new ArrayList<String>();
         GetRegionResponse[] page = fetchRegionsPage("ASC", null, null);
@@ -579,29 +380,15 @@ public class RegionTest extends AbstractIntegrationTest {
             stream(page).map(GetRegionResponse::regionName).forEach(collected::add);
         }
 
-        assertThat(collected).containsExactly(
-                "Test region 1",
-                "Test region 3",
-                "Test region 4",
-                "Test region 2",
-                "Updated region");
+        assertThat(collected).containsExactly("Test region 1", "Test region 3", "Test region 4", "Test region 2", "Updated region");
     }
 
     private GetRegionResponse[] fetchRegionsPage(String sortDirection, Integer afterRegionId, String afterChangedOn) throws Exception {
-        var request = get("/regions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .param("sd", sortDirection)
-                .header("x-api-version", "1");
+        var request = get("/regions").contentType(MediaType.APPLICATION_JSON).param("sd", sortDirection).header("x-api-version", "1");
         if (afterRegionId != null) {
-            request = request
-                    .param("regionId", afterRegionId.toString())
-                    .param("updatedOn", afterChangedOn);
+            request = request.param("regionId", afterRegionId.toString()).param("updatedOn", afterChangedOn);
         }
-        var jsonResponse = mockMvc.perform(request)
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return mapper.readValue(jsonResponse, GetRegionResponse[].class);
     }
 }

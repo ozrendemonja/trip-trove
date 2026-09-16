@@ -29,7 +29,7 @@ public class TripServiceImpl implements TripService {
     public Trip saveTrip(String tripName, LocalDate from, LocalDate to) {
         log.atInfo().log("Processing save trip request for trip '{}'", tripName);
         if (tripRepo.existsByNameAndDatesBetween(tripName, from, to)) {
-            throw new BaseApiException("Trip '%s' already exists within the specified date range in the database".formatted(tripName), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, tripName, from, to);
         }
         log.atInfo().log("Trip '{}' is unique within the specified date range", tripName);
 
@@ -46,18 +46,15 @@ public class TripServiceImpl implements TripService {
     @Override
     public Trip getTrip(Long id) {
         log.atInfo().log("Getting trip with id '{}'", id);
-        return tripRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        return tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override
     public void updateTripName(Long id, String newName) {
         log.atInfo().log("Updating the trip name");
-        var trip = tripRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        tripRepo.findAll().forEach(log::info);
+        var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         if (tripRepo.existsByNameAndDatesBetween(newName, trip.getFrom(), trip.getTo())) {
-            throw new BaseApiException("Trip '%s' already exists within the specified date range in the database".formatted(newName), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, newName, trip.getFrom(), trip.getTo());
         }
 
         trip.setName(newName);
@@ -68,10 +65,9 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip) {
         log.atInfo().log("Updating the trip range");
-        var trip = tripRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         if (tripRepo.existsByNameAndDatesBetween(trip.getName(), fromTrip, toTrip)) {
-            throw new BaseApiException("Trip '%s' already exists within the specified date range in the database".formatted(trip.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, trip.getName(), fromTrip, toTrip);
         }
 
         trip.setFrom(fromTrip);
@@ -83,9 +79,9 @@ public class TripServiceImpl implements TripService {
     @Override
     public void deleteTrip(Long id) {
         log.atInfo().log("Deleting trip");
-        var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         if (!trip.getAttractions().isEmpty()) {
-            throw new BaseApiException("Trip has attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+            throw new BaseApiException("Trip still contains attractions", BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, id);
         }
 
         tripRepo.delete(trip);
@@ -96,15 +92,12 @@ public class TripServiceImpl implements TripService {
     public void attachAttraction(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Add attraction under trip for trip '{}'", tripId);
         if (tripAttractionRepo.existsByTripIdAndAttractionId(tripId, attractionId)) {
-            throw new BaseApiException("Attraction '%d' already exists under the trip in the database".formatted(attractionId), BaseApiException.ErrorCode.ATTRACTION_ALREADY_ADDED_TO_TRIP);
+            throw new BaseApiException(BaseApiException.ErrorCode.TRIP_ALREADY_CONTAINS_ATTRACTION, attractionId, tripId);
         }
-        var trip = tripRepo.findById(tripId)
-                .orElseThrow(() -> new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        var attraction = attractionRepo.findById(attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var trip = tripRepo.findById(tripId).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId));
+        var attraction = attractionRepo.findById(attractionId).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId));
 
-        var boardPosition = FractionalIndexing.indexAfter(
-            tripAttractionRepo.findLastBoardPositionByTripId(tripId).orElse(null));
+        var boardPosition = FractionalIndexing.indexAfter(tripAttractionRepo.findLastBoardPositionByTripId(tripId).orElse(null));
         trip.attachAttraction(attraction, attractionGroup, boardPosition);
         tripRepo.save(trip);
         tripRepo.recomputeArchived(tripId);
@@ -115,8 +108,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void reviewAttraction(Long tripId, Long attractionId, Rating rating, String reviewNote) {
         log.atInfo().log("Reviewing attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.recordVisit(rating, reviewNote);
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -126,8 +118,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void clearReview(Long tripId, Long attractionId) {
         log.atInfo().log("Clearing review for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.clearReview();
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -137,8 +128,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Updating attraction group for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setAttractionGroup(attractionGroup);
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -147,17 +137,11 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup,
-                                      Long previousAttractionId, Long nextAttractionId) {
+    public void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup, Long previousAttractionId, Long nextAttractionId) {
         log.atInfo().log("Moving attraction '{}' on board for trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        var previousAttraction = previousAttractionId == null ? null
-                : tripAttractionRepo.findByTripIdAndAttractionId(tripId, previousAttractionId)
-                    .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        var nextAttraction = nextAttractionId == null ? null
-                : tripAttractionRepo.findByTripIdAndAttractionId(tripId, nextAttractionId)
-                    .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
+        var previousAttraction = previousAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, previousAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, previousAttractionId, tripId));
+        var nextAttraction = nextAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, nextAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, nextAttractionId, tripId));
         var previousGroup = attraction.getAttractionGroup();
         TripBoard.moveAttraction(attraction, targetGroup, previousAttraction, nextAttraction);
         tripAttractionRepo.save(attraction);
@@ -171,19 +155,14 @@ public class TripServiceImpl implements TripService {
     @Transactional
     public void arrangeTripBoard(Long tripId, List<TripBoardItem> boardItems) {
         if (!tripRepo.existsById(tripId)) {
-            throw new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+            throw new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
         }
 
         var currentBoardAttractions = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
-        var currentGroupsByAttractionId = currentBoardAttractions.stream()
-                .collect(Collectors.toMap(
-                        attraction -> attraction.getAttraction().getId(),
-                        TripAttraction::getAttractionGroup));
+        var currentGroupsByAttractionId = currentBoardAttractions.stream().collect(Collectors.toMap(attraction -> attraction.getAttraction().getId(), TripAttraction::getAttractionGroup));
         var changedAttractions = TripBoard.arrange(currentBoardAttractions, boardItems);
         tripAttractionRepo.saveAll(changedAttractions);
-        var hasAttractionGroupChanged = changedAttractions.stream().anyMatch(attraction ->
-                currentGroupsByAttractionId.get(attraction.getAttraction().getId())
-                != attraction.getAttractionGroup());
+        var hasAttractionGroupChanged = changedAttractions.stream().anyMatch(attraction -> currentGroupsByAttractionId.get(attraction.getAttraction().getId()) != attraction.getAttractionGroup());
         if (hasAttractionGroupChanged) {
             tripRepo.recomputeArchived(tripId);
         }
@@ -192,8 +171,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit) {
         log.atInfo().log("Updating must visit for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setMustVisit(mustVisit);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Must visit updated for attraction '{}' under trip '{}'", attractionId, tripId);
@@ -202,8 +180,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionWouldVisitAgain(Long tripId, Long attractionId, boolean wouldVisitAgain) {
         log.atInfo().log("Updating would visit again for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setWouldVisitAgain(wouldVisitAgain);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Would visit again updated for attraction '{}' under trip '{}'", attractionId, tripId);
@@ -212,8 +189,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours) {
         log.atInfo().log("Updating working hours for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setWorkingHours(workingHours);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Working hours updated for attraction '{}' under trip '{}'", attractionId, tripId);
@@ -222,8 +198,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionVisitTime(Long tripId, Long attractionId, String visitTime) {
         log.atInfo().log("Updating visit time for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setVisitTime(visitTime);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Visit time updated for attraction '{}' under trip '{}'", attractionId, tripId);
@@ -232,8 +207,7 @@ public class TripServiceImpl implements TripService {
     @Override
     public void updateAttractionNote(Long tripId, Long attractionId, String note) {
         log.atInfo().log("Updating note for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
-                .orElseThrow(() -> new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setNote(note);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Note updated for attraction '{}' under trip '{}'", attractionId, tripId);
@@ -243,7 +217,7 @@ public class TripServiceImpl implements TripService {
     public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
         if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {
-            throw new BaseApiException("Attraction not found under trip in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+            throw new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId);
         }
         tripRepo.recomputeArchived(tripId);
 
@@ -254,7 +228,7 @@ public class TripServiceImpl implements TripService {
     public List<TripAttraction> getAttractions(Long tripId) {
         log.atInfo().log("Getting attractions for trip '{}'", tripId);
         if (!tripRepo.existsById(tripId)) {
-            throw new BaseApiException("Trip not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+            throw new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
         }
         var result = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
         log.atInfo().log("Found '{}' attractions for trip", result.size());
@@ -291,48 +265,25 @@ public class TripServiceImpl implements TripService {
         return result;
     }
 
-    private static List<CountryVisitSummary> mergeIntoCountryVisitSummaries(
-            List<CountryAttractionCount> allAttractionsByCountry,
-            List<CountryAttractionCount> visitedAttractionsByCountry) {
+    private static List<CountryVisitSummary> mergeIntoCountryVisitSummaries(List<CountryAttractionCount> allAttractionsByCountry, List<CountryAttractionCount> visitedAttractionsByCountry) {
         var totalMustVisit = sumByCountry(allAttractionsByCountry, true);
         var totalOther = sumByCountry(allAttractionsByCountry, false);
         var visitedMustVisit = sumByCountry(visitedAttractionsByCountry, true);
         var visitedOther = sumByCountry(visitedAttractionsByCountry, false);
 
-        var isoByCountry = java.util.stream.Stream.of(allAttractionsByCountry, visitedAttractionsByCountry)
-                .flatMap(java.util.List::stream)
-                .filter(row -> row.isoCode() != null)
-                .collect(java.util.stream.Collectors.toMap(
-                        CountryAttractionCount::countryName,
-                        CountryAttractionCount::isoCode,
-                        (a, b) -> a));
+        var isoByCountry = java.util.stream.Stream.of(allAttractionsByCountry, visitedAttractionsByCountry).flatMap(java.util.List::stream).filter(row -> row.isoCode() != null).collect(java.util.stream.Collectors.toMap(CountryAttractionCount::countryName, CountryAttractionCount::isoCode, (a, b) -> a));
 
-        return java.util.stream.Stream.of(totalMustVisit, totalOther, visitedMustVisit, visitedOther)
-                .flatMap(map -> map.keySet().stream())
-                .distinct()
-                .map(country -> {
-                    long visitedMv = visitedMustVisit.getOrDefault(country, 0L);
-                    long totalMv = totalMustVisit.getOrDefault(country, 0L);
-                    long visitedOt = visitedOther.getOrDefault(country, 0L);
-                    long totalOt = totalOther.getOrDefault(country, 0L);
-                    return new CountryVisitSummary(country,
-                            isoByCountry.get(country),
-                            visitedMv,
-                            Math.max(0L, totalMv - visitedMv),
-                            visitedOt,
-                            Math.max(0L, totalOt - visitedOt));
-                })
-                .toList();
+        return java.util.stream.Stream.of(totalMustVisit, totalOther, visitedMustVisit, visitedOther).flatMap(map -> map.keySet().stream()).distinct().map(country -> {
+            long visitedMv = visitedMustVisit.getOrDefault(country, 0L);
+            long totalMv = totalMustVisit.getOrDefault(country, 0L);
+            long visitedOt = visitedOther.getOrDefault(country, 0L);
+            long totalOt = totalOther.getOrDefault(country, 0L);
+            return new CountryVisitSummary(country, isoByCountry.get(country), visitedMv, Math.max(0L, totalMv - visitedMv), visitedOt, Math.max(0L, totalOt - visitedOt));
+        }).toList();
     }
 
-    private static java.util.Map<String, Long> sumByCountry(
-            List<CountryAttractionCount> rows, boolean mustVisit) {
-        return rows.stream()
-                .filter(row -> row.mustVisitAttraction() == mustVisit)
-                .collect(java.util.stream.Collectors.toMap(
-                        CountryAttractionCount::countryName,
-                        CountryAttractionCount::attractionCount,
-                        Long::sum));
+    private static java.util.Map<String, Long> sumByCountry(List<CountryAttractionCount> rows, boolean mustVisit) {
+        return rows.stream().filter(row -> row.mustVisitAttraction() == mustVisit).collect(java.util.stream.Collectors.toMap(CountryAttractionCount::countryName, CountryAttractionCount::attractionCount, Long::sum));
     }
 
     @Override

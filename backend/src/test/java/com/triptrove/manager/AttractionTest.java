@@ -216,8 +216,8 @@ public class AttractionTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
-        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
-        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
+        assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
     }
 
     @Test
@@ -232,7 +232,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -278,6 +278,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -371,6 +372,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -388,6 +390,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -405,6 +408,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -422,6 +426,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -439,6 +444,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -484,6 +490,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -501,6 +508,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -518,6 +526,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -535,6 +544,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -552,6 +562,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("Attraction 'Test attraction new 0' must be on the same continent as its main attraction 'Test attraction 0'.");
     }
 
     @ParameterizedTest
@@ -633,6 +644,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -785,6 +797,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -816,6 +829,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -864,6 +878,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -913,6 +928,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -969,6 +985,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     private GetAttractionResponse updateAttractionPermanentlyClosed(
@@ -1049,6 +1066,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -1114,6 +1132,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -1251,6 +1270,7 @@ public class AttractionTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test

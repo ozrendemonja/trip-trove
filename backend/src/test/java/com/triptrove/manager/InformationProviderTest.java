@@ -20,7 +20,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -32,10 +31,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -47,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     <li>find-or-create behaviour when updating an attraction's
  *         information provider</li>
  * </ul>
- *
+ * <p>
  * Test data (see {@code attractions-test-data.sql}) seeds three providers:
  * <pre>
  *   id=1 'Functional Test'   (created 2024-08-20)
@@ -85,15 +81,7 @@ class InformationProviderTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideValidInformationProviderQueries")
     void shouldReturnSortedInformationProviderSuggestionsForGivenQuery(QueryAndSuggestions input) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input.query())
-                        .param("i", "INFORMATION_PROVIDER")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search").contentType(MediaType.APPLICATION_JSON).param("q", input.query()).param("i", "INFORMATION_PROVIDER").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
         assertThat(response.prefix()).isEqualTo(input.query());
@@ -103,33 +91,12 @@ class InformationProviderTest extends AbstractIntegrationTest {
     private static Stream<QueryAndSuggestions> provideValidInformationProviderQueries() {
         // Test profile suggestion-limit = 3, all three providers match common
         // prefixes. Order is newest first (descending createdOn).
-        return Stream.of(
-                new QueryAndSuggestions("Fun", List.of(
-                        suggest("Functional Test 3", 3),
-                        suggest("Functional Test 2", 2),
-                        suggest("Functional Test", 1))),
-                new QueryAndSuggestions("functional", List.of(
-                        suggest("Functional Test 3", 3),
-                        suggest("Functional Test 2", 2),
-                        suggest("Functional Test", 1))),
-                new QueryAndSuggestions("Test 2", List.of(
-                        suggest("Functional Test 2", 2))),
-                new QueryAndSuggestions("Test 3", List.of(
-                        suggest("Functional Test 3", 3)))
-        );
+        return Stream.of(new QueryAndSuggestions("Fun", List.of(suggest("Functional Test 3", 3), suggest("Functional Test 2", 2), suggest("Functional Test", 1))), new QueryAndSuggestions("functional", List.of(suggest("Functional Test 3", 3), suggest("Functional Test 2", 2), suggest("Functional Test", 1))), new QueryAndSuggestions("Test 2", List.of(suggest("Functional Test 2", 2))), new QueryAndSuggestions("Test 3", List.of(suggest("Functional Test 3", 3))));
     }
 
     @Test
     void shouldReturnEmptySuggestionsWhenNoInformationProviderMatchesQuery() throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", "no-match-prefix")
-                        .param("i", "INFORMATION_PROVIDER")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search").contentType(MediaType.APPLICATION_JSON).param("q", "no-match-prefix").param("i", "INFORMATION_PROVIDER").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
         assertThat(response.prefix()).isEqualTo("no-match-prefix");
@@ -137,42 +104,32 @@ class InformationProviderTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "F", "Fu"})
-    void shouldRejectInformationProviderQueriesShorterThanThreeCharacters(String input) throws Exception {
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", input)
-                        .param("i", "INFORMATION_PROVIDER")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    @MethodSource("provideInvalidInformationProviderQueries")
+    void shouldRejectInformationProviderQueriesShorterThanThreeCharacters(InvalidQuery input) throws Exception {
+        var jsonResponse = mockMvc.perform(get("/search").contentType(MediaType.APPLICATION_JSON).param("q", input.query()).param("i", "INFORMATION_PROVIDER").header("x-api-version", "1")).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         ErrorResponse actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).startsWith("{").endsWith("}");
+        assertThat(actual.errorMessage().substring(1, actual.errorMessage().length() - 1).split("; ")).containsExactlyInAnyOrder(input.errorMessages());
+    }
+
+    private record InvalidQuery(String query, String[] errorMessages) {
+    }
+
+    private static Stream<InvalidQuery> provideInvalidInformationProviderQueries() {
+        String tooShort = "query = Query string must be at least 3 characters long";
+        return Stream.of(new InvalidQuery("", new String[]{tooShort, "query = must not be blank"}), new InvalidQuery("F", new String[]{tooShort}), new InvalidQuery("Fu", new String[]{tooShort}));
     }
 
     @Test
     void shouldIgnoreCountryIdFilterWhenSearchingInformationProviders() throws Exception {
         // Providers are not scoped to countries; passing cid must not narrow
         // or hide results.
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", "Fun")
-                        .param("i", "INFORMATION_PROVIDER")
-                        .param("cid", "1")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search").contentType(MediaType.APPLICATION_JSON).param("q", "Fun").param("i", "INFORMATION_PROVIDER").param("cid", "1").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
-        assertThat(response.suggestions()).containsExactly(
-                suggest("Functional Test 3", 3),
-                suggest("Functional Test 2", 2),
-                suggest("Functional Test", 1));
+        assertThat(response.suggestions()).containsExactly(suggest("Functional Test 3", 3), suggest("Functional Test 2", 2), suggest("Functional Test", 1));
     }
 
     // ---------------------------------------------------------------------
@@ -184,28 +141,16 @@ class InformationProviderTest extends AbstractIntegrationTest {
         long providersBefore = informationProviderRepo.count();
         String newSourceName = "Brand new test source " + System.nanoTime();
 
-        SaveAttractionRequest request = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction with brand new source", null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                newSourceName, LocalDate.now().minusDays(1), null);
+        SaveAttractionRequest request = new SaveAttractionRequest(false, 1, null, "Attraction with brand new source", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, newSourceName, LocalDate.now().minusDays(1), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated());
 
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore + 1);
         InformationProvider created = informationProviderRepo.findBySourceName(newSourceName).orElseThrow();
         assertThat(created.getSourceName()).isEqualTo(newSourceName);
 
         Long attractionId = attractionRepo.findByName(request.attractionName()).getFirst().getId();
-        assertThat(attractionRepo.findById(attractionId)
-                .map(Attraction::getInformationProvider)
-                .map(InformationProvider::getId))
-                .hasValue(created.getId());
+        assertThat(attractionRepo.findById(attractionId).map(Attraction::getInformationProvider).map(InformationProvider::getId)).hasValue(created.getId());
     }
 
     @Test
@@ -214,27 +159,15 @@ class InformationProviderTest extends AbstractIntegrationTest {
         String existingSourceName = "Functional Test 2"; // seeded id=2
         Integer existingId = informationProviderRepo.findBySourceName(existingSourceName).orElseThrow().getId();
 
-        SaveAttractionRequest request = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction reusing existing source", null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                existingSourceName, LocalDate.now().minusDays(2), null);
+        SaveAttractionRequest request = new SaveAttractionRequest(false, 1, null, "Attraction reusing existing source", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, existingSourceName, LocalDate.now().minusDays(2), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated());
 
         // No new InformationProvider row should be created.
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore);
 
         Long attractionId = attractionRepo.findByName(request.attractionName()).getFirst().getId();
-        assertThat(attractionRepo.findById(attractionId)
-                .map(Attraction::getInformationProvider)
-                .map(InformationProvider::getId))
-                .hasValue(existingId);
+        assertThat(attractionRepo.findById(attractionId).map(Attraction::getInformationProvider).map(InformationProvider::getId)).hasValue(existingId);
     }
 
     // ---------------------------------------------------------------------
@@ -248,22 +181,13 @@ class InformationProviderTest extends AbstractIntegrationTest {
         Integer existingId = informationProviderRepo.findBySourceName(existingSourceName).orElseThrow().getId();
 
         // Attraction id=1 is initially linked to provider 'Functional Test' (id=1).
-        UpdateAttractionInformationProviderRequest request =
-                new UpdateAttractionInformationProviderRequest(existingSourceName, LocalDate.now().minusDays(5));
+        UpdateAttractionInformationProviderRequest request = new UpdateAttractionInformationProviderRequest(existingSourceName, LocalDate.now().minusDays(5));
 
-        mockMvc.perform(put("/attractions/1/informationProvider")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/1/informationProvider").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore);
-        assertThat(attractionRepo.findById(1L)
-                .map(Attraction::getInformationProvider)
-                .map(InformationProvider::getId))
-                .hasValue(existingId);
-        assertThat(attractionRepo.findById(1L).map(Attraction::getRecorded))
-                .hasValue(LocalDate.now().minusDays(5));
+        assertThat(attractionRepo.findById(1L).map(Attraction::getInformationProvider).map(InformationProvider::getId)).hasValue(existingId);
+        assertThat(attractionRepo.findById(1L).map(Attraction::getRecorded)).hasValue(LocalDate.now().minusDays(5));
     }
 
     @Test
@@ -271,51 +195,25 @@ class InformationProviderTest extends AbstractIntegrationTest {
         long providersBefore = informationProviderRepo.count();
         String newSourceName = "Updated source " + System.nanoTime();
 
-        UpdateAttractionInformationProviderRequest request =
-                new UpdateAttractionInformationProviderRequest(newSourceName, LocalDate.now().minusDays(3));
+        UpdateAttractionInformationProviderRequest request = new UpdateAttractionInformationProviderRequest(newSourceName, LocalDate.now().minusDays(3));
 
-        mockMvc.perform(put("/attractions/1/informationProvider")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/1/informationProvider").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore + 1);
         InformationProvider created = informationProviderRepo.findBySourceName(newSourceName).orElseThrow();
-        assertThat(attractionRepo.findById(1L)
-                .map(Attraction::getInformationProvider)
-                .map(InformationProvider::getId))
-                .hasValue(created.getId());
-        assertThat(attractionRepo.findById(1L).map(Attraction::getRecorded))
-                .hasValue(LocalDate.now().minusDays(3));
+        assertThat(attractionRepo.findById(1L).map(Attraction::getInformationProvider).map(InformationProvider::getId)).hasValue(created.getId());
+        assertThat(attractionRepo.findById(1L).map(Attraction::getRecorded)).hasValue(LocalDate.now().minusDays(3));
     }
 
     @Test
     void newlyCreatedProviderShouldAppearInSuggestions() throws Exception {
         String newSourceName = "Suggested source " + System.nanoTime();
 
-        SaveAttractionRequest request = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction triggering suggestion " + System.nanoTime(), null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                newSourceName, LocalDate.now().minusDays(4), null);
+        SaveAttractionRequest request = new SaveAttractionRequest(false, 1, null, "Attraction triggering suggestion " + System.nanoTime(), null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, newSourceName, LocalDate.now().minusDays(4), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated());
 
-        var jsonResponse = mockMvc.perform(get("/search")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .param("q", "Suggested")
-                        .param("i", "INFORMATION_PROVIDER")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(get("/search").contentType(MediaType.APPLICATION_JSON).param("q", "Suggested").param("i", "INFORMATION_PROVIDER").header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         GetSearchResponse response = mapper.readValue(jsonResponse, GetSearchResponse.class);
         assertThat(response.suggestions()).extracting(SuggestionDto::value).contains(newSourceName);
@@ -330,18 +228,9 @@ class InformationProviderTest extends AbstractIntegrationTest {
         // Create a brand-new attraction with a brand-new provider so that the
         // provider is referenced by exactly one attraction.
         String soleSourceName = "Sole-use source " + System.nanoTime();
-        SaveAttractionRequest saveRequest = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction with sole-use source " + System.nanoTime(), null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                soleSourceName, LocalDate.now().minusDays(1), null);
+        SaveAttractionRequest saveRequest = new SaveAttractionRequest(false, 1, null, "Attraction with sole-use source " + System.nanoTime(), null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, soleSourceName, LocalDate.now().minusDays(1), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(saveRequest)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(saveRequest))).andExpect(status().isCreated());
 
         Long attractionId = attractionRepo.findByName(saveRequest.attractionName()).getFirst().getId();
         Integer soleProviderId = informationProviderRepo.findBySourceName(soleSourceName).orElseThrow().getId();
@@ -349,14 +238,9 @@ class InformationProviderTest extends AbstractIntegrationTest {
 
         // Re-point the attraction at an existing provider; the previously
         // linked provider is no longer referenced and must be deleted.
-        UpdateAttractionInformationProviderRequest updateRequest =
-                new UpdateAttractionInformationProviderRequest("Functional Test 2", LocalDate.now().minusDays(2));
+        UpdateAttractionInformationProviderRequest updateRequest = new UpdateAttractionInformationProviderRequest("Functional Test 2", LocalDate.now().minusDays(2));
 
-        mockMvc.perform(put("/attractions/" + attractionId + "/informationProvider")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/" + attractionId + "/informationProvider").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(updateRequest))).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.findById(soleProviderId)).isEmpty();
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore - 1);
@@ -369,14 +253,9 @@ class InformationProviderTest extends AbstractIntegrationTest {
         Integer sharedProviderId = informationProviderRepo.findBySourceName("Functional Test").orElseThrow().getId();
         long providersBefore = informationProviderRepo.count();
 
-        UpdateAttractionInformationProviderRequest request =
-                new UpdateAttractionInformationProviderRequest("Functional Test 2", LocalDate.now().minusDays(1));
+        UpdateAttractionInformationProviderRequest request = new UpdateAttractionInformationProviderRequest("Functional Test 2", LocalDate.now().minusDays(1));
 
-        mockMvc.perform(put("/attractions/1/informationProvider")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/1/informationProvider").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.findById(sharedProviderId)).isPresent();
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore);
@@ -387,31 +266,17 @@ class InformationProviderTest extends AbstractIntegrationTest {
         // Re-saving the same provider must not orphan-delete it. Use attraction
         // with a sole-use provider so that sharing isn't masking the assertion.
         String soleSourceName = "Same-name source " + System.nanoTime();
-        SaveAttractionRequest saveRequest = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction same-name " + System.nanoTime(), null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                soleSourceName, LocalDate.now().minusDays(1), null);
+        SaveAttractionRequest saveRequest = new SaveAttractionRequest(false, 1, null, "Attraction same-name " + System.nanoTime(), null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, soleSourceName, LocalDate.now().minusDays(1), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(saveRequest)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(saveRequest))).andExpect(status().isCreated());
 
         Long attractionId = attractionRepo.findByName(saveRequest.attractionName()).getFirst().getId();
         Integer providerId = informationProviderRepo.findBySourceName(soleSourceName).orElseThrow().getId();
         long providersBefore = informationProviderRepo.count();
 
-        UpdateAttractionInformationProviderRequest request =
-                new UpdateAttractionInformationProviderRequest(soleSourceName, LocalDate.now().minusDays(2));
+        UpdateAttractionInformationProviderRequest request = new UpdateAttractionInformationProviderRequest(soleSourceName, LocalDate.now().minusDays(2));
 
-        mockMvc.perform(put("/attractions/" + attractionId + "/informationProvider")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/attractions/" + attractionId + "/informationProvider").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.findById(providerId)).isPresent();
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore);
@@ -420,26 +285,15 @@ class InformationProviderTest extends AbstractIntegrationTest {
     @Test
     void deletingAttractionShouldDeleteInformationProviderWhenItBecomesOrphan() throws Exception {
         String soleSourceName = "Delete-orphan source " + System.nanoTime();
-        SaveAttractionRequest saveRequest = new SaveAttractionRequest(
-                false, 1, null,
-                "Attraction to delete " + System.nanoTime(), null, null, null,
-                AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE,
-                true, false, null,
-                soleSourceName, LocalDate.now().minusDays(1), null);
+        SaveAttractionRequest saveRequest = new SaveAttractionRequest(false, 1, null, "Attraction to delete " + System.nanoTime(), null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, soleSourceName, LocalDate.now().minusDays(1), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(saveRequest)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(saveRequest))).andExpect(status().isCreated());
 
         Long attractionId = attractionRepo.findByName(saveRequest.attractionName()).getFirst().getId();
         Integer providerId = informationProviderRepo.findBySourceName(soleSourceName).orElseThrow().getId();
         long providersBefore = informationProviderRepo.count();
 
-        mockMvc.perform(delete("/attractions/" + attractionId)
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/attractions/" + attractionId).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.findById(providerId)).isEmpty();
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore - 1);
@@ -452,9 +306,7 @@ class InformationProviderTest extends AbstractIntegrationTest {
         Integer sharedProviderId = informationProviderRepo.findBySourceName("Functional Test 3").orElseThrow().getId();
         long providersBefore = informationProviderRepo.count();
 
-        mockMvc.perform(delete("/attractions/4")
-                        .header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/attractions/4").header("x-api-version", "1")).andExpect(status().isNoContent());
 
         assertThat(informationProviderRepo.findById(sharedProviderId)).isPresent();
         assertThat(informationProviderRepo.count()).isEqualTo(providersBefore);

@@ -25,9 +25,9 @@ public class CityServiceImpl implements CityService {
     @Override
     public City saveCity(String name, int regionId) {
         log.atInfo().log("Processing save city request for city '{}'", name);
-        var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("City not found in database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var region = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, regionId));
         if (cityRepo.isNameAlreadyUsedInRegion(name, regionId)) {
-            throw new BaseApiException("City '%s' in '%s' region already exists in the database.".formatted(name, region.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("City name already exists in region", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, name, region.getName());
         }
 
         var city = new City();
@@ -77,10 +77,10 @@ public class CityServiceImpl implements CityService {
     public void deleteCity(int id) {
         log.atInfo().log("Deleting city");
         if (cityRepo.hasAttractionsUnder(id)) {
-            throw new BaseApiException("City has attractions under", BaseApiException.ErrorCode.HAS_CHILDREN);
+            throw new BaseApiException("City still contains attractions", BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, id);
         }
 
-        var city = cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var city = cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         cityRepo.delete(city);
         log.atInfo().log("Region city");
     }
@@ -88,17 +88,15 @@ public class CityServiceImpl implements CityService {
     @Override
     public City getCity(int id) {
         log.atInfo().log("Getting city with id '{}'", id);
-        return cityRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        return cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override
     public void updateCityDetails(int id, String newCityName) {
         log.atInfo().log("Updating the city name to '{}'", newCityName);
-        var city = cityRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var city = cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
         if (cityRepo.isNameAlreadyUsedInRegion(newCityName, city.getRegion().getId())) {
-            throw new BaseApiException("Cannot change the city to '%s' as it already exists in the database".formatted(city.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("City name already exists in region", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, newCityName, city.getRegion().getName());
         }
         city.setName(newCityName);
         cityRepo.save(city);
@@ -108,12 +106,10 @@ public class CityServiceImpl implements CityService {
     @Override
     public void updateCityRegionDetails(int id, Integer regionId) {
         log.atInfo().log("Updating the city to belong to the different region");
-        var city = cityRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("City not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
-        var newRegion = regionRepo.findById(regionId)
-                .orElseThrow(() -> new BaseApiException("Region is not found in the database", BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+        var city = cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+        var newRegion = regionRepo.findById(regionId).orElseThrow(() -> new BaseApiException("Region not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, regionId));
         if (cityRepo.isNameAlreadyUsedInRegion(city, regionId)) {
-            throw new BaseApiException("Cannot change the region to '%s' as it already exists in the database".formatted(newRegion.getName()), BaseApiException.ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("City name already exists in region", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, city.getName(), newRegion.getName());
         }
         city.setRegion(newRegion);
         cityRepo.save(city);

@@ -51,12 +51,7 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     @ParameterizedTest
     @MethodSource("provideValidAttractionNames")
     void attractionShouldBeSavedWhenSentDataIsValid(SaveAttractionRequest attractionRequest) throws Exception {
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(attractionRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionRequest.attractionName()).getFirst().getId()));
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(attractionRequest))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionRequest.attractionName()).getFirst().getId()));
 
         Long id = attractionRepo.findByName(attractionRequest.attractionName()).getFirst().getId();
         assertThat(attractionRepo.findById(id).map(Attraction::getName)).hasValue(attractionRequest.attractionName());
@@ -79,15 +74,18 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     }
 
     private static Stream<SaveAttractionRequest> provideValidAttractionNames() {
-        return Stream.of(new SaveAttractionRequest(false, 1, null, "Test attraction 10", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null),
-                new SaveAttractionRequest(false, null, 1, "Test attraction 10", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null),
-                new SaveAttractionRequest(true, 1, null, "Test attraction 11", null, null, null, AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.STABLE, false, false, null, "From test_user", LocalDate.now().minusDays(22), null),
-                new SaveAttractionRequest(false, null, 1, "Test attraction 12", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(21), null),
-                new SaveAttractionRequest(false, 1, null, "Sub test attraction 13", 1L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, false, true, null, "From test_user", LocalDate.now().minusDays(20), null),
-                new SaveAttractionRequest(false, 1, null, "Test attraction 14", null, "Test address 1, Test", null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, false, false, null, "From test_user", LocalDate.now().minusDays(19), null),
-                new SaveAttractionRequest(false, 1, null, "Test attraction 15", null, null, new LocationDTO(10.921, 18.215), AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(18), null),
-                new SaveAttractionRequest(true, 1, null, "Test attraction 16", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, "Test tip test", "From test_user", LocalDate.now().minusDays(16), null)
-        );
+        return Stream.of(new SaveAttractionRequest(false, 1, null, "Test attraction 10", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null), new SaveAttractionRequest(false, null, 1, "Test attraction 10", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null), new SaveAttractionRequest(true, 1, null, "Test attraction 11", null, null, null, AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.STABLE, false, false, null, "From test_user", LocalDate.now().minusDays(22), null), new SaveAttractionRequest(false, null, 1, "Test attraction 12", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(21), null), new SaveAttractionRequest(false, 1, null, "Sub test attraction 13", 1L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, false, true, null, "From test_user", LocalDate.now().minusDays(20), null), new SaveAttractionRequest(false, 1, null, "Test attraction 14", null, "Test address 1, Test", null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, false, false, null, "From test_user", LocalDate.now().minusDays(19), null), new SaveAttractionRequest(false, 1, null, "Test attraction 15", null, null, new LocationDTO(10.921, 18.215), AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(18), null), new SaveAttractionRequest(true, 1, null, "Test attraction 16", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, "Test tip test", "From test_user", LocalDate.now().minusDays(16), null));
+    }
+
+    @Test
+    void attractionSaveRequestShouldRejectInvalidLatitude() throws Exception {
+        var request = new SaveAttractionRequest(false, 1, null, "New attraction", null, null, new LocationDTO(91.0, 18.215), AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(1), null);
+
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
+
+        var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
+        assertThat(actual.errorMessage()).isEqualTo("{attractionLocation.latitude = Latitude must be between -90 and 90 to be valid}");
     }
 
     @ParameterizedTest
@@ -95,14 +93,7 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     void attractionSaveRequestShouldBeRejectedWhenInvalidAttractionNameIsSent(InvalidFieldSize input) throws Exception {
         var request = new SaveAttractionRequest(true, 1, null, input.attractionName(), null, input.attractionAddress(), null, AttractionCategoryDTO.AIR_BASED_ACTIVITY, AttractionTypeDTO.STABLE, false, false, input.tip(), input.infoFrom(), LocalDate.now().minusDays(22), null);
 
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -116,27 +107,14 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     private static Stream<InvalidFieldSize> provideInvalidAttractionData() {
         String[] emptyStringMessage = {"attractionName = Attraction name may not be null or empty", "infoFrom = Attraction name may not be null or empty"};
         String[] tooLongStringMessage = {"attractionName = Attraction name may not be longer then 2048", "attractionAddress = Attraction address may not be longer then 512", "infoFrom = Information comes from may not be longer then 512", "tip = Tip may not be longer then 2048"};
-        return Stream.of(
-                new InvalidFieldSize("", "", "", "", emptyStringMessage),
-                new InvalidFieldSize("   ", "   ", "   ", "    ", emptyStringMessage),
-                new InvalidFieldSize("\t", "\t", "\t", "\t", emptyStringMessage),
-                new InvalidFieldSize("\n", "\n", "\n", "\n", emptyStringMessage),
-                new InvalidFieldSize("a".repeat(2049), "a".repeat(514), "a".repeat(2049), "a".repeat(514), tooLongStringMessage)
-        );
+        return Stream.of(new InvalidFieldSize("", "", "", "", emptyStringMessage), new InvalidFieldSize("   ", "   ", "   ", "    ", emptyStringMessage), new InvalidFieldSize("\t", "\t", "\t", "\t", emptyStringMessage), new InvalidFieldSize("\n", "\n", "\n", "\n", emptyStringMessage), new InvalidFieldSize("a".repeat(2049), "a".repeat(514), "a".repeat(2049), "a".repeat(514), tooLongStringMessage));
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenNotNullFieldsAreNull() throws Exception {
         String[] expectedMessaged = {"regionIdOrCityId = regionId or cityId is required", "isCountrywide = must not be null", "attractionName = Attraction name may not be null or empty", "attractionCategory = must not be null", "attractionType = must not be null", "infoFrom = Attraction name may not be null or empty", "infoRecorded = must not be null", "optimalVisitPeriod.fromDate = must not be null", "optimalVisitPeriod.toDate = must not be null"};
         var request = new SaveAttractionRequest(null, null, null, null, null, null, null, null, null, false, false, null, null, null, new DateSpanDTO(null, null));
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
@@ -149,14 +127,7 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         String[] expectedMessaged = {"regionIdAndCityId = regionId and cityId cannot be present simultaneously", "isCountrywide = must not be null", "attractionName = Attraction name may not be null or empty", "attractionCategory = must not be null", "attractionType = must not be null", "infoFrom = Attraction name may not be null or empty", "infoRecorded = must not be null"};
         var request = new SaveAttractionRequest(null, 1, 0, null, null, null, null, null, null, false, false, null, null, null, null);
 
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
@@ -166,34 +137,22 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     @Test
     void attractionSaveRequestShouldBeRejectedWhenGivenRegionNotExists() throws Exception {
         var request = new SaveAttractionRequest(false, 100, null, "Test attraction 0", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenGivenNameAlreadyExistsUnderGivenRegion() throws Exception {
         var request = new SaveAttractionRequest(false, 3, null, "Test attraction 0", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -201,12 +160,7 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         String attractionName = "Test attraction 0";
         var request = new SaveAttractionRequest(false, null, 2, attractionName, null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
 
         Long id = attractionRepo.findByName(attractionName).get(1).getId();
         assertThat(attractionRepo.findById(id).map(Attraction::getName)).hasValue(attractionName);
@@ -229,34 +183,22 @@ class AttractionSaveTest extends AbstractIntegrationTest {
     @Test
     void attractionSaveRequestShouldBeRejectedWhenGivenCityNotExists() throws Exception {
         var request = new SaveAttractionRequest(false, null, 100, "Test attraction 0", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenGivenNameAlreadyExistsUnderGivenCity() throws Exception {
         var request = new SaveAttractionRequest(false, null, 1, "Test attraction 0", null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test attraction 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -264,69 +206,41 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         String attractionName = "Test attraction 0";
         var request = new SaveAttractionRequest(false, 2, null, attractionName, null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenGivenMainAttractionNotExists() throws Exception {
-        var request = new SaveAttractionRequest(false, null, 0, "Test attraction 0", 100L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var request = new SaveAttractionRequest(false, null, 1, "New attraction", 100L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenMainAttractionAlreadyContainsGivenAttractionName() throws Exception {
         var request = new SaveAttractionRequest(false, 2, null, "Sub Test attraction 2", 1L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(21), null);
-        mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated());
 
         request = new SaveAttractionRequest(false, 4, null, "Sub Test attraction 2", 1L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(20), null);
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isConflict())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isConflict()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Sub Test attraction 2' is already in use. Please choose another name.");
     }
 
     @Test
     void attractionSaveRequestShouldBeRejectedWhenMainAttractionIsInDifferentContinentThenAttraction() throws Exception {
         var request = new SaveAttractionRequest(false, 5, null, "Sub Test attraction 2", 1L, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(20), null);
 
-        var jsonResponse = mockMvc.perform(post("/attractions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("x-api-version", "1")
-                        .content(mapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+        var jsonResponse = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isBadRequest()).andReturn().getResponse().getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.BAD_REQUEST);
-        assertThat(actual.errorMessage()).isEqualTo("Action cannot be performed due to constraint violations");
+        assertThat(actual.errorMessage()).isEqualTo("Attraction 'Sub Test attraction 2' must be on the same continent as its main attraction 'Test attraction 0'.");
     }
 
 }

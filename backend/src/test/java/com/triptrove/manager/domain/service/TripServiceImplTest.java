@@ -1,11 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.Region;
-import com.triptrove.manager.domain.model.TripAttraction;
-import com.triptrove.manager.domain.model.TripAttractionGroup;
-import com.triptrove.manager.domain.model.TripBoardItem;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
@@ -23,9 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TripServiceImplTest {
@@ -122,8 +115,28 @@ class TripServiceImplTest {
                 tripService.moveAttractionOnBoard(
                         10L, 2L, TripAttractionGroup.PRIMARY, null, 99L));
 
-        assertThat(exception.getErrorCode()).isEqualTo(BaseApiException.ErrorCode.OBJECT_NOT_FOUND);
+        assertThat(exception.getErrorCode()).isEqualTo(BaseApiException.ErrorCode.RESOURCE_NOT_FOUND);
+        assertThat(exception.getContext()).containsExactly(99L, 10L);
         verify(tripAttractionRepo, never()).save(moved);
+    }
+
+    @Test
+    void arrangingBoardShouldFailWhenAttractionIsNotUnderTrip() {
+        var first = tripAttraction(1L, "1");
+        when(tripRepo.existsById(10L)).thenReturn(true);
+        when(tripAttractionRepo.findBoardAttractionsByTripId(10L)).thenReturn(List.of(first));
+
+        var exception = assertThrows(BaseApiException.class, () ->
+                tripService.arrangeTripBoard(10L, List.of(
+                        new TripBoardItem(1L, TripAttractionGroup.SECONDARY),
+                        new TripBoardItem(99L, TripAttractionGroup.PRIMARY))));
+
+        assertThat(exception.getErrorCode()).isEqualTo(BaseApiException.ErrorCode.RESOURCE_NOT_FOUND);
+        assertThat(exception.getContext()).containsExactly(99L);
+        assertThat(first.getAttractionGroup()).isEqualTo(TripAttractionGroup.PRIMARY);
+        assertThat(first.getBoardPosition()).isEqualByComparingTo("1");
+        verify(tripAttractionRepo, never()).saveAll(anyList());
+        verify(tripRepo, never()).recomputeArchived(10L);
     }
 
     @Test
@@ -136,9 +149,9 @@ class TripServiceImplTest {
                 .thenReturn(List.of(first, second, moved));
 
         tripService.arrangeTripBoard(10L, List.of(
-            new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(2L, TripAttractionGroup.PRIMARY)
+                new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(2L, TripAttractionGroup.PRIMARY)
         ));
 
         assertThat(first.getBoardPosition()).isEqualByComparingTo("1");
@@ -160,8 +173,8 @@ class TripServiceImplTest {
                 .thenReturn(List.of(first, second));
 
         tripService.arrangeTripBoard(10L, List.of(
-            new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(2L, TripAttractionGroup.EXCLUDED)
+                new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(2L, TripAttractionGroup.EXCLUDED)
         ));
 
         assertThat(second.getAttractionGroup()).isEqualTo(TripAttractionGroup.EXCLUDED);
@@ -180,10 +193,10 @@ class TripServiceImplTest {
                 .thenReturn(List.of(first, otherRegion, second, moved));
 
         tripService.arrangeTripBoard(10L, List.of(
-            new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(2L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(4L, TripAttractionGroup.PRIMARY)
+                new TripBoardItem(1L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(2L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(4L, TripAttractionGroup.PRIMARY)
         ));
 
         assertThat(moved.getBoardPosition()).isEqualByComparingTo("1.5");
@@ -205,13 +218,13 @@ class TripServiceImplTest {
                 .thenReturn(List.of(first, second, third, fourth, fifth, sixth, seventh));
 
         tripService.arrangeTripBoard(10L, List.of(
-            new TripBoardItem(7L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(2L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(6L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(5L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(4L, TripAttractionGroup.PRIMARY),
-            new TripBoardItem(1L, TripAttractionGroup.PRIMARY)
+                new TripBoardItem(7L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(2L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(6L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(5L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(3L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(4L, TripAttractionGroup.PRIMARY),
+                new TripBoardItem(1L, TripAttractionGroup.PRIMARY)
         ));
 
         assertThat(seventh.getBoardPosition()).isLessThan(second.getBoardPosition());

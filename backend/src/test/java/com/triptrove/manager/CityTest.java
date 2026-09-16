@@ -99,6 +99,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -116,6 +117,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test city 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -322,8 +324,8 @@ public class CityTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
-        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.CASCADE_DELETE_ERROR);
-        assertThat(actual.errorMessage()).isEqualTo("Can't perform cascade delete");
+        assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
+        assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
     }
 
     @Test
@@ -338,6 +340,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -368,6 +371,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @ParameterizedTest
@@ -418,7 +422,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '123' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -436,7 +440,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
-        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test city 1' is already in use. Please choose another name.");
     }
 
     @Test
@@ -476,7 +480,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.NAME_CONFLICT);
-        assertThat(actual.errorMessage()).isEqualTo("The given name is not valid as it already exists");
+        assertThat(actual.errorMessage()).isEqualTo("Name 'Test city 0' is already in use. Please choose another name.");
     }
 
     @Test
@@ -494,7 +498,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test
@@ -512,7 +516,7 @@ public class CityTest extends AbstractIntegrationTest {
 
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.OBJECT_NOT_FOUND);
-        assertThat(actual.errorMessage()).isEqualTo("The specified element could not be found");
+        assertThat(actual.errorMessage()).isEqualTo("The requested resource '100' could not be found. Please refresh and try again.");
     }
 
     @Test

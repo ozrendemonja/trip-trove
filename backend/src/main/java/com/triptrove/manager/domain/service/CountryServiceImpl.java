@@ -31,17 +31,16 @@ public class CountryServiceImpl implements CountryService {
     public Country saveCountry(ContinentName continentName, CountryName countryName, String isoCode) {
         log.atInfo().log("Processing save country request for country '{}'", countryName.name());
         if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName)) {
-            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(countryName.name(), continentName.name()), ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Country name already exists in continent", ErrorCode.NAME_ALREADY_EXISTS, countryName.name(), continentName.name());
         }
         log.atInfo().log("Given country name is unique");
 
         String normalizedIsoCode = isoCode.toLowerCase(Locale.ROOT);
         if (countryRepo.isIsoCodeAlreadyUsed(normalizedIsoCode)) {
-            throw new BaseApiException("Country ISO code '%s' already exists in the database.".formatted(isoCode), ErrorCode.DUPLICATE_ISO_CODE);
+            throw new BaseApiException(ErrorCode.COUNTRY_ISO_CODE_ALREADY_EXISTS, isoCode);
         }
 
-        var storedContinent = continentRepo.findByName(continentName.name())
-            .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName.name()), ErrorCode.OBJECT_NOT_FOUND));
+        var storedContinent = continentRepo.findByName(continentName.name()).orElseThrow(() -> new BaseApiException("Continent not found", ErrorCode.RESOURCE_NOT_FOUND, continentName.name()));
 
         var countryEntity = new Country();
         countryEntity.setName(countryName.name());
@@ -92,11 +91,10 @@ public class CountryServiceImpl implements CountryService {
     public void deleteCountry(Integer id) {
         log.atInfo().log("Deleting country");
         if (countryRepo.hasRegionsUnder(id)) {
-            throw new BaseApiException("Country has regions under", ErrorCode.HAS_CHILDREN);
+            throw new BaseApiException("Country still contains regions", ErrorCode.RESOURCE_HAS_DEPENDENCIES, id);
         }
 
-        var country = countryRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        var country = countryRepo.findById(id).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, id));
         countryRepo.delete(country);
         log.atInfo().log("Country deleted");
     }
@@ -106,12 +104,11 @@ public class CountryServiceImpl implements CountryService {
         String name = updatedCountryName.name();
         log.atInfo().log("Updating the country name to '{}'", name);
 
-        var countryEntity = countryRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        var countryEntity = countryRepo.findById(id).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, id));
 
         var continentName = new ContinentName(countryEntity.getContinent().getName());
         if (countryRepo.isNameAlreadyUsedInContinent(updatedCountryName, continentName, countryEntity.getId())) {
-            throw new BaseApiException("Country '%s' in '%s' already exists in the database.".formatted(name, continentName.name()), ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Country name already exists in continent", ErrorCode.NAME_ALREADY_EXISTS, name, continentName.name());
         }
 
         countryEntity.setName(name);
@@ -122,14 +119,12 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public void updateCountryContinentDetails(Integer countryId, ContinentName continentName) {
         log.atInfo().log("Updating the country to belong to the '{}' continent", continentName.name());
-        var newContinent = continentRepo.findByName(continentName.name())
-                .orElseThrow(() -> new BaseApiException("Continent name '%s' not found in the database".formatted(continentName.name()), ErrorCode.OBJECT_NOT_FOUND));
-        var countryEntity = countryRepo.findById(countryId)
-                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        var newContinent = continentRepo.findByName(continentName.name()).orElseThrow(() -> new BaseApiException("Continent not found", ErrorCode.RESOURCE_NOT_FOUND, continentName.name()));
+        var countryEntity = countryRepo.findById(countryId).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, countryId));
 
         var countryName = new CountryName(countryEntity.getName());
         if (countryRepo.isNameAlreadyUsedInContinent(countryName, continentName, countryEntity.getId())) {
-            throw new BaseApiException("Cannot change the country to '%s' as it already exists in the database".formatted(continentName.name()), ErrorCode.DUPLICATE_NAME);
+            throw new BaseApiException("Country name already exists in continent", ErrorCode.NAME_ALREADY_EXISTS, countryName.name(), continentName.name());
         }
         countryEntity.setContinent(newContinent);
 
@@ -140,17 +135,15 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public Country getCountry(Integer id) {
         log.atInfo().log("Getting country with id '{}'", id);
-        return countryRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        return countryRepo.findById(id).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override
     public void updateCountryIsoCode(Integer countryId, String isoCode) {
         log.atInfo().log("Updating ISO code for country '{}' to '{}'", countryId, isoCode);
-        var country = countryRepo.findById(countryId)
-                .orElseThrow(() -> new BaseApiException("Country not found in the database", ErrorCode.OBJECT_NOT_FOUND));
+        var country = countryRepo.findById(countryId).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, countryId));
         if (countryRepo.isIsoCodeAlreadyUsed(isoCode, countryId)) {
-            throw new BaseApiException("Country ISO code '%s' already exists in the database.".formatted(isoCode), ErrorCode.DUPLICATE_ISO_CODE);
+            throw new BaseApiException(ErrorCode.COUNTRY_ISO_CODE_ALREADY_EXISTS, isoCode);
         }
         country.setIsoCode(isoCode.toLowerCase(Locale.ROOT));
         countryRepo.save(country);

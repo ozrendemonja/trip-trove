@@ -1,12 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.BucketListItem;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
-import com.triptrove.manager.domain.model.City;
-import com.triptrove.manager.domain.model.Region;
-import com.triptrove.manager.domain.model.Trip;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.BucketListItemRepo;
 import com.triptrove.manager.domain.repo.CityRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
@@ -152,34 +146,27 @@ public class BucketListServiceImpl implements BucketListService {
 
     private BucketListItem findItem(long id) {
         return bucketListItemRepo.findById(id)
-                .orElseThrow(() -> new BaseApiException(
-                        "Bucket list item with id '%d' not found".formatted(id),
-                        BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("Bucket list item not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     private void validateCityAndRegionAreMutuallyExclusive(Integer cityId, Integer regionId) {
         if (cityId != null && regionId != null) {
-            throw new BaseApiException(
-                    "Bucket list item cannot reference both city '%d' and region '%d'".formatted(cityId, regionId),
-                    BaseApiException.ErrorCode.CONSTRAINT_VIOLATION);
+            throw new IllegalArgumentException("Bucket list item cannot have both a city and a region: cityId=%s, regionId=%s"
+                    .formatted(cityId, regionId));
         }
     }
 
     private void validateTripAndCompletionDateAreProvidedTogether(LocalDate completedOn, Long tripId) {
         if ((tripId == null) != (completedOn == null)) {
-            var message = tripId == null
-                    ? "Bucket list item completed on '%s' must reference a trip".formatted(completedOn)
-                    : "Bucket list item assigned to trip '%d' must have a completion date".formatted(tripId);
-            throw new BaseApiException(message, BaseApiException.ErrorCode.CONSTRAINT_VIOLATION);
+            throw new IllegalArgumentException("Bucket list item completion must include both completedOn and tripId, or neither: completedOn=%s, tripId=%s"
+                    .formatted(completedOn, tripId));
         }
     }
 
     private void validateCompletionDateIsWithinTrip(LocalDate completedOn, Trip trip) {
         if (trip != null && (completedOn.isBefore(trip.getFrom()) || completedOn.isAfter(trip.getTo()))) {
-            throw new BaseApiException(
-                    "Completion date '%s' must be within trip '%d' date range '%s' to '%s'"
-                            .formatted(completedOn, trip.getId(), trip.getFrom(), trip.getTo()),
-                    BaseApiException.ErrorCode.CONSTRAINT_VIOLATION);
+            throw new BaseApiException(BaseApiException.ErrorCode.BUCKET_LIST_ITEM_COMPLETION_OUTSIDE_TRIP_DATES,
+                    completedOn, trip.getId(), trip.getFrom(), trip.getTo());
         }
     }
 
@@ -188,9 +175,7 @@ public class BucketListServiceImpl implements BucketListService {
             return null;
         }
         return cityRepo.findById(cityId)
-                .orElseThrow(() -> new BaseApiException(
-                        "City with id '%d' not found in the database".formatted(cityId),
-                        BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, cityId));
     }
 
     private Region findRegion(Integer regionId) {
@@ -198,9 +183,7 @@ public class BucketListServiceImpl implements BucketListService {
             return null;
         }
         return regionRepo.findById(regionId)
-                .orElseThrow(() -> new BaseApiException(
-                        "Region with id '%d' not found in the database".formatted(regionId),
-                        BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("Region not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, regionId));
     }
 
     private Trip findTrip(Long tripId) {
@@ -208,9 +191,7 @@ public class BucketListServiceImpl implements BucketListService {
             return null;
         }
         return tripRepo.findById(tripId)
-                .orElseThrow(() -> new BaseApiException(
-                        "Trip with id '%d' not found in the database".formatted(tripId),
-                        BaseApiException.ErrorCode.OBJECT_NOT_FOUND));
+                .orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId));
     }
 
 }

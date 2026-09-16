@@ -12,7 +12,7 @@ import { Button } from "@fluentui/react-components";
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { saveNewCity } from "../../infra/ManagerApi";
 import { useCityFormField } from "./AddCity.config";
 import { useClasses } from "./AddCity.styles";
@@ -61,7 +61,7 @@ export const AddCity: React.FunctionComponent = () => {
           <Text as="h1" className={classes.header}>
             Add City
           </Text>
-          <SearchText {...formFields.regionId} showRequiredIndicator />
+          <AutocompleteField {...formFields.regionId} showRequiredIndicator />
         </Flex>
         <Divider className={classes.headerDivider} />
         <Flex gap={16} className={classes.formText}>

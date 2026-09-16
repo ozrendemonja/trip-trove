@@ -21,7 +21,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import DateRangePicker from "../../../../shared/list-element/ui/date-picker/DateRangePicker";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import {
   AttractionType,
   CategoryType,
@@ -218,7 +218,7 @@ export const AddAttraction: React.FunctionComponent = () => {
               checked={isCountrywide}
             />
           </Flex>
-          <SearchText
+          <AutocompleteField
             {...formFields.countryId}
             showRequiredIndicator
             className={classes.searchRootOverride}
@@ -237,7 +237,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           </Flex>
           {isReginal && (
             <>
-              <SearchText
+              <AutocompleteField
                 {...formFields.regionId!}
                 showRequiredIndicator
                 className={classes.searchRootOverride}
@@ -248,7 +248,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           )}
           {!isReginal && (
             <>
-              <SearchText
+              <AutocompleteField
                 {...formFields.cityId!}
                 showRequiredIndicator
                 className={classes.searchRootOverride}
@@ -302,7 +302,7 @@ export const AddAttraction: React.FunctionComponent = () => {
           </div>
           {isPartOfAttraction && (
             <Flex className={classes.row}>
-              <SearchText
+              <AutocompleteField
                 {...formFields.mainAttractionId!}
                 className={classes.searchRootOverride}
                 searchBoxClassName={classes.searchBoxOverride}
@@ -350,7 +350,7 @@ export const AddAttraction: React.FunctionComponent = () => {
             wrap
             className={classes.informationSourceRow}
           >
-            <SearchText
+            <AutocompleteField
               {...formFields.source}
               showRequiredIndicator
               searchBoxClassName={classes.informationSourceControl}

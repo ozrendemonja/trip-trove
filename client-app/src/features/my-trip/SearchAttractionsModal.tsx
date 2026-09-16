@@ -7,14 +7,14 @@ import {
   searchMainAttraction,
   searchRegion
 } from "../continent/infra/ManagerApi";
-import { SearchTextProps } from "../../shared/search-text/SearchText.types";
+import { AutocompleteFieldProps } from "../../shared/autocomplete-field/AutocompleteField.types";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import { useClasses } from "./MyTrip.styles";
 import React, { useState } from "react";
-import { SearchText } from "../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
 import { Flex } from "../../shared/ui/Flex";
 
-const searchConfig: Omit<SearchTextProps, "getSuggestions" | "onSelectItem"> = {
+const searchConfig: Omit<AutocompleteFieldProps, "getSuggestions" | "onSelectItem"> = {
   label: "",
   placeholder: "Search",
   required: false
@@ -108,7 +108,7 @@ const SearchAttractionsModal: React.FunctionComponent<
               </Link>
             ))}
         </div>
-        <SearchText
+        <AutocompleteField
           key={selected}
           {...searchConfig}
           getSuggestions={searchQuery}

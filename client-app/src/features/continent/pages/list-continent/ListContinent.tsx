@@ -108,8 +108,8 @@ export const ContinentList: React.FunctionComponent = () => {
               selectedSortValue: order,
               items: suggestions,
               setItems: setSuggestions,
-              onSearchTyped: (_event, newValue) => {
-                setQuery(newValue ?? "");
+              onSearchTyped: (newValue) => {
+                setQuery(newValue);
               },
               onFindItem: (id) => {
                 if (typeof id !== "string") return;

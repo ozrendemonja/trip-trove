@@ -1,26 +1,17 @@
 import { mergeClasses } from "@fluentui/react-components";
-import React, { useState } from "react";
-import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import React from "react";
 import { Autocomplete } from "../search/Autocomplete";
-import {
-  AutocompleteController,
-  FormSearchPolicy
-} from "../search/AutocompleteController";
+import { FormSearchPolicy } from "../search/AutocompleteController";
 import { InputField } from "../ui/forms/InputField";
-import { useClasses } from "./SearchText.styles";
-import { SearchTextProps } from "./SearchText.types";
+import { useClasses } from "./AutocompleteField.styles";
+import { AutocompleteFieldProps } from "./AutocompleteField.types";
 
-export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
+const searchPolicy = new FormSearchPolicy();
+
+export const AutocompleteField: React.FunctionComponent<
+  AutocompleteFieldProps
+> = (props) => {
   const classes = useClasses();
-  const [controller] = useState(() => {
-    const nextController = new AutocompleteController<Suggestion>(
-      new FormSearchPolicy()
-    );
-    if (props.initialValue) {
-      nextController.selectSuggestion({ id: 0, value: props.initialValue });
-    }
-    return nextController;
-  });
   const rootClassName = mergeClasses(
     classes.root,
     props.suggestionsInFlow ? classes.inFlowRoot : undefined,
@@ -42,7 +33,10 @@ export const SearchText: React.FunctionComponent<SearchTextProps> = (props) => {
   return (
     <div className={rootClassName}>
       <Autocomplete
-        controller={controller}
+        policy={searchPolicy}
+        initialSuggestion={
+          props.initialValue ? { id: 0, value: props.initialValue } : undefined
+        }
         getSuggestions={props.getSuggestions}
         dropdownClassName={dropdownClassName}
         suggestionClassName={buttonClassName}

@@ -4,20 +4,20 @@ import {
   MaskedInputFieldProps,
   InputFieldProps
 } from "../../../../shared/ui/forms/InputField";
-import { SearchTextProps } from "../../../../shared/search-text/SearchText.types";
+import { AutocompleteFieldProps } from "../../../../shared/autocomplete-field/AutocompleteField.types";
 import { DateRangePickerProps } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
 import type { Period } from "../../../../shared/list-element/ui/date-picker/DateRangePicker.types";
 import { AttractionType, CategoryType } from "../../domain/Attraction.types";
 
 // Extended interface
-export interface ExtendedSearchTextProps extends SearchTextProps {
+export interface ExtendedAutocompleteFieldProps extends AutocompleteFieldProps {
   value: number | undefined;
 }
 
 // Free-text autocomplete: the form value IS the displayed string
 // (used for fields like InformationProvider.sourceName where users may
 // type a brand-new value or pick an existing one from suggestions).
-export interface ValueSearchTextProps extends SearchTextProps {
+export interface ValueAutocompleteFieldProps extends AutocompleteFieldProps {
   value: string | undefined;
 }
 
@@ -45,18 +45,18 @@ export type AddAttractionFormElements = {
 };
 
 type FormFields = {
-  countryId: ExtendedSearchTextProps;
-  regionId: ExtendedSearchTextProps;
-  cityId: ExtendedSearchTextProps;
+  countryId: ExtendedAutocompleteFieldProps;
+  regionId: ExtendedAutocompleteFieldProps;
+  cityId: ExtendedAutocompleteFieldProps;
   name: InputFieldProps;
-  mainAttractionId: ExtendedSearchTextProps;
+  mainAttractionId: ExtendedAutocompleteFieldProps;
   address: InputFieldProps;
   geoLocation: MaskedInputFieldProps;
   category: Omit<SelectFieldProps, "choices"> & { value: CategoryType };
   type: Omit<SelectFieldProps, "choices"> & { value: AttractionType };
   optimalVisitPeriod: DateRangePickerProps;
   tip: InputFieldProps;
-  source: ValueSearchTextProps;
+  source: ValueAutocompleteFieldProps;
   sourceFrom: DateInputProps;
 };
 

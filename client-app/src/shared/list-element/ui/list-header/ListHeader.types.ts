@@ -1,5 +1,5 @@
 import { SelectChoice } from "../../../ui/forms/SelectField";
-import { Suggestion } from "../../../../features/continent/domain/Suggestion.types.";
+import { AutocompleteSuggestion } from "../../../search/AutocompleteController";
 
 export interface ListHeaderProps {
   /**
@@ -11,10 +11,7 @@ export interface ListHeaderProps {
   /**
    * Callback function for when the typed input for the SearchBox has changed.
    */
-  onSearchTyped?: (
-    event?: React.ChangeEvent<HTMLInputElement>,
-    newValue?: string
-  ) => void;
+  onSearchTyped?: (newValue: string) => void;
 
   /**
    * Callback issued when the selected option changes.
@@ -32,9 +29,9 @@ export interface ListHeaderProps {
 
   selectedSortValue?: string | number;
 
-  items: Suggestion[];
+  items: AutocompleteSuggestion[];
 
-  onFindItem: (id: Suggestion["id"]) => void;
+  onFindItem: (id: AutocompleteSuggestion["id"]) => void;
 
-  setItems: (suggestions: Suggestion[]) => void;
+  setItems: (suggestions: AutocompleteSuggestion[]) => void;
 }

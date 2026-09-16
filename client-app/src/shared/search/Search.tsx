@@ -1,25 +1,25 @@
 import { SearchBox, mergeClasses } from "@fluentui/react-components";
-import React, { useState } from "react";
-import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import React from "react";
 import { Flex } from "../ui/Flex";
 import { Autocomplete } from "./Autocomplete";
 import {
-  AutocompleteController,
+  AutocompleteSuggestion,
   ListSearchPolicy
 } from "./AutocompleteController";
 import { useClasses } from "./Search.styles";
 import { SearchProps } from "./Search.types";
 
-export const Search: React.FunctionComponent<SearchProps> = (props) => {
+const searchPolicy = new ListSearchPolicy();
+
+export const Search = <TSuggestion extends AutocompleteSuggestion>(
+  props: SearchProps<TSuggestion>
+): React.ReactElement => {
   const classes = useClasses();
-  const [controller] = useState(
-    () => new AutocompleteController<Suggestion>(new ListSearchPolicy())
-  );
 
   return (
     <Flex align="center" className={classes.container}>
-      <Autocomplete
-        controller={controller}
+      <Autocomplete<TSuggestion>
+        policy={searchPolicy}
         suggestions={props.items}
         onSuggestionSelected={(suggestion) => props.onFindItem(suggestion.id)}
         renderInput={({ query, onQueryChange, onKeyDown }) => (
@@ -27,9 +27,9 @@ export const Search: React.FunctionComponent<SearchProps> = (props) => {
             onKeyDown={onKeyDown}
             placeholder="Search"
             dismiss={{ role: "button", "aria-label": "Clear text" }}
-            onChange={(event, data) => {
+            onChange={(_event, data) => {
               onQueryChange(data.value);
-              props.onSearchTyped(event, data.value);
+              props.onSearchTyped?.(data.value);
               if (!data.value) {
                 props.setItems([]);
               }

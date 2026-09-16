@@ -1,7 +1,7 @@
 import { Field, Radio, RadioGroup } from "@fluentui/react-components";
 import React, { useEffect, useState } from "react";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
-import { SearchText } from "../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
 import { searchCity, searchRegion } from "../continent/infra/ManagerApi";
 import { updateBucketListItemLocation } from "./BucketListApi";
 import { useBucketListClasses } from "./BucketList.styles";
@@ -77,7 +77,7 @@ const EditBucketListItemLocation: React.FunctionComponent<
         </RadioGroup>
       </Field>
       {locationType === "city" && (
-        <SearchText
+        <AutocompleteField
           key={`city-${item.cityId ?? "new"}`}
           label="City"
           placeholder="Type at least 3 characters"
@@ -92,7 +92,7 @@ const EditBucketListItemLocation: React.FunctionComponent<
         />
       )}
       {locationType === "region" && (
-        <SearchText
+        <AutocompleteField
           key={`region-${item.regionId ?? "new"}`}
           label="Region"
           placeholder="Type at least 3 characters"

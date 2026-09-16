@@ -38,7 +38,7 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import { LoadingSpinner } from "../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../shared/navigation/Navigation";
-import { SearchText } from "../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
 import { Flex } from "../../shared/ui/Flex";
 import { DateInput } from "../../shared/ui/forms/DateInput";
 import { InputField } from "../../shared/ui/forms/InputField";
@@ -864,7 +864,7 @@ export const BucketList: React.FC = () => {
             </RadioGroup>
           </Field>
           {draft.locationType === "city" && (
-            <SearchText
+            <AutocompleteField
               key={`${formKey}-city`}
               label="City"
               placeholder="Type at least 3 characters"
@@ -885,7 +885,7 @@ export const BucketList: React.FC = () => {
             />
           )}
           {draft.locationType === "region" && (
-            <SearchText
+            <AutocompleteField
               key={`${formKey}-region`}
               label="Region"
               placeholder="Type at least 3 characters"

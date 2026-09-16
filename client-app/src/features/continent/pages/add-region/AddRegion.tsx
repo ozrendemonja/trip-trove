@@ -12,7 +12,7 @@ import {
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Navigation from "../../../../shared/navigation/Navigation";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { saveNewRegion } from "../../infra/ManagerApi";
 import { useRegionFormField } from "./AddRegion.config";
 import { useClasses } from "./AddRegion.styles";
@@ -64,7 +64,7 @@ export const AddRegion: React.FunctionComponent = () => {
           <Text as="h1" className={classes.header}>
             Add Region
           </Text>
-          <SearchText {...formFields.countryId} showRequiredIndicator />
+          <AutocompleteField {...formFields.countryId} showRequiredIndicator />
         </Flex>
         <Divider className={classes.headerDivider} />
         <Flex gap={16} className={classes.formText}>

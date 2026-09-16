@@ -6,7 +6,7 @@ import { Validator } from "../../infra/Validator";
 import {
   AddCityFormElements,
   CityFormFieldProps,
-  ExtendedSearchTextProps
+  ExtendedAutocompleteFieldProps
 } from "./AddCity.types";
 
 export const useCityFormField = (): CityFormFieldProps => {
@@ -38,7 +38,7 @@ export const useCityFormField = (): CityFormFieldProps => {
     required: true
   };
 
-  const regionSearchText: ExtendedSearchTextProps = {
+  const regionIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a region",
     placeholder: "Search",
     required: true,
@@ -55,7 +55,7 @@ export const useCityFormField = (): CityFormFieldProps => {
   return {
     formFields: {
       cityName: cityNameField,
-      regionId: regionSearchText
+      regionId: regionIdField
     },
     isFormValid: isValid
   };
@@ -109,7 +109,7 @@ export const useCityRegionFormField = (): CityFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const regionSearchText: ExtendedSearchTextProps = {
+  const regionIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a region",
     placeholder: "Search",
     required: true,
@@ -125,7 +125,7 @@ export const useCityRegionFormField = (): CityFormFieldProps => {
 
   return {
     formFields: {
-      regionId: regionSearchText
+      regionId: regionIdField
     },
     isFormValid: isValid
   };

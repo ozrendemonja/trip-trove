@@ -4,7 +4,7 @@ import { searchCountry } from "../../infra/ManagerApi";
 import { Validator } from "../../infra/Validator";
 import {
   AddRegionFormElements,
-  ExtendedSearchTextProps,
+  ExtendedAutocompleteFieldProps,
   RegionFormFieldProps
 } from "./AddRegion.types";
 import { createPlaceValidation } from "../../infra/PlaceValidationRules";
@@ -38,7 +38,7 @@ export const useRegionFormField = (): RegionFormFieldProps => {
     required: true
   };
 
-  const countrySearchText: ExtendedSearchTextProps = {
+  const countryIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a country",
     placeholder: "Search",
     required: true,
@@ -55,7 +55,7 @@ export const useRegionFormField = (): RegionFormFieldProps => {
   return {
     formFields: {
       regionName: regionNameField,
-      countryId: countrySearchText
+      countryId: countryIdField
     },
     isFormValid: isValid
   };
@@ -109,7 +109,7 @@ export const useRegionCountryFormField = (): RegionFormFieldProps => {
   const [values, setValues] = useState(initialValues);
   const { isValid, errorMessage } = validator.validate(values);
 
-  const countrySearchText: ExtendedSearchTextProps = {
+  const countryIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a country",
     placeholder: "Search",
     required: true,
@@ -125,7 +125,7 @@ export const useRegionCountryFormField = (): RegionFormFieldProps => {
 
   return {
     formFields: {
-      countryId: countrySearchText
+      countryId: countryIdField
     },
     isFormValid: isValid
   };

@@ -1,6 +1,6 @@
 import { DateInput } from "../../../../shared/ui/forms/DateInput";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { changeAttractionInfoFrom } from "../../infra/ManagerApi";
 import { useAttractionInfoFromFormField } from "../add-attraction/AddAttraction.config";
 import { EditAttractionInfoFromDetailsProps } from "./ListAttraction.types";
@@ -28,7 +28,7 @@ const EditAttractionInfoFromDetails: React.FunctionComponent<
     >
       <div className={classes.fields}>
         <div className={classes.searchField}>
-          <SearchText
+          <AutocompleteField
             {...formFields.source}
             searchBoxClassName={classes.searchBox}
           />

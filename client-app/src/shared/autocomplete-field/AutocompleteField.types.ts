@@ -1,6 +1,6 @@
-import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import { AutocompleteSuggestion } from "../search/AutocompleteController";
 
-export interface SearchTextProps {
+export interface AutocompleteFieldProps {
   /**
    * Label displayed above the text field (and read by screen readers).
    */
@@ -24,7 +24,7 @@ export interface SearchTextProps {
    */
   onSelectValue?: (value: string) => void;
 
-  getSuggestions: (query: string) => Promise<Suggestion[]>;
+  getSuggestions: (query: string) => Promise<AutocompleteSuggestion[]>;
 
   /**
    * Function used to determine whether the input value is valid and get an error message if not.

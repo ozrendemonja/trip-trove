@@ -2,7 +2,7 @@ import { Switch } from "@fluentui/react-components";
 import { InputField } from "../../../../shared/ui/forms/InputField";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { changeAttractionDetails } from "../../infra/ManagerApi";
 import { useAttractionDetailsFormField } from "../add-attraction/AddAttraction.config";
 import { EditPropertyAttractionDetailsProps } from "./ListAttraction.types";
@@ -44,7 +44,7 @@ const EditPropertyAttractionDetails: React.FunctionComponent<
       </div>
       {isPartOfAttraction && (
         <div className={classes.mainAttractionField}>
-          <SearchText
+          <AutocompleteField
             {...formFields.mainAttractionId}
             searchBoxClassName={classes.searchBox}
           />

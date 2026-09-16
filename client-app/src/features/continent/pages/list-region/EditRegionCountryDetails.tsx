@@ -1,5 +1,5 @@
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { changeRegionCountry } from "../../infra/ManagerApi";
 import { useRegionCountryFormField } from "../add-region/AddRegion.config";
 import { EditRegionDetailsProps } from "./ListRegion.types";
@@ -23,7 +23,7 @@ const EditRegionCountryDetails: React.FunctionComponent<
       }}
       isFormValid={isFormValid}
     >
-      <SearchText
+      <AutocompleteField
         {...formFields.countryId}
         placeholder={props.text}
         suggestionsInFlow

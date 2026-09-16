@@ -5,8 +5,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { configData } from "../../assets/ConfigData";
 import Navigation from "../../shared/navigation/Navigation";
-import { SearchText } from "../../shared/search-text/SearchText";
-import { SearchTextProps } from "../../shared/search-text/SearchText.types";
+import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
+import { AutocompleteFieldProps } from "../../shared/autocomplete-field/AutocompleteField.types";
 import {
   searchCity,
   searchContinent,
@@ -18,7 +18,7 @@ import { useClasses } from "./Home.styles";
 import CountriesVisitedGauge from "./countries-visited-gauge/CountriesVisitedGauge";
 import MapWithPinIcon from "./map-icon/MapWithPinIcon";
 
-const searchConfig: Omit<SearchTextProps, "getSuggestions" | "onSelectItem"> = {
+const searchConfig: Omit<AutocompleteFieldProps, "getSuggestions" | "onSelectItem"> = {
   label: "",
   placeholder: "Search",
   required: false
@@ -106,7 +106,7 @@ export const Home: React.FunctionComponent = () => {
                 </Link>
               ))}
           </div>
-          <SearchText
+          <AutocompleteField
             {...searchConfig}
             searchBoxClassName={classes.homeSearchBox}
             getSuggestions={searchQuery}

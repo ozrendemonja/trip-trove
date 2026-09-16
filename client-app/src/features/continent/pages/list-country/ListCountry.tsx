@@ -164,11 +164,8 @@ export const CountryList: React.FunctionComponent = () => {
               sortOptions: sortOptions,
               selectedSortValue: order,
               items: suggestions,
-              onSearchTyped: (
-                _event?: React.ChangeEvent<HTMLInputElement>,
-                newValue?: string
-              ) => {
-                setQuery(newValue ?? "");
+              onSearchTyped: (newValue) => {
+                setQuery(newValue);
               },
               onFindItem: (id) => {
                 if (typeof id !== "number") return;

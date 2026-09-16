@@ -4,6 +4,7 @@ import { FocusRegion, FocusRegionHandle } from "../ui/FocusRegion";
 import { useAutocompleteClasses } from "./Autocomplete.styles";
 import {
   AutocompleteController,
+  AutocompletePolicy,
   AutocompleteSuggestion
 } from "./AutocompleteController";
 
@@ -15,7 +16,8 @@ export interface AutocompleteInputProps {
 }
 
 export interface AutocompleteProps<TSuggestion extends AutocompleteSuggestion> {
-  readonly controller: AutocompleteController<TSuggestion>;
+  readonly policy: AutocompletePolicy;
+  readonly initialSuggestion?: TSuggestion;
   readonly suggestions?: readonly TSuggestion[];
   readonly getSuggestions?: (query: string) => Promise<TSuggestion[]>;
   readonly renderInput: (props: AutocompleteInputProps) => React.ReactNode;
@@ -28,7 +30,8 @@ export const Autocomplete = <TSuggestion extends AutocompleteSuggestion>(
   props: AutocompleteProps<TSuggestion>
 ): React.ReactElement => {
   const {
-    controller,
+    policy,
+    initialSuggestion,
     suggestions: controlledSuggestions,
     getSuggestions,
     renderInput,
@@ -38,6 +41,13 @@ export const Autocomplete = <TSuggestion extends AutocompleteSuggestion>(
   } = props;
   const classes = useAutocompleteClasses();
   const focusRegionRef = useRef<FocusRegionHandle>(null);
+  const [controller] = useState(() => {
+    const nextController = new AutocompleteController<TSuggestion>(policy);
+    if (initialSuggestion) {
+      nextController.selectSuggestion(initialSuggestion);
+    }
+    return nextController;
+  });
   const [snapshot, setSnapshot] = useState(() =>
     controlledSuggestions
       ? controller.showSuggestions(controlledSuggestions)

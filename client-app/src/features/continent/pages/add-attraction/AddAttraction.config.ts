@@ -27,9 +27,9 @@ import { Validator } from "../../infra/Validator";
 import {
   AddAttractionFormElements,
   AttractionFormFieldProps,
-  ExtendedSearchTextProps,
+  ExtendedAutocompleteFieldProps,
   GoogleMapsImportData,
-  ValueSearchTextProps
+  ValueAutocompleteFieldProps
 } from "./AddAttraction.types";
 
 export const useAttractionFormField = (): AttractionFormFieldProps => {
@@ -70,7 +70,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
   const [today] = useState(() => new Date());
   const { isValid, errorMessage } = validator.validate(values);
 
-  const countryIdSearchText: ExtendedSearchTextProps = {
+  const countryIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a country",
     placeholder: "Search",
     required: true,
@@ -84,7 +84,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     value: values.countryId
   };
 
-  const regionIdSearchText: ExtendedSearchTextProps = {
+  const regionIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a region",
     placeholder: "Search",
     required: true,
@@ -98,7 +98,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     value: values.regionId
   };
 
-  const cityIdSearchText: ExtendedSearchTextProps = {
+  const cityIdField: ExtendedAutocompleteFieldProps = {
     label: "Select a city",
     placeholder: "Search",
     required: true,
@@ -126,7 +126,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     required: true
   };
 
-  const mainAttractionIdSearchText: ExtendedSearchTextProps = {
+  const mainAttractionIdField: ExtendedAutocompleteFieldProps = {
     label: "Select main attraction name",
     placeholder: "Search",
     required: false,
@@ -231,7 +231,7 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
     multiline: true
   };
 
-  const sourceField: ValueSearchTextProps = {
+  const sourceField: ValueAutocompleteFieldProps = {
     label: "Where information comes from",
     placeholder: "Search or type a new source",
     required: true,
@@ -342,11 +342,11 @@ export const useAttractionFormField = (): AttractionFormFieldProps => {
 
   return {
     formFields: {
-      countryId: countryIdSearchText,
-      regionId: regionIdSearchText,
-      cityId: cityIdSearchText,
+      countryId: countryIdField,
+      regionId: regionIdField,
+      cityId: cityIdField,
       name: attractionNameField,
-      mainAttractionId: mainAttractionIdSearchText,
+      mainAttractionId: mainAttractionIdField,
       address: attractionAddressField,
       geoLocation: geoLocationField,
       category: categoryDropdown,
@@ -391,7 +391,7 @@ export const useAttractionDetailsFormField = (): AttractionFormFieldProps => {
     required: true
   };
 
-  const mainAttractionIdSearchText: ExtendedSearchTextProps = {
+  const mainAttractionIdField: ExtendedAutocompleteFieldProps = {
     label: "Select main attraction name",
     placeholder: "Search",
     required: false,
@@ -410,7 +410,7 @@ export const useAttractionDetailsFormField = (): AttractionFormFieldProps => {
   return {
     formFields: {
       name: attractionNameField,
-      mainAttractionId: mainAttractionIdSearchText
+      mainAttractionId: mainAttractionIdField
     },
     isFormValid: isValid
   };
@@ -434,7 +434,7 @@ export const useAttractionDestinationFormField =
     const [values, setValues] = useState(initialValues);
     const { isValid, errorMessage } = validator.validate(values);
 
-    const countryIdSearchText: ExtendedSearchTextProps = {
+    const countryIdField: ExtendedAutocompleteFieldProps = {
       label: "Select a country",
       placeholder: "Search",
       required: true,
@@ -448,7 +448,7 @@ export const useAttractionDestinationFormField =
       value: values.countryId
     };
 
-    const regionIdSearchText: ExtendedSearchTextProps = {
+    const regionIdField: ExtendedAutocompleteFieldProps = {
       label: "Select a region",
       placeholder: "Search",
       required: true,
@@ -462,7 +462,7 @@ export const useAttractionDestinationFormField =
       value: values.regionId
     };
 
-    const cityIdSearchText: ExtendedSearchTextProps = {
+    const cityIdField: ExtendedAutocompleteFieldProps = {
       label: "Select a city",
       placeholder: "Search",
       required: true,
@@ -478,9 +478,9 @@ export const useAttractionDestinationFormField =
 
     return {
       formFields: {
-        countryId: countryIdSearchText,
-        regionId: regionIdSearchText,
-        cityId: cityIdSearchText
+        countryId: countryIdField,
+        regionId: regionIdField,
+        cityId: cityIdField
       },
       isFormValid: isValid
     };
@@ -559,7 +559,7 @@ export const useAttractionInfoFromFormField = (): AttractionFormFieldProps => {
   const [today] = useState(() => new Date());
   const { isValid, errorMessage } = validator.validate(values);
 
-  const sourceField: ValueSearchTextProps = {
+  const sourceField: ValueAutocompleteFieldProps = {
     label: "Where information comes from",
     placeholder: "Search or type a new source",
     required: true,

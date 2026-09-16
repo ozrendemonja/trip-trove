@@ -1,7 +1,7 @@
 import { Divider, Switch, Text } from "@fluentui/react-components";
 import { useBooleanState } from "../../../../shared/hooks/useBooleanState";
 import EditProperty from "../../../../shared/list-element/ui/edit-property/EditProperty";
-import { SearchText } from "../../../../shared/search-text/SearchText";
+import { AutocompleteField } from "../../../../shared/autocomplete-field/AutocompleteField";
 import { useAttractionDestinationFormField } from "../add-attraction/AddAttraction.config";
 import { EditAttractionDestinationProps } from "./ListAttraction.types";
 import { changeAttractionDestination } from "../../infra/ManagerApi";
@@ -47,7 +47,7 @@ const EditAttractionDestination: React.FunctionComponent<
         />
       </Flex>
       <div className={classes.searchField}>
-        <SearchText
+        <AutocompleteField
           {...formFields.countryId}
           searchBoxClassName={classes.searchBox}
         />
@@ -66,13 +66,13 @@ const EditAttractionDestination: React.FunctionComponent<
       </Flex>
       <div className={classes.searchField}>
         {isReginal && (
-          <SearchText
+          <AutocompleteField
             {...formFields.regionId}
             searchBoxClassName={classes.searchBox}
           />
         )}
         {!isReginal && (
-          <SearchText
+          <AutocompleteField
             {...formFields.cityId}
             searchBoxClassName={classes.searchBox}
           />

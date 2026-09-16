@@ -1,22 +1,21 @@
-import { Suggestion } from "../../features/continent/domain/Suggestion.types.";
+import { AutocompleteSuggestion } from "./AutocompleteController";
 
-export interface SearchProps {
+export interface SearchProps<
+  TSuggestion extends AutocompleteSuggestion = AutocompleteSuggestion
+> {
   /**
    * Callback function for when the typed input for the SearchBox has changed.
    */
-  onSearchTyped: (
-    event?: React.ChangeEvent<HTMLInputElement>,
-    newValue?: string
-  ) => void;
+  onSearchTyped?: (newValue: string) => void;
 
   /**
    * CSS class to apply to the SearchBox.
    */
   className?: string;
 
-  items: Suggestion[];
+  items: TSuggestion[];
 
-  onFindItem: (id: Suggestion["id"]) => void;
+  onFindItem: (id: TSuggestion["id"]) => void;
 
-  setItems: (suggestions: Suggestion[]) => void;
+  setItems: (suggestions: TSuggestion[]) => void;
 }

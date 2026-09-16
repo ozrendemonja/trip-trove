@@ -5,7 +5,9 @@ test("Show spinner while city is loading", async ({ page }) => {
     "http://localhost:6006/iframe.html?id=features-continent-pages-list-attraction-user-listattractionuser--primary"
   );
 
-  await page.getByRole("main").waitFor();
+  await page
+    .getByRole("main", { name: "Updating list of attractions" })
+    .waitFor();
 
   await expect(page).toHaveScreenshot();
 });

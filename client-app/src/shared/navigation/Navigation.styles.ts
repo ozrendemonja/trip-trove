@@ -2,17 +2,19 @@ import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   container: {
-    marginRight: "48px",
+    marginRight: tokens.spacingHorizontalL,
     width: "200px",
     maxWidth: "200px",
-    height: "calc(100vh - 16px)",
+    flexShrink: 0,
+    height: "calc(100vh - 8px)",
     boxSizing: "border-box",
     ...shorthands.border("1px", "solid", tokens.colorNeutralBackground1),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
     ...shorthands.padding(tokens.spacingVerticalMNudge),
     backgroundColor: tokens.colorNeutralBackground1,
     float: "left",
     position: "sticky",
-    top: 0,
+    top: "4px",
     "& > :last-child": {
       width: "100%",
       minWidth: 0,
@@ -43,7 +45,7 @@ export const useClasses = makeStyles({
     }
   },
   nav: {
-    width: "185px",
+    width: "100%",
     maxHeight: "80vh",
     boxSizing: "border-box",
     overflowY: "auto",

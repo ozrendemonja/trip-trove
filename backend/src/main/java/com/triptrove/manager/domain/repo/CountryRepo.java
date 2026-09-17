@@ -48,14 +48,21 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 
-    @Query("SELECT COUNT(c) > 0 FROM Country c WHERE c.name = :#{#countryName.name()} AND c.continent.name = :#{#continentName.name()} AND (:excludeId IS NULL OR c.id <> :excludeId)")
+    @Query("""
+            SELECT COUNT(c) > 0 FROM Country c 
+            WHERE c.name = :#{#countryName.name()} AND c.continent.name = :#{#continentName.name()} AND (:excludeId IS NULL OR c.id <> :excludeId)
+            """)
     boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName, Integer excludeId);
 
     default boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName) {
         return isNameAlreadyUsedInContinent(countryName, continentName, null);
     }
 
-    @Query("SELECT COUNT(c) > 0 FROM Country c WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)")
+    @Query("""
+            SELECT COUNT(c) > 0
+            FROM Country c
+            WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)
+            """)
     boolean isIsoCodeAlreadyUsed(String isoCode, Integer excludeId);
 
     default boolean isIsoCodeAlreadyUsed(String isoCode) {

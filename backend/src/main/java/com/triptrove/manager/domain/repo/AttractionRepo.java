@@ -5,6 +5,10 @@ import com.triptrove.manager.domain.model.CountryAttractionCount;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +17,10 @@ import java.util.List;
 
 public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpecificationExecutor<Attraction> {
     List<Attraction> findByName(String name);
+
+    @Override
+    @EntityGraph("Attraction.withDetails")
+    Page<Attraction> findAll(Specification<Attraction> specification, Pageable pageable);
 
     @Query("SELECT COUNT(a) > 0 FROM Attraction a WHERE a.name = :name AND a.city.id = :cityId AND (:excludeId IS NULL OR a.id <> :excludeId)")
     boolean isNameAlreadyUsedInCity(String name, Integer cityId, Long excludeId);
@@ -47,18 +55,21 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
         return isNameAlreadyUsedUnderMain(attraction.getName(), mainAttractionId, attraction.getId());
     }
 
+    @EntityGraph("Attraction.withDetails")
     @Query("""
             SELECT a FROM Attraction a
             ORDER BY coalesce(a.updatedOn, a.createdOn) ASC, a.id ASC
             """)
     List<Attraction> findAllOrderByOldest(Limit limit);
 
+    @EntityGraph("Attraction.withDetails")
     @Query("""
             SELECT a FROM Attraction a
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC, a.id DESC
             """)
     List<Attraction> findAllOrderByNewest(Limit limit);
 
+    @EntityGraph("Attraction.withDetails")
     @Query("""
             SELECT a FROM Attraction a
             WHERE coalesce(a.updatedOn, a.createdOn) > :#{#afterAttraction.updatedOn}
@@ -67,6 +78,7 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
             """)
     List<Attraction> findOldestAfter(ScrollPosition afterAttraction, Limit limit);
 
+    @EntityGraph("Attraction.withDetails")
     @Query("""
             SELECT a FROM Attraction a
             WHERE coalesce(a.updatedOn, a.createdOn) < :#{#afterAttraction.updatedOn}

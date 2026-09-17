@@ -20,6 +20,13 @@ import java.util.Optional;
         {@UniqueConstraint(name = "UniqueNameCityOrRegion", columnNames = {"name", "city_id", "region_id"})}
 )
 @EntityListeners(AuditingEntityListener.class)
+@NamedEntityGraph(name = "Attraction.withDetails", attributeNodes = {
+        @NamedAttributeNode("country"),
+        @NamedAttributeNode("region"),
+        @NamedAttributeNode("city"),
+        @NamedAttributeNode("main"),
+        @NamedAttributeNode("informationProvider")
+})
 public class Attraction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -140,7 +147,4 @@ public class Attraction {
         country = newRegion.getCountry();
     }
 
-    public boolean isUnderContinent(Continent continent) {
-        return this.country.getContinent().getId().equals(continent.getId());
-    }
 }

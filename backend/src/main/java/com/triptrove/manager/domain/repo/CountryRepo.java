@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.model.Country;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,6 +16,7 @@ import java.util.List;
 public interface CountryRepo extends JpaRepository<Country, Integer> {
     List<Country> findByName(String name);
 
+    @EntityGraph(attributePaths = "continent")
     @Query("""
             SELECT c FROM Country c
             WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCountry.updatedOn}
@@ -23,6 +25,7 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             """)
     List<Country> findOldestAfter(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
+    @EntityGraph(attributePaths = "continent")
     @Query("""
             SELECT c FROM Country c
             WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCountry.updatedOn}
@@ -31,31 +34,40 @@ public interface CountryRepo extends JpaRepository<Country, Integer> {
             """)
     List<Country> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
+    @EntityGraph(attributePaths = "continent")
     @Query("""
             SELECT c FROM Country c
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<Country> findAllOrderByNewest(Limit limit);
 
+    @EntityGraph(attributePaths = "continent")
     @Query("""
             SELECT c FROM Country c
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<Country> findAllOrderByOldest(Limit limit);
 
-        @Query("SELECT COUNT(c) > 0 FROM Country c WHERE c.name = :#{#countryName.name()} AND c.continent.name = :#{#continentName.name()} AND (:excludeId IS NULL OR c.id <> :excludeId)")
-        boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName, Integer excludeId);
+    @Query("""
+            SELECT COUNT(c) > 0 FROM Country c 
+            WHERE c.name = :#{#countryName.name()} AND c.continent.name = :#{#continentName.name()} AND (:excludeId IS NULL OR c.id <> :excludeId)
+            """)
+    boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName, Integer excludeId);
 
-        default boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName) {
-                return isNameAlreadyUsedInContinent(countryName, continentName, null);
+    default boolean isNameAlreadyUsedInContinent(CountryName countryName, ContinentName continentName) {
+        return isNameAlreadyUsedInContinent(countryName, continentName, null);
     }
 
-        @Query("SELECT COUNT(c) > 0 FROM Country c WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)")
-        boolean isIsoCodeAlreadyUsed(String isoCode, Integer excludeId);
+    @Query("""
+            SELECT COUNT(c) > 0
+            FROM Country c
+            WHERE lower(c.isoCode) = lower(:isoCode) AND (:excludeId IS NULL OR c.id <> :excludeId)
+            """)
+    boolean isIsoCodeAlreadyUsed(String isoCode, Integer excludeId);
 
-        default boolean isIsoCodeAlreadyUsed(String isoCode) {
-                return isIsoCodeAlreadyUsed(isoCode, null);
-        }
+    default boolean isIsoCodeAlreadyUsed(String isoCode) {
+        return isIsoCodeAlreadyUsed(isoCode, null);
+    }
 
     void deleteById(Integer id);
 

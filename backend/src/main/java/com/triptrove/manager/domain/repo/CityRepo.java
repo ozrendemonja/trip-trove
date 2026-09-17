@@ -4,6 +4,7 @@ import com.triptrove.manager.domain.model.City;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -23,18 +24,21 @@ public interface CityRepo extends JpaRepository<City, Integer> {
 
     List<City> findByName(String name);
 
+    @EntityGraph(attributePaths = "region.country")
     @Query("""
             SELECT c FROM City c
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
     List<City> findAllOrderByOldest(Limit limit);
 
+    @EntityGraph(attributePaths = "region.country")
     @Query("""
             SELECT c FROM City c
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
     List<City> findAllOrderByNewest(Limit limit);
 
+    @EntityGraph(attributePaths = "region.country")
     @Query("""
             SELECT c FROM City c
             WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCity.updatedOn}
@@ -43,6 +47,7 @@ public interface CityRepo extends JpaRepository<City, Integer> {
             """)
     List<City> findOldestAfter(ScrollPosition afterCity, Limit limit);
 
+    @EntityGraph(attributePaths = "region.country")
     @Query("""
             SELECT c FROM City c
             WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCity.updatedOn}

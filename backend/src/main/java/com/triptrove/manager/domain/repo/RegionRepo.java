@@ -4,6 +4,7 @@ import com.triptrove.manager.domain.model.Region;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -23,18 +24,21 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
 
     List<Region> findByName(String name);
 
+    @EntityGraph(attributePaths = "country")
     @Query("""
             SELECT r FROM Region r
             ORDER BY coalesce(r.updatedOn, r.createdOn) ASC, r.id ASC
             """)
     List<Region> findAllOrderByOldest(Limit limit);
 
+    @EntityGraph(attributePaths = "country")
     @Query("""
             SELECT r FROM Region r
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC, r.id DESC
             """)
     List<Region> findAllOrderByNewest(Limit limit);
 
+    @EntityGraph(attributePaths = "country")
     @Query("""
             SELECT r FROM Region r
             WHERE coalesce(r.updatedOn, r.createdOn) > :#{#afterRegion.updatedOn}
@@ -43,6 +47,7 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
             """)
     List<Region> findOldestAfter(ScrollPosition afterRegion, Limit limit);
 
+    @EntityGraph(attributePaths = "country")
     @Query("""
             SELECT r FROM Region r
             WHERE coalesce(r.updatedOn, r.createdOn) < :#{#afterRegion.updatedOn}

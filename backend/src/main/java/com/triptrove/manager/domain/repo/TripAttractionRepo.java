@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.AttractionVisit;
 import com.triptrove.manager.domain.model.AttractionVisitFlag;
 import com.triptrove.manager.domain.model.TripAttraction;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,13 +17,14 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
 
     Optional<TripAttraction> findByTripIdAndAttractionId(Long tripId, Long attractionId);
 
-        @Query("""
+    @EntityGraph(attributePaths = {"trip", "attraction.country", "attraction.region", "attraction.city", "attraction.main", "attraction.informationProvider"})
+    @Query("""
             SELECT ta
             FROM TripAttraction ta
             WHERE ta.trip.id = :tripId
             ORDER BY ta.boardPosition, ta.id
             """)
-        List<TripAttraction> findBoardAttractionsByTripId(@Param("tripId") Long tripId);
+    List<TripAttraction> findBoardAttractionsByTripId(@Param("tripId") Long tripId);
 
     @Query("SELECT MAX(ta.boardPosition) FROM TripAttraction ta WHERE ta.trip.id = :tripId")
     Optional<BigDecimal> findLastBoardPositionByTripId(@Param("tripId") Long tripId);
@@ -51,8 +53,7 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
                 AND ta.trip.id <> :currentTripId
                 ORDER BY ta.trip.to DESC
             """)
-    List<AttractionVisit> findVisitHistory(@Param("attractionIds") List<Long> attractionIds,
-                                           @Param("currentTripId") Long currentTripId);
+    List<AttractionVisit> findVisitHistory(@Param("attractionIds") List<Long> attractionIds, @Param("currentTripId") Long currentTripId);
 
     @Query("""
                 SELECT new com.triptrove.manager.domain.model.AttractionVisitFlag(

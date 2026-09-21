@@ -1,13 +1,12 @@
 package com.triptrove.manager.application.dto;
 
 import com.triptrove.manager.domain.model.Address;
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.City;
-import com.triptrove.manager.domain.model.TripAttraction;
+import com.triptrove.manager.domain.model.TripAttractionDetails;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public record GetTripAttractionResponse(Long attractionId,
                                         String attractionName,
@@ -37,35 +36,34 @@ public record GetTripAttractionResponse(Long attractionId,
                                         String workingHours,
                                         String visitTime,
                                         boolean wouldVisitAgain) {
-    public static GetTripAttractionResponse from(TripAttraction tripAttraction) {
-        Attraction attraction = tripAttraction.getAttraction();
+    public static GetTripAttractionResponse from(TripAttractionDetails attraction) {
         return new GetTripAttractionResponse(
-                attraction.getId(),
-                attraction.getName(),
-                attraction.getCity().map(City::getName).orElse(null),
-                attraction.getRegion().getName(),
-                attraction.getCountry().getName(),
+                attraction.attractionId(),
+                attraction.attractionName(),
+                attraction.cityName(),
+                attraction.regionName(),
+                attraction.countryName(),
                 attraction.isCountrywide(),
-                attraction.getMain().map(Attraction::getName).orElse(null),
-                attraction.getAddress().map(Address::address).orElse(null),
-                attraction.getAddress().map(Address::location).map(location -> new LocationResponse(location.latitude(), location.longitude())).orElse(null),
-                AttractionCategoryResponse.from(attraction.getCategory()),
-                AttractionTypeResponse.from(attraction.getType()),
+                attraction.mainAttractionName(),
+                Optional.ofNullable(attraction.address()).map(Address::address).orElse(null),
+                Optional.ofNullable(attraction.address()).map(Address::location).map(location -> new LocationResponse(location.latitude(), location.longitude())).orElse(null),
+                AttractionCategoryResponse.from(attraction.category()),
+                AttractionTypeResponse.from(attraction.type()),
                 attraction.isTraditional(),
-                attraction.getTip().orElse(null),
-                attraction.getInformationProvider().getSourceName(),
-                attraction.getRecorded(),
-                attraction.getOptimalVisitPeriod().map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
-                attraction.getPermanentlyClosedAt(),
-                TripAttractionStatusDTO.valueOf(tripAttraction.getStatus().name()),
-                tripAttraction.getRating() != null ? RatingDTO.valueOf(tripAttraction.getRating().name()) : null,
-                tripAttraction.getNote(),
-                tripAttraction.getReviewNote(),
-                TripAttractionGroupDTO.valueOf(tripAttraction.getAttractionGroup().name()),
-                tripAttraction.isMustVisit(),
-                tripAttraction.getWorkingHours(),
-                tripAttraction.getVisitTime(),
-                tripAttraction.isWouldVisitAgain()
+                attraction.tip(),
+                attraction.informationProviderName(),
+                attraction.recorded(),
+                Optional.ofNullable(attraction.optimalVisitPeriod()).map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
+                attraction.permanentlyClosedAt(),
+                TripAttractionStatusDTO.valueOf(attraction.status().name()),
+                Optional.ofNullable(attraction.rating()).map(rating -> RatingDTO.valueOf(rating.name())).orElse(null),
+                attraction.note(),
+                attraction.reviewNote(),
+                TripAttractionGroupDTO.valueOf(attraction.attractionGroup().name()),
+                attraction.mustVisit(),
+                attraction.workingHours(),
+                attraction.visitTime(),
+                attraction.wouldVisitAgain()
         );
     }
 }

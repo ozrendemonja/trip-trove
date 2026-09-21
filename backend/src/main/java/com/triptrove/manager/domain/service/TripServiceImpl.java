@@ -79,12 +79,12 @@ public class TripServiceImpl implements TripService {
     @Override
     public void deleteTrip(Long id) {
         log.atInfo().log("Deleting trip");
-        var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
-        if (!trip.getAttractions().isEmpty()) {
+        if (!tripRepo.existsById(id)) {
+            throw new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id);
+        }
+        if (tripAttractionRepo.existsByTripId(id) || !tripRepo.deleteIfEmpty(id)) {
             throw new BaseApiException("Trip still contains attractions", BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, id);
         }
-
-        tripRepo.delete(trip);
         log.atInfo().log("Trip deleted");
     }
 
@@ -225,12 +225,12 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public List<TripAttraction> getAttractions(Long tripId) {
+    public List<TripAttractionDetails> getAttractions(Long tripId) {
         log.atInfo().log("Getting attractions for trip '{}'", tripId);
         if (!tripRepo.existsById(tripId)) {
             throw new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
         }
-        var result = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
+        var result = tripAttractionRepo.findBoardDetailsByTripId(tripId);
         log.atInfo().log("Found '{}' attractions for trip", result.size());
         return result;
     }

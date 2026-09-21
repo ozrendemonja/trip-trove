@@ -1,9 +1,6 @@
 package com.triptrove.manager.domain.repo;
 
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.CountryAttractionCount;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.Suggestion;
+import com.triptrove.manager.domain.model.*;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,8 +11,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
-public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpecificationExecutor<Attraction> {
+public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpecificationExecutor<Attraction>, AttractionDetailsRepo {
     List<Attraction> findByName(String name);
 
     @Override
@@ -55,37 +53,74 @@ public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpec
         return isNameAlreadyUsedUnderMain(attraction.getName(), mainAttractionId, attraction.getId());
     }
 
-    @EntityGraph("Attraction.withDetails")
     @Query("""
-            SELECT a FROM Attraction a
+            SELECT new com.triptrove.manager.domain.model.AttractionDetails(
+                a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                main.name, a.address, a.category, a.type, a.mustVisit, a.isTraditional,
+                a.tip, a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod,
+                a.permanentlyClosedAt, coalesce(a.updatedOn, a.createdOn))
+            FROM Attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
+            WHERE a.id = :id
+            """)
+    Optional<AttractionDetails> findDetailsById(Long id);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.AttractionDetails(
+                a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                main.name, a.address, a.category, a.type, a.mustVisit, a.isTraditional,
+                a.tip, a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod,
+                a.permanentlyClosedAt, coalesce(a.updatedOn, a.createdOn))
+            FROM Attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
             ORDER BY coalesce(a.updatedOn, a.createdOn) ASC, a.id ASC
             """)
-    List<Attraction> findAllOrderByOldest(Limit limit);
+    List<AttractionDetails> findAllOrderByOldest(Limit limit);
 
-    @EntityGraph("Attraction.withDetails")
     @Query("""
-            SELECT a FROM Attraction a
+            SELECT new com.triptrove.manager.domain.model.AttractionDetails(
+                a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                main.name, a.address, a.category, a.type, a.mustVisit, a.isTraditional,
+                a.tip, a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod,
+                a.permanentlyClosedAt, coalesce(a.updatedOn, a.createdOn))
+            FROM Attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC, a.id DESC
             """)
-    List<Attraction> findAllOrderByNewest(Limit limit);
+    List<AttractionDetails> findAllOrderByNewest(Limit limit);
 
-    @EntityGraph("Attraction.withDetails")
     @Query("""
-            SELECT a FROM Attraction a
+            SELECT new com.triptrove.manager.domain.model.AttractionDetails(
+                a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                main.name, a.address, a.category, a.type, a.mustVisit, a.isTraditional,
+                a.tip, a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod,
+                a.permanentlyClosedAt, coalesce(a.updatedOn, a.createdOn))
+            FROM Attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
             WHERE coalesce(a.updatedOn, a.createdOn) > :#{#afterAttraction.updatedOn}
                OR (coalesce(a.updatedOn, a.createdOn) = :#{#afterAttraction.updatedOn} AND a.id > :#{#afterAttraction.elementId})
             ORDER BY coalesce(a.updatedOn, a.createdOn) ASC, a.id ASC
             """)
-    List<Attraction> findOldestAfter(ScrollPosition afterAttraction, Limit limit);
+    List<AttractionDetails> findOldestAfter(ScrollPosition afterAttraction, Limit limit);
 
-    @EntityGraph("Attraction.withDetails")
     @Query("""
-            SELECT a FROM Attraction a
+            SELECT new com.triptrove.manager.domain.model.AttractionDetails(
+                a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                main.name, a.address, a.category, a.type, a.mustVisit, a.isTraditional,
+                a.tip, a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod,
+                a.permanentlyClosedAt, coalesce(a.updatedOn, a.createdOn))
+            FROM Attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
             WHERE coalesce(a.updatedOn, a.createdOn) < :#{#afterAttraction.updatedOn}
                OR (coalesce(a.updatedOn, a.createdOn) = :#{#afterAttraction.updatedOn} AND a.id < :#{#afterAttraction.elementId})
             ORDER BY coalesce(a.updatedOn, a.createdOn) DESC, a.id DESC
             """)
-    List<Attraction> findNewestBefore(ScrollPosition afterAttraction, Limit limit);
+    List<AttractionDetails> findNewestBefore(ScrollPosition afterAttraction, Limit limit);
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(a.name, CAST(a.id AS int)) 

@@ -44,14 +44,14 @@ public class BucketListServiceImpl implements BucketListService {
     }
 
     @Override
-    public List<BucketListItem> getItems(ScrollPosition afterItem, SortDirection sortDirection) {
+    public List<BucketListItemDetails> getItems(ScrollPosition afterItem, SortDirection sortDirection) {
         log.atInfo().log("Getting bucket list items: sortDirection={}, afterItemId={}, afterUpdatedOn={}, pageSize={}",
                 sortDirection,
                 afterItem == null ? null : afterItem.elementId(),
                 afterItem == null ? null : afterItem.updatedOn(),
                 managerProperties.pageSize());
 
-        List<BucketListItem> items;
+        List<BucketListItemDetails> items;
         if (sortDirection == SortDirection.ASCENDING) {
             items = getItemsAfter(afterItem);
         } else {
@@ -62,14 +62,14 @@ public class BucketListServiceImpl implements BucketListService {
         return items;
     }
 
-    private List<BucketListItem> getItemsAfter(ScrollPosition item) {
+    private List<BucketListItemDetails> getItemsAfter(ScrollPosition item) {
         if (item == null) {
             return bucketListItemRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
         }
         return bucketListItemRepo.findOldestAfter(item, Limit.of(managerProperties.pageSize()));
     }
 
-    private List<BucketListItem> getItemsBefore(ScrollPosition item) {
+    private List<BucketListItemDetails> getItemsBefore(ScrollPosition item) {
         if (item == null) {
             return bucketListItemRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
         }
@@ -77,10 +77,11 @@ public class BucketListServiceImpl implements BucketListService {
     }
 
     @Override
-    public BucketListItem getItem(long id) {
+    public BucketListItemDetails getItem(long id) {
         log.atInfo().log("Getting bucket list item: id={}", id);
-        var item = findItem(id);
-        log.atInfo().log("Bucket list item found: id={}, name='{}'", item.getId(), item.getName());
+        var item = bucketListItemRepo.findDetailsById(id)
+                .orElseThrow(() -> new BaseApiException("Bucket list item not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+        log.atInfo().log("Bucket list item found: id={}, name='{}'", item.id(), item.name());
         return item;
     }
 

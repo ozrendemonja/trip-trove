@@ -1,14 +1,15 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Region;
+import com.triptrove.manager.domain.model.RegionSummary;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RegionRepo extends JpaRepository<Region, Integer> {
     @Query("SELECT COUNT(r) > 0 FROM Region r WHERE r.name = :name AND r.country.id = :countryId AND (:excludeId IS NULL OR r.id <> :excludeId)")
@@ -24,37 +25,49 @@ public interface RegionRepo extends JpaRepository<Region, Integer> {
 
     List<Region> findByName(String name);
 
-    @EntityGraph(attributePaths = "country")
     @Query("""
-            SELECT r FROM Region r
+            SELECT new com.triptrove.manager.domain.model.RegionSummary(
+                r.id, r.name, r.country.name, coalesce(r.updatedOn, r.createdOn))
+            FROM Region r
+            WHERE r.id = :id
+            """)
+    Optional<RegionSummary> findSummaryById(int id);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.RegionSummary(
+                r.id, r.name, r.country.name, coalesce(r.updatedOn, r.createdOn))
+            FROM Region r
             ORDER BY coalesce(r.updatedOn, r.createdOn) ASC, r.id ASC
             """)
-    List<Region> findAllOrderByOldest(Limit limit);
+    List<RegionSummary> findAllOrderByOldest(Limit limit);
 
-    @EntityGraph(attributePaths = "country")
     @Query("""
-            SELECT r FROM Region r
+            SELECT new com.triptrove.manager.domain.model.RegionSummary(
+                r.id, r.name, r.country.name, coalesce(r.updatedOn, r.createdOn))
+            FROM Region r
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC, r.id DESC
             """)
-    List<Region> findAllOrderByNewest(Limit limit);
+    List<RegionSummary> findAllOrderByNewest(Limit limit);
 
-    @EntityGraph(attributePaths = "country")
     @Query("""
-            SELECT r FROM Region r
+            SELECT new com.triptrove.manager.domain.model.RegionSummary(
+                r.id, r.name, r.country.name, coalesce(r.updatedOn, r.createdOn))
+            FROM Region r
             WHERE coalesce(r.updatedOn, r.createdOn) > :#{#afterRegion.updatedOn}
                OR (coalesce(r.updatedOn, r.createdOn) = :#{#afterRegion.updatedOn} AND r.id > :#{#afterRegion.elementId})
             ORDER BY coalesce(r.updatedOn, r.createdOn) ASC, r.id ASC
             """)
-    List<Region> findOldestAfter(ScrollPosition afterRegion, Limit limit);
+    List<RegionSummary> findOldestAfter(ScrollPosition afterRegion, Limit limit);
 
-    @EntityGraph(attributePaths = "country")
     @Query("""
-            SELECT r FROM Region r
+            SELECT new com.triptrove.manager.domain.model.RegionSummary(
+                r.id, r.name, r.country.name, coalesce(r.updatedOn, r.createdOn))
+            FROM Region r
             WHERE coalesce(r.updatedOn, r.createdOn) < :#{#afterRegion.updatedOn}
                OR (coalesce(r.updatedOn, r.createdOn) = :#{#afterRegion.updatedOn} AND r.id < :#{#afterRegion.elementId})
             ORDER BY coalesce(r.updatedOn, r.createdOn) DESC, r.id DESC
             """)
-    List<Region> findNewestBefore(ScrollPosition afterRegion, Limit limit);
+    List<RegionSummary> findNewestBefore(ScrollPosition afterRegion, Limit limit);
 
     default List<Suggestion> searchRegionSuggestions(String query, Limit limit) {
         return searchRegionSuggestions(query, null, limit);

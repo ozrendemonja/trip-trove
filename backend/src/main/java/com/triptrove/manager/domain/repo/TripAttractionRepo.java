@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.AttractionVisit;
 import com.triptrove.manager.domain.model.AttractionVisitFlag;
 import com.triptrove.manager.domain.model.TripAttraction;
+import com.triptrove.manager.domain.model.TripAttractionDetails;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> {
+    boolean existsByTripId(Long tripId);
+
     boolean existsByTripIdAndAttractionId(Long tripId, Long attractionId);
 
     Optional<TripAttraction> findByTripIdAndAttractionId(Long tripId, Long attractionId);
@@ -25,6 +28,22 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
             ORDER BY ta.boardPosition, ta.id
             """)
     List<TripAttraction> findBoardAttractionsByTripId(@Param("tripId") Long tripId);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.TripAttractionDetails(
+                    a.id, a.name, city.name, a.region.name, a.country.name, a.isCountrywide,
+                    main.name, a.address, a.category, a.type, a.isTraditional, a.tip,
+                    a.informationProvider.sourceName, a.recorded, a.optimalVisitPeriod, a.permanentlyClosedAt,
+                    ta.status, ta.rating, ta.note, ta.reviewNote, ta.attractionGroup, ta.mustVisit,
+                    ta.workingHours, ta.visitTime, ta.wouldVisitAgain)
+            FROM TripAttraction ta
+            JOIN ta.attraction a
+            LEFT JOIN a.city city
+            LEFT JOIN a.main main
+            WHERE ta.trip.id = :tripId
+            ORDER BY ta.boardPosition, ta.id
+            """)
+    List<TripAttractionDetails> findBoardDetailsByTripId(Long tripId);
 
     @Query("SELECT MAX(ta.boardPosition) FROM TripAttraction ta WHERE ta.trip.id = :tripId")
     Optional<BigDecimal> findLastBoardPositionByTripId(@Param("tripId") Long tripId);

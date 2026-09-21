@@ -1,9 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.City;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.CityRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -40,35 +37,35 @@ public class CityServiceImpl implements CityService {
     }
 
     @Override
-    public List<City> getCities(ScrollPosition afterCity, SortDirection sortDirection) {
+    public List<CitySummary> getCities(ScrollPosition afterCity, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getCityAfter(afterCity);
         }
         return getCityBefore(afterCity);
     }
 
-    private List<City> getCityAfter(ScrollPosition city) {
+    private List<CitySummary> getCityAfter(ScrollPosition city) {
         if (city == null) {
             log.atInfo().log("Getting a list of first {} oldest cities", managerProperties.pageSize());
-            List<City> result = cityRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            List<CitySummary> result = cityRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} cities", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of oldest cities, updated after {}", city.updatedOn());
-        List<City> result = cityRepo.findOldestAfter(city, Limit.of(managerProperties.pageSize()));
+        List<CitySummary> result = cityRepo.findOldestAfter(city, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} cities", result.size());
         return result;
     }
 
-    private List<City> getCityBefore(ScrollPosition city) {
+    private List<CitySummary> getCityBefore(ScrollPosition city) {
         if (city == null) {
             log.atInfo().log("Getting a list of first {} newest cities", managerProperties.pageSize());
-            List<City> result = cityRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            List<CitySummary> result = cityRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} cities", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of newest cities, updated before {}", city.updatedOn());
-        List<City> result = cityRepo.findNewestBefore(city, Limit.of(managerProperties.pageSize()));
+        List<CitySummary> result = cityRepo.findNewestBefore(city, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} cities", result.size());
         return result;
     }
@@ -86,9 +83,9 @@ public class CityServiceImpl implements CityService {
     }
 
     @Override
-    public City getCity(int id) {
+    public CitySummary getCity(int id) {
         log.atInfo().log("Getting city with id '{}'", id);
-        return cityRepo.findById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+        return cityRepo.findSummaryById(id).orElseThrow(() -> new BaseApiException("City not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override

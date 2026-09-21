@@ -27,70 +27,45 @@ public class CityController {
     private final CityService cityService;
 
     @PostMapping()
-    @Operation(summary = "Save new city", responses = {
-            @ApiResponse(description = "City saved successfully", responseCode = "201"),
-            @ApiResponse(description = "City already exists", responseCode = "409", content =
-                    {@Content(mediaType = "application/json", schema =
-                    @Schema(implementation = ErrorResponse.class))})
-    })
+    @Operation(summary = "Save new city", responses = {@ApiResponse(description = "City saved successfully", responseCode = "201"), @ApiResponse(description = "City already exists", responseCode = "409", content = {@Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))})})
     public ResponseEntity<Void> saveCity(@RequestBody @Valid SaveCityRequest cityRequest) {
         var result = cityService.saveCity(cityRequest.cityName(), cityRequest.regionId());
 
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(result.getId())
-                .toUri();
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(result.getId()).toUri();
         return ResponseEntity.created(location).build();
     }
 
     @GetMapping()
-    @Operation(summary = "List paginable cities, sorted by their last updated time. If the city was never updated, sort by the creation time. " +
-            "Order by the given sort direction, or ascending if none is provided.", parameters = {
-            @Parameter(name = "sd", description = "Direction of ordering cities using last updated time, or by creation time if not updated."),
-            @Parameter(name = "after", description = "Last cities retrieved on the previous page. Leave empty if this is the first page.")
-    })
-    public List<GetCityResponse> getAllCities(
-            @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
-            CityParameter after) {
+    @Operation(summary = "List paginable cities, sorted by their last updated time. If the city was never updated, sort by the creation time. " + "Order by the given sort direction, or ascending if none is provided.", parameters = {@Parameter(name = "sd", description = "Direction of ordering cities using last updated time, or by creation time if not updated."), @Parameter(name = "after", description = "Last cities retrieved on the previous page. Leave empty if this is the first page.")})
+    public List<GetCityResponse> getAllCities(@RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection, CityParameter after) {
         var afterCity = after.cityId() != null ? after.toScrollPosition() : null;
-        return cityService.getCities(afterCity, sortDirection.toSortDirection())
-                .stream()
-                .map(GetCityResponse::from)
-                .toList();
+        return cityService.getCities(afterCity, sortDirection.toSortDirection()).stream().map(GetCityResponse::from).toList();
     }
 
     @DeleteMapping(path = "/{id}")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete city by its id", responses = {
-            @ApiResponse(description = "Deleted city by its id", responseCode = "204"),
-    })
+    @Operation(summary = "Delete city by its id", responses = {@ApiResponse(description = "Deleted city by its id", responseCode = "204"),})
     public void deleteCity(@PathVariable Integer id) {
         cityService.deleteCity(id);
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Retrieve city by id", responses = {
-            @ApiResponse(description = "Requested city", responseCode = "204"),
-    })
+    @Operation(summary = "Retrieve city by id", responses = {@ApiResponse(description = "Requested city", responseCode = "204"),})
     public GetCityResponse getCity(@PathVariable Integer id) {
-        var region = cityService.getCity(id);
-        return GetCityResponse.from(region);
+        var city = cityService.getCity(id);
+        return GetCityResponse.from(city);
     }
 
     @PutMapping("/{id:\\d+}/details")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Update city details", responses = {
-            @ApiResponse(description = "City details are updated", responseCode = "204"),
-    })
+    @Operation(summary = "Update city details", responses = {@ApiResponse(description = "City details are updated", responseCode = "204"),})
     public void updateCityDetail(@PathVariable String id, @RequestBody @Valid UpdateCityDetailsRequest updateCityDetailsRequest) {
         cityService.updateCityDetails(Integer.parseInt(id), updateCityDetailsRequest.cityName());
     }
 
     @PutMapping("/{id:\\d+}/region")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    @Operation(summary = "Update the city name of the region", responses = {
-            @ApiResponse(description = "City details are updated", responseCode = "204"),
-    })
+    @Operation(summary = "Update the city name of the region", responses = {@ApiResponse(description = "City details are updated", responseCode = "204"),})
     public void updateCityRegion(@PathVariable String id, @RequestBody @Valid UpdateCityRegionRequest cityRegionRequest) {
         cityService.updateCityRegionDetails(Integer.parseInt(id), cityRegionRequest.regionId());
     }

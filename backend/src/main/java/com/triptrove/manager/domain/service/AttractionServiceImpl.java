@@ -88,35 +88,35 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     @Override
-    public List<Attraction> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection) {
+    public List<AttractionDetails> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getAttractionsAfter(afterAttraction);
         }
         return getAttractionsBefore(afterAttraction);
     }
 
-    private List<Attraction> getAttractionsAfter(ScrollPosition attraction) {
+    private List<AttractionDetails> getAttractionsAfter(ScrollPosition attraction) {
         if (attraction == null) {
             log.atInfo().log("Getting a list of first {} oldest attractions", managerProperties.pageSize());
-            List<Attraction> result = attractionRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            List<AttractionDetails> result = attractionRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} attractions", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of oldest attractions, updated after {}", attraction.updatedOn());
-        List<Attraction> result = attractionRepo.findOldestAfter(attraction, Limit.of(managerProperties.pageSize()));
+        List<AttractionDetails> result = attractionRepo.findOldestAfter(attraction, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} attractions", result.size());
         return result;
     }
 
-    private List<Attraction> getAttractionsBefore(ScrollPosition attraction) {
+    private List<AttractionDetails> getAttractionsBefore(ScrollPosition attraction) {
         if (attraction == null) {
             log.atInfo().log("Getting a list of first {} newest attractions", managerProperties.pageSize());
-            List<Attraction> result = attractionRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            List<AttractionDetails> result = attractionRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} attractions", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of newest attractions, updated before {}", attraction.updatedOn());
-        List<Attraction> result = attractionRepo.findNewestBefore(attraction, Limit.of(managerProperties.pageSize()));
+        List<AttractionDetails> result = attractionRepo.findNewestBefore(attraction, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} attractions", result.size());
         return result;
     }
@@ -137,9 +137,9 @@ public class AttractionServiceImpl implements AttractionService {
     }
 
     @Override
-    public Attraction getAttraction(Long id) {
+    public AttractionDetails getAttraction(Long id) {
         log.atInfo().log("Getting attraction with id '{}'", id);
-        return attractionRepo.findById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+        return attractionRepo.findDetailsById(id).orElseThrow(() -> new BaseApiException("Attraction not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override

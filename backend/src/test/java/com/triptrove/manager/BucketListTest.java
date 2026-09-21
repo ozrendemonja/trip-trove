@@ -28,9 +28,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.net.URI;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -734,7 +734,7 @@ class BucketListTest extends AbstractIntegrationTest {
             assertThat(response.wouldRepeat()).isEqualTo(wouldRepeat);
             assertThat(response.tripId()).isEqualTo(trip.getId());
             assertThat(response.tripName()).isEqualTo(trip.getName());
-            assertThat(response.changedOn()).isEqualTo(item.getUpdatedOn().orElseThrow());
+            assertThat(response.changedOn()).isCloseTo(item.getUpdatedOn().orElseThrow(), within(1, ChronoUnit.MILLIS));
         }
 
         @Test

@@ -7,7 +7,6 @@ import com.triptrove.manager.infra.ManagerProperties;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.domain.Limit;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -86,7 +85,7 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public List<AttractionWithVisitStatus> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionOverview> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         log.atInfo().log("Search for attractions under continent");
         Specification<Attraction> filterCriteria = newestAttractionsUnderContinent(name).and(applyFilters(attractionFilter));
 
@@ -94,55 +93,55 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public List<AttractionWithVisitStatus> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionOverview> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderCountry(countryId).and(applyFilters(attractionFilter));
 
         return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<AttractionWithVisitStatus> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionOverview> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderRegion(regionId).and(applyFilters(attractionFilter));
 
         return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<AttractionWithVisitStatus> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionOverview> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderCity(cityId).and(applyFilters(attractionFilter));
 
         return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
     @Override
-    public List<AttractionWithVisitStatus> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
+    public List<AttractionOverview> getAllAttractionsUnderMainAttraction(Long attractionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
         Specification<Attraction> filterCriteria = newestAttractionsUnderMainAttraction(attractionId).and(applyFilters(attractionFilter));
 
         return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
     }
 
-    private List<Attraction> getFilteredAttractions(Specification<Attraction> attractions, ScrollPosition beforeAttraction) {
+    private List<AttractionDetails> getFilteredAttractions(Specification<Attraction> attractions, ScrollPosition beforeAttraction) {
 
         if (beforeAttraction != null) {
             log.atInfo().log("Getting a list of newest attractions, updated before {} which meets criteria", beforeAttraction.updatedOn());
-            List<Attraction> result = attractionRepo.findAll(attractions.and(isBefore(beforeAttraction)), PageRequest.of(0, managerProperties.pageSize())).getContent();
+            List<AttractionDetails> result = attractionRepo.findMatchingAttractions(attractions.and(isBefore(beforeAttraction)), Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} attractions which meets criteria", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of first {} newest attractions which meets criteria", managerProperties.pageSize());
-        List<Attraction> result = attractionRepo.findAll(attractions, PageRequest.of(0, managerProperties.pageSize())).getContent();
+        List<AttractionDetails> result = attractionRepo.findMatchingAttractions(attractions, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} attractions which meets criteria", result.size());
         return result;
     }
 
-    private List<AttractionWithVisitStatus> withVisitStatuses(List<Attraction> attractions) {
+    private List<AttractionOverview> withVisitStatuses(List<AttractionDetails> attractions) {
         if (attractions.isEmpty()) {
             return List.of();
         }
-        var attractionIds = attractions.stream().map(Attraction::getId).toList();
+        var attractionIds = attractions.stream().map(AttractionDetails::id).toList();
         Map<Long, AttractionVisitStatus> statuses = computeVisitStatuses(attractionIds);
         return attractions.stream()
-                .map(attraction -> new AttractionWithVisitStatus(attraction, statuses.get(attraction.getId())))
+                .map(attraction -> new AttractionOverview(attraction, statuses.get(attraction.id())))
                 .toList();
     }
 

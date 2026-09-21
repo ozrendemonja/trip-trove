@@ -41,7 +41,7 @@ public interface TripService {
 
     void updateAttractionNote(Long tripId, Long attractionId, String note);
 
-    List<TripAttraction> getAttractions(Long tripId);
+    List<TripAttractionDetails> getAttractions(Long tripId);
 
     List<AttractionVisit> getVisitHistory(Long currentTripId, List<Long> attractionIds);
 

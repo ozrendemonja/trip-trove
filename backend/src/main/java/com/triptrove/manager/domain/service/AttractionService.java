@@ -8,11 +8,11 @@ import java.util.List;
 public interface AttractionService {
     Attraction saveAttraction(Integer regionId, Integer cityId, Long mainAttractionId, String infoFrom, Attraction attraction);
 
-    List<Attraction> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection);
+    List<AttractionDetails> getAttractions(ScrollPosition afterAttraction, SortDirection sortDirection);
 
     void deleteAttraction(Long id);
 
-    Attraction getAttraction(Long id);
+    AttractionDetails getAttraction(Long id);
 
     void updateAttractionDestination(long id, boolean countrywide, Integer cityId, Integer regionId);
 

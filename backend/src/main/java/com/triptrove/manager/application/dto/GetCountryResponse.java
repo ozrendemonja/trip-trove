@@ -1,6 +1,6 @@
 package com.triptrove.manager.application.dto;
 
-import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.CountrySummary;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
@@ -11,7 +11,7 @@ public record GetCountryResponse(Integer countryId,
                                  String isoCode,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                                  LocalDateTime changedOn) {
-    public static GetCountryResponse from(Country country) {
-        return new GetCountryResponse(country.getId(), country.getContinent().getName(), country.getName(), country.getIsoCode(), country.getUpdatedOn().orElse(country.getCreatedOn()));
+    public static GetCountryResponse from(CountrySummary country) {
+        return new GetCountryResponse(country.id(), country.continentName(), country.name(), country.isoCode(), country.changedOn());
     }
 }

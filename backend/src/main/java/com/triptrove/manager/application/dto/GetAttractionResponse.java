@@ -1,12 +1,12 @@
 package com.triptrove.manager.application.dto;
 
 import com.triptrove.manager.domain.model.Address;
-import com.triptrove.manager.domain.model.Attraction;
-import com.triptrove.manager.domain.model.City;
+import com.triptrove.manager.domain.model.AttractionDetails;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public record GetAttractionResponse(Long attractionId,
                                     String attractionName,
@@ -30,27 +30,27 @@ public record GetAttractionResponse(Long attractionId,
                                     LocalDateTime permanentlyClosedAt,
                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                                     LocalDateTime changedOn) {
-    public static GetAttractionResponse from(Attraction attraction) {
+    public static GetAttractionResponse from(AttractionDetails attraction) {
         return new GetAttractionResponse(
-                attraction.getId(),
-                attraction.getName(),
-                attraction.getCity().map(City::getName).orElse(null),
-                attraction.getRegion().getName(),
-                attraction.getCountry().getName(),
+                attraction.id(),
+                attraction.name(),
+                attraction.cityName(),
+                attraction.regionName(),
+                attraction.countryName(),
                 attraction.isCountrywide(),
-                attraction.getMain().map(Attraction::getName).orElse(null),
-                attraction.getAddress().map(Address::address).orElse(null),
-                attraction.getAddress().map(Address::location).map(location -> new LocationResponse(location.latitude(), location.longitude())).orElse(null),
-                AttractionCategoryResponse.from(attraction.getCategory()),
-                AttractionTypeResponse.from(attraction.getType()),
-                attraction.isMustVisit(),
+                attraction.mainAttractionName(),
+                Optional.ofNullable(attraction.address()).map(Address::address).orElse(null),
+                Optional.ofNullable(attraction.address()).map(Address::location).map(location -> new LocationResponse(location.latitude(), location.longitude())).orElse(null),
+                AttractionCategoryResponse.from(attraction.category()),
+                AttractionTypeResponse.from(attraction.type()),
+                attraction.mustVisit(),
                 attraction.isTraditional(),
-                attraction.getTip().orElse(null),
-                attraction.getInformationProvider().getSourceName(),
-                attraction.getRecorded(),
-                attraction.getOptimalVisitPeriod().map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
-                attraction.getPermanentlyClosedAt(),
-                attraction.getUpdatedOn().orElse(attraction.getCreatedOn())
+                attraction.tip(),
+                attraction.informationProviderName(),
+                attraction.recorded(),
+                Optional.ofNullable(attraction.optimalVisitPeriod()).map(visitPeriod -> new DateSpanResponse(visitPeriod.from(), visitPeriod.to())).orElse(null),
+                attraction.permanentlyClosedAt(),
+                attraction.changedOn()
         );
     }
 }

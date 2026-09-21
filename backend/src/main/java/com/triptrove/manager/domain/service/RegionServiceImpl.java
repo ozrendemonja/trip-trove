@@ -1,9 +1,6 @@
 package com.triptrove.manager.domain.service;
 
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.Region;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import com.triptrove.manager.domain.repo.RegionRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -41,35 +38,35 @@ public class RegionServiceImpl implements RegionService {
     }
 
     @Override
-    public List<Region> getRegions(ScrollPosition afterRegion, SortDirection sortDirection) {
+    public List<RegionSummary> getRegions(ScrollPosition afterRegion, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getRegionsAfter(afterRegion);
         }
         return getRegionsBefore(afterRegion);
     }
 
-    private List<Region> getRegionsAfter(ScrollPosition region) {
+    private List<RegionSummary> getRegionsAfter(ScrollPosition region) {
         if (region == null) {
             log.atInfo().log("Getting a list of first {} oldest regions", managerProperties.pageSize());
-            List<Region> result = regionRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            List<RegionSummary> result = regionRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} regions", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of oldest regions, updated after {}", region.updatedOn());
-        List<Region> result = regionRepo.findOldestAfter(region, Limit.of(managerProperties.pageSize()));
+        List<RegionSummary> result = regionRepo.findOldestAfter(region, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} regions", result.size());
         return result;
     }
 
-    private List<Region> getRegionsBefore(ScrollPosition region) {
+    private List<RegionSummary> getRegionsBefore(ScrollPosition region) {
         if (region == null) {
             log.atInfo().log("Getting a list of first {} newest regions", managerProperties.pageSize());
-            List<Region> result = regionRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            List<RegionSummary> result = regionRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} regions", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of newest regions, updated before {}", region.updatedOn());
-        List<Region> result = regionRepo.findNewestBefore(region, Limit.of(managerProperties.pageSize()));
+        List<RegionSummary> result = regionRepo.findNewestBefore(region, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} regions", result.size());
         return result;
     }
@@ -87,9 +84,9 @@ public class RegionServiceImpl implements RegionService {
     }
 
     @Override
-    public Region getRegion(int id) {
+    public RegionSummary getRegion(int id) {
         log.atInfo().log("Getting region with id '{}'", id);
-        return regionRepo.findById(id).orElseThrow(() -> new BaseApiException("Region not found", ErrorCode.RESOURCE_NOT_FOUND, id));
+        return regionRepo.findSummaryById(id).orElseThrow(() -> new BaseApiException("Region not found", ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override

@@ -1,14 +1,15 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.City;
+import com.triptrove.manager.domain.model.CitySummary;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CityRepo extends JpaRepository<City, Integer> {
     @Query("SELECT COUNT(c) > 0 FROM City c WHERE c.name = :name AND c.region.id = :regionId AND (:excludeId IS NULL OR c.id <> :excludeId)")
@@ -24,37 +25,49 @@ public interface CityRepo extends JpaRepository<City, Integer> {
 
     List<City> findByName(String name);
 
-    @EntityGraph(attributePaths = "region.country")
     @Query("""
-            SELECT c FROM City c
+            SELECT new com.triptrove.manager.domain.model.CitySummary(
+                c.id, c.name, c.region.name, c.region.country.name, coalesce(c.updatedOn, c.createdOn))
+            FROM City c
+            WHERE c.id = :id
+            """)
+    Optional<CitySummary> findSummaryById(int id);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.CitySummary(
+                c.id, c.name, c.region.name, c.region.country.name, coalesce(c.updatedOn, c.createdOn))
+            FROM City c
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
-    List<City> findAllOrderByOldest(Limit limit);
+    List<CitySummary> findAllOrderByOldest(Limit limit);
 
-    @EntityGraph(attributePaths = "region.country")
     @Query("""
-            SELECT c FROM City c
+            SELECT new com.triptrove.manager.domain.model.CitySummary(
+                c.id, c.name, c.region.name, c.region.country.name, coalesce(c.updatedOn, c.createdOn))
+            FROM City c
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
-    List<City> findAllOrderByNewest(Limit limit);
+    List<CitySummary> findAllOrderByNewest(Limit limit);
 
-    @EntityGraph(attributePaths = "region.country")
     @Query("""
-            SELECT c FROM City c
+            SELECT new com.triptrove.manager.domain.model.CitySummary(
+                c.id, c.name, c.region.name, c.region.country.name, coalesce(c.updatedOn, c.createdOn))
+            FROM City c
             WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCity.updatedOn}
                OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCity.updatedOn} AND c.id > :#{#afterCity.elementId})
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
-    List<City> findOldestAfter(ScrollPosition afterCity, Limit limit);
+    List<CitySummary> findOldestAfter(ScrollPosition afterCity, Limit limit);
 
-    @EntityGraph(attributePaths = "region.country")
     @Query("""
-            SELECT c FROM City c
+            SELECT new com.triptrove.manager.domain.model.CitySummary(
+                c.id, c.name, c.region.name, c.region.country.name, coalesce(c.updatedOn, c.createdOn))
+            FROM City c
             WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCity.updatedOn}
                OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCity.updatedOn} AND c.id < :#{#afterCity.elementId})
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
-    List<City> findNewestBefore(ScrollPosition afterCity, Limit limit);
+    List<CitySummary> findNewestBefore(ScrollPosition afterCity, Limit limit);
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.Suggestion(c.name, c.id)

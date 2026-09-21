@@ -2,10 +2,7 @@ package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.CountryName;
-import com.triptrove.manager.domain.model.BaseApiException;
-import com.triptrove.manager.domain.model.Country;
-import com.triptrove.manager.domain.model.ScrollPosition;
-import com.triptrove.manager.domain.model.SortDirection;
+import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.ContinentRepo;
 import com.triptrove.manager.domain.repo.CountryRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -54,35 +51,35 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public List<Country> getCountries(ScrollPosition country, SortDirection sortDirection) {
+    public List<CountrySummary> getCountries(ScrollPosition country, SortDirection sortDirection) {
         if (sortDirection == SortDirection.ASCENDING) {
             return getCountriesAfter(country);
         }
         return getCountriesBefore(country);
     }
 
-    private List<Country> getCountriesAfter(ScrollPosition country) {
+    private List<CountrySummary> getCountriesAfter(ScrollPosition country) {
         if (country == null) {
             log.atInfo().log("Getting a list of first {} oldest countries", managerProperties.pageSize());
-            List<Country> result = countryRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            List<CountrySummary> result = countryRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} countries", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of oldest countries, updated after {}", country.updatedOn());
-        List<Country> result = countryRepo.findOldestAfter(country, Limit.of(managerProperties.pageSize()));
+        List<CountrySummary> result = countryRepo.findOldestAfter(country, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} countries", result.size());
         return result;
     }
 
-    private List<Country> getCountriesBefore(ScrollPosition country) {
+    private List<CountrySummary> getCountriesBefore(ScrollPosition country) {
         if (country == null) {
             log.atInfo().log("Getting a list of first {} newest countries", managerProperties.pageSize());
-            List<Country> result = countryRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            List<CountrySummary> result = countryRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
             log.atInfo().log("Found {} countries", result.size());
             return result;
         }
         log.atInfo().log("Getting a list of newest countries, updated before {}", country.updatedOn());
-        List<Country> result = countryRepo.findNewestBefore(country, Limit.of(managerProperties.pageSize()));
+        List<CountrySummary> result = countryRepo.findNewestBefore(country, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} countries", result.size());
         return result;
     }
@@ -133,9 +130,9 @@ public class CountryServiceImpl implements CountryService {
     }
 
     @Override
-    public Country getCountry(Integer id) {
+    public CountrySummary getCountry(Integer id) {
         log.atInfo().log("Getting country with id '{}'", id);
-        return countryRepo.findById(id).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, id));
+        return countryRepo.findSummaryById(id).orElseThrow(() -> new BaseApiException("Country not found", ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override

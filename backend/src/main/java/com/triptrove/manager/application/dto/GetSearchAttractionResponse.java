@@ -1,6 +1,6 @@
 package com.triptrove.manager.application.dto;
 
-import com.triptrove.manager.domain.model.AttractionWithVisitStatus;
+import com.triptrove.manager.domain.model.AttractionOverview;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,8 +25,8 @@ public record GetSearchAttractionResponse(Long attractionId,
                                           LocalDateTime permanentlyClosedAt,
                                           LocalDateTime changedOn,
                                           AttractionVisitStatusResponse visitStatus) {
-    public static GetSearchAttractionResponse from(AttractionWithVisitStatus attractionWithVisitStatus) {
-        GetAttractionResponse base = GetAttractionResponse.from(attractionWithVisitStatus.attraction());
+    public static GetSearchAttractionResponse from(AttractionOverview attractionOverview) {
+        GetAttractionResponse base = GetAttractionResponse.from(attractionOverview.attraction());
         return new GetSearchAttractionResponse(
                 base.attractionId(),
                 base.attractionName(),
@@ -47,6 +47,6 @@ public record GetSearchAttractionResponse(Long attractionId,
                 base.optimalVisitPeriod(),
                 base.permanentlyClosedAt(),
                 base.changedOn(),
-                AttractionVisitStatusResponse.from(attractionWithVisitStatus.visitStatus()));
+                AttractionVisitStatusResponse.from(attractionOverview.visitStatus()));
     }
 }

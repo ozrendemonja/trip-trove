@@ -3,50 +3,63 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.CountryName;
 import com.triptrove.manager.domain.model.Country;
+import com.triptrove.manager.domain.model.CountrySummary;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Suggestion;
 import org.springframework.data.domain.Limit;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CountryRepo extends JpaRepository<Country, Integer> {
     List<Country> findByName(String name);
 
-    @EntityGraph(attributePaths = "continent")
     @Query("""
-            SELECT c FROM Country c
+            SELECT new com.triptrove.manager.domain.model.CountrySummary(
+                c.id, c.name, c.continent.name, c.isoCode, coalesce(c.updatedOn, c.createdOn))
+            FROM Country c
+            WHERE c.id = :id
+            """)
+    Optional<CountrySummary> findSummaryById(Integer id);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.CountrySummary(
+                c.id, c.name, c.continent.name, c.isoCode, coalesce(c.updatedOn, c.createdOn))
+            FROM Country c
             WHERE coalesce(c.updatedOn, c.createdOn) > :#{#afterCountry.updatedOn}
                OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCountry.updatedOn} AND c.id > :#{#afterCountry.elementId})
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
-    List<Country> findOldestAfter(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
+    List<CountrySummary> findOldestAfter(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
-    @EntityGraph(attributePaths = "continent")
     @Query("""
-            SELECT c FROM Country c
+            SELECT new com.triptrove.manager.domain.model.CountrySummary(
+                c.id, c.name, c.continent.name, c.isoCode, coalesce(c.updatedOn, c.createdOn))
+            FROM Country c
             WHERE coalesce(c.updatedOn, c.createdOn) < :#{#afterCountry.updatedOn}
                OR (coalesce(c.updatedOn, c.createdOn) = :#{#afterCountry.updatedOn} AND c.id < :#{#afterCountry.elementId})
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
-    List<Country> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
+    List<CountrySummary> findNewestBefore(@Param("afterCountry") ScrollPosition afterCountry, Limit limit);
 
-    @EntityGraph(attributePaths = "continent")
     @Query("""
-            SELECT c FROM Country c
+            SELECT new com.triptrove.manager.domain.model.CountrySummary(
+                c.id, c.name, c.continent.name, c.isoCode, coalesce(c.updatedOn, c.createdOn))
+            FROM Country c
             ORDER BY coalesce(c.updatedOn, c.createdOn) DESC, c.id DESC
             """)
-    List<Country> findAllOrderByNewest(Limit limit);
+    List<CountrySummary> findAllOrderByNewest(Limit limit);
 
-    @EntityGraph(attributePaths = "continent")
     @Query("""
-            SELECT c FROM Country c
+            SELECT new com.triptrove.manager.domain.model.CountrySummary(
+                c.id, c.name, c.continent.name, c.isoCode, coalesce(c.updatedOn, c.createdOn))
+            FROM Country c
             ORDER BY coalesce(c.updatedOn, c.createdOn) ASC, c.id ASC
             """)
-    List<Country> findAllOrderByOldest(Limit limit);
+    List<CountrySummary> findAllOrderByOldest(Limit limit);
 
     @Query("""
             SELECT COUNT(c) > 0 FROM Country c 

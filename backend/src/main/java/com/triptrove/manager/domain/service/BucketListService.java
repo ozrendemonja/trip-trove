@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.BucketListItem;
+import com.triptrove.manager.domain.model.BucketListItemDetails;
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.SortDirection;
 
@@ -10,9 +11,9 @@ import java.util.List;
 public interface BucketListService {
     BucketListItem saveItem(String name, Integer cityId, Integer regionId, String description);
 
-    List<BucketListItem> getItems(ScrollPosition afterItem, SortDirection sortDirection);
+    List<BucketListItemDetails> getItems(ScrollPosition afterItem, SortDirection sortDirection);
 
-    BucketListItem getItem(long id);
+    BucketListItemDetails getItem(long id);
 
     void updateItemName(long id, String name);
 

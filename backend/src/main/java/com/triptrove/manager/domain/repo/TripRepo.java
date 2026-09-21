@@ -14,6 +14,19 @@ import java.util.List;
 public interface TripRepo extends JpaRepository<Trip, Long> {
     List<Trip> findByName(String tripName);
 
+    default boolean deleteIfEmpty(Long tripId) {
+        return deleteEmptyTrip(tripId) == 1;
+    }
+
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM Trip trip
+            WHERE trip.id = :tripId
+              AND NOT EXISTS (SELECT attraction.id FROM TripAttraction attraction WHERE attraction.trip.id = trip.id)
+            """)
+    int deleteEmptyTrip(Long tripId);
+
     @Query("""
                 SELECT CASE WHEN EXISTS (
                     SELECT t

@@ -9,6 +9,7 @@ import com.triptrove.manager.domain.model.Rating;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
 import com.triptrove.manager.domain.model.TripAttractionStatus;
 import com.triptrove.manager.domain.repo.AttractionRepo;
+import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,6 +52,9 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Autowired
     private AttractionRepo attractionRepo;
+
+    @Autowired
+    private TripAttractionRepo tripAttractionRepo;
 
     @BeforeAll
     static void setupAll() {
@@ -353,6 +357,14 @@ public class TripTest extends AbstractIntegrationTest {
         var actual = mapper.readValue(jsonResponse, ErrorResponse.class);
         assertThat(actual.errorCode()).isEqualTo(ErrorCodeResponse.RESOURCE_HAS_DEPENDENCIES);
         assertThat(actual.errorMessage()).isEqualTo("This item cannot be deleted because other items depend on it.");
+    }
+
+    @Test
+    void conditionalDeletionPreservesATripAndItsAttractionsWhenItIsNotEmpty() {
+        assertThat(tripRepo.deleteIfEmpty(1L)).isFalse();
+
+        assertThat(tripRepo.existsById(1L)).isTrue();
+        assertThat(tripAttractionRepo.existsByTripId(1L)).isTrue();
     }
 
     @Test

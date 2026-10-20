@@ -64,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .stream()
                 .map(error -> {
                     String fieldName = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
-                    String errorMessage = error.getDefaultMessage();
+                    String errorMessage = messageSource.getMessage(error, request.getLocale());
                     return fieldName + " = " + errorMessage;
                 })
                 .collect(Collectors.joining("; ", "{", "}"));
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         fieldName = "argument[" + result.getMethodParameter().getParameterIndex() + "]";
                     }
 
-                    return fieldName + " = " + error.getDefaultMessage();
+                    return fieldName + " = " + messageSource.getMessage(error, request.getLocale());
                 }))
                 .collect(Collectors.joining("; ", "{", "}"));
 

@@ -6,12 +6,14 @@ import com.triptrove.manager.domain.model.TripBoardItem;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -47,23 +49,28 @@ public class TripController {
     }
 
     @GetMapping()
-    @Operation(summary = "List paginable trips, sorted by their last updated time. If the trip was never updated, sort by the creation time. " +
-            "Order by the given sort direction, or ascending if none is provided.", parameters = {
-            @Parameter(name = "sd", description = "Direction of ordering trips using last updated time, or by creation time if not updated."),
-            @Parameter(name = "after", description = "Last trip retrieved on the previous page. Leave empty if this is the first page."),
-            @Parameter(name = "date", description = "Return only trips whose date range includes this date.")
+    @Operation(summary = "List keyset-paginated trips by last modification time (creation time if never modified), then identifier. " +
+            "Use the requested direction for both keys, or descending if none is provided. " +
+            "With date, return all matching trips without pagination in creation-time descending order.", parameters = {
+            @Parameter(name = "sd", description = "ASC for Oldest or DESC for Newest; defaults to DESC. Ignored for date lookup."),
+            @Parameter(name = "date", description = "Return all trips whose date range includes this date, without pagination.")
+    }, responses = {
+            @ApiResponse(responseCode = "200", description = "Content array; cursor pagination ends on an empty array",
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetTripResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid cursor, direction, or date",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public List<GetTripResponse> getTrips(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            TripParameter after) {
+            @Valid @ParameterObject TripParameter after) {
         if (date != null) {
             return tripService.getTripsContaining(date).stream()
                     .map(GetTripResponse::from)
                     .toList();
         }
-        var afterTrip = after.tripId() != null ? after.toScrollPosition() : null;
+        var afterTrip = after.toScrollPosition();
         return tripService.getTrips(afterTrip, sortDirection.toSortDirection())
                 .stream()
                 .map(GetTripResponse::from)

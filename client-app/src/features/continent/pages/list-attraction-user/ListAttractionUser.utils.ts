@@ -77,7 +77,7 @@ export const createGetPageInfoById = (
       return (id: number | string) =>
         getAttractionById(id as number).then((data) => {
           return {
-            name: data.name,
+            name: data.name.name,
             under: data.destination.countryName
           };
         });

@@ -1,5 +1,6 @@
 import { client } from "../../../clients/manager";
 import {
+  getBucketListCounts,
   getBucketListItems,
   updateBucketListItemCompletion,
   updateBucketListItemDescription,
@@ -24,10 +25,10 @@ beforeEach(() => {
   mockedPut.mockReset();
 });
 
-test("sends the last item as the cursor for the next page", async () => {
+test("sends the active status and last item with every page request", async () => {
   mockedGet.mockResolvedValueOnce({ data: [], error: undefined });
 
-  await getBucketListItems({
+  await getBucketListItems("completed", {
     id: 42,
     changedOn: "2026-08-30T18:00:00"
   });
@@ -36,10 +37,58 @@ test("sends the last item as the cursor for the next page", async () => {
     url: "/bucket-list/items",
     headers: { "x-api-version": "1" },
     query: {
+      status: "COMPLETED",
       itemId: 42,
       updatedOn: "2026-08-30T18:00:00"
     }
   });
+});
+
+test("loads all global bucket list counters together", async () => {
+  mockedGet.mockResolvedValueOnce({
+    data: { all: 7, todo: 5, completed: 2 },
+    error: undefined
+  });
+
+  await expect(getBucketListCounts()).resolves.toEqual({
+    all: 7,
+    todo: 5,
+    completed: 2
+  });
+  expect(mockedGet).toHaveBeenCalledWith({
+    url: "/bucket-list/items/counts",
+    headers: { "x-api-version": "1" }
+  });
+});
+
+test("rejects inconsistent bucket list counters", async () => {
+  mockedGet.mockResolvedValueOnce({
+    data: { all: 8, todo: 5, completed: 2 },
+    error: undefined
+  });
+
+  await expect(getBucketListCounts()).rejects.toThrow(
+    "Bucket list count response was empty or malformed"
+  );
+});
+
+test("rejects a missing bucket list page instead of treating it as the end", async () => {
+  mockedGet.mockResolvedValueOnce({ data: undefined, error: undefined });
+
+  await expect(getBucketListItems("all")).rejects.toThrow(
+    "Bucket list response was empty or malformed"
+  );
+});
+
+test("rejects a bucket list page without a usable cursor", async () => {
+  mockedGet.mockResolvedValueOnce({
+    data: [{ id: 1, name: "Incomplete response" }],
+    error: undefined
+  });
+
+  await expect(getBucketListItems("all")).rejects.toThrow(
+    "Bucket list response was empty or malformed"
+  );
 });
 
 test("updates only the bucket list item name", async () => {

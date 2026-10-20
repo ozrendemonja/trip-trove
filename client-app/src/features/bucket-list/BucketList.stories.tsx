@@ -1,4 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
+import { Response as MirageResponse } from "miragejs";
+import type { ResponseData, ResponseHandler } from "pretender";
+import { act } from "react";
 import { MemoryRouter } from "react-router";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../ServerSetup";
@@ -40,6 +43,56 @@ const meta: Meta<typeof BucketList> = {
 export default meta;
 
 type Story = StoryObj<typeof BucketList>;
+
+const holdBucketListRead = (
+  path = "/bucket-list/items"
+): {
+  requests: Parameters<ResponseHandler>[0][];
+  respond: (body: unknown, status?: number) => Promise<void>;
+} => {
+  if (!server) throw new Error("Bucket list server was not started");
+
+  const response = Promise.withResolvers<ResponseData>();
+  const delivered = Promise.withResolvers<void>();
+  const requests: Parameters<ResponseHandler>[0][] = [];
+  server.pretender.get(
+    `http://localhost:8080${path}`,
+    (request) => {
+      requests.push(request);
+      request.addEventListener("loadend", () => delivered.resolve());
+      return response.promise;
+    },
+    false
+  );
+
+  return {
+    requests,
+    respond: async (body, status = 200) => {
+      await waitFor(() => expect(requests).toHaveLength(1));
+      const previousActEnvironment = Reflect.get(
+        globalThis,
+        "IS_REACT_ACT_ENVIRONMENT"
+      );
+      Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
+      try {
+        await act(async () => {
+          response.resolve([
+            status,
+            { "Content-Type": "application/json" },
+            JSON.stringify(body)
+          ]);
+          await delivered.promise;
+        });
+      } finally {
+        Reflect.set(
+          globalThis,
+          "IS_REACT_ACT_ENVIRONMENT",
+          previousActEnvironment
+        );
+      }
+    }
+  };
+};
 
 const waitForCanvasToBecomeAccessible = async (
   canvasElement: HTMLElement
@@ -166,6 +219,846 @@ export const Primary: Story = {
   }
 };
 
+export const FindsCompletedItemBeyondDownloadedItems: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    server?.db.bucketListItems.insert({
+      id: 3,
+      name: "Hidden completed experience",
+      completedOn: "2025-04-12",
+      wouldRepeat: true,
+      cityId: null,
+      cityName: null,
+      regionId: null,
+      regionName: null,
+      description: null,
+      tripId: 1,
+      tripName: "Italy",
+      changedOn: "2025-04-12T10:00:00.0000000"
+    });
+
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+
+    await expect(
+      await canvas.findByText("Hidden completed experience")
+    ).toBeVisible();
+    await expect(canvas.queryByText("Paragliding")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("tab", { name: "All (3)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (1)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (2)" })
+    ).toBeVisible();
+  }
+};
+
+export const IgnoresStaleFilterContentAndCounts: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    const obsoleteContent = holdBucketListRead();
+    const obsoleteCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await waitFor(() =>
+      expect(obsoleteContent.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED"
+      })
+    );
+    await waitFor(() => expect(obsoleteCounts.requests).toHaveLength(1));
+
+    const currentContent = holdBucketListRead();
+    const currentCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /To do/ }));
+    await currentContent.respond([
+      {
+        id: 1,
+        name: "Current to-do response",
+        completedOn: null,
+        changedOn: "2026-08-20T10:00:00.0000000"
+      }
+    ]);
+    await currentCounts.respond({ all: 2, todo: 1, completed: 1 });
+    await expect(
+      await canvas.findByText("Current to-do response")
+    ).toBeVisible();
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await terminal.respond([]);
+    await obsoleteContent.respond([
+      {
+        id: 2,
+        name: "Obsolete completed response",
+        completedOn: "2026-06-14",
+        changedOn: "2026-06-14T18:30:00.0000000"
+      }
+    ]);
+    await obsoleteCounts.respond({ all: 101, todo: 100, completed: 1 });
+
+    await expect(canvas.getByText("Current to-do response")).toBeVisible();
+    await expect(
+      canvas.queryByText("Obsolete completed response")
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "To do (1)" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByRole("tablist")).toHaveAttribute(
+      "aria-busy",
+      "false"
+    );
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const KeepsCurrentErrorsAfterObsoleteSuccesses: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    const obsoleteContent = holdBucketListRead();
+    const obsoleteCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await waitFor(() => expect(obsoleteContent.requests).toHaveLength(1));
+    await waitFor(() => expect(obsoleteCounts.requests).toHaveLength(1));
+
+    const failedContent = holdBucketListRead();
+    const failedCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /To do/ }));
+    await failedContent.respond({}, 500);
+    await failedCounts.respond({}, 500);
+    await canvas.findByText("Bucket list could not be loaded.");
+    await canvas.findByText("Bucket list counters could not be loaded.");
+
+    await obsoleteContent.respond([
+      {
+        id: 2,
+        name: "Obsolete completed item",
+        completedOn: "2026-06-14",
+        changedOn: "2026-06-14T18:30:00.0000000"
+      }
+    ]);
+    await obsoleteCounts.respond({ all: 101, todo: 100, completed: 1 });
+
+    await expect(
+      canvas.getByText("Bucket list could not be loaded.")
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Bucket list counters could not be loaded.")
+    ).toBeVisible();
+    await expect(canvas.queryByRole("table")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("No to-do items yet.")
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Retry" })).toBeEnabled();
+    await expect(canvas.getByRole("tablist")).toHaveAttribute(
+      "aria-busy",
+      "false"
+    );
+
+    const retryContent = holdBucketListRead();
+    const retryCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(retryContent.requests[0]?.queryParams).toEqual({ status: "TODO" })
+    );
+    await retryContent.respond([
+      {
+        id: 1,
+        name: "Recovered to-do item",
+        completedOn: null,
+        changedOn: "2026-08-20T10:00:00.0000000"
+      }
+    ]);
+    await retryCounts.respond({ all: 2, todo: 1, completed: 1 });
+    await expect(await canvas.findByText("Recovered to-do item")).toBeVisible();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Bucket list could not be loaded.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Bucket list counters could not be loaded.")
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const IgnoresObsoleteFailuresAfterAFilterRefresh: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    const obsoleteContent = holdBucketListRead();
+    const obsoleteCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await waitFor(() => expect(obsoleteContent.requests).toHaveLength(1));
+    await waitFor(() => expect(obsoleteCounts.requests).toHaveLength(1));
+
+    const currentContent = holdBucketListRead();
+    const currentCounts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("tab", { name: /To do/ }));
+    await currentContent.respond([
+      {
+        id: 1,
+        name: "Current to-do item",
+        completedOn: null,
+        changedOn: "2026-08-20T10:00:00.123456"
+      }
+    ]);
+    await currentCounts.respond({ all: 3, todo: 2, completed: 1 });
+    await canvas.findByText("Current to-do item");
+
+    const failedContinuation = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await failedContinuation.respond({}, 500);
+    await canvas.findByText("More bucket list items could not be loaded.");
+    await obsoleteContent.respond({}, 500);
+    await obsoleteCounts.respond({}, 500);
+
+    await expect(canvas.getByText("Current to-do item")).toBeVisible();
+    await expect(
+      canvas.getByText("More bucket list items could not be loaded.")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("Bucket list could not be loaded.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Bucket list counters could not be loaded.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("tab", { name: "To do (2)" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByRole("tablist")).toHaveAttribute(
+      "aria-busy",
+      "false"
+    );
+
+    const retry = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(retry.requests[0]?.queryParams).toEqual({
+        status: "TODO",
+        itemId: "1",
+        updatedOn: "2026-08-20T10:00:00.123456"
+      })
+    );
+    await retry.respond([
+      {
+        id: 3,
+        name: "Skydiving",
+        completedOn: null,
+        changedOn: "2025-01-01T00:00:00.123456"
+      }
+    ]);
+    await expect(await canvas.findByText("Skydiving")).toBeVisible();
+    await expect(canvas.getAllByText("Current to-do item")).toHaveLength(1);
+    await expect(canvas.getAllByRole("row")).toHaveLength(3);
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+  }
+};
+
+export const IgnoresAContinuationThatFinishesAfterAFilterRefresh: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    const obsoleteContinuation = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(obsoleteContinuation.requests[0]?.queryParams).toEqual({
+        status: "ALL",
+        itemId: "2",
+        updatedOn: "2026-06-14T18:30:00.0000000"
+      })
+    );
+
+    const refresh = holdBucketListRead();
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await refresh.respond([
+      {
+        id: 12,
+        name: "Current completed item",
+        completedOn: "2026-05-14",
+        changedOn: "2026-05-14T18:30:00.123456"
+      }
+    ]);
+    await canvas.findByText("Current completed item");
+
+    const currentContinuation = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(currentContinuation.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED",
+        itemId: "12",
+        updatedOn: "2026-05-14T18:30:00.123456"
+      })
+    );
+    await obsoleteContinuation.respond([
+      {
+        id: 99,
+        name: "Obsolete continuation item",
+        completedOn: null,
+        changedOn: "2025-01-01T00:00:00.0000000"
+      }
+    ]);
+
+    await expect(canvas.getByText("Current completed item")).toBeVisible();
+    await expect(
+      canvas.queryByText("Obsolete continuation item")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Loading..." })
+    ).toBeDisabled();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+
+    await currentContinuation.respond([
+      {
+        id: 13,
+        name: "Next completed item",
+        completedOn: "2026-04-12",
+        changedOn: "2026-04-12T10:00:00.123456"
+      }
+    ]);
+    await expect(await canvas.findByText("Next completed item")).toBeVisible();
+    await expect(canvas.getAllByRole("row")).toHaveLength(3);
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(terminal.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED",
+        itemId: "13",
+        updatedOn: "2026-04-12T10:00:00.123456"
+      })
+    );
+    await terminal.respond([]);
+    await expect(
+      canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const IgnoresAContinuationThatFinishesBeforeAFilterRefresh: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    const obsoleteTerminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(obsoleteTerminal.requests).toHaveLength(1));
+
+    const refresh = holdBucketListRead();
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await waitFor(() =>
+      expect(refresh.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED"
+      })
+    );
+    await obsoleteTerminal.respond([]);
+
+    await expect(canvas.getByText("Loading bucket list")).toBeVisible();
+    await expect(
+      canvas.queryByText("No completed items yet.")
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("table")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: /Load more|Retry/ })
+    ).not.toBeInTheDocument();
+
+    await refresh.respond([
+      {
+        id: 12,
+        name: "Current completed item",
+        completedOn: "2026-05-14",
+        changedOn: "2026-05-14T18:30:00.123456"
+      }
+    ]);
+    await expect(
+      await canvas.findByText("Current completed item")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("Loading bucket list")
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(terminal.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED",
+        itemId: "12",
+        updatedOn: "2026-05-14T18:30:00.123456"
+      })
+    );
+    await terminal.respond([]);
+    await expect(canvas.getAllByRole("row")).toHaveLength(2);
+    await expect(
+      canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+const verifyRefreshedCursorAfterObsoleteContinuation =
+  (obsoletePage: BucketListItem[]): NonNullable<Story["play"]> =>
+  async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    const obsoleteContinuation = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(obsoleteContinuation.requests).toHaveLength(1));
+
+    const refresh = holdBucketListRead();
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await refresh.respond([
+      {
+        id: 12,
+        name: "Current completed item",
+        completedOn: "2026-05-14",
+        changedOn: "2026-05-14T18:30:00.123456"
+      }
+    ]);
+    await canvas.findByText("Current completed item");
+    await obsoleteContinuation.respond(obsoletePage);
+
+    await expect(canvas.getByText("Current completed item")).toBeVisible();
+    await expect(canvas.getAllByRole("row")).toHaveLength(2);
+    await expect(
+      canvas.queryByText("Obsolete continuation item")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Load more" })
+    ).toBeEnabled();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(terminal.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED",
+        itemId: "12",
+        updatedOn: "2026-05-14T18:30:00.123456"
+      })
+    );
+    await terminal.respond([]);
+    await expect(canvas.getAllByRole("row")).toHaveLength(2);
+    await expect(
+      canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+    ).not.toBeInTheDocument();
+  };
+
+export const PreservesTheRefreshedCursorAfterAnObsoleteContentPage: Story = {
+  play: verifyRefreshedCursorAfterObsoleteContinuation([
+    {
+      id: 99,
+      name: "Obsolete continuation item",
+      completedOn: null,
+      changedOn: "2025-01-01T00:00:00.0000000"
+    }
+  ])
+};
+
+export const PreservesTheRefreshedCursorAfterAnObsoleteEmptyPage: Story = {
+  play: verifyRefreshedCursorAfterObsoleteContinuation([])
+};
+
+export const CompletingTheLastTodoEmptiesTheListAndUpdatesCounts: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await user.click(canvas.getByRole("tab", { name: /To do/ }));
+    await canvas.findByText("Paragliding");
+
+    await completeParaglidingToday(canvasElement);
+
+    await expect(await canvas.findByText("No to-do items yet.")).toBeVisible();
+    await expect(canvas.queryByText("Paragliding")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (0)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (2)" })
+    ).toBeVisible();
+  }
+};
+
+export const RetriesAnInitialReadFailureWithoutShowingAnEmptyList: Story = {
+  decorators: [
+    (Story) => {
+      if (!server) throw new Error("Bucket list server was not started");
+      server.get("/bucket-list/items", () => new MirageResponse(500), {
+        timing: 0
+      });
+      server.get("/bucket-list/items/counts", () => new MirageResponse(500), {
+        timing: 0
+      });
+      return <Story />;
+    }
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Bucket list could not be loaded.");
+    await canvas.findByText("Bucket list counters could not be loaded.");
+
+    await expect(canvas.getByRole("tab", { name: "All (...)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "To do (...)" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (...)" })
+    ).toBeVisible();
+    await expect(canvas.queryByRole("table")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Your bucket list is ready for its first idea.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Loading bucket list")
+    ).not.toBeInTheDocument();
+
+    const content = holdBucketListRead();
+    const counts = holdBucketListRead("/bucket-list/items/counts");
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(content.requests[0]?.queryParams).toEqual({ status: "ALL" })
+    );
+    await content.respond([
+      {
+        id: 1,
+        name: "Paragliding",
+        completedOn: null,
+        changedOn: "2026-08-20T10:00:00.0000000"
+      }
+    ]);
+    await counts.respond({ all: 1, todo: 1, completed: 0 });
+
+    await expect(await canvas.findByText("Paragliding")).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "All (1)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (1)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (0)" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("Bucket list could not be loaded.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText("Bucket list counters could not be loaded.")
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Load more" })
+    ).toBeEnabled();
+  }
+};
+
+export const RetriesFailedContentAndCountersSeparately: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    server?.get("/bucket-list/items", () => new MirageResponse(500), {
+      timing: 0
+    });
+    server?.get("/bucket-list/items/counts", () => new MirageResponse(500), {
+      timing: 0
+    });
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+
+    await expect(
+      await canvas.findByText("Bucket list could not be loaded.")
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Bucket list counters could not be loaded.")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("No completed items yet.")
+    ).not.toBeInTheDocument();
+
+    server?.get(
+      "/bucket-list/items",
+      () => [
+        {
+          id: 2,
+          name: "Recovered completed item",
+          completedOn: "2026-06-14",
+          changedOn: "2026-06-14T18:30:00.0000000"
+        }
+      ],
+      { timing: 0 }
+    );
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+
+    await expect(
+      await canvas.findByText("Recovered completed item")
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Bucket list counters could not be loaded.")
+    ).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+
+    server?.get(
+      "/bucket-list/items/counts",
+      () => ({ all: 2, todo: 1, completed: 1 }),
+      { timing: 0 }
+    );
+    await user.click(canvas.getByRole("button", { name: "Retry counters" }));
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByText("Bucket list counters could not be loaded.")
+      ).not.toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (1)" })
+    ).toBeVisible();
+  }
+};
+
+export const RetriesContinuationAndTerminalFailuresWithoutLosingProgress: Story =
+  {
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+      await canvas.findByText("Paragliding");
+      await canvas.findByText("Zorbing");
+      await canvas.findByRole("tab", { name: "All (2)" });
+      await user.click(canvas.getByRole("button", { name: "Name" }));
+      await user.click(canvas.getByRole("button", { name: "Name" }));
+      await expect(canvas.getAllByRole("row")[1]).toHaveTextContent("Zorbing");
+
+      const unexpectedCounts = holdBucketListRead("/bucket-list/items/counts");
+      const failedContinuation = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Load more" }));
+      await user.click(canvas.getByRole("button", { name: "Loading..." }));
+      await waitFor(() =>
+        expect(failedContinuation.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "2",
+          updatedOn: "2026-06-14T18:30:00.0000000"
+        })
+      );
+      await failedContinuation.respond({}, 500);
+      await expect(
+        await canvas.findByText("More bucket list items could not be loaded.")
+      ).toBeVisible();
+      await expect(canvas.getAllByRole("row")).toHaveLength(3);
+      await expect(canvas.getByText("Paragliding")).toBeVisible();
+      await expect(canvas.getByText("Zorbing")).toBeVisible();
+
+      const retryContinuation = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(retryContinuation.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "2",
+          updatedOn: "2026-06-14T18:30:00.0000000"
+        })
+      );
+      await retryContinuation.respond([
+        {
+          id: 3,
+          name: "Skydiving",
+          completedOn: null,
+          changedOn: "2025-01-01T00:00:00.123456"
+        }
+      ]);
+      await canvas.findByText("Skydiving");
+      await expect(canvas.getAllByRole("row")).toHaveLength(4);
+      await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+
+      const failedTerminal = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Load more" }));
+      await waitFor(() =>
+        expect(failedTerminal.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "3",
+          updatedOn: "2025-01-01T00:00:00.123456"
+        })
+      );
+      await failedTerminal.respond({}, 500);
+      await expect(
+        await canvas.findByText("More bucket list items could not be loaded.")
+      ).toBeVisible();
+      await expect(canvas.getAllByRole("row")).toHaveLength(4);
+      await expect(
+        canvas.queryByText("Your bucket list is ready for its first idea.")
+      ).not.toBeInTheDocument();
+
+      const retryTerminal = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(retryTerminal.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "3",
+          updatedOn: "2025-01-01T00:00:00.123456"
+        })
+      );
+      await retryTerminal.respond([]);
+      await expect(canvas.getAllByText("Paragliding")).toHaveLength(1);
+      await expect(canvas.getAllByText("Zorbing")).toHaveLength(1);
+      await expect(canvas.getAllByText("Skydiving")).toHaveLength(1);
+      await expect(
+        canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+      ).not.toBeInTheDocument();
+      await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+      await expect(unexpectedCounts.requests).toHaveLength(0);
+      await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+    }
+  };
+
+export const ContinuesAfterDuplicatesAndRecoversFromAStalledCursor: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    server?.get("/bucket-list/items/counts", () => new MirageResponse(500), {
+      timing: 0
+    });
+    server?.get(
+      "/bucket-list/items",
+      () => [
+        {
+          id: 1,
+          name: "Paragliding",
+          completedOn: null,
+          changedOn: "2025-01-01T00:00:00.0000000"
+        }
+      ],
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Load more" }));
+
+    await expect(canvas.getAllByText("Paragliding")).toHaveLength(1);
+    await expect(
+      await canvas.findByRole("button", { name: "Load more" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("Bucket list counters could not be loaded.")
+    ).not.toBeInTheDocument();
+
+    await user.click(await canvas.findByRole("button", { name: "Load more" }));
+
+    await expect(
+      await canvas.findByText("More bucket list items could not be loaded.")
+    ).toBeVisible();
+    server?.get("/bucket-list/items", () => [], { timing: 0 });
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("button", { name: "Load more" })
+      ).not.toBeInTheDocument()
+    );
+    await expect(canvas.getAllByText("Paragliding")).toHaveLength(1);
+    await expect(canvas.getAllByText("Zorbing")).toHaveLength(1);
+  }
+};
+
+export const RejectsACyclicContinuationAndRetriesTheLastAcceptedCursor: Story =
+  {
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+      await canvas.findByText("Paragliding");
+      await canvas.findByText("Zorbing");
+
+      const duplicatePage = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Load more" }));
+      await duplicatePage.respond([
+        {
+          id: 1,
+          name: "Paragliding",
+          completedOn: null,
+          changedOn: "2025-01-01T00:00:00.123456"
+        }
+      ]);
+      await expect(canvas.getAllByRole("row")).toHaveLength(3);
+      await expect(
+        canvas.getByRole("button", { name: "Load more" })
+      ).toBeEnabled();
+
+      const cycle = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Load more" }));
+      await waitFor(() =>
+        expect(cycle.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "1",
+          updatedOn: "2025-01-01T00:00:00.123456"
+        })
+      );
+      await cycle.respond([
+        {
+          id: 2,
+          name: "Zorbing",
+          completedOn: "2026-06-14",
+          changedOn: "2026-06-14T18:30:00.0000000"
+        }
+      ]);
+      await expect(
+        await canvas.findByText("More bucket list items could not be loaded.")
+      ).toBeVisible();
+      await expect(canvas.getAllByRole("row")).toHaveLength(3);
+      await expect(cycle.requests).toHaveLength(1);
+
+      const retry = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(retry.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "1",
+          updatedOn: "2025-01-01T00:00:00.123456"
+        })
+      );
+      await retry.respond([
+        {
+          id: 3,
+          name: "Skydiving",
+          completedOn: null,
+          changedOn: "2024-01-01T00:00:00.123456"
+        }
+      ]);
+      await canvas.findByText("Skydiving");
+      await expect(canvas.getAllByText("Paragliding")).toHaveLength(1);
+      await expect(canvas.getAllByText("Zorbing")).toHaveLength(1);
+      await expect(canvas.getAllByText("Skydiving")).toHaveLength(1);
+      await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+
+      const terminal = holdBucketListRead();
+      await user.click(canvas.getByRole("button", { name: "Load more" }));
+      await waitFor(() =>
+        expect(terminal.requests[0]?.queryParams).toEqual({
+          status: "ALL",
+          itemId: "3",
+          updatedOn: "2024-01-01T00:00:00.123456"
+        })
+      );
+      await terminal.respond([]);
+      await expect(
+        canvas.queryByRole("button", { name: /Load more|Loading\.\.\.|Retry/ })
+      ).not.toBeInTheDocument();
+      await expect(canvas.getAllByRole("row")).toHaveLength(4);
+    }
+  };
+
 export const CanCompleteItemOnTripDate: Story = {
   play: async ({ canvasElement }) => {
     const { canvas, paraglidingRow, todayIso } =
@@ -230,7 +1123,7 @@ export const CanCompleteItemAndChooseNotToRepeat: Story = {
 
 export const CanCompleteItemOnTripDateAndResetIt: Story = {
   play: async ({ canvasElement }) => {
-    const { user, paraglidingRow } = await completeParaglidingToday(
+    const { canvas, user, paraglidingRow } = await completeParaglidingToday(
       canvasElement,
       true
     );
@@ -264,6 +1157,11 @@ export const CanCompleteItemOnTripDateAndResetIt: Story = {
     expect(resetItem?.tripId).toBeNull();
     expect(resetItem?.tripName).toBeNull();
     expect(resetItem?.wouldRepeat).toBeNull();
+    await expect(canvas.getByRole("tab", { name: "All (2)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (1)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (1)" })
+    ).toBeVisible();
   }
 };
 
@@ -464,6 +1362,172 @@ export const CanEditItemName: Story = {
   }
 };
 
+export const KeepsNewFilterMembershipAfterAnOlderEditRefresh: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await user.click(
+      canvas.getByRole("button", {
+        name: "Change bucket list item name from Paragliding"
+      })
+    );
+    const dialog = within(
+      await findDialog(canvasElement, "Modifying Paragliding")
+    );
+    await user.clear(dialog.getByRole("textbox", { name: "Name" }));
+    await user.type(
+      dialog.getByRole("textbox", { name: "Name" }),
+      "Hang gliding"
+    );
+
+    const editRefresh = holdBucketListRead();
+    await user.click(dialog.getByRole("button", { name: "Update" }));
+    await waitFor(() =>
+      expect(editRefresh.requests[0]?.queryParams).toEqual({ status: "ALL" })
+    );
+    await user.click(
+      dialog.getByRole("button", { name: "Close modify popup" })
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+
+    const filterRefresh = holdBucketListRead();
+    await user.click(canvas.getByRole("tab", { name: /Completed/ }));
+    await filterRefresh.respond([
+      {
+        id: 2,
+        name: "Zorbing",
+        completedOn: "2026-06-14",
+        changedOn: "2026-06-14T18:30:00.0000000"
+      }
+    ]);
+    await canvas.findByText("Zorbing");
+    await editRefresh.respond([
+      {
+        id: 1,
+        name: "Hang gliding",
+        completedOn: null,
+        changedOn: "2026-09-29T10:00:00.000001"
+      },
+      {
+        id: 2,
+        name: "Zorbing",
+        completedOn: "2026-06-14",
+        changedOn: "2026-06-14T18:30:00.0000000"
+      }
+    ]);
+
+    await expect(canvas.queryByText("Hang gliding")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Paragliding")).not.toBeInTheDocument();
+    await expect(canvas.getAllByText("Zorbing")).toHaveLength(1);
+    await expect(canvas.getAllByRole("row")).toHaveLength(2);
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (1)" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(terminal.requests[0]?.queryParams).toEqual({
+        status: "COMPLETED",
+        itemId: "2",
+        updatedOn: "2026-06-14T18:30:00.0000000"
+      })
+    );
+    await terminal.respond([]);
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+  }
+};
+
+export const KeepsEditedValuesAfterAnOlderFullRefresh: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+    await canvas.findByText("Zorbing");
+
+    const olderRefresh = holdBucketListRead();
+    await user.click(
+      canvas.getByRole("button", { name: "Move back to bucket list" })
+    );
+    await waitFor(() =>
+      expect(olderRefresh.requests[0]?.queryParams).toEqual({ status: "ALL" })
+    );
+    await expect(canvas.getByText("Loading bucket list")).toBeVisible();
+    await user.click(
+      canvas.getByRole("button", {
+        name: "Change bucket list item name from Paragliding"
+      })
+    );
+    const dialog = within(
+      await findDialog(canvasElement, "Modifying Paragliding")
+    );
+    await user.clear(dialog.getByRole("textbox", { name: "Name" }));
+    await user.type(
+      dialog.getByRole("textbox", { name: "Name" }),
+      "Hang gliding"
+    );
+
+    const editRefresh = holdBucketListRead();
+    await user.click(dialog.getByRole("button", { name: "Update" }));
+    await editRefresh.respond([
+      {
+        id: 1,
+        name: "Hang gliding",
+        completedOn: null,
+        changedOn: "2026-09-29T10:01:00.000001"
+      },
+      {
+        id: 2,
+        name: "Zorbing",
+        completedOn: null,
+        changedOn: "2026-09-29T10:00:00.000001"
+      }
+    ]);
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await canvas.findByText("Hang gliding");
+    await olderRefresh.respond([
+      {
+        id: 2,
+        name: "Zorbing",
+        completedOn: null,
+        changedOn: "2026-09-29T10:00:00.000001"
+      },
+      {
+        id: 1,
+        name: "Paragliding",
+        completedOn: null,
+        changedOn: "2026-08-20T10:00:00.0000000"
+      }
+    ]);
+
+    await expect(canvas.getAllByText("Hang gliding")).toHaveLength(1);
+    await expect(canvas.queryByText("Paragliding")).not.toBeInTheDocument();
+    await expect(canvas.getAllByText("Not completed")).toHaveLength(2);
+    await expect(canvas.getByRole("tab", { name: "To do (2)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (0)" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("Loading bucket list")
+    ).not.toBeInTheDocument();
+
+    const terminal = holdBucketListRead();
+    await user.click(canvas.getByRole("button", { name: "Load more" }));
+    await waitFor(() =>
+      expect(terminal.requests[0]?.queryParams).toEqual({
+        status: "ALL",
+        itemId: "2",
+        updatedOn: "2026-09-29T10:00:00.000001"
+      })
+    );
+    await terminal.respond([]);
+    await expect(canvas.getAllByRole("row")).toHaveLength(3);
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+  }
+};
+
 export const CanEditItemLocation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -580,5 +1644,39 @@ export const CanCreateItem: Story = {
     );
     await waitForCanvasToBecomeAccessible(canvasElement);
     await expect(canvas.getByRole("tab", { name: "All (3)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (2)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (1)" })
+    ).toBeVisible();
+  }
+};
+
+export const CanDeleteItemAndReconcileGlobalCounts: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const overlay = within(canvasElement.ownerDocument.body);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    await canvas.findByText("Paragliding");
+
+    await user.click(
+      canvas.getByRole("button", { name: "Delete Paragliding" })
+    );
+    await overlay.findByText("Are you sure you want to delete Paragliding?");
+    await user.click(overlay.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(canvas.queryByText("Paragliding")).not.toBeInTheDocument()
+    );
+    await waitForCanvasToBecomeAccessible(canvasElement);
+    await expect(canvas.getByRole("tab", { name: "All (1)" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "To do (0)" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Completed (1)" })
+    ).toBeVisible();
+    expect(
+      server?.db.bucketListItems.findBy(
+        (item: BucketListItem) => Number(item.id) === 1
+      )
+    ).toBeNull();
   }
 };

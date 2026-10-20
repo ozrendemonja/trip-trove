@@ -94,7 +94,7 @@ const fetchTripsPage = async (
   });
 
   if (error) {
-    throw new Error("Error while getting trips", error);
+    throw new Error("Error while getting trips", { cause: error });
   }
   if (!data) {
     throw new Error("Invalid trip data");

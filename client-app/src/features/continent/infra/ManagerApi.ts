@@ -191,7 +191,7 @@ export const getCountries = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -362,7 +362,7 @@ export const getRegions = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -531,7 +531,7 @@ export const getCities = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -705,7 +705,7 @@ export const getPagedAttractions = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -1252,7 +1252,7 @@ export const getPagedAttractionsByContinentName = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -1343,7 +1343,7 @@ export const getPagedAttractionsByCountryId = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -1434,7 +1434,7 @@ export const getPagedAttractionsByRegionId = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -1525,7 +1525,7 @@ export const getPagedAttractionsByCityId = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||
@@ -1616,7 +1616,7 @@ export const getPagedAttractionsByMainAttractionId = async (
   });
 
   if (error) {
-    throw new Error("Error while getting data", error);
+    throw new Error("Error while getting data", { cause: error });
   }
   if (
     !data ||

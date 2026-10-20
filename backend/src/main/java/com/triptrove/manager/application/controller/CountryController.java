@@ -1,15 +1,20 @@
 package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.*;
+import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.ContinentName;
 import com.triptrove.manager.domain.CountryName;
 import com.triptrove.manager.domain.service.CountryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,15 +49,19 @@ public class CountryController {
     }
 
     @GetMapping()
-    @Operation(summary = "List paginable countries, sorted by their last updated time. If the country was never updated, sort by the creation time. " +
-            "Order by the given sort direction, or ascending if none is provided.", parameters = {
-            @Parameter(name = "sd", description = "Direction of ordering countries using last updated time, or by creation time if not updated."),
-            @Parameter(name = "after", description = "Last country retrieved on the previous page. Leave empty if this is the first page.")
+    @Operation(summary = "List keyset-paginated countries by last modification time (creation time if never modified), then identifier. " +
+            "Use the requested direction for both keys, or descending if none is provided.", parameters = {
+            @Parameter(name = "sd", description = "ASC for Oldest or DESC for Newest; defaults to DESC.")
+    }, responses = {
+            @ApiResponse(responseCode = "200", description = "Content page; an empty array ends traversal",
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetCountryResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid cursor or direction",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public List<GetCountryResponse> getAllCountries(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
-            CountryParameter after) {
-        var afterCountry = after.countryId() != null ? after.toScrollPosition() : null;
+            @Valid @ParameterObject CountryParameter after) {
+        var afterCountry = after.toScrollPosition();
         return countryService.getCountries(afterCountry, sortDirection.toSortDirection())
                 .stream()
                 .map(GetCountryResponse::from)

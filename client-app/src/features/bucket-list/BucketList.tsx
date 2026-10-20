@@ -35,7 +35,7 @@ import {
   Location16Regular,
   Star24Regular
 } from "@fluentui/react-icons";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LoadingSpinner } from "../../shared/loading-spinner/LoadingSpinner";
 import Navigation from "../../shared/navigation/Navigation";
 import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
@@ -52,12 +52,13 @@ import { fetchTripsContainingDate } from "../my-trip/infra/TripApi";
 import {
   createBucketListItem,
   deleteBucketListItem,
-  getBucketListItem,
+  getBucketListCounts,
   getBucketListItems,
   updateBucketListItemCompletion
 } from "./BucketListApi";
 import { useBucketListClasses } from "./BucketList.styles";
 import {
+  BucketListCounts,
   BucketListCursor,
   BucketListDraft,
   BucketListFilter,
@@ -70,13 +71,12 @@ import EditBucketListItemLocation from "./EditBucketListItemLocation";
 import EditBucketListItemName from "./EditBucketListItemName";
 
 type BucketListSort = {
-  column: "experience" | "status";
+  column: "name" | "status";
   direction: "ascending" | "descending";
 };
 
 const emptyDraft = (): BucketListDraft => ({
   name: "",
-  completedOn: "",
   locationType: "none",
   locationLabel: "",
   description: ""
@@ -84,11 +84,9 @@ const emptyDraft = (): BucketListDraft => ({
 
 const toRequest = (draft: BucketListDraft): SaveBucketListItem => ({
   name: draft.name.trim(),
-  completedOn: draft.completedOn || undefined,
   cityId: draft.locationType === "city" ? draft.cityId : undefined,
   regionId: draft.locationType === "region" ? draft.regionId : undefined,
-  description: draft.description.trim() || undefined,
-  tripId: draft.completedOn ? draft.tripId : undefined
+  description: draft.description.trim() || undefined
 });
 
 const formatDate = (value?: string | null): string => {
@@ -125,15 +123,35 @@ const toCursor = (items: BucketListItem[]): BucketListCursor | undefined => {
     : undefined;
 };
 
-export const BucketList: React.FC = () => {
+const advancesDescendingCursor = (
+  previous: BucketListCursor,
+  next: BucketListCursor
+): boolean =>
+  next.changedOn < previous.changedOn ||
+  (next.changedOn === previous.changedOn && next.id < previous.id);
+
+const matchesFilter = (
+  item: Pick<BucketListItem, "completedOn">,
+  filter: BucketListFilter
+): boolean =>
+  filter === "all" ||
+  (filter === "todo" && !item.completedOn) ||
+  (filter === "completed" && !!item.completedOn);
+
+const formatCount = (count: number | undefined): string =>
+  count === undefined ? "..." : String(count);
+
+const BucketList: React.FC = () => {
   const classes = useBucketListClasses();
   const pageClasses = useListPageClasses();
   const [items, setItems] = useState<BucketListItem[]>([]);
+  const [counts, setCounts] = useState<BucketListCounts>();
   const [filter, setFilter] = useState<BucketListFilter>("all");
   const [sort, setSort] = useState<BucketListSort>();
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [lastReadItem, setLastReadItem] = useState<BucketListCursor>();
+  const [countsError, setCountsError] = useState(false);
+  const [isCountsLoading, setIsCountsLoading] = useState(true);
   const [hasMoreItems, setHasMoreItems] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
@@ -151,31 +169,117 @@ export const BucketList: React.FC = () => {
   const [tripsLoadError, setTripsLoadError] = useState(false);
   const [completionError, setCompletionError] = useState(false);
   const tripLookupId = useRef(0);
+  const generation = useRef(0);
+  const activeFilter = useRef<BucketListFilter>("all");
+  const cursor = useRef<BucketListCursor>();
+  const loadMoreInFlight = useRef(false);
+  const countsRequest = useRef(0);
 
-  const loadItems = async (): Promise<void> => {
-    setIsLoading(true);
-    setLoadError(false);
-    try {
-      const firstPage = await getBucketListItems();
-      setItems(firstPage);
-      setLastReadItem(toCursor(firstPage));
-      setHasMoreItems(firstPage.length > 0);
+  const loadCountsForGeneration = useCallback(
+    async (expectedGeneration: number): Promise<void> => {
+      const request = ++countsRequest.current;
+      setIsCountsLoading(true);
+      setCountsError(false);
+      try {
+        const nextCounts = await getBucketListCounts();
+        if (
+          generation.current === expectedGeneration &&
+          countsRequest.current === request
+        ) {
+          setCounts(nextCounts);
+        }
+      } catch {
+        if (
+          generation.current === expectedGeneration &&
+          countsRequest.current === request
+        ) {
+          setCountsError(true);
+        }
+      } finally {
+        if (
+          generation.current === expectedGeneration &&
+          countsRequest.current === request
+        ) {
+          setIsCountsLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  const startGeneration = useCallback(
+    async (
+      nextFilter: BucketListFilter,
+      preserveItems = false
+    ): Promise<void> => {
+      const nextGeneration = ++generation.current;
+      activeFilter.current = nextFilter;
+      cursor.current = undefined;
+      loadMoreInFlight.current = false;
+
+      setIsLoading(true);
+      setLoadError(false);
       setLoadMoreError(false);
-    } catch {
-      setLoadError(true);
+      setIsLoadingMore(false);
       setHasMoreItems(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (!preserveItems) {
+        setItems([]);
+      }
+
+      const loadFirstPage = async (): Promise<void> => {
+        try {
+          const firstPage = await getBucketListItems(nextFilter);
+          if (generation.current !== nextGeneration) return;
+
+          cursor.current = toCursor(firstPage);
+          setItems(firstPage);
+          setHasMoreItems(firstPage.length > 0);
+        } catch {
+          if (generation.current !== nextGeneration) return;
+          setLoadError(true);
+          setHasMoreItems(false);
+        } finally {
+          if (generation.current === nextGeneration) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      await Promise.all([
+        loadFirstPage(),
+        loadCountsForGeneration(nextGeneration)
+      ]);
+    },
+    [loadCountsForGeneration]
+  );
 
   const loadMoreItems = async (): Promise<void> => {
-    if (!lastReadItem || isLoadingMore) return;
+    const after = cursor.current;
+    if (!after || loadMoreInFlight.current) return;
 
+    const expectedGeneration = generation.current;
+    const expectedFilter = activeFilter.current;
+    loadMoreInFlight.current = true;
     setIsLoadingMore(true);
     setLoadMoreError(false);
     try {
-      const nextPage = await getBucketListItems(lastReadItem);
+      const nextPage = await getBucketListItems(expectedFilter, after);
+      if (generation.current !== expectedGeneration) return;
+
+      if (nextPage.length === 0) {
+        cursor.current = undefined;
+        setHasMoreItems(false);
+        return;
+      }
+
+      const nextCursor = toCursor(nextPage);
+      if (!nextCursor) {
+        throw new Error("Bucket list continuation did not provide a cursor");
+      }
+      if (!advancesDescendingCursor(after, nextCursor)) {
+        throw new Error("Bucket list continuation did not advance");
+      }
+
       setItems((current) => {
         const loadedIds = new Set(current.map((item) => item.id));
         return [
@@ -183,25 +287,29 @@ export const BucketList: React.FC = () => {
           ...nextPage.filter((item) => !loadedIds.has(item.id))
         ];
       });
-      setLastReadItem(toCursor(nextPage));
-      setHasMoreItems(nextPage.length > 0);
+      cursor.current = nextCursor;
+      setHasMoreItems(true);
     } catch {
-      setLoadMoreError(true);
+      if (generation.current === expectedGeneration) {
+        setLoadMoreError(true);
+      }
     } finally {
-      setIsLoadingMore(false);
+      if (generation.current === expectedGeneration) {
+        loadMoreInFlight.current = false;
+        setIsLoadingMore(false);
+      }
     }
   };
 
-  const refreshItem = async (id: number): Promise<void> => {
-    const updatedItem = await getBucketListItem(id);
-    setItems((current) =>
-      current.map((item) => (item.id === id ? updatedItem : item))
-    );
-  };
+  const refreshItem = async (): Promise<void> =>
+    startGeneration(activeFilter.current, true);
 
   useEffect(() => {
-    void loadItems();
-  }, []);
+    void startGeneration("all");
+    return () => {
+      generation.current += 1;
+    };
+  }, [startGeneration]);
 
   const openCreate = (): void => {
     setDraft(emptyDraft());
@@ -215,7 +323,7 @@ export const BucketList: React.FC = () => {
 
   const saveItem = async (): Promise<void> => {
     await createBucketListItem(toRequest(draft));
-    await loadItems();
+    await startGeneration(activeFilter.current, true);
   };
 
   const loadTripsForCompletion = async (date: string): Promise<void> => {
@@ -279,7 +387,25 @@ export const BucketList: React.FC = () => {
         tripId,
         wouldRepeat
       });
-      await refreshItem(item.id);
+      const wasCompleted = !!item.completedOn;
+      const isCompleted = !!completedOn;
+      if (wasCompleted !== isCompleted) {
+        setCounts((current) =>
+          current
+            ? {
+                all: current.all,
+                todo: current.todo + (isCompleted ? -1 : 1),
+                completed: current.completed + (isCompleted ? 1 : -1)
+              }
+            : current
+        );
+      }
+      if (!matchesFilter({ completedOn }, activeFilter.current)) {
+        setItems((current) =>
+          current.filter((currentItem) => currentItem.id !== item.id)
+        );
+      }
+      await startGeneration(activeFilter.current, true);
       return true;
     } catch {
       return false;
@@ -288,19 +414,20 @@ export const BucketList: React.FC = () => {
     }
   };
 
+  const completionTripId =
+    matchingTrips.length === 1 ? matchingTrips[0].id : selectedTripId;
+
   const completeItem = async (): Promise<void> => {
     if (!completionItem) return;
 
     setCompletionError(false);
-    const tripId =
-      matchingTrips.length === 1 ? matchingTrips[0].id : selectedTripId;
     if (
       completionDate &&
-      tripId !== undefined &&
+      completionTripId !== undefined &&
       (await changeCompletion(
         completionItem,
         completionDate,
-        tripId,
+        completionTripId,
         wouldRepeat
       ))
     ) {
@@ -320,27 +447,19 @@ export const BucketList: React.FC = () => {
     }));
   };
 
-  const visibleItems = items
-    .filter((item) => {
-      if (filter === "todo") return !item.completedOn;
-      if (filter === "completed") return !!item.completedOn;
-      return true;
-    })
-    .sort((first, second) => {
-      if (!sort) return 0;
+  const visibleItems = sort
+    ? [...items].sort((first, second) => {
+        const firstValue =
+          sort.column === "name" ? first.name : getStatus(first);
+        const secondValue =
+          sort.column === "name" ? second.name : getStatus(second);
+        const comparison = firstValue.localeCompare(secondValue, undefined, {
+          sensitivity: "base"
+        });
 
-      const firstValue =
-        sort.column === "experience" ? first.name : getStatus(first);
-      const secondValue =
-        sort.column === "experience" ? second.name : getStatus(second);
-      const comparison = firstValue.localeCompare(secondValue, undefined, {
-        sensitivity: "base"
-      });
-
-      return sort.direction === "ascending" ? comparison : -comparison;
-    });
-  const todoCount = items.filter((item) => !item.completedOn).length;
-  const completedCount = items.length - todoCount;
+        return sort.direction === "ascending" ? comparison : -comparison;
+      })
+    : items;
   const locationIsValid =
     draft.locationType === "none" ||
     (draft.locationType === "city" && draft.cityId !== undefined) ||
@@ -354,8 +473,6 @@ export const BucketList: React.FC = () => {
     value: trip.id,
     label: trip.name
   }));
-  const completionTripId =
-    matchingTrips.length === 1 ? matchingTrips[0].id : selectedTripId;
   const isEditingCompletion = !!completionItem?.completedOn;
 
   return (
@@ -388,22 +505,47 @@ export const BucketList: React.FC = () => {
           <TabList
             className={classes.tabs}
             selectedValue={filter}
-            onTabSelect={(_event, data) =>
-              setFilter(data.value as BucketListFilter)
-            }
+            aria-busy={isCountsLoading}
+            onTabSelect={(_event, data) => {
+              const nextFilter = data.value as BucketListFilter;
+              if (nextFilter === activeFilter.current) return;
+              setFilter(nextFilter);
+              void startGeneration(nextFilter);
+            }}
           >
-            <Tab value="all">All ({items.length})</Tab>
-            <Tab value="todo">To do ({todoCount})</Tab>
-            <Tab value="completed">Completed ({completedCount})</Tab>
+            <Tab value="all">All ({formatCount(counts?.all)})</Tab>
+            <Tab value="todo">To do ({formatCount(counts?.todo)})</Tab>
+            <Tab value="completed">
+              Completed ({formatCount(counts?.completed)})
+            </Tab>
           </TabList>
 
+          {countsError && (
+            <MessageBar intent="error" className={classes.errorBar}>
+              <MessageBarBody>
+                Bucket list counters could not be loaded.
+              </MessageBarBody>
+              <MessageBarActions>
+                <Button
+                  appearance="transparent"
+                  onClick={() =>
+                    void loadCountsForGeneration(generation.current)
+                  }
+                >
+                  Retry counters
+                </Button>
+              </MessageBarActions>
+            </MessageBar>
+          )}
           {loadError && (
             <MessageBar intent="error" className={classes.errorBar}>
               <MessageBarBody>Bucket list could not be loaded.</MessageBarBody>
               <MessageBarActions>
                 <Button
                   appearance="transparent"
-                  onClick={() => void loadItems()}
+                  onClick={() =>
+                    void startGeneration(activeFilter.current, true)
+                  }
                 >
                   Retry
                 </Button>
@@ -435,14 +577,14 @@ export const BucketList: React.FC = () => {
               )}
             </Flex>
           )}
-          {!isLoading && !loadError && visibleItems.length > 0 && (
+          {visibleItems.length > 0 && (
             <div className={classes.tableViewport}>
               <Table className={classes.table} aria-label="Bucket list items">
                 <TableHeader>
                   <TableRow>
                     <TableHeaderCell
                       aria-sort={
-                        sort?.column === "experience" ? sort.direction : "none"
+                        sort?.column === "name" ? sort.direction : "none"
                       }
                       style={{ width: "22%" }}
                     >
@@ -450,10 +592,10 @@ export const BucketList: React.FC = () => {
                         appearance="subtle"
                         className={classes.sortButton}
                         aria-label="Name"
-                        onClick={() => changeSort("experience")}
+                        onClick={() => changeSort("name")}
                       >
                         Name
-                        {sort?.column === "experience"
+                        {sort?.column === "name"
                           ? sort.direction === "ascending"
                             ? " ↑"
                             : " ↓"
@@ -510,7 +652,7 @@ export const BucketList: React.FC = () => {
                           </Text>
                           <EditBucketListItemName
                             item={item}
-                            onUpdated={() => refreshItem(item.id)}
+                            onUpdated={refreshItem}
                           />
                         </div>
                       </TableCell>
@@ -540,7 +682,7 @@ export const BucketList: React.FC = () => {
                           </div>
                           <EditBucketListItemLocation
                             item={item}
-                            onUpdated={() => refreshItem(item.id)}
+                            onUpdated={refreshItem}
                           />
                         </div>
                       </TableCell>
@@ -604,7 +746,7 @@ export const BucketList: React.FC = () => {
                           </Text>
                           <EditBucketListItemDescription
                             item={item}
-                            onUpdated={() => refreshItem(item.id)}
+                            onUpdated={refreshItem}
                           />
                         </div>
                       </TableCell>
@@ -829,7 +971,7 @@ export const BucketList: React.FC = () => {
         submitText="Create"
         pendingSubmitText="Creating..."
         saveErrorMessage="The bucket list item wasn't saved. Your details are still here, so you can try again."
-        submitErrorResetKey={`${draft.name}\u0000${draft.completedOn}\u0000${draft.locationType}\u0000${draft.locationLabel}\u0000${draft.description}\u0000${draft.tripId ?? ""}`}
+        submitErrorResetKey={`${draft.name}\u0000${draft.locationType}\u0000${draft.locationLabel}\u0000${draft.description}`}
         contentClassName={classes.form}
       >
         <Flex gap={16}>
@@ -929,10 +1071,21 @@ export const BucketList: React.FC = () => {
         onConfirm={async () => {
           if (!itemToDelete) return;
           await deleteBucketListItem(itemToDelete.id);
+          setCounts((current) =>
+            current
+              ? {
+                  all: current.all - 1,
+                  todo: current.todo - (itemToDelete.completedOn ? 0 : 1),
+                  completed:
+                    current.completed - (itemToDelete.completedOn ? 1 : 0)
+                }
+              : current
+          );
           setItems((current) =>
             current.filter((item) => item.id !== itemToDelete.id)
           );
           setItemToDelete(undefined);
+          await startGeneration(activeFilter.current, true);
         }}
       />
     </div>

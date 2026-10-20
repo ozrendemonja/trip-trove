@@ -5,12 +5,14 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.CityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,9 +38,18 @@ public class CityController {
     }
 
     @GetMapping()
-    @Operation(summary = "List paginable cities, sorted by their last updated time. If the city was never updated, sort by the creation time. " + "Order by the given sort direction, or ascending if none is provided.", parameters = {@Parameter(name = "sd", description = "Direction of ordering cities using last updated time, or by creation time if not updated."), @Parameter(name = "after", description = "Last cities retrieved on the previous page. Leave empty if this is the first page.")})
-    public List<GetCityResponse> getAllCities(@RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection, CityParameter after) {
-        var afterCity = after.cityId() != null ? after.toScrollPosition() : null;
+    @Operation(summary = "List keyset-paginated cities by last modification time (creation time if never modified), then identifier. " +
+            "Use the requested direction for both keys, or descending if none is provided.", parameters =
+            @Parameter(name = "sd", description = "ASC for Oldest or DESC for Newest; defaults to DESC."),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Content page; an empty array ends traversal",
+                            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetCityResponse.class)))),
+                    @ApiResponse(responseCode = "400", description = "Invalid cursor or direction",
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+            })
+    public List<GetCityResponse> getAllCities(@RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
+                                            @Valid @ParameterObject CityParameter after) {
+        var afterCity = after.toScrollPosition();
         return cityService.getCities(afterCity, sortDirection.toSortDirection()).stream().map(GetCityResponse::from).toList();
     }
 

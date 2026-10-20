@@ -1,7 +1,9 @@
 package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.BucketListItemParameter;
+import com.triptrove.manager.application.dto.BucketListStatusParameter;
 import com.triptrove.manager.application.dto.CreateBucketListItemRequest;
+import com.triptrove.manager.application.dto.GetBucketListCountsResponse;
 import com.triptrove.manager.application.dto.GetBucketListItemResponse;
 import com.triptrove.manager.application.dto.SortDirectionParameter;
 import com.triptrove.manager.application.dto.UpdateBucketListItemCompletionRequest;
@@ -12,12 +14,14 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.BucketListService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -64,18 +68,32 @@ public class BucketListController {
     }
 
     @GetMapping
-    @Operation(summary = "List paginable bucket list items, sorted by their last updated time. If an item was never updated, sort by its creation time. " +
-            "Order by the given sort direction, or descending if none is provided.", parameters = {
-            @Parameter(name = "sd", description = "Direction of ordering items using last updated time, or creation time if not updated."),
-            @Parameter(name = "after", description = "Last item retrieved on the previous page. Leave empty if this is the first page.")
+    @Operation(summary = "List keyset-paginated bucket list items by last modification time (creation time if never modified), then identifier. " +
+            "The status filter is applied before pagination. Use the requested direction for both keys, or descending if none is provided.", parameters = {
+            @Parameter(name = "sd", description = "ASC for Oldest or DESC for Newest; defaults to DESC."),
+            @Parameter(name = "status", description = "Filter by completion status, or include all statuses if omitted.")
+    }, responses = {
+            @ApiResponse(responseCode = "200", description = "Content page; an empty array ends traversal",
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetBucketListItemResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid cursor, direction, or status",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public List<GetBucketListItemResponse> getItems(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
-            BucketListItemParameter after) {
-        var afterItem = after.itemId() != null ? after.toScrollPosition() : null;
-        return bucketListService.getItems(afterItem, sortDirection.toSortDirection()).stream()
+            @RequestParam(defaultValue = "ALL", name = "status") BucketListStatusParameter status,
+            @Valid @ParameterObject BucketListItemParameter after) {
+        var afterItem = after.toScrollPosition();
+        return bucketListService.getItems(
+                        afterItem, sortDirection.toSortDirection(), status.toStatusFilter()).stream()
                 .map(GetBucketListItemResponse::from)
                 .toList();
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "Count all, to-do, and completed bucket list items in one live aggregate read. " +
+            "Counts are independent of list pagination and are not a frozen snapshot with content responses.")
+    public GetBucketListCountsResponse getCounts() {
+        return GetBucketListCountsResponse.from(bucketListService.getCounts());
     }
 
     @GetMapping("/{id}")

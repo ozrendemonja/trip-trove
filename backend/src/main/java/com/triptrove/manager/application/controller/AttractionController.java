@@ -5,12 +5,14 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.AttractionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,15 +46,19 @@ public class AttractionController {
     }
 
     @GetMapping()
-    @Operation(summary = "List paginable attractions, sorted by their last updated time. If the attraction was never updated, sort by the creation time. " +
-            "Order by the given sort direction, or ascending if none is provided.", parameters = {
-            @Parameter(name = "sd", description = "Direction of ordering attractions using last updated time, or by creation time if not updated."),
-            @Parameter(name = "after", description = "Last attraction retrieved on the previous page. Leave empty if this is the first page.")
+    @Operation(summary = "List keyset-paginated attractions by last modification time (creation time if never modified), then identifier. " +
+            "Use the requested direction for both keys, or descending if none is provided.", parameters = {
+            @Parameter(name = "sd", description = "ASC for Oldest or DESC for Newest; defaults to DESC.")
+    }, responses = {
+            @ApiResponse(responseCode = "200", description = "Content page; an empty array ends traversal",
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetAttractionResponse.class)))),
+            @ApiResponse(responseCode = "400", description = "Invalid cursor or direction",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public List<GetAttractionResponse> getAttractions(
             @RequestParam(defaultValue = "DESC", name = "sd") SortDirectionParameter sortDirection,
-            AttractionParameter after) {
-        var afterAttraction = after.attractionId() != null ? after.toScrollPosition() : null;
+            @Valid @ParameterObject AttractionParameter after) {
+        var afterAttraction = after.toScrollPosition();
         return attractionService.getAttractions(afterAttraction, sortDirection.toSortDirection())
                 .stream()
                 .map(GetAttractionResponse::from)

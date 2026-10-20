@@ -44,36 +44,53 @@ public class BucketListServiceImpl implements BucketListService {
     }
 
     @Override
-    public List<BucketListItemDetails> getItems(ScrollPosition afterItem, SortDirection sortDirection) {
-        log.atInfo().log("Getting bucket list items: sortDirection={}, afterItemId={}, afterUpdatedOn={}, pageSize={}",
+    public List<BucketListItemDetails> getItems(
+            ScrollPosition afterItem, SortDirection sortDirection, BucketListStatusFilter statusFilter) {
+        log.atInfo().log("Getting bucket list items: sortDirection={}, statusFilter={}, afterItemId={}, afterUpdatedOn={}, pageSize={}",
                 sortDirection,
+                statusFilter,
                 afterItem == null ? null : afterItem.elementId(),
                 afterItem == null ? null : afterItem.updatedOn(),
                 managerProperties.pageSize());
 
         List<BucketListItemDetails> items;
         if (sortDirection == SortDirection.ASCENDING) {
-            items = getItemsAfter(afterItem);
+            items = getItemsAfter(afterItem, statusFilter);
         } else {
-            items = getItemsBefore(afterItem);
+            items = getItemsBefore(afterItem, statusFilter);
         }
 
         log.atInfo().log("Found {} bucket list items", items.size());
         return items;
     }
 
-    private List<BucketListItemDetails> getItemsAfter(ScrollPosition item) {
+    private List<BucketListItemDetails> getItemsAfter(
+            ScrollPosition item, BucketListStatusFilter statusFilter) {
         if (item == null) {
-            return bucketListItemRepo.findAllOrderByOldest(Limit.of(managerProperties.pageSize()));
+            return bucketListItemRepo.findAllOrderByOldest(
+                    statusFilter, Limit.of(managerProperties.pageSize()));
         }
-        return bucketListItemRepo.findOldestAfter(item, Limit.of(managerProperties.pageSize()));
+        return bucketListItemRepo.findOldestAfter(
+                item, statusFilter, Limit.of(managerProperties.pageSize()));
     }
 
-    private List<BucketListItemDetails> getItemsBefore(ScrollPosition item) {
+    private List<BucketListItemDetails> getItemsBefore(
+            ScrollPosition item, BucketListStatusFilter statusFilter) {
         if (item == null) {
-            return bucketListItemRepo.findAllOrderByNewest(Limit.of(managerProperties.pageSize()));
+            return bucketListItemRepo.findAllOrderByNewest(
+                    statusFilter, Limit.of(managerProperties.pageSize()));
         }
-        return bucketListItemRepo.findNewestBefore(item, Limit.of(managerProperties.pageSize()));
+        return bucketListItemRepo.findNewestBefore(
+                item, statusFilter, Limit.of(managerProperties.pageSize()));
+    }
+
+    @Override
+    public BucketListCountsSummary getCounts() {
+        log.atInfo().log("Getting global bucket list counts");
+        var counts = bucketListItemRepo.findCountsSummary();
+        log.atInfo().log("Found bucket list counts: all={}, todo={}, completed={}",
+                counts.all(), counts.todo(), counts.completed());
+        return counts;
     }
 
     @Override

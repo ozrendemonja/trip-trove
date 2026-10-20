@@ -351,24 +351,65 @@ export default function makeServer(options?: {
         (schema, request) => {
           const itemId = Number(request.queryParams.itemId);
           const updatedOn = request.queryParams.updatedOn;
+          const statusParameter = request.queryParams.status;
+          const sortDirectionParameter = request.queryParams.sd;
+          const status = Array.isArray(statusParameter)
+            ? statusParameter[0]
+            : (statusParameter ?? "ALL");
+          const sortDirection = Array.isArray(sortDirectionParameter)
+            ? sortDirectionParameter[0]
+            : (sortDirectionParameter ?? "DESC");
+          if (
+            !["ALL", "TODO", "COMPLETED"].includes(status) ||
+            !["ASC", "DESC"].includes(sortDirection)
+          ) {
+            return new MirageResponse(400);
+          }
+          const ascending = sortDirection === "ASC";
           return (schema.db.bucketListItems as BucketListItem[])
             .toSorted((left: BucketListItem, right: BucketListItem) => {
-              const changedOnComparison = right.changedOn.localeCompare(
-                left.changedOn
+              const changedOnComparison = left.changedOn.localeCompare(
+                right.changedOn
               );
-              return changedOnComparison || Number(right.id) - Number(left.id);
+              const comparison =
+                changedOnComparison || Number(left.id) - Number(right.id);
+              return ascending ? comparison : -comparison;
+            })
+            .filter((item: BucketListItem) => {
+              if (status === "TODO") return !item.completedOn;
+              if (status === "COMPLETED") return !!item.completedOn;
+              return true;
             })
             .filter(
               (item: BucketListItem) =>
                 !updatedOn ||
-                item.changedOn < updatedOn ||
-                (item.changedOn === updatedOn && Number(item.id) < itemId)
+                (ascending
+                  ? item.changedOn > updatedOn ||
+                    (item.changedOn === updatedOn && Number(item.id) > itemId)
+                  : item.changedOn < updatedOn ||
+                    (item.changedOn === updatedOn && Number(item.id) < itemId))
             )
             .slice(0, 20)
             .map((item: BucketListItem) => ({
               ...item,
               id: Number(item.id)
             }));
+        },
+        { timing: 200 }
+      );
+
+      this.get(
+        "/bucket-list/items/counts",
+        (schema) => {
+          const items = schema.db.bucketListItems as BucketListItem[];
+          const todo = items.filter(
+            (item: BucketListItem) => !item.completedOn
+          ).length;
+          return {
+            all: items.length,
+            todo,
+            completed: items.length - todo
+          };
         },
         { timing: 200 }
       );

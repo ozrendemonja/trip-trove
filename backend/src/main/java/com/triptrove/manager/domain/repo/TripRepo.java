@@ -73,27 +73,29 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
 
     @Query("""
             SELECT t FROM Trip t
-            WHERE t.id > :#{#afterTrip.elementId} AND t.createdOn >= :#{#afterTrip.updatedOn}
-            ORDER BY t.createdOn ASC
+            WHERE coalesce(t.updatedOn, t.createdOn) > :#{#afterTrip.updatedOn}
+               OR (coalesce(t.updatedOn, t.createdOn) = :#{#afterTrip.updatedOn} AND t.id > :#{#afterTrip.elementId})
+            ORDER BY coalesce(t.updatedOn, t.createdOn) ASC, t.id ASC
             """)
     List<Trip> findOldestAfter(ScrollPosition afterTrip, Limit limit);
 
     @Query("""
             SELECT t FROM Trip t
-            WHERE t.id < :#{#beforeTrip.elementId} AND t.createdOn <= :#{#beforeTrip.updatedOn}
-            ORDER BY t.createdOn DESC
+            WHERE coalesce(t.updatedOn, t.createdOn) < :#{#beforeTrip.updatedOn}
+               OR (coalesce(t.updatedOn, t.createdOn) = :#{#beforeTrip.updatedOn} AND t.id < :#{#beforeTrip.elementId})
+            ORDER BY coalesce(t.updatedOn, t.createdOn) DESC, t.id DESC
             """)
     List<Trip> findNewestBefore(ScrollPosition beforeTrip, Limit limit);
 
     @Query("""
             SELECT t FROM Trip t
-            ORDER BY t.createdOn ASC
+            ORDER BY coalesce(t.updatedOn, t.createdOn) ASC, t.id ASC
             """)
     List<Trip> findAllOrderByOldest(Limit limit);
 
     @Query("""
             SELECT t FROM Trip t
-            ORDER BY t.createdOn DESC
+            ORDER BY coalesce(t.updatedOn, t.createdOn) DESC, t.id DESC
             """)
     List<Trip> findAllOrderByNewest(Limit limit);
 

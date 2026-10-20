@@ -1,7 +1,9 @@
 import { client } from "../../clients/manager";
 import managerClient from "../../config/ClientsApiConfig";
 import {
+  BucketListCounts,
   BucketListCursor,
+  BucketListFilter,
   BucketListItem,
   SaveBucketListItem,
   UpdateBucketListItemCompletion,
@@ -18,13 +20,40 @@ const throwApiError = (message: string, error: unknown): never => {
   throw new Error(message, { cause: error });
 };
 
+const isBucketListItem = (value: unknown): value is BucketListItem => {
+  if (typeof value !== "object" || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === "number" &&
+    Number.isSafeInteger(item.id) &&
+    item.id > 0 &&
+    typeof item.name === "string" &&
+    typeof item.changedOn === "string" &&
+    item.changedOn.length > 0
+  );
+};
+
+const isBucketListCounts = (value: unknown): value is BucketListCounts => {
+  if (typeof value !== "object" || value === null) return false;
+  const counts = value as Record<string, unknown>;
+  const values = [counts.all, counts.todo, counts.completed];
+  return (
+    values.every(
+      (count) =>
+        typeof count === "number" && Number.isSafeInteger(count) && count >= 0
+    ) && counts.all === Number(counts.todo) + Number(counts.completed)
+  );
+};
+
 export const getBucketListItems = async (
+  filter: BucketListFilter = "all",
   after?: BucketListCursor
 ): Promise<BucketListItem[]> => {
   const { data, error } = await client.get<BucketListItem[]>({
     url: "/bucket-list/items",
     headers,
     query: {
+      status: filter.toUpperCase(),
       itemId: after?.id,
       updatedOn: after?.changedOn
     }
@@ -33,7 +62,25 @@ export const getBucketListItems = async (
   if (error) {
     throwApiError("Error while loading bucket list items", error);
   }
-  return data ?? [];
+  if (!Array.isArray(data) || !data.every(isBucketListItem)) {
+    throwApiError("Bucket list response was empty or malformed", data);
+  }
+  return data;
+};
+
+export const getBucketListCounts = async (): Promise<BucketListCounts> => {
+  const { data, error } = await client.get<BucketListCounts>({
+    url: "/bucket-list/items/counts",
+    headers
+  });
+
+  if (error) {
+    throwApiError("Error while loading bucket list counts", error);
+  }
+  if (!isBucketListCounts(data)) {
+    throwApiError("Bucket list count response was empty or malformed", data);
+  }
+  return data;
 };
 
 export const getBucketListItem = async (

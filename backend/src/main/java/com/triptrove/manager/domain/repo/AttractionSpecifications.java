@@ -3,10 +3,14 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.search.SearchTextNormalizer;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.time.LocalDateTime;
 
 @Log4j2
 public class AttractionSpecifications {
@@ -16,7 +20,7 @@ public class AttractionSpecifications {
     public static Specification<Attraction> newestAttractionsUnderContinent(String continentName) {
         return (root, query, cb) -> {
             Join<Attraction, Country> subqueryContinent = root.join("country");
-            query.orderBy(cb.desc(root.get("createdOn")));
+            orderByNewest(root, query, cb);
 
             return cb.and(cb.equal(subqueryContinent.get("continent").get("name"), continentName));
         };
@@ -24,37 +28,48 @@ public class AttractionSpecifications {
 
     public static Specification<Attraction> newestAttractionsUnderCountry(Integer countryId) {
         return (root, query, cb) -> {
-            query.orderBy(cb.desc(root.get("createdOn")));
+            orderByNewest(root, query, cb);
             return cb.and(cb.equal(root.get("country").get("id"), countryId));
         };
     }
 
     public static Specification<Attraction> newestAttractionsUnderRegion(Integer regionId) {
         return (root, query, cb) -> {
-            query.orderBy(cb.desc(root.get("createdOn")));
+            orderByNewest(root, query, cb);
             return cb.and(cb.equal(root.get("region").get("id"), regionId));
         };
     }
 
     public static Specification<Attraction> newestAttractionsUnderCity(Integer cityId) {
         return (root, query, cb) -> {
-            query.orderBy(cb.desc(root.get("createdOn")));
+            orderByNewest(root, query, cb);
             return cb.and(cb.equal(root.get("city").get("id"), cityId));
         };
     }
 
     public static Specification<Attraction> newestAttractionsUnderMainAttraction(Long mainAttractionId) {
         return (root, query, cb) -> {
-            query.orderBy(cb.desc(root.get("createdOn")));
+            orderByNewest(root, query, cb);
             return cb.and(cb.equal(root.get("main").get("id"), mainAttractionId));
         };
     }
 
     public static Specification<Attraction> isBefore(ScrollPosition beforeAttraction) {
-        return (root, query, cb) -> cb.and(
-                cb.lessThan(root.get("id"), beforeAttraction.elementId()),
-                cb.lessThanOrEqualTo(root.get("createdOn"), beforeAttraction.updatedOn())
-        );
+        return (root, query, cb) -> {
+            var changedOn = effectiveChangedOn(root, cb);
+            return cb.or(
+                    cb.lessThan(changedOn, beforeAttraction.updatedOn()),
+                    cb.and(cb.equal(changedOn, beforeAttraction.updatedOn()),
+                            cb.lessThan(root.<Long>get("id"), beforeAttraction.elementId())));
+        };
+    }
+
+    private static void orderByNewest(Root<Attraction> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        query.orderBy(cb.desc(effectiveChangedOn(root, cb)), cb.desc(root.get("id")));
+    }
+
+    private static Expression<LocalDateTime> effectiveChangedOn(Root<Attraction> root, CriteriaBuilder cb) {
+        return cb.coalesce(root.get("updatedOn"), root.get("createdOn"));
     }
 
     private static Specification<Attraction> filterCountrywide(boolean isCountrywide) {

@@ -15,6 +15,12 @@ export interface BucketListItem {
 
 export type BucketListCursor = Pick<BucketListItem, "id" | "changedOn">;
 
+export interface BucketListCounts {
+  all: number;
+  todo: number;
+  completed: number;
+}
+
 export interface SaveBucketListItem {
   name: string;
   completedOn?: string;
@@ -48,11 +54,9 @@ export type BucketListLocationType = "none" | "city" | "region";
 
 export interface BucketListDraft {
   name: string;
-  completedOn: string;
   locationType: BucketListLocationType;
   locationLabel: string;
   cityId?: number;
   regionId?: number;
   description: string;
-  tripId?: number;
 }

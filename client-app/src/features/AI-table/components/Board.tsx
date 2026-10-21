@@ -88,6 +88,7 @@ const Board: React.FC<BoardProps> = ({
     setBoardMode(initialMode);
   }, [initialMode]);
   const readOnly = boardMode !== "edit";
+  const isPlanMode = boardMode === "readOnly";
   const reviewMode = boardMode === "review";
   // "prepare" is a staging mode: you may add, remove and re-group attractions
   // (like edit) but per-attraction detail edits are disabled and nothing is
@@ -380,7 +381,7 @@ const Board: React.FC<BoardProps> = ({
           setCities(nextCities);
           const attractionGroup = COLUMN_TO_GROUP[targetColumn.title];
           if (tripId && attractionGroup) {
-            if (persistImmediately) {
+            if (persistImmediately || isPlanMode) {
               const previousAttraction = targetColumn.tasks[insertionIndex - 1];
               const nextAttraction = targetColumn.tasks[insertionIndex + 1];
               enqueuePersistence(
@@ -414,6 +415,7 @@ const Board: React.FC<BoardProps> = ({
       dragUI.overColumnId,
       tripId,
       persistImmediately,
+      isPlanMode,
       isPrepare,
       enqueuePersistence
     ]
@@ -996,7 +998,7 @@ const Board: React.FC<BoardProps> = ({
           </button>
           <button
             type="button"
-            className={`mode-btn${boardMode === "readOnly" ? " mode-btn-active" : ""}`}
+            className={`mode-btn${isPlanMode ? " mode-btn-active" : ""}`}
             onClick={() => setBoardMode("readOnly")}
             title={`Read-only mode – plan itinerary${
               getShortcut("board.mode.plan")

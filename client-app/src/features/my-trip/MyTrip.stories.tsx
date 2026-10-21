@@ -1,6 +1,14 @@
 import { Meta, StoryObj } from "@storybook/react";
+import { Response as MirageResponse } from "miragejs";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fireEvent,
+  fn,
+  userEvent,
+  waitFor,
+  within
+} from "storybook/test";
 import makeServer from "../../ServerSetup";
 import { MyTrip } from "./MyTrip";
 
@@ -31,6 +39,7 @@ const SAVED_ATTRACTIONS = [
 // Kept across renders so a previous story's Mirage instance is torn down before
 // the next one starts; stacked Pretender instances corrupt subsequent requests.
 let server: ReturnType<typeof makeServer> | undefined;
+const boardMoves = fn();
 
 const meta: Meta<typeof MyTrip> = {
   component: MyTrip,
@@ -38,6 +47,19 @@ const meta: Meta<typeof MyTrip> = {
     (Story, context) => {
       server?.shutdown();
       server = makeServer();
+      boardMoves.mockClear();
+      server.put(
+        "http://localhost:8080/trips/:id/board/attractions/:attractionId",
+        (_schema, request) => {
+          boardMoves(
+            request.params.id,
+            request.params.attractionId,
+            JSON.parse(request.requestBody)
+          );
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
       // A story can pre-seed the trip's saved attractions; MyTrip fetches these
       // on mount and lands the Board in "edit" mode when any exist.
       const saved = context.parameters.savedAttractions;
@@ -163,6 +185,111 @@ export const SaveToTripButtonIsAbsentInEditMode: Story = {
     await expect(
       canvas.queryByRole("button", { name: /Save to trip/ })
     ).not.toBeInTheDocument();
+  }
+};
+
+export const PlanModePersistsMovesBetweenColumns: Story = {
+  parameters: {
+    savedAttractions: [
+      ...SAVED_ATTRACTIONS,
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 1,
+        attractionName: "Oceanographic Museum",
+        attractionGroup: "SECONDARY"
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await canvas.findByLabelText(
+      /Visited in "Riviera 2025"/,
+      {},
+      { timeout: 5000 }
+    );
+    await user.click(canvas.getByRole("button", { name: /Plan/ }));
+
+    const sourceColumn = columnFor(canvasElement, "Top Attractions");
+    const targetColumn = columnFor(canvasElement, "Secondary Spots");
+    const sourceCard = within(sourceColumn)
+      .getByRole("link", { name: "Casino of Monte-Carlo" })
+      .closest("li.attraction") as HTMLElement;
+    const dataTransfer = new DataTransfer();
+    fireEvent.dragStart(sourceCard, { dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.drop(targetColumn, { dataTransfer });
+
+    await within(targetColumn).findByRole("link", {
+      name: "Casino of Monte-Carlo"
+    });
+    await expect(
+      within(sourceColumn).queryByRole("link", {
+        name: "Casino of Monte-Carlo"
+      })
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(boardMoves).toHaveBeenCalledTimes(1);
+      expect(boardMoves).toHaveBeenCalledWith("1", "0", {
+        targetGroup: "SECONDARY",
+        previousAttractionId: 1,
+        nextAttractionId: null
+      });
+    });
+  }
+};
+
+export const PlanModePersistsOrderWithinColumn: Story = {
+  parameters: {
+    savedAttractions: [
+      ...SAVED_ATTRACTIONS,
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 1,
+        attractionName: "Oceanographic Museum"
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await canvas.findByLabelText(
+      /Visited in "Riviera 2025"/,
+      {},
+      { timeout: 5000 }
+    );
+    await user.click(canvas.getByRole("button", { name: /Plan/ }));
+
+    const topColumn = columnFor(canvasElement, "Top Attractions");
+    await expect(
+      Array.from(topColumn.querySelectorAll("li.attraction")).map((card) =>
+        card.getAttribute("data-id")
+      )
+    ).toEqual(["0", "1"]);
+
+    const sourceCard = within(topColumn)
+      .getByRole("link", { name: "Oceanographic Museum" })
+      .closest("li.attraction") as HTMLElement;
+    const dataTransfer = new DataTransfer();
+    fireEvent.dragStart(sourceCard, { dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.dragOver(topColumn, { clientY: -1, dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.drop(topColumn, { dataTransfer });
+
+    await waitFor(() => {
+      expect(
+        Array.from(topColumn.querySelectorAll("li.attraction")).map((card) =>
+          card.getAttribute("data-id")
+        )
+      ).toEqual(["1", "0"]);
+      expect(boardMoves).toHaveBeenCalledTimes(1);
+      expect(boardMoves).toHaveBeenCalledWith("1", "1", {
+        targetGroup: "PRIMARY",
+        previousAttractionId: null,
+        nextAttractionId: 0
+      });
+    });
   }
 };
 

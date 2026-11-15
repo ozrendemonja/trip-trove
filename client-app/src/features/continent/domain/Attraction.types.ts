@@ -113,6 +113,8 @@ export type Attraction = {
 export type LastReadAttraction = {
   id: number;
   updatedOn: string;
+  regionName?: string;
+  cityName?: string;
 };
 
 export type SaveAttraction = {

@@ -1,5 +1,6 @@
 package com.triptrove.manager;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.triptrove.manager.KeysetTestFixtures.CursorRoute;
 import com.triptrove.manager.KeysetTestFixtures.Workflow;
 import com.triptrove.manager.application.dto.*;
@@ -9,6 +10,7 @@ import com.triptrove.manager.domain.repo.*;
 import com.triptrove.manager.domain.service.SearchService;
 import com.triptrove.manager.domain.service.TripService;
 import io.hypersistence.utils.jdbc.validator.SQLStatementCountMismatchException;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,13 +25,19 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import static com.triptrove.manager.KeysetTestFixtures.nextPageRequest;
+import static com.triptrove.manager.KeysetTestFixtures.cityCursorRequest;
+import static com.triptrove.manager.KeysetTestFixtures.locationCursorRequest;
+import static com.triptrove.manager.KeysetTestFixtures.locationSearchRequest;
 import static com.triptrove.manager.KeysetTestFixtures.readPage;
 import static io.hypersistence.utils.jdbc.validator.SQLStatementCountValidator.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -130,7 +138,8 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         resetSqlStatementCounts();
 
         mockMvc.perform(get(route.path()).header("x-api-version", "1")
-                        .param(route.idField(), identifier).param("updatedOn", "1900-01-01T00:00:00.123456"))
+                        .param(route.idField(), identifier).param("updatedOn", "1900-01-01T00:00:00.123456")
+                        .param("regionName", "zzzz").param("cityName", "zzzz"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -165,6 +174,133 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     private static Stream<Arguments> searchFirstPages() {
         return firstPageSizes(KeysetTestFixtures.searchWorkflows(), 2);
+    }
+
+    @ParameterizedTest(name = "{0}, page size {2}, matches {3}")
+    @MethodSource("locationSearchPages")
+    void locationGroupedFirstPagesUseTwoSelects(
+            String path, BiConsumer<EntityManager, Integer> fixture, int pageSize, int matchingSize,
+            BiFunction<String, JsonNode, MockHttpServletRequestBuilder> cursorRequest) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        fixture.accept(entityManager, matchingSize);
+        var mvc = KeysetTestFixtures.mockMvc(context, pageSize);
+        resetSqlStatementCounts();
+
+        mvc.perform(locationSearchRequest(path).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest(name = "{0}, page size {2}, matches {3}")
+    @MethodSource("locationSearchPages")
+    void locationGroupedContinuationAndReplayUseTwoSelects(
+            String path, BiConsumer<EntityManager, Integer> fixture, int pageSize, int matchingSize,
+            BiFunction<String, JsonNode, MockHttpServletRequestBuilder> cursorRequest) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        fixture.accept(entityManager, matchingSize);
+        var mvc = KeysetTestFixtures.mockMvc(context, pageSize);
+        var first = readPage(mvc, locationSearchRequest(path).param("q", "Keyset attraction"));
+        assertThat(first.size()).isEqualTo(pageSize);
+        var anchor = first.get(pageSize - 1);
+        resetSqlStatementCounts();
+
+        mvc.perform(cursorRequest.apply(path, anchor).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        assertReadOnlySelectCount(2);
+        resetSqlStatementCounts();
+
+        mvc.perform(cursorRequest.apply(path, anchor).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest(name = "{0}, page size {2}, matches {3}")
+    @MethodSource("locationSearchPages")
+    void locationGroupedDeletedCursorsUseTwoSelects(
+            String path, BiConsumer<EntityManager, Integer> fixture, int pageSize, int matchingSize,
+            BiFunction<String, JsonNode, MockHttpServletRequestBuilder> cursorRequest) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        fixture.accept(entityManager, matchingSize);
+        var mvc = KeysetTestFixtures.mockMvc(context, pageSize);
+        var first = readPage(mvc, locationSearchRequest(path).param("q", "Keyset attraction"));
+        assertThat(first.size()).isEqualTo(pageSize);
+        var anchor = first.get(pageSize - 1);
+        entityManager.createNativeQuery("DELETE FROM attraction WHERE id = :id")
+                .setParameter("id", anchor.path("attractionId").longValue()).executeUpdate();
+        resetSqlStatementCounts();
+
+        mvc.perform(cursorRequest.apply(path, anchor).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/search/country/1/attractions", "/search/region/1/attractions"})
+    void emptyLocationGroupedSearchUsesOneSelect(String path) throws Exception {
+        resetSqlStatementCounts();
+
+        mockMvc.perform(locationSearchRequest(path).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest(name = "{0}, matches {3}")
+    @MethodSource("locationSearchPages")
+    void exhaustedLocationGroupedCursorsUseOneSelect(
+            String path, BiConsumer<EntityManager, Integer> fixture, int pageSize, int matchingSize,
+            BiFunction<String, JsonNode, MockHttpServletRequestBuilder> cursorRequest) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        fixture.accept(entityManager, matchingSize);
+        var mvc = KeysetTestFixtures.mockMvc(context, matchingSize);
+        var first = readPage(mvc, locationSearchRequest(path).param("q", "Keyset attraction"));
+        assertThat(first.size()).isEqualTo(matchingSize);
+        var anchor = first.get(matchingSize - 1);
+        resetSqlStatementCounts();
+
+        mvc.perform(cursorRequest.apply(path, anchor).param("q", "Keyset attraction").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 20})
+    void regionCursorsWithoutACityOrRegionNameUseTwoSelects(int pageSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.regionalLocationAttractions(entityManager, pageSize + 1);
+        var mvc = KeysetTestFixtures.mockMvc(context, pageSize);
+        resetSqlStatementCounts();
+
+        mvc.perform(get("/search/region/1/attractions").header("x-api-version", "1")
+                        .param("q", "Keyset attraction")
+                        .param("attractionId", "1").param("updatedOn", KeysetTestFixtures.CHANGED_ON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    private static Stream<Arguments> locationSearchPages() {
+        BiConsumer<EntityManager, Integer> country = KeysetTestFixtures::locationAttractions;
+        BiConsumer<EntityManager, Integer> region = KeysetTestFixtures::regionalLocationAttractions;
+        BiFunction<String, JsonNode, MockHttpServletRequestBuilder> countryCursor = KeysetTestFixtures::locationCursorRequest;
+        BiFunction<String, JsonNode, MockHttpServletRequestBuilder> regionCursor = KeysetTestFixtures::cityCursorRequest;
+        return Stream.of(
+                Arguments.of("/search/country/1/attractions", country, 2, 5, countryCursor),
+                Arguments.of("/search/country/1/attractions", country, 20, 41, countryCursor),
+                Arguments.of("/search/region/1/attractions", region, 2, 5, regionCursor),
+                Arguments.of("/search/region/1/attractions", region, 20, 41, regionCursor));
     }
 
     private static Stream<Arguments> firstPageSizes(Stream<Workflow> workflows, int expectedSelects) {
@@ -289,10 +425,12 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         KeysetTestFixtures.clear(entityManager);
         workflow.fixture().accept(entityManager, 3);
         KeysetTestFixtures.useLongIdentifiers(entityManager, workflow);
+        var mvc = KeysetTestFixtures.mockMvc(context, 2);
+        var first = readPage(mvc, workflow.request());
+        assertThat(first.size()).isEqualTo(2);
         resetSqlStatementCounts();
 
-        mockMvc.perform(workflow.request().header("x-api-version", "1")
-                        .param(workflow.cursorField(), "2147483648").param("updatedOn", KeysetTestFixtures.CHANGED_ON))
+        mvc.perform(nextPageRequest(workflow, first).header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
 
@@ -311,35 +449,55 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         return KeysetTestFixtures.searchWorkflows().map(workflow -> Arguments.of(workflow, 2));
     }
 
-    @ParameterizedTest(name = "{0}, cursor {1}, results {2}")
-    @MethodSource("filteredSearchPages")
-    void combinedSearchFiltersUseTwoSelects(Workflow workflow, Map<String, String> cursor, int resultSize) throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("searchWorkflows")
+    void combinedSearchFiltersUseTwoSelects(Workflow workflow) throws Exception {
         KeysetTestFixtures.prepareFilteredSearch(entityManager, workflow);
         var request = KeysetTestFixtures.filteredSearchRequest(workflow);
-        cursor.forEach((name, value) -> request.param(name, value));
         resetSqlStatementCounts();
 
         mockMvc.perform(request.header("x-api-version", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(resultSize));
+                .andExpect(jsonPath("$.length()").value(2));
 
         assertReadOnlySelectCount(2);
     }
 
-    private static Stream<Arguments> filteredSearchPages() {
-        return KeysetTestFixtures.searchWorkflows().flatMap(workflow -> Stream.of(
-                Arguments.of(workflow, Map.of(), 2),
-                Arguments.of(workflow, Map.of("attractionId", "3", "updatedOn", KeysetTestFixtures.CHANGED_ON), 1)));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("searchWorkflows")
+    void combinedSearchFilterContinuationUsesTwoSelects(Workflow workflow) throws Exception {
+        KeysetTestFixtures.prepareFilteredSearch(entityManager, workflow);
+        var first = readPage(mockMvc, KeysetTestFixtures.filteredSearchRequest(workflow));
+        assertThat(first.size()).isEqualTo(2);
+        var anchor = first.get(1);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(KeysetTestFixtures.filteredSearchRequest(workflow).header("x-api-version", "1")
+                        .param("attractionId", anchor.path("attractionId").asText())
+                        .param("updatedOn", anchor.path("changedOn").asText())
+                        .param("regionName", anchor.path("regionName").asText())
+                        .param("cityName", anchor.path("cityName").asText("")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+
+        assertReadOnlySelectCount(2);
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("searchWorkflows")
     void exhaustedFilteredSearchUsesOneSelect(Workflow workflow) throws Exception {
         KeysetTestFixtures.prepareFilteredSearch(entityManager, workflow);
+        var mvc = KeysetTestFixtures.mockMvc(context, 3);
+        var first = readPage(mvc, KeysetTestFixtures.filteredSearchRequest(workflow));
+        assertThat(first.size()).isEqualTo(3);
+        var anchor = first.get(2);
         resetSqlStatementCounts();
 
-        mockMvc.perform(KeysetTestFixtures.filteredSearchRequest(workflow).header("x-api-version", "1")
-                        .param("attractionId", "1").param("updatedOn", KeysetTestFixtures.CHANGED_ON))
+        mvc.perform(KeysetTestFixtures.filteredSearchRequest(workflow).header("x-api-version", "1")
+                        .param("attractionId", anchor.path("attractionId").asText())
+                        .param("updatedOn", anchor.path("changedOn").asText())
+                        .param("regionName", anchor.path("regionName").asText())
+                        .param("cityName", anchor.path("cityName").asText("")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -592,9 +750,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
             "/search/country/1/attractions, 2",
             "/search/region/1/attractions, 2",
             "/search/city/1/attractions, 2",
-            "/search/attraction/1/attractions, 1",
-            "/search/country/1/attractions?attractionId=5&updatedOn=2025-02-23T08:12:43, 1",
-            "/search/country/2/attractions?attractionId=3&updatedOn=2024-09-14T10:10:47, 1"
+            "/search/attraction/1/attractions, 1"
     })
     void searchUsesTwoSelects(String path, int resultSize) throws Exception {
         resetSqlStatementCounts();
@@ -602,6 +758,21 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         mockMvc.perform(get(path).header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(resultSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/search/country/1/attractions", "/search/country/2/attractions"})
+    void countrySearchContinuationUsesTwoSelects(String path) throws Exception {
+        var mvc = KeysetTestFixtures.mockMvc(context, 1);
+        var first = readPage(mvc, locationSearchRequest(path));
+        assertThat(first.size()).isEqualTo(1);
+        resetSqlStatementCounts();
+
+        mvc.perform(locationCursorRequest(path, first.get(0)).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
 
         assertReadOnlySelectCount(2);
     }

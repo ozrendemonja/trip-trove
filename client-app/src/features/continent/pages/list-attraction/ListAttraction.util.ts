@@ -8,6 +8,8 @@ export const toLastReadAttraction = (
   }
   return {
     id: region.at(-1)!.id,
-    updatedOn: region.at(-1)!.updatedOn
+    updatedOn: region.at(-1)!.updatedOn,
+    regionName: region.at(-1)!.destination.regionName,
+    cityName: region.at(-1)!.destination.cityName
   };
 };

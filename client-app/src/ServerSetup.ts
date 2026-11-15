@@ -49,6 +49,21 @@ type AttractionResponseWithClosure = GetAttractionResponse & {
 
 type TripDateOverride = Pick<GetTripResponse, "tripId" | "fromDate" | "toDate">;
 
+const compareAttractionsByCity = (
+  first: GetAttractionResponse,
+  second: GetAttractionResponse
+): number =>
+  (first.cityName ?? "").localeCompare(second.cityName ?? "") ||
+  (second.changedOn ?? "").localeCompare(first.changedOn ?? "") ||
+  (second.attractionId ?? 0) - (first.attractionId ?? 0);
+
+const compareAttractionLocations = (
+  first: GetAttractionResponse,
+  second: GetAttractionResponse
+): number =>
+  (first.regionName ?? "").localeCompare(second.regionName ?? "") ||
+  compareAttractionsByCity(first, second);
+
 export default function makeServer(options?: {
   saveTripStatus?: number;
   updateTripStatus?: number;
@@ -1893,7 +1908,7 @@ export default function makeServer(options?: {
           const attractionId = request.queryParams.attractionId;
           let result = schema.db.attractions
             .filter((a) => !!country && a.countryName === country.countryName)
-            .sort() as GetAttractionResponse[];
+            .sort(compareAttractionLocations) as GetAttractionResponse[];
           if (attractionId) {
             result = result.slice(
               result.findIndex(
@@ -1920,7 +1935,7 @@ export default function makeServer(options?: {
           const attractionId = request.queryParams.attractionId;
           let result = schema.db.attractions
             .filter((a) => !!region && a.regionName === region.regionName)
-            .sort() as GetAttractionResponse[];
+            .sort(compareAttractionsByCity) as GetAttractionResponse[];
           if (attractionId) {
             result = result.slice(
               result.findIndex(

@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 import java.util.function.BiConsumer;
 import java.util.function.IntFunction;
 import java.util.stream.LongStream;
@@ -102,7 +103,9 @@ final class KeysetTestFixtures {
     static Stream<Workflow> searchWorkflows() {
         return Stream.of(
                 search("/search/continent/Keyset continent/attractions", KeysetTestFixtures::attractions),
-                search("/search/country/1/attractions", KeysetTestFixtures::attractions),
+                new Workflow("/search/country/1/attractions", "attractionId", "attractionId", "attraction", Map.of(),
+                        KeysetTestFixtures::attractions, size -> sequentialIds(size).stream()
+                        .sorted(Comparator.comparing(id -> "Keyset region " + id)).toList()),
                 search("/search/region/1/attractions", KeysetTestFixtures::regionAttractions),
                 search("/search/city/1/attractions", KeysetTestFixtures::cityAttractions),
                 search("/search/attraction/1000000/attractions", KeysetTestFixtures::childAttractions));
@@ -189,7 +192,25 @@ final class KeysetTestFixtures {
         var anchor = page.get(page.size() - 1);
         return workflow.request()
                 .param(workflow.cursorField(), anchor.path(workflow.responseField()).asText())
-                .param("updatedOn", anchor.path("changedOn").asText());
+                .param("updatedOn", anchor.path("changedOn").asText())
+                .param("regionName", anchor.path("regionName").asText(""))
+                .param("cityName", anchor.path("cityName").asText(""));
+    }
+
+    static MockHttpServletRequestBuilder locationSearchRequest(String path) {
+        return get(path);
+    }
+
+    static MockHttpServletRequestBuilder locationCursorRequest(String path, JsonNode anchor) {
+        return cityCursorRequest(path, anchor)
+                .param("regionName", anchor.path("regionName").asText());
+    }
+
+    static MockHttpServletRequestBuilder cityCursorRequest(String path, JsonNode anchor) {
+        return locationSearchRequest(path)
+                .param("attractionId", anchor.path("attractionId").asText())
+                .param("updatedOn", anchor.path("changedOn").asText())
+                .param("cityName", anchor.path("cityName").asText(""));
     }
 
     static void deleteAnchor(EntityManager entityManager, Workflow workflow, long anchor) {
@@ -409,6 +430,27 @@ final class KeysetTestFixtures {
                     'HISTORIC_SITE', 'STABLE', false, false, false, 1, DATE '2026-09-01')
                 """).executeUpdate();
         insertAttractions(entityManager, size, "generated.id", "generated.id", "1000000");
+    }
+
+    static void locationAttractions(EntityManager entityManager, int size) {
+        attractionParents(entityManager, size);
+        entityManager.createNativeQuery("""
+                INSERT INTO attraction(id, name, country_id, region_id, city_id, created_on,
+                    category, type, is_countrywide, is_traditional, must_visit,
+                    information_provider_id, source_date)
+                SELECT 1000000 + id, 'Location parent ' || id, 1, id, id,
+                    TIMESTAMP '2026-09-01 00:00:00', 'HISTORIC_SITE', 'STABLE', false, false, false,
+                    id, DATE '2026-09-01'
+                FROM generate_series(1, :size) AS generated(id)
+                """).setParameter("size", size).executeUpdate();
+        insertAttractions(entityManager, size, "generated.id", "generated.id", "1000000 + generated.id");
+        entityManager.createNativeQuery("UPDATE attraction SET city_id = null WHERE id = 1").executeUpdate();
+    }
+
+    static void regionalLocationAttractions(EntityManager entityManager, int size) {
+        locationAttractions(entityManager, size);
+        entityManager.createNativeQuery("UPDATE city SET region_id = 1").executeUpdate();
+        entityManager.createNativeQuery("UPDATE attraction SET region_id = 1").executeUpdate();
     }
 
     private static void insertAttractions(

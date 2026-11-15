@@ -28,6 +28,7 @@ import {
 import { Rating } from "./domain/Trip.types";
 import { getAttractionById } from "../continent/infra/ManagerApi";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
+import { toLastReadAttraction } from "../continent/pages/list-attraction/ListAttraction.util";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { Flex } from "../../shared/ui/Flex";
@@ -425,10 +426,7 @@ const loadAllAttractionsUnder = async (
     if (!hasMore) {
       break;
     }
-    lastElement = {
-      id: attractions[attractions.length - 1].id,
-      updatedOn: attractions[attractions.length - 1].updatedOn
-    };
+    lastElement = toLastReadAttraction(attractions);
 
     result = [...result, ...attractions];
   }

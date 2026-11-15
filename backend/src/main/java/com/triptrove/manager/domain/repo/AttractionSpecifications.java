@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,18 +27,12 @@ public class AttractionSpecifications {
         };
     }
 
-    public static Specification<Attraction> newestAttractionsUnderCountry(Integer countryId) {
-        return (root, query, cb) -> {
-            orderByNewest(root, query, cb);
-            return cb.and(cb.equal(root.get("country").get("id"), countryId));
-        };
+    public static Specification<Attraction> attractionsUnderCountry(Integer countryId) {
+        return (root, query, cb) -> cb.equal(root.get("country").get("id"), countryId);
     }
 
-    public static Specification<Attraction> newestAttractionsUnderRegion(Integer regionId) {
-        return (root, query, cb) -> {
-            orderByNewest(root, query, cb);
-            return cb.and(cb.equal(root.get("region").get("id"), regionId));
-        };
+    public static Specification<Attraction> attractionsUnderRegion(Integer regionId) {
+        return (root, query, cb) -> cb.equal(root.get("region").get("id"), regionId);
     }
 
     public static Specification<Attraction> newestAttractionsUnderCity(Integer cityId) {
@@ -62,6 +57,51 @@ public class AttractionSpecifications {
                     cb.and(cb.equal(changedOn, beforeAttraction.updatedOn()),
                             cb.lessThan(root.<Long>get("id"), beforeAttraction.elementId())));
         };
+    }
+
+    public static Specification<Attraction> groupedByLocation() {
+        return (root, query, cb) -> {
+            query.orderBy(cb.asc(root.get("region").get("name")), cb.asc(locationCityName(root, cb)),
+                    cb.desc(effectiveChangedOn(root, cb)), cb.desc(root.get("id")));
+            return cb.conjunction();
+        };
+    }
+
+    public static Specification<Attraction> isAfterLocation(LocationScrollPosition afterAttraction) {
+        var cityPosition = new CityScrollPosition(afterAttraction.position(), afterAttraction.cityName());
+        return (root, query, cb) -> {
+            var regionName = root.get("region").<String>get("name");
+            return cb.or(
+                    cb.greaterThan(regionName, afterAttraction.regionName()),
+                    cb.and(cb.equal(regionName, afterAttraction.regionName()),
+                            isAfterCity(cityPosition).toPredicate(root, query, cb)));
+        };
+    }
+
+    public static Specification<Attraction> groupedByCity() {
+        return (root, query, cb) -> {
+            query.orderBy(cb.asc(locationCityName(root, cb)),
+                    cb.desc(effectiveChangedOn(root, cb)), cb.desc(root.get("id")));
+            return cb.conjunction();
+        };
+    }
+
+    public static Specification<Attraction> isAfterCity(CityScrollPosition afterAttraction) {
+        return (root, query, cb) -> {
+            var cityName = locationCityName(root, cb);
+            return cb.or(
+                    cb.greaterThan(cityName, afterAttraction.cityName()),
+                    cb.and(cb.equal(cityName, afterAttraction.cityName()),
+                            isBefore(afterAttraction.position()).toPredicate(root, query, cb)));
+        };
+    }
+
+    private static Expression<String> locationCityName(Root<Attraction> root, CriteriaBuilder cb) {
+        var city = root.getJoins().stream()
+                .filter(join -> join.getAttribute().getName().equals("city") && join.getJoinType() == JoinType.LEFT)
+                .findFirst()
+                .orElseGet(() -> root.join("city", JoinType.LEFT));
+        return cb.coalesce(city.<String>get("name"), "");
     }
 
     private static void orderByNewest(Root<Attraction> root, CriteriaQuery<?> query, CriteriaBuilder cb) {

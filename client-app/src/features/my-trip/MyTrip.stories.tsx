@@ -10,6 +10,7 @@ import {
   within
 } from "storybook/test";
 import makeServer from "../../ServerSetup";
+import type { GetSearchAttractionResponse } from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
 
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
@@ -38,7 +39,7 @@ const SAVED_ATTRACTIONS = [
 
 // Kept across renders so a previous story's Mirage instance is torn down before
 // the next one starts; stacked Pretender instances corrupt subsequent requests.
-let server: ReturnType<typeof makeServer> | undefined;
+let server: ReturnType<typeof makeServer>;
 const boardMoves = fn();
 
 const meta: Meta<typeof MyTrip> = {
@@ -465,6 +466,116 @@ export const AddsAttractionsWhenSearchSubmitted: Story = {
     await expect(
       canvas.getByRole("button", { name: "Remove Casino Square from trip" })
     ).toBeInTheDocument();
+  }
+};
+
+const LOCATION_ATTRACTION = {
+  countryName: "Monaco",
+  regionName: "Monaco",
+  isCountrywide: false,
+  attractionCategory: "HISTORIC_SITE",
+  attractionType: "STABLE",
+  mustVisit: true,
+  isTraditional: false,
+  infoFrom: "Guide",
+  infoRecorded: "2026-09-01",
+  changedOn: "2026-09-28T12:00:00.123456",
+  visitStatus: "NOT_VISITED"
+} satisfies GetSearchAttractionResponse;
+
+const LOCATION_SEARCH_RESULTS: GetSearchAttractionResponse[] = [
+  {
+    ...LOCATION_ATTRACTION,
+    attractionId: 101,
+    attractionName: "Regional landmark"
+  },
+  {
+    ...LOCATION_ATTRACTION,
+    attractionId: 102,
+    attractionName: "Alpha landmark",
+    cityName: "Alpha"
+  },
+  {
+    ...LOCATION_ATTRACTION,
+    attractionId: 103,
+    attractionName: "Beta landmark",
+    cityName: "Beta"
+  }
+];
+
+const expectAllLocationPagesAdded = async (
+  canvasElement: HTMLElement,
+  scope: "Country" | "Region",
+  regionCursor: Readonly<{ regionName?: string }>
+): Promise<void> => {
+  const pageRequests = fn();
+  server.get(
+    `http://localhost:8080/search/${scope.toLowerCase()}/:id/attractions`,
+    (_schema, request) => {
+      pageRequests(request.queryParams);
+      const anchorIndex = LOCATION_SEARCH_RESULTS.findIndex(
+        (attraction) =>
+          String(attraction.attractionId) === request.queryParams.attractionId
+      );
+      return LOCATION_SEARCH_RESULTS.slice(anchorIndex + 1, anchorIndex + 2);
+    },
+    { timing: 0 }
+  );
+  const user = setupUser();
+  const modal = within(await openSearchForAttraction(canvasElement, user));
+  await user.click(modal.getByRole("button", { name: scope }));
+  await user.type(modal.getByRole("textbox"), "Mon");
+  await user.click(
+    await modal.findByRole("menuitem", { name: "Monaco" }, { timeout: 5000 })
+  );
+  await user.click(modal.getByRole("button", { name: "Update" }));
+
+  const canvas = within(canvasElement);
+  await canvas.findByRole(
+    "button",
+    { name: "Remove Beta landmark from trip" },
+    { timeout: 8000 }
+  );
+  expect(
+    canvas.getByRole("button", { name: "Remove Regional landmark from trip" })
+  ).toBeInTheDocument();
+  expect(
+    canvas.getByRole("button", { name: "Remove Alpha landmark from trip" })
+  ).toBeInTheDocument();
+  expect(pageRequests).toHaveBeenCalledTimes(4);
+  expect(pageRequests).toHaveBeenNthCalledWith(1, {});
+  expect(pageRequests).toHaveBeenNthCalledWith(2, {
+    attractionId: "101",
+    updatedOn: LOCATION_ATTRACTION.changedOn,
+    ...regionCursor
+  });
+  expect(pageRequests).toHaveBeenNthCalledWith(3, {
+    attractionId: "102",
+    updatedOn: LOCATION_ATTRACTION.changedOn,
+    ...regionCursor,
+    cityName: "Alpha"
+  });
+  expect(pageRequests).toHaveBeenNthCalledWith(4, {
+    attractionId: "103",
+    updatedOn: LOCATION_ATTRACTION.changedOn,
+    ...regionCursor,
+    cityName: "Beta"
+  });
+};
+
+export const AddsAllCountryPagesWithLocationCursors: Story = {
+  tags: ["location-grouping"],
+  play: async ({ canvasElement }) => {
+    await expectAllLocationPagesAdded(canvasElement, "Country", {
+      regionName: "Monaco"
+    });
+  }
+};
+
+export const AddsAllRegionPagesWithLocationCursors: Story = {
+  tags: ["location-grouping"],
+  play: async ({ canvasElement }) => {
+    await expectAllLocationPagesAdded(canvasElement, "Region", {});
   }
 };
 

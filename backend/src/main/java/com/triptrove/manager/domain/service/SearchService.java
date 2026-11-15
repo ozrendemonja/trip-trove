@@ -9,9 +9,9 @@ public interface SearchService {
 
     List<AttractionOverview> getAllAttractionsUnderContinent(String name, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 
-    List<AttractionOverview> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionOverview> getAllAttractionsUnderCountry(Integer countryId, LocationScrollPosition afterAttraction, AttractionFilter attractionFilter);
 
-    List<AttractionOverview> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
+    List<AttractionOverview> getAllAttractionsUnderRegion(Integer regionId, CityScrollPosition afterAttraction, AttractionFilter attractionFilter);
 
     List<AttractionOverview> getAllAttractionsUnderCity(Integer cityId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter);
 

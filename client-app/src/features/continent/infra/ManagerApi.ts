@@ -1333,6 +1333,8 @@ export const getPagedAttractionsByCountryId = async (
     query: {
       attractionId: lastReadAttraction?.id,
       updatedOn: lastReadAttraction?.updatedOn,
+      regionName: lastReadAttraction?.regionName,
+      cityName: lastReadAttraction?.cityName,
       category: filters?.category,
       isCountrywide: filters?.isCountrywide,
       isTraditional: filters?.isTraditional,
@@ -1424,6 +1426,7 @@ export const getPagedAttractionsByRegionId = async (
     query: {
       attractionId: lastReadAttraction?.id,
       updatedOn: lastReadAttraction?.updatedOn,
+      cityName: lastReadAttraction?.cityName,
       category: filters?.category,
       isCountrywide: filters?.isCountrywide,
       isTraditional: filters?.isTraditional,

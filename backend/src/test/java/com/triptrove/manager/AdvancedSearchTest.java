@@ -69,6 +69,13 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].cityName()).isEqualTo("Test city 0");
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
+
+        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[0].attractionId().toString()).param("updatedOn", response[0].changedOn().toString())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response).isEmpty();
     }
 
     @Test
@@ -89,6 +96,13 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(secondPage).hasSize(1);
         assertThat(secondPage[0].attractionName()).isEqualTo("Test attraction 0");
         assertThat(secondPage[0].visitStatus()).isEqualTo(AttractionVisitStatusResponse.VISITED_WANT_RETURN);
+
+        jsonResponse = mockMvc.perform(get("/search/continent/Test continent 0/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", secondPage[0].attractionId().toString()).param("updatedOn", secondPage[0].changedOn().toString())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        GetSearchAttractionResponse[] exhausted = mapper.readValue(jsonResponse, GetSearchAttractionResponse[].class);
+        assertThat(exhausted).isEmpty();
     }
 
     @ParameterizedTest
@@ -169,19 +183,30 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].cityName()).isNull();
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
-        assertThat(response[1].attractionName()).isEqualTo("Test attraction 2");
-        assertThat(response[1].cityName()).isEqualTo("Test city 1");
+        assertThat(response[1].attractionName()).isEqualTo("Test attraction 0");
+        assertThat(response[1].cityName()).isEqualTo("Test city 0");
         assertThat(response[1].regionName()).isEqualTo("Test region 0");
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
 
-        jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString())
+                .param("regionName", response[1].regionName()).param("cityName", response[1].cityName())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
-        assertThat(response[0].attractionName()).isEqualTo("Test attraction 0");
-        assertThat(response[0].cityName()).isEqualTo("Test city 0");
+        assertThat(response[0].attractionName()).isEqualTo("Test attraction 2");
+        assertThat(response[0].cityName()).isEqualTo("Test city 1");
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
+
+        jsonResponse = mockMvc.perform(get("/search/country/1/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[0].attractionId().toString()).param("updatedOn", response[0].changedOn().toString())
+                .param("regionName", response[0].regionName()).param("cityName", response[0].cityName())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response).isEmpty();
     }
 
     @ParameterizedTest
@@ -219,19 +244,30 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].cityName()).isNull();
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
-        assertThat(response[1].attractionName()).isEqualTo("Test attraction 2");
-        assertThat(response[1].cityName()).isEqualTo("Test city 1");
+        assertThat(response[1].attractionName()).isEqualTo("Test attraction 0");
+        assertThat(response[1].cityName()).isEqualTo("Test city 0");
         assertThat(response[1].regionName()).isEqualTo("Test region 0");
         assertThat(response[1].countryName()).isEqualTo("Test country 0");
 
-        jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON).param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString()).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[1].attractionId().toString()).param("updatedOn", response[1].changedOn().toString())
+                .param("cityName", response[1].cityName())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
         assertThat(response).hasSize(1);
-        assertThat(response[0].attractionName()).isEqualTo("Test attraction 0");
-        assertThat(response[0].cityName()).isEqualTo("Test city 0");
+        assertThat(response[0].attractionName()).isEqualTo("Test attraction 2");
+        assertThat(response[0].cityName()).isEqualTo("Test city 1");
         assertThat(response[0].regionName()).isEqualTo("Test region 0");
         assertThat(response[0].countryName()).isEqualTo("Test country 0");
+
+        jsonResponse = mockMvc.perform(get("/search/region/1/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[0].attractionId().toString()).param("updatedOn", response[0].changedOn().toString())
+                .param("cityName", response[0].cityName())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response).isEmpty();
     }
 
     @ParameterizedTest
@@ -282,6 +318,13 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].cityName()).isEqualTo("Test city 4");
         assertThat(response[0].regionName()).isEqualTo("Test region 1");
         assertThat(response[0].countryName()).isEqualTo("Test country 1");
+
+        jsonResponse = mockMvc.perform(get("/search/city/3/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[0].attractionId().toString()).param("updatedOn", response[0].changedOn().toString())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response).isEmpty();
     }
 
     @ParameterizedTest
@@ -339,6 +382,13 @@ class AdvancedSearchTest extends AbstractIntegrationTest {
         assertThat(response[0].regionName()).isEqualTo("Test region 1");
         assertThat(response[0].countryName()).isEqualTo("Test country 1");
         assertThat(response[0].mainAttractionName()).isEqualTo("Test attraction 0");
+
+        jsonResponse = mockMvc.perform(get("/search/attraction/1/attractions").contentType(MediaType.APPLICATION_JSON)
+                .param("attractionId", response[0].attractionId().toString()).param("updatedOn", response[0].changedOn().toString())
+                .header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        response = mapper.readValue(jsonResponse, GetAttractionResponse[].class);
+        assertThat(response).isEmpty();
     }
 
     @ParameterizedTest

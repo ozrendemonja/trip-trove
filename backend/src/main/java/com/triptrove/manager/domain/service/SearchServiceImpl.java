@@ -93,17 +93,19 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public List<AttractionOverview> getAllAttractionsUnderCountry(Integer countryId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
-        Specification<Attraction> filterCriteria = newestAttractionsUnderCountry(countryId).and(applyFilters(attractionFilter));
-
-        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
+    public List<AttractionOverview> getAllAttractionsUnderCountry(Integer countryId, LocationScrollPosition afterAttraction, AttractionFilter attractionFilter) {
+        var criteria = attractionsUnderCountry(countryId).and(applyFilters(attractionFilter));
+        return withVisitStatuses(getLocationGroupedAttractions(criteria, afterAttraction));
     }
 
     @Override
-    public List<AttractionOverview> getAllAttractionsUnderRegion(Integer regionId, ScrollPosition beforeAttraction, AttractionFilter attractionFilter) {
-        Specification<Attraction> filterCriteria = newestAttractionsUnderRegion(regionId).and(applyFilters(attractionFilter));
-
-        return withVisitStatuses(getFilteredAttractions(filterCriteria, beforeAttraction));
+    public List<AttractionOverview> getAllAttractionsUnderRegion(Integer regionId, CityScrollPosition afterAttraction, AttractionFilter attractionFilter) {
+        log.atInfo().log("Search for attractions under region grouped by city");
+        var criteria = attractionsUnderRegion(regionId).and(applyFilters(attractionFilter)).and(groupedByCity());
+        if (afterAttraction != null) {
+            criteria = criteria.and(isAfterCity(afterAttraction));
+        }
+        return withVisitStatuses(attractionRepo.findMatchingAttractions(criteria, Limit.of(managerProperties.pageSize())));
     }
 
     @Override
@@ -132,6 +134,14 @@ public class SearchServiceImpl implements SearchService {
         List<AttractionDetails> result = attractionRepo.findMatchingAttractions(attractions, Limit.of(managerProperties.pageSize()));
         log.atInfo().log("Found {} attractions which meets criteria", result.size());
         return result;
+    }
+
+    private List<AttractionDetails> getLocationGroupedAttractions(Specification<Attraction> criteria, LocationScrollPosition afterAttraction) {
+        log.atInfo().log("Search for attractions grouped by region and city");
+        if (afterAttraction != null) {
+            criteria = criteria.and(isAfterLocation(afterAttraction));
+        }
+        return attractionRepo.findMatchingAttractions(criteria.and(groupedByLocation()), Limit.of(managerProperties.pageSize()));
     }
 
     private List<AttractionOverview> withVisitStatuses(List<AttractionDetails> attractions) {

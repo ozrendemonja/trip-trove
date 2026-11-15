@@ -3,7 +3,9 @@ package com.triptrove.manager.application.controller;
 import com.triptrove.manager.application.dto.AttractionCategoryDTO;
 import com.triptrove.manager.application.dto.AttractionParameter;
 import com.triptrove.manager.application.dto.AttractionTypeDTO;
+import com.triptrove.manager.application.dto.CountryAttractionSearchParameter;
 import com.triptrove.manager.application.dto.GetSearchAttractionResponse;
+import com.triptrove.manager.application.dto.RegionAttractionSearchParameter;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.application.dto.search.GetSearchResponse;
 import com.triptrove.manager.application.dto.search.SearchIn;
@@ -34,6 +36,26 @@ import java.util.List;
 @AllArgsConstructor
 @Tag(name = "Search")
 public class SearchController {
+    private static final String COUNTRY_PAGINATION_DESCRIPTION = """
+            For the first page, omit the cursor parameters.
+
+            For continuation requests, send `attractionId`, the exact `changedOn` value as
+            `updatedOn`, `regionName`, and `cityName` from the last raw response item, not the
+            last displayed item. Omit `cityName` or send an empty string for an attraction
+            without a city. These cursor values remain usable if the anchor attraction is
+            deleted. An empty array ends traversal.
+            """;
+
+    private static final String REGION_PAGINATION_DESCRIPTION = """
+            For the first page, omit the cursor parameters.
+
+            For continuation requests, send `attractionId`, the exact `changedOn` value as
+            `updatedOn`, and `cityName` from the last raw response item, not the last displayed
+            item. Omit `cityName` or send an empty string for an attraction without a city.
+            These cursor values remain usable if the anchor attraction is deleted.
+            An empty array ends traversal.
+            """;
+
     private final SearchService searchService;
 
     @GetMapping()
@@ -88,7 +110,8 @@ public class SearchController {
     }
 
     @GetMapping("country/{countryId}/attractions")
-    @Operation(summary = "List attractions under the given country in descending last modification time (creation time if never modified), then identifier order. Filters apply before pagination.",
+    @Operation(summary = "List attractions under the given country by region and city names, then descending last modification time (creation time if never modified) and identifier. Filters apply before pagination.",
+            description = COUNTRY_PAGINATION_DESCRIPTION,
             parameters = {
                     @Parameter(name = "isCountrywide", description = "Filter attraction based on isCountrywide information."),
                     @Parameter(name = "category", description = "Filter attraction based on their category."),
@@ -99,11 +122,12 @@ public class SearchController {
             }, responses = {
                     @ApiResponse(responseCode = "200", description = "Content page; an empty array ends traversal",
                             content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = GetSearchAttractionResponse.class)))),
-                    @ApiResponse(responseCode = "400", description = "Invalid cursor or search filters",
+                    @ApiResponse(responseCode = "400", description = "Invalid cursor or search filters. " +
+                            "Continuation requests without `regionName` receive `400`.",
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
             })
     public List<GetSearchAttractionResponse> getCountryAttractions(@PathVariable Integer countryId,
-                                                             @Valid @ParameterObject AttractionParameter after,
+                                                             @Valid @ParameterObject CountryAttractionSearchParameter after,
                                                              @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                              @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
                                                              @RequestParam(name = "type", required = false) AttractionTypeDTO type,
@@ -111,17 +135,18 @@ public class SearchController {
                                                              @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
                                                              @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
-        var afterAttraction = after.toScrollPosition();
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
         var typeFilter = type != null ? type.toAttractionType() : null;
-        return searchService.getAllAttractionsUnderCountry(countryId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
+        var filters = new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query);
+        return searchService.getAllAttractionsUnderCountry(countryId, after.toLocationScrollPosition(), filters)
                 .stream()
                 .map(GetSearchAttractionResponse::from)
                 .toList();
     }
 
     @GetMapping("region/{regionId}/attractions")
-    @Operation(summary = "List attractions under the given region in descending last modification time (creation time if never modified), then identifier order. Filters apply before pagination.",
+    @Operation(summary = "List attractions under the given region by city name, then descending last modification time (creation time if never modified) and identifier. Filters apply before pagination.",
+            description = REGION_PAGINATION_DESCRIPTION,
             parameters = {
                     @Parameter(name = "isCountrywide", description = "Filter attraction based on isCountrywide information."),
                     @Parameter(name = "category", description = "Filter attraction based on their category."),
@@ -136,7 +161,7 @@ public class SearchController {
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
             })
     public List<GetSearchAttractionResponse> getRegionAttractions(@PathVariable Integer regionId,
-                                                            @Valid @ParameterObject AttractionParameter after,
+                                                            @Valid @ParameterObject RegionAttractionSearchParameter after,
                                                             @RequestParam(name = "isCountrywide", required = false) Boolean isCountrywide,
                                                             @RequestParam(name = "category", required = false) AttractionCategoryDTO category,
                                                             @RequestParam(name = "type", required = false) AttractionTypeDTO type,
@@ -144,10 +169,10 @@ public class SearchController {
                                                             @RequestParam(name = "isTraditional", required = false) Boolean isTraditional,
                                                             @RequestParam(name = "q", required = false) @Pattern(regexp = "^(?!\\s*$).+", message = "Query string must not be blank") @Size(min = 3, message = "Query string must be at least {min} characters long") String query
     ) {
-        var afterAttraction = after.toScrollPosition();
         var categoryFilter = category != null ? category.toAttractionCategory() : null;
         var typeFilter = type != null ? type.toAttractionType() : null;
-        return searchService.getAllAttractionsUnderRegion(regionId, afterAttraction, new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query))
+        var filters = new AttractionFilter(isCountrywide, categoryFilter, typeFilter, mustVisit, isTraditional, query);
+        return searchService.getAllAttractionsUnderRegion(regionId, after.toCityScrollPosition(), filters)
                 .stream()
                 .map(GetSearchAttractionResponse::from)
                 .toList();

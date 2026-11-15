@@ -43,14 +43,14 @@ class PaginationTest extends AbstractIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("standardBindingScenarios")
-    void omittedOrBlankPaginationReturnsTheDescendingFirstPage(Workflow workflow) throws Exception {
+    void omittedOrBlankPaginationUsesTheWorkflowOrder(Workflow workflow) throws Exception {
         KeysetTestFixtures.clear(entityManager);
         workflow.fixture().accept(entityManager, 3);
 
         var page = readPage(mockMvc, workflow.request());
 
         assertThat(page.valueStream().map(item -> item.path(workflow.responseField()).longValue()).toList())
-                .containsExactly(3L, 2L);
+                .containsExactlyElementsOf(workflow.identifiers().apply(3).subList(0, 2));
     }
 
     private static Stream<Workflow> standardBindingScenarios() {
@@ -222,9 +222,11 @@ class PaginationTest extends AbstractIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("allWorkflows")
-    void paginationOrdersByEffectiveTimeBeforeIdentifier(Workflow workflow) throws Exception {
+    void paginationOrdersByEffectiveTimeBeforeIdentifierWithinALocation(Workflow workflow) throws Exception {
         KeysetTestFixtures.clear(entityManager);
         workflow.fixture().accept(entityManager, 5);
+        // Keep location keys equal to exercise timestamp and identifier tie-breakers.
+        entityManager.createNativeQuery("UPDATE attraction SET region_id = 1, city_id = 1").executeUpdate();
         entityManager.createNativeQuery("""
                 UPDATE %s SET created_on = fixture.created_on, updated_on = fixture.updated_on
                 FROM (VALUES
@@ -316,7 +318,8 @@ class PaginationTest extends AbstractIntegrationTest {
         var pages = readPages(mockMvc, () -> filteredSearchRequest(workflow),
                 "attractionId", "attractionId", 2, 3);
 
-        assertTraversal(pages, "attractionId", 2, List.of(5L, 3L, 1L));
+        var expected = workflow.identifiers().apply(6).stream().filter(id -> id % 2 == 1).toList();
+        assertTraversal(pages, "attractionId", 2, expected);
         var statuses = Map.of(1L, "NOT_VISITED", 3L, "VISITED_WANT_RETURN", 5L, "VISITED_DONE");
         pages.stream().flatMap(JsonNode::valueStream).forEach(item ->
                 assertThat(item.path("visitStatus").asText()).isEqualTo(statuses.get(item.path("attractionId").longValue())));
@@ -376,7 +379,9 @@ class PaginationTest extends AbstractIntegrationTest {
             var anchor = page.get(page.size() - 1);
             request = requests.get()
                     .param(cursorField, anchor.get(responseField).asText())
-                    .param("updatedOn", anchor.get("changedOn").asText());
+                    .param("updatedOn", anchor.get("changedOn").asText())
+                    .param("regionName", anchor.path("regionName").asText(""))
+                    .param("cityName", anchor.path("cityName").asText(""));
         }
         pages.add(readPage(mockMvc, request));
         return pages;

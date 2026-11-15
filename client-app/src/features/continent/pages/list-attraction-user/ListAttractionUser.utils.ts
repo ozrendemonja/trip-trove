@@ -1,4 +1,5 @@
 import { SetURLSearchParams } from "react-router";
+import { AttractionVisitStatus } from "../../domain/Attraction.types";
 import {
   getAttractionById,
   getCityById,
@@ -10,7 +11,31 @@ import {
   getPagedAttractionsByRegionId,
   getRegionById
 } from "../../infra/ManagerApi";
-import { ListAttractionPageInfo } from "../list-attraction/ListAttraction.types";
+import {
+  AttractionRow,
+  ListAttractionPageInfo
+} from "../list-attraction/ListAttraction.types";
+
+const visitStatusRank = (row: AttractionRow | null): number => {
+  if (!row) {
+    return 4;
+  }
+  if (row.permanentlyClosedAt) {
+    return 3;
+  }
+  switch (row.visitStatus) {
+    case AttractionVisitStatus.VISITED_WANT_RETURN:
+      return 1;
+    case AttractionVisitStatus.VISITED_DONE:
+      return 2;
+    default:
+      return 0;
+  }
+};
+
+// Stable sorting preserves the backend's location order within each status.
+export const sortAttractionRows = (items: AttractionRow[]): AttractionRow[] =>
+  [...items].sort((a, b) => visitStatusRank(a) - visitStatusRank(b));
 
 export const stringToBoolean = (str: string | null): boolean | undefined => {
   return str !== null ? str.toLowerCase() === "true" : undefined;

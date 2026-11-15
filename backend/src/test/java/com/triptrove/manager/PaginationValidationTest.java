@@ -50,7 +50,8 @@ class PaginationValidationTest extends AbstractIntegrationTest {
     void returnsBadRequestWhenCursorParametersAreInvalid(
             CursorRoute route, String identifier, String timestamp, String message) throws Exception {
         mockMvc.perform(get(route.path()).header("x-api-version", "1")
-                        .param(route.idField(), identifier).param("updatedOn", timestamp))
+                        .param(route.idField(), identifier).param("updatedOn", timestamp)
+                        .param("regionName", "Test region 0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.errorMessage").value(message));

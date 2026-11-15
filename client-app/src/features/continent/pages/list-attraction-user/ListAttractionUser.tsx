@@ -35,6 +35,7 @@ import { useClasses } from "./ListAttractionUser.styles";
 import {
   createGetPagedAttractions,
   createGetPageInfoById,
+  sortAttractionRows,
   stringToBoolean,
   toggleQueryParam
 } from "./ListAttractionUser.utils";
@@ -198,31 +199,6 @@ const getVisitStatusRowClass = (
     ? classes.doneRow
     : undefined;
 
-// Groups rows by how the traveller relates to each place: still-to-see first,
-// then the ones worth another trip, those already seen and done, and finally
-// permanently closed attractions. The infinite-scroll sentinel (null) sinks
-// below every attraction.
-const visitStatusRank = (row: AttractionRow | null): number => {
-  if (!row) {
-    return 4;
-  }
-  if (row.permanentlyClosedAt) {
-    return 3;
-  }
-  switch (row.visitStatus) {
-    case AttractionVisitStatus.VISITED_WANT_RETURN:
-      return 1;
-    case AttractionVisitStatus.VISITED_DONE:
-      return 2;
-    default:
-      return 0;
-  }
-};
-
-// Array.prototype.sort is stable, so rows keep their fetched order within a group.
-const sortByVisitStatus = (items: AttractionRow[]): AttractionRow[] =>
-  [...items].sort((a, b) => visitStatusRank(a) - visitStatusRank(b));
-
 export const AttractionListUser: React.FunctionComponent = () => {
   const classes = useClasses();
 
@@ -293,7 +269,7 @@ export const AttractionListUser: React.FunctionComponent = () => {
     }
   });
 
-  const orderedItems = useMemo(() => sortByVisitStatus(items), [items]);
+  const orderedItems = useMemo(() => sortAttractionRows(items), [items]);
 
   return (
     <div className={classes.pageLayout}>

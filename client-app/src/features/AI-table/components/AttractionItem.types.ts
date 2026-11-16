@@ -16,8 +16,6 @@ export interface AttractionItemProps {
   onDelete?: () => void;
   readOnly?: boolean;
   canManageAttractions?: boolean;
-  inItinerary?: boolean;
-  onToggleInItinerary?: () => void;
   reviewMode?: boolean;
   reviewData?: { rating: Rating; reviewNote: string; wouldVisitAgain: boolean };
   onAttachAttraction?: (

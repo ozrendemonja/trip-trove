@@ -10,9 +10,8 @@ import {
  *
  * Behaviour:
  *  - The browser's native "save page" dialog is always prevented while active.
- *  - The event is captured and its propagation stopped, so a page that also
- *    binds Ctrl+S on `window` (e.g. the Board's export-JSON shortcut) does not
- *    fire at the same time when a save form/dialog is on screen.
+ *  - The event is captured and its propagation stopped, so page-level
+ *    shortcuts do not fire while a save form/dialog is on screen.
  *  - No listener is attached while `enabled` is false, so closed dialogs and
  *    invalid forms don't register global handlers.
  *

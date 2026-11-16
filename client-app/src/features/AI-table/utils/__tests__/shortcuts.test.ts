@@ -134,7 +134,6 @@ describe("getShortcut & isShortcut", () => {
     expect(isShortcut("board.mode.plan", "Alt+3")).toBe(true);
     expect(isShortcut("board.mode.review", "Alt+4")).toBe(true);
     expect(isShortcut("board.mode.cycle", "Ctrl+V")).toBe(true);
-    expect(isShortcut("board.export.json", "Ctrl+S")).toBe(true);
     expect(isShortcut("form.save", "Ctrl+S")).toBe(true);
     expect(isShortcut("form.submit", "Enter")).toBe(true);
   });
@@ -186,7 +185,6 @@ describe("getShortcut & isShortcut", () => {
 
   test("isShortcut rejects mismatched combos", () => {
     expect(isShortcut("board.mode.edit", "Alt+1")).toBe(false);
-    expect(isShortcut("board.export.json", "S")).toBe(false);
   });
 
   test("isShortcut returns false for an empty configured combo", () => {

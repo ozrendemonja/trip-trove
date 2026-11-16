@@ -24,13 +24,10 @@ test("Show Edit mode button as active by default", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
-test("Show Save JSON and Load JSON buttons in toolbar", async ({ page }) => {
-  await expect(
-    page.getByRole("button", { name: "Save JSON" })
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Load JSON" })
-  ).toBeVisible();
+test("Board has no JSON import or export controls", async ({ page }) => {
+  await expect(page.getByRole("button", { name: "Save JSON" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Load JSON" })).toHaveCount(0);
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
   await expect(page).toHaveScreenshot();
 });
 

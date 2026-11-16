@@ -21,8 +21,6 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onDeleteTask,
   readOnly,
   canManageAttractions,
-  isInItinerary,
-  onToggleItinerary,
   reviewMode,
   reviewSelection,
   onAttachAttraction,
@@ -83,12 +81,6 @@ const AttractionList: React.FC<AttractionListProps> = ({
               onDelete={
                 canManageAttractions && onDeleteTask
                   ? () => onDeleteTask(attraction.id)
-                  : undefined
-              }
-              inItinerary={isInItinerary ? isInItinerary(attraction.id) : false}
-              onToggleInItinerary={
-                onToggleItinerary
-                  ? () => onToggleItinerary(attraction.id)
                   : undefined
               }
               readOnly={readOnly}

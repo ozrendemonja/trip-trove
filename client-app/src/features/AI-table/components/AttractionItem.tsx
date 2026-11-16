@@ -30,8 +30,6 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onDelete,
   readOnly,
   canManageAttractions,
-  inItinerary,
-  onToggleInItinerary,
   reviewMode,
   reviewData,
   onAttachAttraction,
@@ -194,7 +192,6 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
 
   const containerClasses = [
     "attraction-item",
-    inItinerary ? "in-itinerary" : "",
     isAttached && reviewMode ? "in-trip" : "",
     attraction.permanentlyClosedAt ? "permanently-closed" : ""
   ]
@@ -300,24 +297,6 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
             {attraction.mustVisit ? "★" : "☆"}
           </button>
         )}
-        {readOnly &&
-          !canManageAttractions &&
-          onToggleInItinerary &&
-          !attraction.permanentlyClosedAt && (
-            <label
-              className="itinerary-checkbox"
-              title="Mark as already planned in itinerary"
-            >
-              <input
-                type="checkbox"
-                checked={!!inItinerary}
-                onChange={onToggleInItinerary}
-              />
-              <span className="itinerary-checkbox-box">
-                {inItinerary ? "✓" : ""}
-              </span>
-            </label>
-          )}
         {attraction.isCountrywide && (
           <span
             className="countrywide-icon"

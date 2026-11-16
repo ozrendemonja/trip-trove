@@ -1,15 +1,20 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import Board from "./Board";
 import { initialCities } from "../data/initialCities";
 import type { VisitHistoryMap } from "../utils/Mapper";
 import {
+  BoardWithHeader,
+  oneAttractionBoard,
+  setupUser,
   styleDecorator,
   withServer
 } from "./Board.helpers";
 
 const meta: Meta<typeof Board> = {
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator]
 };
 
@@ -17,14 +22,14 @@ export default meta;
 
 type Story = StoryObj<typeof Board>;
 
-/** Step 1 – Edit mode: add info, drag-and-drop, toggle must-visit, edit notes/hours */
+/** Edit mode: add info, drag-and-drop, toggle must-visit, edit notes/hours */
 export const EditMode: Story = {
   args: {
     initialCities
   }
 };
 
-/** Step 2 – Plan mode: read-only attraction details */
+/** Plan mode: read-only attraction details */
 export const PlanMode: Story = {
   args: {
     initialCities
@@ -36,7 +41,7 @@ export const PlanMode: Story = {
   }
 };
 
-/** Step 3 – Review mode: rate visited attractions, add notes, attach/detach from trip */
+/** Review mode: rate visited attractions, add notes, attach/detach from trip */
 export const ReviewMode: Story = {
   args: {
     initialCities,

@@ -1,3 +1,7 @@
+html {
+  scrollbar-gutter: stable;
+}
+
 .attraction-board-wrapper {
   display: flex;
   flex-direction: column;
@@ -20,10 +24,18 @@
   flex-wrap: wrap;
   gap: var(--spacingHorizontalS);
   margin-top: var(--spacingVerticalSNudge);
+  flex-basis: 100%;
+  align-items: flex-end;
+}
+
+.filters-row > .fui-Field {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .attraction-board {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacingHorizontalS);
   align-items: stretch; /* ensure all columns share tallest height */
 }
@@ -78,17 +90,6 @@
   text-align: center;
   margin-top: 0;
 }
-
-/* Mode selector buttons */
-.mode-selector { display: flex; gap: var(--spacingHorizontalXXS); background: var(--colorNeutralBackground3); border-radius: var(--borderRadiusLarge); padding: var(--spacingVerticalXXS); }
-.mode-btn { background: var(--colorTransparentBackground); border: none; border-radius: var(--borderRadiusMedium); padding: var(--spacingVerticalXS) var(--spacingHorizontalMNudge); font-size: 0.75rem; cursor: pointer; color: var(--colorNeutralForeground2); transition: background var(--durationFast) var(--curveEasyEase), color var(--durationFast) var(--curveEasyEase); }
-.mode-btn:hover { background: var(--colorNeutralBackground3Hover); color: var(--colorNeutralForeground1); }
-.mode-btn-active { background: var(--colorNeutralBackground1); color: var(--colorNeutralForeground1); font-weight: var(--fontWeightSemibold); box-shadow: var(--shadow4); }
-
-/* Commit staged prepare-mode changes to the trip */
-.commit-prepare-btn { background: var(--colorStatusSuccessBackground1); border: var(--strokeWidthThin) solid var(--colorStatusSuccessBorder1); color: var(--colorStatusSuccessForeground1); border-radius: var(--borderRadiusMedium); padding: var(--spacingVerticalXS) var(--spacingHorizontalMNudge); font-size: 0.75rem; font-weight: var(--fontWeightSemibold); cursor: pointer; }
-.commit-prepare-btn:hover:not(:disabled) { background: var(--colorStatusSuccessBackground2); }
-.commit-prepare-btn:disabled { opacity: 0.5; cursor: default; }
 
 @media (width < 600px) {
   .attraction-board { flex-direction: column; }

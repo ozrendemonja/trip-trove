@@ -58,8 +58,13 @@ const computeStatus = (
   if (archived) return "archived";
   if (!endDate) return "active";
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(endDate) < today ? "past" : "active";
+  const todayDate = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0")
+  ].join("-");
+  // Date-only trip bounds use the local calendar, not UTC instants.
+  return endDate < todayDate ? "past" : "active";
 };
 
 // Maps a trip DTO from the backend into the domain `Trip`, or `undefined` when

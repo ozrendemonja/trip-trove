@@ -1,5 +1,4 @@
-import { Button, Text } from "@fluentui/react-components";
-import { ArrowLeft24Regular } from "@fluentui/react-icons";
+import { Spinner } from "@fluentui/react-components";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
@@ -25,13 +24,13 @@ import {
   Attraction,
   LastReadAttraction
 } from "../continent/domain/Attraction.types";
-import { Rating } from "./domain/Trip.types";
+import type { Rating, Trip } from "./domain/Trip.types";
 import { getAttractionById } from "../continent/infra/ManagerApi";
 import { createGetPagedAttractions } from "../continent/pages/list-attraction-user/ListAttractionUser.utils";
 import { toLastReadAttraction } from "../continent/pages/list-attraction/ListAttraction.util";
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
-import { Flex } from "../../shared/ui/Flex";
+import { TripHeader } from "./TripHeader";
 
 // Helper function to merge cities by name and combine their attractions
 function mergeCities(
@@ -198,26 +197,22 @@ export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const classes = useClasses();
-  const [tripName, setTripName] = useState("Trip Planner");
-  const [tripArchived, setTripArchived] = useState<boolean | undefined>(
-    undefined
-  );
+  const [trip, setTrip] = useState<Trip>();
   // The tripId each async source has finished loading for, so the Board's
   // landing mode is never computed from a previous trip's data.
-  const [archivedTripId, setArchivedTripId] = useState<number | undefined>(
+  const [metadataTripId, setMetadataTripId] = useState<number | undefined>(
     undefined
   );
+  const [selectedMode, setSelectedMode] = useState<{
+    tripId: string | undefined;
+    mode: BoardMode;
+  }>();
 
   useEffect(() => {
     if (!tripId) return;
     fetchTripById(Number(tripId))
-      .then((trip) => {
-        if (trip) {
-          setTripName(trip.name);
-          setTripArchived(trip.status === "archived");
-        }
-      })
-      .finally(() => setArchivedTripId(Number(tripId)));
+      .then(setTrip)
+      .finally(() => setMetadataTripId(Number(tripId)));
   }, [tripId]);
 
   // Source of truth: all attractions from server responses
@@ -344,52 +339,54 @@ export const MyTrip: React.FC = () => {
     // attractions will be automatically recomputed via useMemo
   };
 
-  // Landing mode for the Board: review for archived trips, prepare for a newly
-  // created (empty) trip so attractions can be staged before saving, otherwise
-  // edit. Left undefined until this trip's data has loaded so the Board never
-  // lands on a mode computed from a previous trip's data.
   const currentTripId = tripId ? Number(tripId) : undefined;
   const tripDataReady =
     currentTripId !== undefined &&
-    archivedTripId === currentTripId &&
+    metadataTripId === currentTripId &&
     attractionsTripId === currentTripId;
-  const initialMode: BoardMode | undefined = !tripDataReady
-    ? undefined
-    : tripArchived
+  const initialMode: BoardMode =
+    trip?.status === "past" || trip?.status === "archived"
       ? "review"
       : savedAttractionIds.length === 0
         ? "prepare"
         : "edit";
+  const boardMode =
+    selectedMode?.tripId === tripId && selectedMode
+      ? selectedMode.mode
+      : initialMode;
 
   return (
     <>
       <Navigation />
-      <Flex direction="row" align="center">
-        <Button
-          appearance="subtle"
-          icon={<ArrowLeft24Regular />}
-          onClick={() => navigate("/my-trips")}
-          className={classes.backButton}
-        >
-          My Trips
-        </Button>
-        <Text as="h1" className={classes.tripName}>
-          {tripName}
-        </Text>
-        <SearchAttractionsModal
-          text="Trip Planner"
-          onUpdateClick={handleUpdate}
-        />
-      </Flex>
-      <Board
-        key={tripId}
-        initialCities={attractions}
-        tripId={currentTripId}
-        initialReviewData={savedReviewData}
-        initialSavedAttractionIds={savedAttractionIds}
-        visitHistory={visitHistoryMap}
-        initialMode={initialMode}
-      />
+      <main className={classes.workspace}>
+        {tripDataReady ? (
+          <>
+            <TripHeader
+              trip={trip}
+              mode={boardMode}
+              onModeChange={(mode) => setSelectedMode({ tripId, mode })}
+              onBack={() => navigate("/my-trips")}
+              actions={
+                <SearchAttractionsModal
+                  text="Trip Planner"
+                  onUpdateClick={handleUpdate}
+                />
+              }
+            />
+            <Board
+              key={tripId}
+              initialCities={attractions}
+              tripId={currentTripId}
+              initialReviewData={savedReviewData}
+              initialSavedAttractionIds={savedAttractionIds}
+              visitHistory={visitHistoryMap}
+              mode={boardMode}
+            />
+          </>
+        ) : (
+          <Spinner label="Loading trip" />
+        )}
+      </main>
     </>
   );
 };

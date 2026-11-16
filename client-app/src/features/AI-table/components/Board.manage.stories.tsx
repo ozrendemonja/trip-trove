@@ -167,7 +167,7 @@ export const MovesAttractionBetweenColumns: Story = {
   }
 };
 
-export const PlanModeRemembersItinerarySelectionAcrossModeSwitches: Story = {
+export const PlanModeRemainsReadOnlyAcrossModeSwitches: Story = {
   args: { initialCities: oneAttractionBoard() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -175,28 +175,35 @@ export const PlanModeRemembersItinerarySelectionAcrossModeSwitches: Story = {
 
     await user.click(canvas.getByRole("button", { name: /Plan/i }));
 
-    const checkbox = within(
-      findAttractionCard(canvasElement, "Casino Square")
-    ).getByRole("checkbox");
-    await expect(checkbox).not.toBeChecked();
-    await user.click(checkbox);
-    await expect(checkbox).toBeChecked();
+    const item = within(findAttractionCard(canvasElement, "Casino Square"));
+    await expect(canvas.queryByRole("checkbox")).not.toBeInTheDocument();
+    await expect(
+      item.queryByRole("button", { name: "+ Add note" })
+    ).not.toBeInTheDocument();
+    await expect(
+      item.queryByRole("button", { name: "Remove Casino Square from trip" })
+    ).not.toBeInTheDocument();
 
     await user.click(canvas.getByRole("button", { name: /Edit/i }));
-    await user.click(canvas.getByRole("button", { name: /Plan/i }));
     await expect(
-      within(findAttractionCard(canvasElement, "Casino Square")).getByRole(
-        "checkbox"
-      )
-    ).toBeChecked();
+      item.getByRole("button", { name: "+ Add note" })
+    ).toBeInTheDocument();
+    await expect(
+      item.getByRole("button", { name: "Remove Casino Square from trip" })
+    ).toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: /Plan/i }));
+    await expect(canvas.queryByRole("checkbox")).not.toBeInTheDocument();
+    await expect(
+      item.queryByRole("button", { name: "+ Add note" })
+    ).not.toBeInTheDocument();
+    await expect(
+      item.getByRole("link", { name: "Casino Square" })
+    ).toBeInTheDocument();
   }
 };
 
-/**
- * Plan mode: a collapsed city whose Top + Secondary picks are all handled is
- * highlighted (the card changes colour).
- */
-const planningBoard: TouristDestination[] = [
+const cityBoard: TouristDestination[] = [
   {
     name: "Monaco",
     columns: [
@@ -215,26 +222,26 @@ const planningBoard: TouristDestination[] = [
   }
 ];
 
-export const PlanModeHighlightsFullyPlannedCollapsedCity: Story = {
-  args: { initialCities: planningBoard },
+export const CollapsesAndExpandsCityAcrossModeSwitches: Story = {
+  args: { initialCities: cityBoard },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
 
     await user.click(canvas.getByRole("button", { name: /Plan/i }));
+    await user.click(canvas.getByRole("button", { name: "Collapse Monaco" }));
 
     for (const name of ["Casino Square", "Larvotto Beach"]) {
-      await user.click(
-        within(findAttractionCard(canvasElement, name)).getByRole("checkbox")
-      );
+      await expect(
+        canvas.queryByRole("link", { name })
+      ).not.toBeInTheDocument();
     }
 
-    const monacoGroup = (): HTMLElement =>
-      canvas
-        .getByRole("heading", { name: "Monaco" })
-        .closest(".city-group") as HTMLElement;
-    await expect(monacoGroup()).not.toHaveClass("all-planned");
-    await user.click(canvas.getByRole("button", { name: "Collapse Monaco" }));
-    await expect(monacoGroup()).toHaveClass("all-planned");
+    await user.click(canvas.getByRole("button", { name: /Edit/i }));
+    await user.click(canvas.getByRole("button", { name: "Expand Monaco" }));
+
+    for (const name of ["Casino Square", "Larvotto Beach"]) {
+      await expect(canvas.getByRole("link", { name })).toBeInTheDocument();
+    }
   }
 };

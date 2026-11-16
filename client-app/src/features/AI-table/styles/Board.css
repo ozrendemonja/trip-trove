@@ -62,20 +62,6 @@
   color: var(--colorNeutralForeground2);
 }
 
-/* Highlight cities where all Top/Secondary attractions are already in the itinerary when collapsed */
-.city-group.all-planned {
-  background: var(--colorBrandBackground2);
-  border-color: var(--colorBrandBackground);
-}
-.city-group.all-planned .city-title {
-  color: var(--colorBrandForeground1);
-}
-.city-group.all-planned .city-collapse-btn {
-  background: var(--colorBrandBackground2Hover);
-  border-color: var(--colorBrandBackground);
-  color: var(--colorBrandForeground1);
-}
-
 .attraction-board-column {
   border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
   border-radius: var(--borderRadiusLarge);

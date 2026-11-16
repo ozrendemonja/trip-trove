@@ -8,7 +8,6 @@ export interface Attraction {
   isTraditional: boolean;
   isCountrywide: boolean; // new flag
   permanentlyClosedAt?: string;
-  inItinerary?: boolean;
   name: string;
   address: string;
   category: string;
@@ -47,8 +46,6 @@ export interface AttractionListProps {
   // Whether add/remove/move of attraction cards is allowed even when per-item
   // detail edits are disabled (true in edit and prepare modes).
   canManageAttractions?: boolean;
-  isInItinerary?: (attractionId: number) => boolean;
-  onToggleItinerary?: (attractionId: number) => void;
   reviewMode?: boolean;
   reviewSelection?: Record<
     number,

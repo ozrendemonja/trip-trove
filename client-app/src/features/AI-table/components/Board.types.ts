@@ -17,7 +17,6 @@ export type BoardMode = "edit" | "prepare" | "readOnly" | "review";
 
 export interface BoardProps {
   initialCities?: TouristDestination[]; // optional; defaults to empty
-  onCitiesLoaded?: (cities: TouristDestination[]) => void; // callback when cities are loaded from file
   tripId?: number; // needed to persist board changes and attraction reviews
   initialReviewData?: Record<
     number,

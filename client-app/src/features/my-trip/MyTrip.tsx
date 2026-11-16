@@ -222,8 +222,6 @@ export const MyTrip: React.FC = () => {
 
   // Source of truth: all attractions from server responses
   const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
-  // Loaded cities from JSON file (already in display format, preserved separately)
-  const [loadedCities, setLoadedCities] = useState<TouristDestination[]>([]);
   // Cities loaded from saved trip attractions in DB
   const [savedCities, setSavedCities] = useState<TouristDestination[]>([]);
   // Review data (rating + reviewNote + wouldVisitAgain) from DB for pre-populating review mode
@@ -292,7 +290,7 @@ export const MyTrip: React.FC = () => {
       .finally(() => setAttractionsTripId(Number(tripId)));
   }, [tripId]);
 
-  // Derive display attractions from allAttractions, then merge with loadedCities and savedCities
+  // Derive display attractions from server results and saved trip attractions.
   const visitHistoryMap = useMemo(
     () => buildVisitHistoryMap(visitHistory),
     [visitHistory]
@@ -303,9 +301,8 @@ export const MyTrip: React.FC = () => {
       allAttractions,
       visitHistoryMap
     );
-    const merged = mergeCities(savedCities, fromServer);
-    return mergeCities(merged, loadedCities);
-  }, [allAttractions, loadedCities, savedCities, visitHistoryMap]);
+    return mergeCities(savedCities, fromServer);
+  }, [allAttractions, savedCities, visitHistoryMap]);
 
   const handleUpdate = async (value: SearchTarget) => {
     const newAttractions = await loadAllAttractionsUnder(
@@ -344,12 +341,6 @@ export const MyTrip: React.FC = () => {
         return Array.from(map.values());
       });
     }
-    // attractions will be automatically recomputed via useMemo
-  };
-
-  // Callback when cities are loaded from JSON file in Board
-  const handleCitiesLoaded = (cities: TouristDestination[]) => {
-    setLoadedCities(cities);
     // attractions will be automatically recomputed via useMemo
   };
 
@@ -393,7 +384,6 @@ export const MyTrip: React.FC = () => {
       <Board
         key={tripId}
         initialCities={attractions}
-        onCitiesLoaded={handleCitiesLoaded}
         tripId={currentTripId}
         initialReviewData={savedReviewData}
         initialSavedAttractionIds={savedAttractionIds}

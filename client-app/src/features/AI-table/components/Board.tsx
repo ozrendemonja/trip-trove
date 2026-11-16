@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { exportCities, readCitiesFromFile } from "../utils/BoardPersistence";
 import AttractionList from "./AttractionList";
 import type { Attraction } from "./AttractionList.types";
 import "../styles/Board.css";
@@ -36,7 +35,6 @@ import {
 } from "../utils/Mapper";
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
-import { useBoardStyles } from "./Board.styles";
 
 export type { Column, TouristDestination } from "./Board.types";
 
@@ -61,14 +59,12 @@ const COLUMN_TO_GROUP: Record<string, TripAttractionGroup> = {
 
 const Board: React.FC<BoardProps> = ({
   initialCities,
-  onCitiesLoaded,
   tripId,
   initialReviewData,
   initialSavedAttractionIds,
   visitHistory,
   initialMode
 }) => {
-  const classes = useBoardStyles();
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
   );
@@ -122,16 +118,12 @@ const Board: React.FC<BoardProps> = ({
   const [attractionPendingRemovalId, setAttractionPendingRemovalId] = useState<
     number | null
   >(null);
-  const [itinerarySelection, setItinerarySelection] = useState<
-    Record<number, boolean>
-  >({});
   const [reviewSelection, setReviewSelection] = useState<
     Record<
       number,
       { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
     >
   >(initialReviewData ?? {});
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryOptions = [
     "POINT_OF_INTEREST_AND_LANDMARK",
     "HISTORIC_SITE",
@@ -200,42 +192,6 @@ const Board: React.FC<BoardProps> = ({
       stable: "any",
       category: "any"
     });
-
-  const handleExportJSON = useCallback(() => {
-    exportCities(cities, "cities-board");
-  }, [cities]);
-
-  const handleImportChange: React.ChangeEventHandler<HTMLInputElement> =
-    useCallback(
-      (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        readCitiesFromFile(file)
-          .then((imported: TouristDestination[]) => {
-            if (imported.length) {
-              setCities(imported);
-              setDragState(null);
-              setDragUI({ overColumnId: null, insertionIndex: -1 });
-              // Initialize itinerary selection from imported data
-              const selection: Record<number, boolean> = {};
-              for (const city of imported) {
-                for (const col of city.columns) {
-                  for (const t of col.tasks) {
-                    if (t.inItinerary) selection[t.id] = true;
-                  }
-                }
-              }
-              setItinerarySelection(selection);
-              onCitiesLoaded?.(imported);
-            }
-          })
-          .catch((err: unknown) => console.error("Failed to import JSON", err))
-          .finally(() => {
-            e.target.value = "";
-          });
-      },
-      [onCitiesLoaded]
-    );
 
   const onDragStart = useCallback(
     (colId: string, attractionId: number) => (e: React.DragEvent) => {
@@ -638,16 +594,6 @@ const Board: React.FC<BoardProps> = ({
     setCities(next);
     setDragState(null);
     setDragUI({ overColumnId: null, insertionIndex: -1 });
-    // Rebuild itinerary selection map from attractions that have inItinerary set
-    const selection: Record<number, boolean> = {};
-    for (const city of next) {
-      for (const col of city.columns) {
-        for (const t of col.tasks) {
-          if (t.inItinerary) selection[t.id] = true;
-        }
-      }
-    }
-    setItinerarySelection(selection);
     // Preserve existing collapse states; initialize new city keys to false
     setCollapsedByCity((prev) => {
       const merged: Record<string, boolean> = { ...prev };
@@ -818,31 +764,6 @@ const Board: React.FC<BoardProps> = ({
     ]
   );
 
-  const toggleItinerarySelection = useCallback((attractionId: number) => {
-    setItinerarySelection((prev) => {
-      const isCurrentlyIn = !!prev[attractionId];
-      const nextValue = !isCurrentlyIn;
-
-      // Mirror this onto the underlying attraction objects so it is persisted in JSON
-      setCities((prevCities) =>
-        prevCities.map((city) => ({
-          ...city,
-          columns: city.columns.map((col) => ({
-            ...col,
-            tasks: col.tasks.map((t) =>
-              t.id === attractionId ? { ...t, inItinerary: nextValue } : t
-            )
-          }))
-        }))
-      );
-
-      return {
-        ...prev,
-        [attractionId]: nextValue
-      };
-    });
-  }, []);
-
   const handleAttachAttraction = useCallback(
     async (attractionId: number, ratingValue: Rating, reviewNote: string) => {
       if (!tripId) return;
@@ -903,9 +824,14 @@ const Board: React.FC<BoardProps> = ({
   // Keyboard shortcuts. Edit the SHORTCUTS map in utils/Shortcuts.ts to remap.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (isTypingInFormField(e.target)) return;
       const combo = keyComboFromEvent(e);
       if (!combo) return;
+      // Forms save in the capture phase; the board has no save action yet.
+      if (isShortcut("form.save", combo)) {
+        e.preventDefault();
+        return;
+      }
+      if (isTypingInFormField(e.target)) return;
 
       if (isShortcut("board.mode.edit", combo)) {
         e.preventDefault();
@@ -930,15 +856,12 @@ const Board: React.FC<BoardProps> = ({
                 : "edit"
               : "edit"
         );
-      } else if (isShortcut("board.export.json", combo)) {
-        e.preventDefault();
-        handleExportJSON();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleExportJSON, tripId]);
+  }, [tripId]);
 
   // Number of staged attach/remove operations awaiting commit in prepare mode.
   const pendingCommitCount = ((): number => {
@@ -1035,29 +958,6 @@ const Board: React.FC<BoardProps> = ({
             {pendingCommitCount ? ` (${pendingCommitCount})` : ""}
           </button>
         )}
-        <button
-          type="button"
-          onClick={handleExportJSON}
-          className="export-json-btn"
-          title="Download current board as JSON"
-        >
-          Save JSON
-        </button>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="import-json-btn"
-          title="Load board from JSON file"
-        >
-          Load JSON
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json"
-          className={classes.hiddenFileInput}
-          onChange={handleImportChange}
-        />
         <div className="filters-row">
           <label>
             Countrywide
@@ -1134,22 +1034,10 @@ const Board: React.FC<BoardProps> = ({
         const isCollapsed = collapsedByCity[city.name];
         const showGray = isCollapsed && allInExcluded;
 
-        // Check if all attractions under "Top Attractions" and "Secondary Spots" are marked in the itinerary
-        const topAndSecondaryTasks = city.columns
-          .filter(
-            (col) =>
-              col.title === "Top Attractions" || col.title === "Secondary Spots"
-          )
-          .flatMap((col) => col.tasks);
-        const allTopAndSecondaryPlanned =
-          isCollapsed &&
-          topAndSecondaryTasks.length > 0 &&
-          topAndSecondaryTasks.every((t) => itinerarySelection[t.id]);
-
         return (
           <div
             key={city.name}
-            className={`city-group${showGray ? " all-excluded" : ""}${allTopAndSecondaryPlanned ? " all-planned" : ""}`}
+            className={`city-group${showGray ? " all-excluded" : ""}`}
           >
             <div className="city-header">
               <button
@@ -1244,8 +1132,6 @@ const Board: React.FC<BoardProps> = ({
                         onDeleteTask={setAttractionPendingRemovalId}
                         updateById={updateAttractionById}
                         upsertAttractions={upsertAttractions}
-                        isInItinerary={(id) => !!itinerarySelection[id]}
-                        onToggleItinerary={toggleItinerarySelection}
                         readOnly={readOnly}
                         canManageAttractions={canManageAttractions}
                         reviewMode={reviewMode}

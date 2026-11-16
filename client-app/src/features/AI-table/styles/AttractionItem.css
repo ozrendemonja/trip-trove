@@ -1,15 +1,8 @@
 .attraction-item { display: flex; flex-direction: column; gap: var(--spacingVerticalXS); padding: var(--spacingVerticalS); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground2); }
-.attraction-item.in-itinerary { background: var(--colorBrandBackground2); border-radius: var(--borderRadiusMedium); box-shadow: 0 0 0 var(--strokeWidthThin) var(--colorBrandBackground) inset; }
-.attraction-item.in-itinerary .attraction-name { color: var(--colorBrandForeground1); font-weight: var(--fontWeightSemibold); }
 .attraction-line { font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalSNudge); align-items: center; }
 .copy-name-btn { background: var(--colorNeutralBackground3); border: var(--strokeWidthThin) solid var(--colorNeutralStroke1); border-radius: var(--borderRadiusMedium); padding: 0 var(--spacingHorizontalSNudge); font-size: 0.6rem; cursor: pointer; line-height: 1.2; }
 .copy-name-btn:hover { background: var(--colorNeutralBackground3Hover); }
-.itinerary-checkbox { display: inline-flex; align-items: center; margin-left: auto; cursor: pointer; padding: var(--spacingVerticalXXS) var(--spacingHorizontalSNudge); border-radius: var(--borderRadiusCircular); background: var(--colorBrandBackground2); border: var(--strokeWidthThin) solid var(--colorTransparentStroke); }
 .countrywide-icon { margin-left: auto; display: inline-flex; align-items: center; font-size: 0.85rem; line-height: 1; }
-.countrywide-icon + .itinerary-checkbox, .itinerary-checkbox ~ .countrywide-icon { margin-left: var(--spacingHorizontalXS); }
-.itinerary-checkbox:hover { background: var(--colorBrandBackground2Hover); }
-.itinerary-checkbox input { position: absolute; opacity: 0; pointer-events: none; }
-.itinerary-checkbox-box { width: 14px; height: 14px; border-radius: var(--borderRadiusMedium); border: var(--strokeWidthThin) solid var(--colorBrandBackground); display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--colorBrandForeground1); background: var(--colorNeutralBackground1); box-shadow: 0 0 0 var(--strokeWidthThin) var(--colorNeutralBackgroundAlpha) inset; }
 .attraction-address-line { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalSNudge); font-size: 0.7rem; color: var(--colorNeutralForeground2); margin-top: -2px; }
 .attraction-address-text { font-style: normal; }
 .attraction-category-text { font-style: italic; }

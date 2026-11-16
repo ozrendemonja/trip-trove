@@ -1,10 +1,12 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { userEvent, within } from "storybook/test";
 import Board from "./Board";
-import type { TouristDestination } from "./Board.types";
 import { initialCities } from "../data/initialCities";
 import type { VisitHistoryMap } from "../utils/Mapper";
-import { styleDecorator, withServer } from "./Board.helpers";
+import {
+  styleDecorator,
+  withServer
+} from "./Board.helpers";
 
 const meta: Meta<typeof Board> = {
   component: Board,
@@ -22,7 +24,7 @@ export const EditMode: Story = {
   }
 };
 
-/** Step 2 – Plan mode: read-only with itinerary checkboxes */
+/** Step 2 – Plan mode: read-only attraction details */
 export const PlanMode: Story = {
   args: {
     initialCities
@@ -59,29 +61,6 @@ export const Empty: Story = {
 export const SingleCity: Story = {
   args: {
     initialCities: [initialCities[0]]
-  }
-};
-
-/** Board with itinerary selections pre-set (Plan mode data) */
-const citiesWithItinerary: TouristDestination[] = initialCities.map((city) => ({
-  ...city,
-  columns: city.columns.map((col) => ({
-    ...col,
-    tasks: col.tasks.map((t) => ({
-      ...t,
-      inItinerary: t.mustVisit
-    }))
-  }))
-}));
-
-export const PlanModeWithSelections: Story = {
-  args: {
-    initialCities: citiesWithItinerary
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const planBtn = canvas.getByRole("button", { name: /Plan/i });
-    await userEvent.click(planBtn);
   }
 };
 

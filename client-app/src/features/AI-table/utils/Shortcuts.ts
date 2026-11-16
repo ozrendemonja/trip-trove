@@ -15,7 +15,6 @@ export type ShortcutAction =
   | "board.mode.review"
   | "board.mode.prepare"
   | "board.mode.cycle"
-  | "board.export.json"
   | "form.save"
   | "form.submit";
 
@@ -25,7 +24,6 @@ export const SHORTCUTS: Record<ShortcutAction, string> = {
   "board.mode.plan": "Alt+3",
   "board.mode.review": "Alt+4",
   "board.mode.cycle": "Ctrl+V",
-  "board.export.json": "Ctrl+S",
   // Save/submit any add form or edit dialog (AddAttraction, AddCity, edit
   // popups, ...). Handled by the shared useSaveShortcut hook.
   "form.save": "Ctrl+S",

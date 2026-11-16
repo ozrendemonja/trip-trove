@@ -1,11 +1,40 @@
 import type { Decorator } from "@storybook/react";
-import { userEvent, within } from "storybook/test";
+import { useState, type ReactElement } from "react";
+import { fn, userEvent, within } from "storybook/test";
 import makeServer from "../../../ServerSetup";
 import type { Attraction } from "./AttractionList";
-import type { TouristDestination } from "./Board.types";
+import type { BoardProps, TouristDestination } from "./Board.types";
+import Board from "./Board";
+import { TripHeader } from "../../my-trip/TripHeader";
 
 // Blue page background shared by every Board story group.
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../../shared/storybook/StoryStyles";
+
+const backToTrips = fn();
+
+export const BoardWithHeader = ({
+  mode: initialMode = "edit",
+  ...props
+}: BoardProps): ReactElement => {
+  const [mode, setMode] = useState(initialMode);
+  return (
+    <>
+      <TripHeader
+        trip={{
+          id: 1,
+          name: "Trip board",
+          startDate: "2025-06-10",
+          endDate: "2025-06-24",
+          status: "past"
+        }}
+        mode={mode}
+        onModeChange={setMode}
+        onBack={backToTrips}
+      />
+      <Board {...props} mode={mode} />
+    </>
+  );
+};
 
 export const styleDecorator: Decorator = (Story) => (
   <>

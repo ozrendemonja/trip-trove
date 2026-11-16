@@ -60,11 +60,18 @@ export const useClasses = makeStyles({
     width: "100%",
     minWidth: 0
   },
-  backButton: {
-    marginLeft: tokens.spacingHorizontalXS
-  },
-  tripName: {
-    fontSize: 30,
-    ...shorthands.paddingInline(tokens.spacingHorizontalMNudge)
+  workspace: {
+    display: "flex",
+    flexDirection: "column",
+    rowGap: "12px",
+    minWidth: 0,
+    paddingInline: tokens.spacingHorizontalMNudge,
+    paddingBottom: tokens.spacingVerticalM,
+    "& .board-toolbar": {
+      margin: 0
+    },
+    "& .city-group": {
+      marginInline: 0
+    }
   }
 });

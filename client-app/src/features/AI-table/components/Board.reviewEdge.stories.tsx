@@ -3,6 +3,7 @@ import { expect, within } from "storybook/test";
 import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import {
+  BoardWithHeader,
   findAttractionCard,
   makeAttraction,
   reviewBoard,
@@ -14,6 +15,8 @@ import {
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/ReviewEdge",
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator, withServer]
 };
 export default meta;
@@ -24,7 +27,7 @@ export const ReviewModeSavesNoteWithSurroundingSpaces: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -47,7 +50,7 @@ export const ReviewModeCapsNoteAt512Chars: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -84,7 +87,7 @@ export const ReviewModeHidesFormForExcludedAttraction: Story = {
   args: {
     initialCities: excludedReviewBoard,
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     await expect(
@@ -106,7 +109,7 @@ export const ReviewModeDefaultsToWouldVisitAgainPromptAfterAdding: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -128,7 +131,7 @@ export const ReviewModeFlagsAttractionAsWouldVisitAgain: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -152,7 +155,7 @@ export const ReviewModeRemovingReviewResetsFormToDefaults: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();

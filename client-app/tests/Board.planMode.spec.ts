@@ -9,8 +9,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("Show board in Plan mode without manual checkboxes", async ({ page }) => {
-  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
   await expect(page.getByRole("checkbox")).toHaveCount(0);
   await expect(page).toHaveScreenshot();

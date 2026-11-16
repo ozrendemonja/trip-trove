@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useId } from "react";
+import { Button, Field, Select } from "@fluentui/react-components";
+import { Filter20Regular, Save20Regular } from "@fluentui/react-icons";
 import AttractionList from "./AttractionList";
 import type { Attraction } from "./AttractionList.types";
 import "../styles/Board.css";
@@ -17,18 +19,7 @@ import {
 } from "../../my-trip/infra/TripApi";
 import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import { Rating } from "../../my-trip/domain/Trip.types";
-import type {
-  Column,
-  TouristDestination,
-  BoardProps,
-  BoardMode
-} from "./Board.types";
-import {
-  getShortcut,
-  isShortcut,
-  isTypingInFormField,
-  keyComboFromEvent
-} from "../utils/Shortcuts";
+import type { Column, TouristDestination, BoardProps } from "./Board.types";
 import {
   applyVisitHistoryToCities,
   setPermanentClosureInCities
@@ -63,7 +54,7 @@ const Board: React.FC<BoardProps> = ({
   initialReviewData,
   initialSavedAttractionIds,
   visitHistory,
-  initialMode
+  mode: boardMode
 }) => {
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
@@ -73,16 +64,6 @@ const Board: React.FC<BoardProps> = ({
     overColumnId: null,
     insertionIndex: -1
   });
-  const [boardMode, setBoardMode] = useState<BoardMode>(initialMode ?? "edit");
-  // The container computes the landing mode from trip data loaded
-  // asynchronously; apply it once it becomes known. The user's later mode
-  // switches are preserved (applied only once per mounted Board).
-  const initialModeAppliedRef = useRef(initialMode !== undefined);
-  useEffect(() => {
-    if (initialModeAppliedRef.current || initialMode === undefined) return;
-    initialModeAppliedRef.current = true;
-    setBoardMode(initialMode);
-  }, [initialMode]);
   const readOnly = boardMode !== "edit";
   const isPlanMode = boardMode === "readOnly";
   const reviewMode = boardMode === "review";
@@ -177,6 +158,8 @@ const Board: React.FC<BoardProps> = ({
     stable: "any",
     category: "any"
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersId = useId();
 
   const updateFilter =
     (key: keyof Filters) => (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -821,48 +804,6 @@ const Board: React.FC<BoardProps> = ({
     [tripId]
   );
 
-  // Keyboard shortcuts. Edit the SHORTCUTS map in utils/Shortcuts.ts to remap.
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      const combo = keyComboFromEvent(e);
-      if (!combo) return;
-      // Forms save in the capture phase; the board has no save action yet.
-      if (isShortcut("form.save", combo)) {
-        e.preventDefault();
-        return;
-      }
-      if (isTypingInFormField(e.target)) return;
-
-      if (isShortcut("board.mode.edit", combo)) {
-        e.preventDefault();
-        setBoardMode("edit");
-      } else if (isShortcut("board.mode.plan", combo)) {
-        e.preventDefault();
-        setBoardMode("readOnly");
-      } else if (isShortcut("board.mode.review", combo) && tripId) {
-        e.preventDefault();
-        setBoardMode("review");
-      } else if (isShortcut("board.mode.prepare", combo) && tripId) {
-        e.preventDefault();
-        setBoardMode("prepare");
-      } else if (isShortcut("board.mode.cycle", combo)) {
-        e.preventDefault();
-        setBoardMode((prev) =>
-          prev === "edit"
-            ? "readOnly"
-            : prev === "readOnly"
-              ? tripId
-                ? "review"
-                : "edit"
-              : "edit"
-        );
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tripId]);
-
   // Number of staged attach/remove operations awaiting commit in prepare mode.
   const pendingCommitCount = ((): number => {
     if (boardMode !== "prepare" || !tripId) return 0;
@@ -892,132 +833,94 @@ const Board: React.FC<BoardProps> = ({
   return (
     <div className="attraction-board-wrapper">
       <div className="board-toolbar">
-        <div className="mode-selector">
-          {tripId && (
-            <button
-              type="button"
-              className={`mode-btn${boardMode === "prepare" ? " mode-btn-active" : ""}`}
-              onClick={() => setBoardMode("prepare")}
-              title={`Prepare mode – stage attractions before saving${
-                getShortcut("board.mode.prepare")
-                  ? ` (${getShortcut("board.mode.prepare")})`
-                  : ""
-              }`}
-            >
-              🧳 Prepare
-            </button>
-          )}
-          <button
-            type="button"
-            className={`mode-btn${boardMode === "edit" ? " mode-btn-active" : ""}`}
-            onClick={() => setBoardMode("edit")}
-            title={`Edit mode – add info to attractions${
-              getShortcut("board.mode.edit")
-                ? ` (${getShortcut("board.mode.edit")})`
-                : ""
-            }`}
-          >
-            ✏️ Edit
-          </button>
-          <button
-            type="button"
-            className={`mode-btn${isPlanMode ? " mode-btn-active" : ""}`}
-            onClick={() => setBoardMode("readOnly")}
-            title={`Read-only mode – plan itinerary${
-              getShortcut("board.mode.plan")
-                ? ` (${getShortcut("board.mode.plan")})`
-                : ""
-            }`}
-          >
-            👁️ Plan
-          </button>
-          {tripId && (
-            <button
-              type="button"
-              className={`mode-btn${boardMode === "review" ? " mode-btn-active" : ""}`}
-              onClick={() => setBoardMode("review")}
-              title={`Review mode – rate visited attractions${
-                getShortcut("board.mode.review")
-                  ? ` (${getShortcut("board.mode.review")})`
-                  : ""
-              }`}
-            >
-              ⭐ Review
-            </button>
-          )}
-        </div>
         {boardMode === "prepare" && tripId && (
-          <button
-            type="button"
+          <Button
+            appearance="primary"
+            size="small"
+            icon={<Save20Regular />}
             onClick={commitPreparedChanges}
-            className="commit-prepare-btn"
             disabled={pendingCommitCount === 0}
             title="Save staged attractions and removals to this trip"
           >
-            💾 Save to trip
+            Save to trip
             {pendingCommitCount ? ` (${pendingCommitCount})` : ""}
-          </button>
+          </Button>
         )}
-        <div className="filters-row">
-          <label>
-            Countrywide
-            <select
-              value={filters.isCountrywide}
-              onChange={updateFilter("isCountrywide")}
-            >
-              <option value="any">Any</option>
-              <option value="true">Countrywide</option>
-              <option value="false">Local</option>
-            </select>
-          </label>
-          <label>
-            Must Visit
-            <select
-              value={filters.mustVisit}
-              onChange={updateFilter("mustVisit")}
-            >
-              <option value="any">Any</option>
-              <option value="true">Must visit</option>
-              <option value="false">Skip-Worthy Spots</option>
-            </select>
-          </label>
-          <label>
-            Traditional
-            <select
-              value={filters.isTraditional}
-              onChange={updateFilter("isTraditional")}
-            >
-              <option value="any">Any</option>
-              <option value="true">Traditional</option>
-              <option value="false">Modern</option>
-            </select>
-          </label>
-          <label>
-            Stability
-            <select value={filters.stable} onChange={updateFilter("stable")}>
-              <option value="any">Any</option>
-              <option value="true">Stable</option>
-              <option value="false">Potential Change</option>
-            </select>
-          </label>
-          <label>
-            Category
-            <select
-              value={filters.category}
-              onChange={updateFilter("category")}
-            >
-              <option value="any">Any</option>
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={resetFilters}>
-            Reset Filters
-          </button>
-        </div>
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<Filter20Regular />}
+          aria-expanded={filtersOpen}
+          aria-controls={filtersOpen ? filtersId : undefined}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          Filters on demand
+        </Button>
+        {filtersOpen && (
+          <div className="filters-row" id={filtersId}>
+            <Field label="Countrywide" size="small">
+              <Select
+                size="small"
+                value={filters.isCountrywide}
+                onChange={updateFilter("isCountrywide")}
+              >
+                <option value="any">Any</option>
+                <option value="true">Countrywide</option>
+                <option value="false">Local</option>
+              </Select>
+            </Field>
+            <Field label="Must Visit" size="small">
+              <Select
+                size="small"
+                value={filters.mustVisit}
+                onChange={updateFilter("mustVisit")}
+              >
+                <option value="any">Any</option>
+                <option value="true">Must visit</option>
+                <option value="false">Skip-Worthy Spots</option>
+              </Select>
+            </Field>
+            <Field label="Traditional" size="small">
+              <Select
+                size="small"
+                value={filters.isTraditional}
+                onChange={updateFilter("isTraditional")}
+              >
+                <option value="any">Any</option>
+                <option value="true">Traditional</option>
+                <option value="false">Modern</option>
+              </Select>
+            </Field>
+            <Field label="Stability" size="small">
+              <Select
+                size="small"
+                value={filters.stable}
+                onChange={updateFilter("stable")}
+              >
+                <option value="any">Any</option>
+                <option value="true">Stable</option>
+                <option value="false">Potential Change</option>
+              </Select>
+            </Field>
+            <Field label="Category" size="small">
+              <Select
+                size="small"
+                value={filters.category}
+                onChange={updateFilter("category")}
+              >
+                <option value="any">Any</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Button size="small" onClick={resetFilters}>
+              Reset Filters
+            </Button>
+          </div>
+        )}
       </div>
       {cities.map((city) => {
         // Check if all attractions are in the excluded column (last column)

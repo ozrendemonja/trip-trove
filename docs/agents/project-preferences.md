@@ -1,5 +1,11 @@
 # Project Preferences
 
+For frontend UI:
+
+- Prefer Fluent UI v9 components over custom equivalents wherever practical.
+- Keep custom code for domain-specific behavior and layout, not controls,
+  typography or surfaces that Fluent already provides.
+
 For test and fixture changes, including Storybook:
 
 - Prefer readable scenarios over deduplication; do not flag small repetition alone.

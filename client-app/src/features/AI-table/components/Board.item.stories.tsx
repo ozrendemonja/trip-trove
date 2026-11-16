@@ -2,6 +2,7 @@ import { Meta, StoryObj } from "@storybook/react";
 import { expect, waitFor, within } from "storybook/test";
 import Board from "./Board";
 import {
+  BoardWithHeader,
   findAttractionCard,
   oneAttractionBoard,
   setupUser,
@@ -13,6 +14,8 @@ import {
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/Item",
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator, withServer]
 };
 export default meta;
@@ -178,7 +181,7 @@ export const PermanentlyClosedMovesToExcludedAttractions: Story = {
   tags: ["closure-status", "closure-board-prepare"],
   args: {
     initialCities: oneAttractionBoard({ id: 1, mustVisit: true }),
-    initialMode: "prepare",
+    mode: "prepare",
     tripId: 9001
   },
   play: async ({ canvasElement }) => {
@@ -223,7 +226,7 @@ export const PermanentlyClosedCannotBeSelectedInEdit: Story = {
       id: 1,
       permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
     }),
-    initialMode: "edit",
+    mode: "edit",
     tripId: 9001
   },
   play: async ({ canvasElement }) => {
@@ -251,7 +254,7 @@ export const PermanentlyClosedCannotBeSelectedInPlan: Story = {
       id: 1,
       permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
     }),
-    initialMode: "readOnly",
+    mode: "readOnly",
     tripId: 9001
   },
   play: async ({ canvasElement }) => {
@@ -279,7 +282,7 @@ export const PermanentlyClosedCannotBeSelectedInReview: Story = {
       id: 1,
       permanentlyClosedAt: "2026-07-31T00:00:00.000Z"
     }),
-    initialMode: "review",
+    mode: "review",
     tripId: 9001
   },
   play: async ({ canvasElement }) => {

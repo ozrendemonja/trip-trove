@@ -18,8 +18,9 @@ test("Show board in edit mode with attractions loaded", async ({ page }) => {
 });
 
 test("Show Edit mode button as active by default", async ({ page }) => {
-  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
   await expect(page).toHaveScreenshot();
 });
@@ -34,8 +35,9 @@ test("Board has no JSON import or export controls", async ({ page }) => {
 test("Switch to Plan mode when Plan button is clicked", async ({ page }) => {
   await page.getByRole("button", { name: /Plan/i }).click();
 
-  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
   await expect(page).toHaveScreenshot();
 });
@@ -44,20 +46,30 @@ test("Switch back to Edit mode from Plan mode", async ({ page }) => {
   await page.getByRole("button", { name: /Plan/i }).click();
   await page.getByRole("button", { name: /Edit/i }).click();
 
-  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
   await expect(page).toHaveScreenshot();
 });
 
-test("Review button is not visible when no tripId is provided", async ({
+test("Trip header owns the steps and Board renders no mode buttons", async ({
   page
 }) => {
-  await expect(page.getByRole("button", { name: /Review/i })).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation", { name: "Trip steps" }).getByRole("button")
+  ).toHaveCount(4);
+  await expect(
+    page
+      .locator(".attraction-board-wrapper")
+      .getByRole("button", { name: /^(Prepare|Edit|Plan|Review)$/ })
+  ).toHaveCount(0);
   await expect(page).toHaveScreenshot();
 });
 
-test("Show filter dropdowns in toolbar", async ({ page }) => {
+test("Show filter dropdowns on demand", async ({ page }) => {
+  await expect(page.getByRole("combobox")).toHaveCount(0);
+  await page.getByRole("button", { name: "Filters on demand" }).click();
   await expect(
     page.getByRole("combobox", { name: "Countrywide" })
   ).toBeVisible();
@@ -70,8 +82,9 @@ test("Show filter dropdowns in toolbar", async ({ page }) => {
 test("Switch to Plan mode using Alt+3 keyboard shortcut", async ({ page }) => {
   await page.keyboard.press("Alt+3");
 
-  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
 });
 
@@ -81,8 +94,9 @@ test("Switch back to Edit mode using Alt+2 keyboard shortcut", async ({
   await page.keyboard.press("Alt+3");
   await page.keyboard.press("Alt+2");
 
-  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
 });
 
@@ -91,29 +105,44 @@ test("Cycle from Edit to Plan using Ctrl+V keyboard shortcut", async ({
 }) => {
   await page.keyboard.press("Control+v");
 
-  await expect(page.getByRole("button", { name: /Plan/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
 });
 
-test("Cycle back to Edit from Plan using Ctrl+V when no tripId", async ({
+test("Cycle from Plan through Review and Prepare back to Edit", async ({
   page
 }) => {
+  await page.keyboard.press("Alt+3");
   await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: "Review" })).toHaveAttribute(
+    "aria-current",
+    "step"
+  );
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: "Prepare" })).toHaveAttribute(
+    "aria-current",
+    "step"
+  );
   await page.keyboard.press("Control+v");
 
-  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
 });
 
-test("Alt+4 does not switch to Review mode when no tripId", async ({
-  page
-}) => {
+test("Alt+4 cannot bypass Edit from Prepare", async ({ page }) => {
+  await page.keyboard.press("Alt+1");
   await page.keyboard.press("Alt+4");
 
-  await expect(page.getByRole("button", { name: /Edit/i })).toHaveClass(
-    /mode-btn-active/
+  await expect(page.getByRole("button", { name: "Prepare" })).toHaveAttribute(
+    "aria-current",
+    "step"
   );
-  await expect(page.getByRole("button", { name: /Review/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Review" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Review" })
+  ).toHaveAccessibleDescription("After Edit");
 });

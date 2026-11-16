@@ -2,6 +2,7 @@ import { Meta, StoryObj } from "@storybook/react";
 import { expect, within } from "storybook/test";
 import Board from "./Board";
 import {
+  BoardWithHeader,
   findAttractionCard,
   makeAttraction,
   reviewBoard,
@@ -13,6 +14,8 @@ import {
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/Review",
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator, withServer]
 };
 export default meta;
@@ -23,7 +26,7 @@ export const ReviewModeSavesRatingWithNote: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -48,7 +51,7 @@ export const ReviewModeSavesRatingWithoutNote: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -68,7 +71,7 @@ export const ReviewModeClearResetsRatingAndNote: Story = {
   args: {
     initialCities: reviewBoard([makeAttraction(1, "Casino Square")]),
     tripId: 1,
-    initialMode: "review"
+    mode: "review"
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();

@@ -3,11 +3,18 @@ import { expect, fireEvent, within } from "storybook/test";
 import Board from "./Board";
 import type { Attraction } from "./AttractionList.types";
 import type { TouristDestination } from "./Board.types";
-import { makeAttraction, setupUser, styleDecorator } from "./Board.helpers";
+import {
+  BoardWithHeader,
+  makeAttraction,
+  setupUser,
+  styleDecorator
+} from "./Board.helpers";
 
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/Filters",
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator]
 };
 export default meta;
@@ -67,11 +74,54 @@ const PotentialChange = "false";
 const ArtMuseum = "ART_MUSEUM"; // Category filter
 const Food = "FOOD";
 
+export const FiltersOpenOnDemandAndKeepSelection: Story = {
+  args: { initialCities: boardWithOpposedAttractions },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const filters = canvas.getByRole("button", {
+      name: "Filters on demand"
+    });
+
+    await expect(filters).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByRole("combobox")).not.toBeInTheDocument();
+    await user.click(filters);
+    await expect(filters).toHaveAttribute("aria-expanded", "true");
+    await expect(canvas.getAllByRole("combobox")).toHaveLength(5);
+    await user.selectOptions(
+      canvas.getByRole("combobox", { name: /Must Visit/ }),
+      MustVisit
+    );
+    await expect(
+      canvas.queryByRole("link", { name: negativeAttractionName })
+    ).not.toBeInTheDocument();
+
+    await user.click(filters);
+    await expect(filters).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByRole("combobox")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("link", { name: negativeAttractionName })
+    ).not.toBeInTheDocument();
+    await user.click(filters);
+    await expect(
+      canvas.getByRole("combobox", { name: /Must Visit/ })
+    ).toHaveValue(MustVisit);
+    await user.click(canvas.getByRole("button", { name: "Reset Filters" }));
+    await expect(
+      canvas.getByRole("link", { name: positiveAttractionName })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: negativeAttractionName })
+    ).toBeVisible();
+  }
+};
+
 export const FiltersByCountrywide: Story = {
   args: { initialCities: boardWithOpposedAttractions },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const select = canvas.getByRole("combobox", { name: /Countrywide/ });
 
     await user.selectOptions(select, Countrywide);
@@ -105,6 +155,7 @@ export const FiltersByMustVisit: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const select = canvas.getByRole("combobox", { name: /Must Visit/ });
 
     await user.selectOptions(select, MustVisit);
@@ -157,6 +208,7 @@ export const ReordersVisibleAttractionWithoutMovingFilteredCards: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const mustVisitFilter = canvas.getByRole("combobox", {
       name: /Must Visit/
     });
@@ -188,6 +240,7 @@ export const FiltersByTraditional: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const select = canvas.getByRole("combobox", { name: /Traditional/ });
 
     await user.selectOptions(select, Traditional);
@@ -221,6 +274,7 @@ export const FiltersByStability: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const select = canvas.getByRole("combobox", { name: /Stability/ });
 
     await user.selectOptions(select, Stable);
@@ -254,6 +308,7 @@ export const FiltersByCategory: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
     const select = canvas.getByRole("combobox", { name: /Category/ });
 
     await user.selectOptions(select, ArtMuseum);
@@ -287,6 +342,7 @@ export const ResetFiltersRestoresAllAttractions: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
 
     await user.selectOptions(
       canvas.getByRole("combobox", { name: /Countrywide/ }),

@@ -3,6 +3,7 @@ import { expect, fireEvent, waitFor, within } from "storybook/test";
 import Board from "./Board";
 import type { TouristDestination } from "./Board.types";
 import {
+  BoardWithHeader,
   findAttractionCard,
   makeAttraction,
   oneAttractionBoard,
@@ -14,6 +15,8 @@ import {
 const meta: Meta<typeof Board> = {
   title: "features/AI-table/components/Board/Manage",
   component: Board,
+  render: (args) => <BoardWithHeader {...args} />,
+  args: { mode: "edit" },
   decorators: [styleDecorator]
 };
 export default meta;

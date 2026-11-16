@@ -47,7 +47,22 @@ const meta: Meta<typeof MyTrip> = {
   decorators: [
     (Story, context) => {
       server?.shutdown();
-      server = makeServer();
+      server = makeServer({
+        tripDateOverrides: [
+          {
+            tripId: 1,
+            fromDate: "2099-06-10",
+            toDate: "2099-06-24"
+          }
+        ]
+      });
+      if (context.parameters.trip) {
+        server.get(
+          "http://localhost:8080/trips/1",
+          () => context.parameters.trip,
+          { timing: 0 }
+        );
+      }
       boardMoves.mockClear();
       server.put(
         "http://localhost:8080/trips/:id/board/attractions/:attractionId",
@@ -118,7 +133,7 @@ const waitForPrepareMode = (canvasElement: HTMLElement): Promise<void> =>
     () => {
       expect(
         within(canvasElement).getByRole("button", { name: /Prepare/ })
-      ).toHaveClass("mode-btn-active");
+      ).toHaveAttribute("aria-current", "step");
     },
     { timeout: 3000 }
   );
@@ -131,6 +146,60 @@ const columnFor = (canvasElement: HTMLElement, title: string): HTMLElement =>
     .closest(".attraction-board-column") as HTMLElement;
 
 export const Primary: Story = {};
+
+export const HeaderCardOwnsTripSteps: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      tripId: 1,
+      tripName: "Italy",
+      fromDate: "2025-06-10",
+      toDate: "2025-06-24",
+      archived: false
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const header = within(
+      await canvas.findByRole("region", { name: "Trip overview" })
+    );
+
+    await expect(
+      header.getByRole("button", { name: "My Trips" })
+    ).toBeVisible();
+    await expect(header.getByRole("heading", { name: "Italy" })).toBeVisible();
+    await expect(header.getByText(/Jun 10, 2025.*Jun 24, 2025/)).toBeVisible();
+    await expect(header.getByText("15 days")).toBeVisible();
+    await expect(header.getByRole("button", { name: "Search" })).toBeVisible();
+
+    const steps = within(
+      header.getByRole("navigation", { name: "Trip steps" })
+    );
+    await expect(
+      steps.getAllByRole("button").map((button) => button.ariaLabel)
+    ).toEqual(["Prepare", "Edit", "Plan", "Review"]);
+    await expect(steps.getByText("Choose attractions")).toBeVisible();
+    await expect(steps.getByText("Add hours, lengths, notes")).toBeVisible();
+    await expect(steps.getByText("See what's scheduled")).toBeVisible();
+    await expect(steps.getByText("Rate visited attractions")).toBeVisible();
+    await expect(
+      canvasElement.querySelector(".attraction-board-wrapper .mode-selector")
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const LongTripName: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      tripId: 1,
+      tripName: "An Italian journey from the coast to the mountains",
+      fromDate: "2025-06-10",
+      toDate: "2025-06-24",
+      archived: false
+    }
+  }
+};
 
 export const LandsInPrepareModeForEmptyTrip: Story = {
   play: async ({ canvasElement }) => {
@@ -149,6 +218,48 @@ export const LandsInPrepareModeForEmptyTrip: Story = {
   }
 };
 
+export const PrepareOnlyContinuesToEdit: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await waitForPrepareMode(canvasElement);
+
+    const prepare = canvas.getByRole("button", { name: "Prepare" });
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    const plan = canvas.getByRole("button", { name: "Plan" });
+    const review = canvas.getByRole("button", { name: "Review" });
+
+    await expect(plan).toBeDisabled();
+    await expect(plan).toHaveAccessibleDescription("After Edit");
+    await expect(review).toBeDisabled();
+    await expect(review).toHaveAccessibleDescription("After Edit");
+    await user.click(plan);
+    await user.click(review);
+    await user.keyboard("{Alt>}3{/Alt}{Alt>}4{/Alt}");
+    await expect(prepare).toHaveAttribute("aria-current", "step");
+
+    await user.keyboard("{Control>}v{/Control}");
+    await expect(edit).toHaveAttribute("aria-current", "step");
+    await expect(plan).toBeEnabled();
+    await expect(plan).toHaveAccessibleDescription("See what's scheduled");
+    await expect(review).toBeDisabled();
+    await expect(review).toHaveAccessibleDescription("After the trip");
+    await user.keyboard("{Alt>}4{/Alt}");
+    await expect(edit).toHaveAttribute("aria-current", "step");
+
+    await user.click(plan);
+    await expect(plan).toHaveAttribute("aria-current", "step");
+    await user.keyboard("{Control>}v{/Control}");
+    await expect(prepare).toHaveAttribute("aria-current", "step");
+    await expect(plan).toHaveAccessibleDescription("After Edit");
+    await expect(review).toHaveAccessibleDescription("After Edit");
+
+    await user.click(edit);
+    await expect(edit).toHaveAttribute("aria-current", "step");
+    await expect(plan).toBeEnabled();
+  }
+};
+
 export const LandsInEditModeWhenTripHasSavedAttractions: Story = {
   parameters: { savedAttractions: SAVED_ATTRACTIONS },
   play: async ({ canvasElement }) => {
@@ -160,12 +271,96 @@ export const LandsInEditModeWhenTripHasSavedAttractions: Story = {
       { timeout: 5000 }
     );
 
-    await expect(canvas.getByRole("button", { name: /Edit/ })).toHaveClass(
-      "mode-btn-active"
+    await expect(canvas.getByRole("button", { name: /Edit/ })).toHaveAttribute(
+      "aria-current",
+      "step"
     );
     await expect(
       canvas.getByRole("button", { name: /Prepare/ })
-    ).not.toHaveClass("mode-btn-active");
+    ).not.toHaveAttribute("aria-current");
+  }
+};
+
+export const PastTripLandsInReview: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      tripId: 1,
+      tripName: "Italy",
+      fromDate: "2025-06-10",
+      toDate: "2025-06-24",
+      archived: false
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const review = await canvas.findByRole("button", { name: "Review" });
+
+    await expect(review).toHaveAttribute("aria-current", "step");
+    await expect(
+      canvas.getByRole("button", { name: "Excellent" })
+    ).toBeVisible();
+    await user.click(canvas.getByRole("button", { name: "Prepare" }));
+    await expect(review).toBeDisabled();
+    await expect(review).toHaveAccessibleDescription("After Edit");
+    await user.keyboard("{Alt>}4{/Alt}");
+    await expect(
+      canvas.getByRole("button", { name: "Prepare" })
+    ).toHaveAttribute("aria-current", "step");
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await expect(review).toBeEnabled();
+    await user.keyboard("{Alt>}4{/Alt}");
+    await expect(review).toHaveAttribute("aria-current", "step");
+  }
+};
+
+export const EmptyPastTripLandsInReview: Story = {
+  parameters: {
+    trip: {
+      tripId: 1,
+      tripName: "Italy",
+      fromDate: "2025-06-10",
+      toDate: "2025-06-24",
+      archived: false
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("button", { name: "Review" })
+    ).toHaveAttribute("aria-current", "step");
+    await expect(canvas.getByRole("button", { name: "Plan" })).toBeEnabled();
+  }
+};
+
+export const ArchivedTripRemainsReviewable: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      tripId: 1,
+      tripName: "Italy",
+      fromDate: "2099-06-10",
+      toDate: "2099-06-24",
+      archived: true
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const review = await canvas.findByRole("button", { name: "Review" });
+
+    await expect(review).toHaveAttribute("aria-current", "step");
+    await user.click(canvas.getByRole("button", { name: "Plan" }));
+    await expect(review).toBeEnabled();
+    await expect(review).toHaveAccessibleDescription(
+      "Rate visited attractions"
+    );
+    await user.click(review);
+    await expect(review).toHaveAttribute("aria-current", "step");
+    await expect(
+      canvas.getByRole("button", { name: "Excellent" })
+    ).toBeVisible();
   }
 };
 
@@ -180,8 +375,9 @@ export const SaveToTripButtonIsAbsentInEditMode: Story = {
       { timeout: 5000 }
     );
 
-    await expect(canvas.getByRole("button", { name: /Edit/ })).toHaveClass(
-      "mode-btn-active"
+    await expect(canvas.getByRole("button", { name: /Edit/ })).toHaveAttribute(
+      "aria-current",
+      "step"
     );
     await expect(
       canvas.queryByRole("button", { name: /Save to trip/ })
@@ -673,8 +869,7 @@ export const KeepsExistingAttractionsWhenAddingMore: Story = {
   }
 };
 
-// Presses Alt+<digit> and waits for the matching mode button to become active.
-// The Board's keydown handler lives on window, so no element needs focus first.
+// The header handles shortcuts on window, so no element needs focus first.
 const switchModeWithShortcut = async (
   canvasElement: HTMLElement,
   user: User,
@@ -685,29 +880,44 @@ const switchModeWithShortcut = async (
   await waitFor(() =>
     expect(
       within(canvasElement).getByRole("button", { name: activeButton })
-    ).toHaveClass("mode-btn-active")
+    ).toHaveAttribute("aria-current", "step")
   );
 };
 
 export const SwitchesBoardModesWithAltNumberShortcuts: Story = {
+  parameters: {
+    trip: {
+      tripId: 1,
+      tripName: "Italy",
+      fromDate: "2025-06-10",
+      toDate: "2025-06-24",
+      archived: false
+    }
+  },
   play: async ({ canvasElement }) => {
     const user = setupUser();
-    await waitForPrepareMode(canvasElement);
+    await within(canvasElement).findByRole("region", {
+      name: "Trip overview"
+    });
 
+    await user.click(
+      within(canvasElement).getByRole("button", { name: "Prepare" })
+    );
+    await waitForPrepareMode(canvasElement);
     await switchModeWithShortcut(canvasElement, user, "2", /Edit/);
     await switchModeWithShortcut(canvasElement, user, "3", /Plan/);
     await switchModeWithShortcut(canvasElement, user, "4", /Review/);
     await switchModeWithShortcut(canvasElement, user, "1", /Prepare/);
 
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: /Edit/ })).not.toHaveClass(
-      "mode-btn-active"
-    );
-    await expect(canvas.getByRole("button", { name: /Plan/ })).not.toHaveClass(
-      "mode-btn-active"
-    );
+    await expect(
+      canvas.getByRole("button", { name: /Edit/ })
+    ).not.toHaveAttribute("aria-current");
+    await expect(
+      canvas.getByRole("button", { name: /Plan/ })
+    ).not.toHaveAttribute("aria-current");
     await expect(
       canvas.getByRole("button", { name: /Review/ })
-    ).not.toHaveClass("mode-btn-active");
+    ).not.toHaveAttribute("aria-current");
   }
 };

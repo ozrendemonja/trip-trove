@@ -1,5 +1,8 @@
 import { Rating } from "../../my-trip/domain/Trip.types";
 import type { VisitHistoryMap } from "../utils/Mapper";
+import type { ReactNode } from "react";
+
+export type PlanningTextField = "note" | "working-hours" | "visit-time";
 
 export interface Attraction {
   id: number; // internal identifier, not displayed
@@ -43,6 +46,9 @@ export interface AttractionListProps {
   updateById?: (attractionId: number, partial: Partial<Attraction>) => void; // optional helper
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
   readOnly?: boolean;
+  planningDisabled?: boolean;
+  correction?: { attractionId: number; field: PlanningTextField };
+  renderPlanningFeedback?: (attractionId: number) => ReactNode;
   // Whether add/remove/move of attraction cards is allowed even when per-item
   // detail edits are disabled (true in edit and prepare modes).
   canManageAttractions?: boolean;

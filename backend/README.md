@@ -30,6 +30,25 @@ Run the same backend validation used by CI:
 ./gradlew build --console=plain
 ```
 
+## Trip Planning Writes
+
+MVP assumes one user editing a trip in one browser tab. Concurrent editing
+across users or tabs is unsupported.
+
+Board and trip-date writes use ordinary request bodies and return `204`.
+No planning revision or idempotency metadata is required or returned. Normal
+validation and database transactions still apply, including existing
+name/membership conflicts.
+
+After a timeout or lost response, reload and inspect the saved planning before
+deliberately submitting another write. There is no automatic replay or
+exactly-once retry guarantee.
+
+See [the single-editor decision](../docs/adr/0001-trip-planning-actions.md).
+The frontend's [tracked API contract](../client-app/openapi-doc/api-docs.json)
+matches this contract; run `yarn openapi-ts` in `client-app` to regenerate the
+ignored SDK after contract changes.
+
 ## Location-grouped Attraction Search
 
 Country and region attraction searches always group results by location.

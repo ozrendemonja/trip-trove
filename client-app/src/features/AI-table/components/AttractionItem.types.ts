@@ -1,5 +1,5 @@
 import { Rating } from "../../my-trip/domain/Trip.types";
-import { Attraction } from "./AttractionList.types";
+import { Attraction, type PlanningTextField } from "./AttractionList.types";
 import type { VisitHistoryEntry } from "../../my-trip/domain/VisitHistory.types";
 
 export interface AttractionItemProps {
@@ -15,6 +15,8 @@ export interface AttractionItemProps {
   onTogglePermanentlyClosed?: (isClosed: boolean) => void;
   onDelete?: () => void;
   readOnly?: boolean;
+  planningDisabled?: boolean;
+  correctionField?: PlanningTextField;
   canManageAttractions?: boolean;
   reviewMode?: boolean;
   reviewData?: { rating: Rating; reviewNote: string; wouldVisitAgain: boolean };

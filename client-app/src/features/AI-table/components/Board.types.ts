@@ -19,6 +19,7 @@ export interface BoardProps {
   mode: BoardMode;
   initialCities?: TouristDestination[]; // optional; defaults to empty
   tripId?: number; // needed to persist board changes and attraction reviews
+  onPlanningBlockedChange?: (blocked: boolean) => void;
   initialReviewData?: Record<
     number,
     { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }

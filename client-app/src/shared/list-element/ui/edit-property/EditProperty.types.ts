@@ -9,6 +9,7 @@ export interface EditPropertyProps {
   editIconAriaLabel: string;
 
   isFormValid: boolean;
+  pending?: boolean;
 
   children: React.ReactNode;
 

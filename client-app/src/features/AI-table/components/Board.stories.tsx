@@ -45,7 +45,10 @@ export const PlanMode: Story = {
 export const ReviewMode: Story = {
   args: {
     initialCities,
-    tripId: 1
+    tripId: 1,
+    initialSavedAttractionIds: initialCities.flatMap((city) =>
+      city.columns.flatMap((column) => column.tasks.map((task) => task.id))
+    )
   },
   decorators: [withServer],
   play: async ({ canvasElement }) => {

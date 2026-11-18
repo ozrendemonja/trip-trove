@@ -29,6 +29,8 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onTogglePermanentlyClosed,
   onDelete,
   readOnly,
+  planningDisabled,
+  correctionField,
   canManageAttractions,
   reviewMode,
   reviewData,
@@ -38,6 +40,9 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   visitHistory
 }) => {
   const review = useReviewStyles();
+  const noteDisabled = planningDisabled && correctionField !== "note";
+  const hoursDisabled = planningDisabled && correctionField !== "working-hours";
+  const visitDisabled = planningDisabled && correctionField !== "visit-time";
   // Attractions in the "Excluded Attractions" column were deliberately dropped
   // from the trip, so they are not part of the review flow and offer no
   // "add to trip" form. Every excluded column id contains "_excluded".
@@ -289,6 +294,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
           <button
             type="button"
             className="mustvisit-toggle-btn"
+            disabled={planningDisabled}
             onClick={onToggleMustVisit}
             title={
               attraction.mustVisit ? "Unmark must visit" : "Mark must visit"
@@ -313,6 +319,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
           <button
             type="button"
             className="attraction-delete-btn"
+            disabled={planningDisabled}
             onClick={onDelete}
             title="Remove attraction from trip"
             aria-label={`Remove ${attraction.name} from trip`}
@@ -348,6 +355,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                     <button
                       type="button"
                       className="hours-edit-btn"
+                      disabled={hoursDisabled}
                       onClick={startEditHours}
                       title="Edit working hours"
                     >
@@ -360,6 +368,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                       <button
                         type="button"
                         className="hours-add-btn"
+                        disabled={hoursDisabled}
                         onClick={startAddHours}
                         title="Add working hours"
                       >
@@ -374,6 +383,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                   <button
                     type="button"
                     className="hours-add-btn"
+                    disabled={hoursDisabled}
                     onClick={startAddHours}
                     title="Add working hours"
                   >
@@ -392,6 +402,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                     <button
                       type="button"
                       className="visit-edit-btn"
+                      disabled={visitDisabled}
                       onClick={startEditVisit}
                       title="Edit visit time"
                     >
@@ -404,6 +415,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                 <button
                   type="button"
                   className="visit-add-btn"
+                  disabled={visitDisabled}
                   onClick={startAddVisit}
                   title="Add visit time"
                 >
@@ -417,6 +429,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
               <input
                 ref={hoursInputRef}
                 className="hours-input"
+                disabled={hoursDisabled}
                 value={hoursDraft}
                 onChange={(e) => setHoursDraft(e.target.value)}
                 placeholder="Working hours"
@@ -432,6 +445,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                   type="button"
                   onClick={saveEditHours}
                   className="hours-save-btn"
+                  disabled={hoursDisabled}
                 >
                   Save
                 </button>
@@ -450,6 +464,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
               <input
                 ref={visitInputRef}
                 className="visit-input"
+                disabled={visitDisabled}
                 value={visitDraft}
                 onChange={(e) => setVisitDraft(e.target.value)}
                 placeholder="Visit time"
@@ -465,6 +480,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                   type="button"
                   onClick={saveEditVisit}
                   className="visit-save-btn"
+                  disabled={visitDisabled}
                 >
                   Save
                 </button>
@@ -502,6 +518,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                       <button
                         type="button"
                         className="note-edit-btn"
+                        disabled={noteDisabled}
                         onClick={startEdit}
                         title="Edit note"
                       >
@@ -511,6 +528,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                       <button
                         type="button"
                         className="note-add-btn"
+                        disabled={noteDisabled}
                         onClick={startAdd}
                         title="Add note"
                       >
@@ -523,6 +541,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                 <div className="note-edit-wrap">
                   <textarea
                     className="note-textarea"
+                    disabled={noteDisabled}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={3}
@@ -539,6 +558,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
                       type="button"
                       onClick={saveEdit}
                       className="note-save-btn"
+                      disabled={noteDisabled}
                     >
                       Save
                     </button>
@@ -562,6 +582,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
               <button
                 type="button"
                 className="note-add-inline-btn"
+                disabled={noteDisabled}
                 onClick={startAdd}
                 title="Add note"
               >

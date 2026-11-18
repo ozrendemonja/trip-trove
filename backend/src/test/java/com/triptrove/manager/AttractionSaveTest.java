@@ -160,9 +160,13 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         String attractionName = "Test attraction 0";
         var request = new SaveAttractionRequest(false, null, 2, attractionName, null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
-
-        Long id = attractionRepo.findByName(attractionName).get(1).getId();
+        var response = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn().getResponse();
+        Long id = attractionRepo.findByName(attractionName).stream()
+                .filter(attraction -> attraction.getCity().map(city -> city.getId().equals(2)).orElse(false))
+                .findFirst().orElseThrow().getId();
+        assertThat(response.getHeader(HttpHeaders.LOCATION)).isEqualTo("http://localhost/attractions/" + id);
         assertThat(attractionRepo.findById(id).map(Attraction::getName)).hasValue(attractionName);
         assertThat(attractionRepo.findById(id).map(Attraction::isCountrywide)).hasValue(false);
         assertThat(attractionRepo.findById(id).map(Attraction::getRegion).map(Region::getId)).hasValue(cityRepo.findById(2).orElseThrow().getRegion().getId());
@@ -206,7 +210,13 @@ class AttractionSaveTest extends AbstractIntegrationTest {
         String attractionName = "Test attraction 0";
         var request = new SaveAttractionRequest(false, 2, null, attractionName, null, null, null, AttractionCategoryDTO.BEVERAGE_SPOT, AttractionTypeDTO.STABLE, true, false, null, "From test_user", LocalDate.now().minusDays(23), null);
 
-        mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/attractions/" + attractionRepo.findByName(attractionName).get(1).getId()));
+        var response = mockMvc.perform(post("/attractions").contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andReturn().getResponse();
+        var created = attractionRepo.findByName(attractionName).stream()
+                .filter(attraction -> attraction.getRegion().getId().equals(2) && attraction.getCity().isEmpty())
+                .findFirst().orElseThrow();
+        assertThat(response.getHeader(HttpHeaders.LOCATION)).isEqualTo("http://localhost/attractions/" + created.getId());
     }
 
     @Test

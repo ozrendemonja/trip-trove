@@ -268,6 +268,37 @@ final class KeysetTestFixtures {
                 """).executeUpdate();
     }
 
+    static void populateTripBoardWithDistinctRelationships(EntityManager entityManager, int size) {
+        var relatedSize = size * 2;
+        countries(entityManager, relatedSize);
+        insertRegions(entityManager, relatedSize, "generated.id");
+        insertCities(entityManager, relatedSize);
+        entityManager.createNativeQuery("""
+                INSERT INTO information_provider(id, name, created_on)
+                SELECT id, 'Planning provider ' || id, TIMESTAMP '2026-09-01 00:00:00'
+                FROM generate_series(1, :size) AS generated(id)
+                """).setParameter("size", relatedSize).executeUpdate();
+        insertAttractions(entityManager, relatedSize, "generated.id", "generated.id", "null");
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET country_id = id, address = 'Planning address',
+                    tip = 'Catalogue tip', visit_period_from = DATE '2026-04-01',
+                    visit_period_to = DATE '2026-10-01'
+                """).executeUpdate();
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET main_attraction_id = id + :size WHERE id <= :size
+                """).setParameter("size", size).executeUpdate();
+        trips(entityManager, size);
+        entityManager.createNativeQuery("""
+                INSERT INTO trip_attraction(id, trip_id, attraction_id, created_on, status,
+                    attraction_group, board_position, must_visit, working_hours, visit_time, note,
+                    review_note, would_visit_again)
+                SELECT id, 1, id, TIMESTAMP '2026-09-28 12:00:00', 'PLANNED',
+                    'PRIMARY', id, true, '09:00-17:00', '1h 30m', 'Trip note',
+                    'Review note', true
+                FROM generate_series(1, :size) AS generated(id)
+                """).setParameter("size", size).executeUpdate();
+    }
+
     static void populateBucketListDetails(EntityManager entityManager) {
         entityManager.createNativeQuery("""
                 UPDATE bucket_list_item

@@ -9,6 +9,56 @@ import type {
   VisitHistoryEntry
 } from "../../my-trip/domain/VisitHistory.types";
 import type { Rating } from "../../my-trip/domain/Trip.types";
+import type { TripAttractionFromServer } from "../../my-trip/infra/TripApi";
+
+const GROUP_TO_COLUMN = {
+  PRIMARY: "Top Attractions",
+  SECONDARY: "Secondary Spots",
+  EXCLUDED: "Excluded Attractions"
+} as const;
+
+export function mapSavedTripAttractionsToBoard(
+  items: TripAttractionFromServer[]
+): TouristDestination[] {
+  const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
+  for (const item of items) {
+    const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
+    const cityKey = cityOrRegion || item.countryName;
+    const columnTitle = GROUP_TO_COLUMN[item.attractionGroup];
+    let columns = cityColumnMap.get(cityKey);
+    if (!columns) {
+      columns = new Map();
+      cityColumnMap.set(cityKey, columns);
+    }
+    const tasks = columns.get(columnTitle) ?? [];
+    tasks.push({
+      id: item.attractionId,
+      mustVisit: item.mustVisit,
+      stable: item.attractionType === "STABLE",
+      isTraditional: item.isTraditional,
+      isCountrywide: item.isCountrywide,
+      name: item.attractionName,
+      address: item.attractionAddress || "",
+      category: item.attractionCategory || "",
+      infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
+      note: item.note || item.tip || "",
+      optimalVisitPeriod: item.optimalVisitPeriod
+        ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
+        : undefined,
+      workingHours: item.workingHours || undefined,
+      VisitTime: item.visitTime || ""
+    });
+    columns.set(columnTitle, tasks);
+  }
+  return Array.from(cityColumnMap, ([name, columns]) => ({
+    name,
+    columns: Object.values(GROUP_TO_COLUMN).map((title) => ({
+      id: `${name.toLowerCase().replace(/\s+/g, "_")}_${title.toLowerCase().replace(/\s+/g, "_")}`,
+      title,
+      tasks: columns.get(title) ?? []
+    }))
+  }));
+}
 
 function toStableFlag(type: AttractionType): boolean {
   return type === AttractionType.STABLE;

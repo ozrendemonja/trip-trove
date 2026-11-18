@@ -1,4 +1,4 @@
-import { Link } from "@fluentui/react-components";
+import { Caption1, Link } from "@fluentui/react-components";
 import { Search24Regular } from "@fluentui/react-icons";
 import {
   searchAttraction,
@@ -14,7 +14,10 @@ import React, { useState } from "react";
 import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
 import { Flex } from "../../shared/ui/Flex";
 
-const searchConfig: Omit<AutocompleteFieldProps, "getSuggestions" | "onSelectItem"> = {
+const searchConfig: Omit<
+  AutocompleteFieldProps,
+  "getSuggestions" | "onSelectItem"
+> = {
   label: "",
   placeholder: "Search",
   required: false
@@ -30,7 +33,8 @@ interface SearchOptionAction {
 
 interface SearchAttractionsModalInterface {
   text: string;
-  onUpdateClick: (value: SearchTarget) => void;
+  onUpdateClick: (value: SearchTarget) => void | Promise<void>;
+  planningBlocked?: boolean;
 }
 
 export interface SearchTarget {
@@ -70,12 +74,20 @@ const SearchAttractionsModal: React.FunctionComponent<
       editIcon={<Search24Regular />}
       text={props.text}
       onUpdateClick={async () => {
-        props.onUpdateClick({ whereToSearch: selected, id: selectedId ?? -1 });
+        await props.onUpdateClick({
+          whereToSearch: selected,
+          id: selectedId ?? -1
+        });
       }}
-      isFormValid={selectedId != undefined}
+      isFormValid={selectedId != undefined && !props.planningBlocked}
       contentClassName={classes.searchModalContent}
     >
       <Flex gap={0} className={classes.searchModalLayout}>
+        {props.planningBlocked && (
+          <Caption1>
+            Resolve the pending planning change before adding attractions.
+          </Caption1>
+        )}
         <div
           role="toolbar"
           aria-label="Search options"

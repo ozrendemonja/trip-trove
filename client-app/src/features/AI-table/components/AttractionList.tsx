@@ -20,6 +20,9 @@ const AttractionList: React.FC<AttractionListProps> = ({
   onTogglePermanentlyClosed,
   onDeleteTask,
   readOnly,
+  planningDisabled,
+  correction,
+  renderPlanningFeedback,
   canManageAttractions,
   reviewMode,
   reviewSelection,
@@ -40,7 +43,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
           )}
           <li
             className="attraction"
-            draggable
+            draggable={!planningDisabled}
             onDragStart={onDragStart(attraction.id)}
             data-column={columnId}
             data-id={attraction.id}
@@ -84,6 +87,12 @@ const AttractionList: React.FC<AttractionListProps> = ({
                   : undefined
               }
               readOnly={readOnly}
+              planningDisabled={planningDisabled}
+              correctionField={
+                correction && correction.attractionId === attraction.id
+                  ? correction.field
+                  : undefined
+              }
               canManageAttractions={canManageAttractions}
               reviewMode={reviewMode}
               reviewData={reviewSelection?.[attraction.id]}
@@ -92,6 +101,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
               onToggleWouldVisitAgain={onToggleWouldVisitAgain}
               visitHistory={visitHistory?.get(attraction.id)}
             />
+            {renderPlanningFeedback?.(attraction.id)}
           </li>
         </React.Fragment>
       ))}

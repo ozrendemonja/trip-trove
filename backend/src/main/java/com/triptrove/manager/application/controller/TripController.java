@@ -159,7 +159,8 @@ public class TripController {
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateAttractionGroupRequest request) {
+    public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateAttractionGroupRequest request) {
         tripService.updateAttractionGroup(id, attractionId, request.attractionGroup().toGroup());
     }
 
@@ -175,7 +176,7 @@ public class TripController {
                             @Schema(implementation = ErrorResponse.class))})
             })
     public void moveAttractionOnBoard(@PathVariable Long id, @PathVariable Long attractionId,
-                                      @RequestBody @Valid MoveAttractionOnBoardRequest request) {
+            @RequestBody @Valid MoveAttractionOnBoardRequest request) {
         tripService.moveAttractionOnBoard(id, attractionId, request.targetGroup().toGroup(),
                 request.previousAttractionId(), request.nextAttractionId());
     }
@@ -203,7 +204,8 @@ public class TripController {
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionMustVisit(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionMustVisitRequest request) {
+    public void updateAttractionMustVisit(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateTripAttractionMustVisitRequest request) {
         tripService.updateAttractionMustVisit(id, attractionId, request.mustVisit());
     }
 
@@ -227,7 +229,8 @@ public class TripController {
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionWorkingHours(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionWorkingHoursRequest request) {
+    public void updateAttractionWorkingHours(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateTripAttractionWorkingHoursRequest request) {
         tripService.updateAttractionWorkingHours(id, attractionId, request.workingHours());
     }
 
@@ -239,7 +242,8 @@ public class TripController {
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionVisitTime(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionVisitTimeRequest request) {
+    public void updateAttractionVisitTime(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateTripAttractionVisitTimeRequest request) {
         tripService.updateAttractionVisitTime(id, attractionId, request.visitTime());
     }
 
@@ -251,7 +255,8 @@ public class TripController {
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))})
     })
-    public void updateAttractionNote(@PathVariable Long id, @PathVariable Long attractionId, @RequestBody @Valid UpdateTripAttractionNoteRequest request) {
+    public void updateAttractionNote(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateTripAttractionNoteRequest request) {
         tripService.updateAttractionNote(id, attractionId, request.note());
     }
 
@@ -269,8 +274,7 @@ public class TripController {
             @ApiResponse(description = "List of attractions under the trip", responseCode = "200"),
     })
     public List<GetTripAttractionResponse> getAttractions(@PathVariable Long id) {
-        return tripService.getAttractions(id)
-                .stream()
+        return tripService.getAttractions(id).stream()
                 .map(GetTripAttractionResponse::from)
                 .toList();
     }

@@ -28,6 +28,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   ] = useBooleanState(false);
   const [submitError, setSubmitError] = useState<string>();
   const formRef = useRef<HTMLDivElement>(null);
+  const focusSubmitError = useRef(false);
   const headingId = useId();
 
   const isControlled = props.isOpen !== undefined;
@@ -41,7 +42,24 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     setSubmitError(undefined);
   }, [props.submitErrorResetKey]);
 
+  useEffect(() => {
+    if (
+      !submitError ||
+      blockButton ||
+      props.pending ||
+      !focusSubmitError.current
+    )
+      return;
+    focusSubmitError.current = false;
+    formRef.current
+      ?.querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]'
+      )
+      ?.focus();
+  }, [submitError, blockButton, props.pending]);
+
   const handleClose = (): void => {
+    if (props.pending) return;
     setSubmitError(undefined);
     if (isControlled) {
       props.onDismiss?.();
@@ -52,7 +70,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
   };
 
   const handleSubmit = async (): Promise<void> => {
-    if (blockButton || !props.isFormValid) {
+    if (blockButton || props.pending || !props.isFormValid) {
       return;
     }
     disableDiaglogButtons();
@@ -65,19 +83,13 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
     } catch (error) {
       const isConflict =
         getApiErrorCode(error) === (props.conflictErrorCode ?? "NAME_CONFLICT");
+      focusSubmitError.current = isConflict;
       setSubmitError(
         isConflict && props.conflictErrorMessage
           ? props.conflictErrorMessage
           : (props.saveErrorMessage ??
               "The changes weren't saved. Your details are still here, so you can review or edit them and try again.")
       );
-      if (isConflict) {
-        formRef.current
-          ?.querySelector<HTMLElement>(
-            'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, [role="combobox"]'
-          )
-          ?.focus();
-      }
     } finally {
       enableDiaglogButtons();
     }
@@ -120,6 +132,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
                   className={classes.closeIcon}
                   icon={<Dismiss24Regular />}
                   aria-label="Close modify popup"
+                  disabled={props.pending}
                   onClick={handleClose}
                 />
               }
@@ -145,7 +158,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
             <DialogActions className={classes.footer}>
               <PendingButton
                 appearance="primary"
-                pending={blockButton}
+                pending={blockButton || !!props.pending}
                 pendingText={pendingSubmitText}
                 onClick={handleSubmit}
                 disabled={!props.isFormValid}
@@ -155,7 +168,7 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
               <Button
                 appearance="secondary"
                 onClick={handleClose}
-                disabled={blockButton}
+                disabled={blockButton || props.pending}
               >
                 Cancel
               </Button>

@@ -818,6 +818,48 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void tripBoardReadWithDistinctOptionalRelationshipsUsesTwoSelects(int resultSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, resultSize);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(resultSize));
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void tripMetadataUsesOneSelectRegardlessOfBoardSize(int resultSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, resultSize);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripId").exists());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void tripDateLookupUsesOneSelectRegardlessOfResultSize(int resultSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, resultSize);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips").param("date", "2026-09-15").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(resultSize));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {1, 2, 3})
     void bucketListRegionAndTripMappingUsesOneSelect(int resultSize) {
         KeysetTestFixtures.linkBucketListItemsToRegionsAndTrips(entityManager);

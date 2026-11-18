@@ -6,11 +6,11 @@ import com.triptrove.manager.domain.repo.AttractionRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.infra.ManagerProperties;
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -50,6 +50,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateTripName(Long id, String newName) {
         log.atInfo().log("Updating the trip name");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
@@ -63,6 +64,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip) {
         log.atInfo().log("Updating the trip range");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
@@ -89,6 +91,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void attachAttraction(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Add attraction under trip for trip '{}'", tripId);
         if (tripAttractionRepo.existsByTripIdAndAttractionId(tripId, attractionId)) {
@@ -106,9 +109,11 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void reviewAttraction(Long tripId, Long attractionId, Rating rating, String reviewNote) {
         log.atInfo().log("Reviewing attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.recordVisit(rating, reviewNote);
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -116,9 +121,11 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void clearReview(Long tripId, Long attractionId) {
         log.atInfo().log("Clearing review for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.clearReview();
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -126,6 +133,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Updating attraction group for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
@@ -169,6 +177,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateAttractionMustVisit(Long tripId, Long attractionId, boolean mustVisit) {
         log.atInfo().log("Updating must visit for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
@@ -178,15 +187,18 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateAttractionWouldVisitAgain(Long tripId, Long attractionId, boolean wouldVisitAgain) {
         log.atInfo().log("Updating would visit again for attraction '{}' under trip '{}'", attractionId, tripId);
-        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
+        var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId)
+                .orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         attraction.setWouldVisitAgain(wouldVisitAgain);
         tripAttractionRepo.save(attraction);
         log.atInfo().log("Would visit again updated for attraction '{}' under trip '{}'", attractionId, tripId);
     }
 
     @Override
+    @Transactional
     public void updateAttractionWorkingHours(Long tripId, Long attractionId, String workingHours) {
         log.atInfo().log("Updating working hours for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
@@ -196,6 +208,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateAttractionVisitTime(Long tripId, Long attractionId, String visitTime) {
         log.atInfo().log("Updating visit time for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
@@ -205,6 +218,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void updateAttractionNote(Long tripId, Long attractionId, String note) {
         log.atInfo().log("Updating note for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
@@ -214,6 +228,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
         if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {
@@ -225,6 +240,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TripAttractionDetails> getAttractions(Long tripId) {
         log.atInfo().log("Getting attractions for trip '{}'", tripId);
         if (!tripRepo.existsById(tripId)) {

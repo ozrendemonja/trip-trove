@@ -206,10 +206,13 @@ test("Detach attraction in Review mode after attaching it", async ({
 
   await expect(page.getByLabel("Remove from trip").first()).toBeVisible();
 
-  await page.getByLabel("Remove from trip").first().click();
+  const attraction = page.locator(".attraction-item", {
+    hasText: "Casino Square"
+  });
+  await attraction.getByLabel("Remove from trip").click();
 
   await expect(
-    page.getByRole("button", { name: /Add to trip/i }).first()
+    attraction.getByRole("button", { name: /Add to trip/i })
   ).toBeVisible();
   await expect(page).toHaveScreenshot();
 });

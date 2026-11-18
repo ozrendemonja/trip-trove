@@ -663,7 +663,8 @@ export default function makeServer(options?: {
         "/trips/:id",
         (schema, request) => {
           const id = Number(request.params.id);
-          return schema.db.trips.findBy((t) => t.tripId === id);
+          const trip = schema.db.trips.findBy((t) => t.tripId === id);
+          return trip ?? new MirageResponse(404);
         },
         { timing: 400 }
       );
@@ -774,6 +775,7 @@ export default function makeServer(options?: {
               fromDate: body.fromDate,
               toDate: body.toDate
             });
+            return new MirageResponse(204);
           }
         },
         { timing: 400 }
@@ -782,6 +784,22 @@ export default function makeServer(options?: {
       // MyTrip loads a trip's saved attractions on mount. An empty list keeps a
       // freshly opened trip empty so the Board lands in "prepare" mode.
       this.get("/trips/:id/attractions", () => [], { timing: 200 });
+
+      this.post("/trips/:id/attractions", () => new MirageResponse(204), {
+        timing: 200
+      });
+
+      for (const path of [
+        "/trips/:id/board",
+        "/trips/:id/board/attractions/:attractionId",
+        "/trips/:id/attractions/:attractionId/group",
+        "/trips/:id/attractions/:attractionId/must-visit",
+        "/trips/:id/attractions/:attractionId/working-hours",
+        "/trips/:id/attractions/:attractionId/visit-time",
+        "/trips/:id/attractions/:attractionId/note"
+      ]) {
+        this.put(path, () => new MirageResponse(204), { timing: 200 });
+      }
 
       // Visit history for the given attraction ids across other trips.
       this.post(

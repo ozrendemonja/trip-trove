@@ -1,13 +1,16 @@
-import { Spinner } from "@fluentui/react-components";
+import {
+  MessageBar,
+  MessageBarBody,
+  Spinner
+} from "@fluentui/react-components";
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
 import {
   fetchTripById,
-  fetchTripAttractions,
+  fetchTripBoard,
   fetchAttractionsVisitHistory
 } from "./infra/TripApi";
-import type { TripAttractionFromServer } from "./infra/TripApi";
 import type { AttractionVisitHistory } from "./domain/VisitHistory.types";
 import Board from "../AI-table/components/Board";
 import type {
@@ -15,10 +18,10 @@ import type {
   Column,
   BoardMode
 } from "../AI-table/components/Board.types";
-import type { Attraction as BoardAttraction } from "../AI-table/components/AttractionList.types";
 import {
   mapServerResponseToTouristDestinations,
-  buildVisitHistoryMap
+  buildVisitHistoryMap,
+  mapSavedTripAttractionsToBoard
 } from "../AI-table/utils/Mapper";
 import {
   Attraction,
@@ -114,90 +117,13 @@ function mergeCities(
   return Array.from(cityMap.values());
 }
 
-// Convert saved trip attractions from the DB into TouristDestination[] using attraction group
-const GROUP_TO_COLUMN: Record<string, string> = {
-  PRIMARY: "Top Attractions",
-  SECONDARY: "Secondary Spots",
-  EXCLUDED: "Excluded Attractions"
-};
-
-function mapSavedTripAttractionsToBoard(
-  items: TripAttractionFromServer[]
-): TouristDestination[] {
-  // Group by city/region, then by column title
-  const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
-
-  for (const item of items) {
-    const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
-    const cityKey = cityOrRegion || item.countryName;
-    const columnTitle =
-      GROUP_TO_COLUMN[item.attractionGroup] || "Secondary Spots";
-
-    if (!cityColumnMap.has(cityKey)) {
-      cityColumnMap.set(cityKey, new Map());
-    }
-    const colMap = cityColumnMap.get(cityKey)!;
-    if (!colMap.has(columnTitle)) {
-      colMap.set(columnTitle, []);
-    }
-
-    const typeStr = item.attractionType || "";
-    const stable = typeStr === "STABLE";
-
-    colMap.get(columnTitle)!.push({
-      id: item.attractionId,
-      mustVisit: item.mustVisit,
-      stable,
-      isTraditional: item.isTraditional,
-      isCountrywide: item.isCountrywide,
-      name: item.attractionName,
-      address: item.attractionAddress || "",
-      category: item.attractionCategory || "",
-      infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
-      note: item.note || item.tip || "",
-      optimalVisitPeriod: item.optimalVisitPeriod
-        ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
-        : undefined,
-      workingHours: item.workingHours || undefined,
-      VisitTime: item.visitTime || ""
-    });
-  }
-
-  const cities: TouristDestination[] = [];
-  for (const [cityName, colMap] of Array.from(cityColumnMap.entries())) {
-    const baseId = cityName.toLowerCase().replace(/\s+/g, "_");
-    // Ensure standard columns exist
-    const columnOrder = Object.values(GROUP_TO_COLUMN);
-    const columns: { id: string; title: string; tasks: BoardAttraction[] }[] =
-      [];
-
-    for (const title of columnOrder) {
-      const colId = `${baseId}_${title.toLowerCase().replace(/\s+/g, "_")}`;
-      columns.push({
-        id: colId,
-        title,
-        tasks: colMap.get(title) || []
-      });
-    }
-    // Add any non-standard columns
-    for (const [title, tasks] of colMap.entries()) {
-      if (!columnOrder.includes(title)) {
-        const colId = `${baseId}_${title.toLowerCase().replace(/\s+/g, "_")}`;
-        columns.push({ id: colId, title, tasks });
-      }
-    }
-
-    cities.push({ name: cityName, columns });
-  }
-
-  return cities;
-}
-
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const classes = useClasses();
   const [trip, setTrip] = useState<Trip>();
+  const [planningBlocked, setPlanningBlocked] = useState(false);
+  const [loadError, setLoadError] = useState<string>();
   // The tripId each async source has finished loading for, so the Board's
   // landing mode is never computed from a previous trip's data.
   const [metadataTripId, setMetadataTripId] = useState<number | undefined>(
@@ -212,6 +138,13 @@ export const MyTrip: React.FC = () => {
     if (!tripId) return;
     fetchTripById(Number(tripId))
       .then(setTrip)
+      .catch((error: unknown) =>
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "The trip couldn't be loaded."
+        )
+      )
       .finally(() => setMetadataTripId(Number(tripId)));
   }, [tripId]);
 
@@ -240,7 +173,8 @@ export const MyTrip: React.FC = () => {
   // Load saved trip attractions from DB on mount
   useEffect(() => {
     if (!tripId) return;
-    fetchTripAttractions(Number(tripId))
+    setLoadError(undefined);
+    fetchTripBoard(Number(tripId))
       .then((saved) => {
         const savedIds = saved.map((s) => s.attractionId);
         setSavedAttractionIds(savedIds);
@@ -282,6 +216,13 @@ export const MyTrip: React.FC = () => {
           }
         );
       })
+      .catch((error: unknown) =>
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "The trip couldn't be loaded."
+        )
+      )
       .finally(() => setAttractionsTripId(Number(tripId)));
   }, [tripId]);
 
@@ -359,7 +300,11 @@ export const MyTrip: React.FC = () => {
     <>
       <Navigation />
       <main className={classes.workspace}>
-        {tripDataReady ? (
+        {loadError ? (
+          <MessageBar intent="error">
+            <MessageBarBody>{loadError}</MessageBarBody>
+          </MessageBar>
+        ) : tripDataReady ? (
           <>
             <TripHeader
               trip={trip}
@@ -370,6 +315,7 @@ export const MyTrip: React.FC = () => {
                 <SearchAttractionsModal
                   text="Trip Planner"
                   onUpdateClick={handleUpdate}
+                  planningBlocked={planningBlocked}
                 />
               }
             />
@@ -379,6 +325,7 @@ export const MyTrip: React.FC = () => {
               tripId={currentTripId}
               initialReviewData={savedReviewData}
               initialSavedAttractionIds={savedAttractionIds}
+              onPlanningBlockedChange={setPlanningBlocked}
               visitHistory={visitHistoryMap}
               mode={boardMode}
             />

@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Transactional
@@ -166,9 +167,16 @@ public class TripTest extends AbstractIntegrationTest {
         String tripName = "Test trip name 1";
         var request = new SaveTripRequest(tripName, LocalDate.now().minusDays(10), LocalDate.now());
 
-        mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isCreated()).andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/trips/" + tripRepo.findByName(tripName).getLast().getId()));
+        var location = mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isCreated()).andExpect(header().exists(HttpHeaders.LOCATION))
+                .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
 
-        assertThat(tripRepo.findByName(tripName).getLast().getName()).isEqualTo(tripName);
+        mockMvc.perform(get(location).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripName").value(tripName))
+                .andExpect(jsonPath("$.fromDate").value(request.fromDate().toString()))
+                .andExpect(jsonPath("$.toDate").value(request.toDate().toString()));
     }
 
     @Test
@@ -387,9 +395,10 @@ public class TripTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(1L).get().getAttractions().getLast();
-        assertThat(tripAttraction.getAttraction().getId()).isEqualTo(5);
-        assertThat(tripAttraction.isMustVisit()).isEqualTo(true);
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[?(@.attractionId == 5)].mustVisit").value(true));
     }
 
     @Test

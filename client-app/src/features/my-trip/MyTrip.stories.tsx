@@ -80,7 +80,17 @@ const meta: Meta<typeof MyTrip> = {
       // on mount and lands the Board in "edit" mode when any exist.
       const saved = context.parameters.savedAttractions;
       if (saved) {
-        server.get("http://localhost:8080/trips/:id/attractions", () => saved);
+        server.get(
+          "http://localhost:8080/trips/:id/attractions",
+          () =>
+            new MirageResponse(
+              200,
+              {
+                "Content-Type": "application/json"
+              },
+              saved
+            )
+        );
       }
       const initialTripId = context.parameters.initialTripId ?? TRIP_ID;
       return (
@@ -569,17 +579,22 @@ export const SearchSuggestionsOverlayDialogContent: Story = {
   }
 };
 
-export const ShowsDefaultNameWhenTripNotFound: Story = {
+export const ShowsLoadFailureWhenTripNotFound: Story = {
   parameters: { initialTripId: "999" },
   play: async ({ canvasElement }) => {
-    await waitForPrepareMode(canvasElement);
     const canvas = within(canvasElement);
-
     await expect(
-      canvas.getByRole("heading", { name: "Trip Planner" })
-    ).toBeInTheDocument();
+      await canvas.findByText(
+        "The trip couldn't be loaded.",
+        {},
+        { timeout: 3000 }
+      )
+    ).toBeVisible();
     await expect(
-      canvas.queryByRole("heading", { name: "Italy" })
+      canvas.queryByRole("navigation", { name: "Trip steps" })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: /Prepare/ })
     ).not.toBeInTheDocument();
   }
 };

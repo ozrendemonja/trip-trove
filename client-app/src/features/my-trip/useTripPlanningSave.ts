@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import type { TripPlanningChange } from "./domain/TripPlanning.types";
-import { savePlanningChange } from "./infra/PlanningApi";
+import { PlanningSaveError, savePlanningChange } from "./infra/PlanningApi";
 
 interface PlanningProposal {
   subjectIds: number[];
   subjectName: string;
   description: string;
   changes: TripPlanningChange[];
+  allowRetryAfterRejection?: boolean;
   onCommitted?: (change: TripPlanningChange) => void;
 }
 
@@ -16,6 +17,7 @@ export interface PlanningFeedback {
   message?: string;
   refreshing?: boolean;
   failedChange?: TripPlanningChange;
+  unconfirmed?: boolean;
 }
 
 interface TripPlanningSave {
@@ -23,6 +25,7 @@ interface TripPlanningSave {
   blocked: boolean;
   isBlocked: () => boolean;
   submit: (proposal: PlanningProposal) => boolean;
+  save: (proposal: PlanningProposal) => Promise<boolean>;
   clearSaveError: () => void;
   reload: () => Promise<void>;
 }
@@ -35,44 +38,57 @@ export const useTripPlanningSave = (
   const working = useRef(false);
   const [feedback, setFeedback] = useState<PlanningFeedback>();
 
-  const submit = useCallback(
-    (proposal: PlanningProposal): boolean => {
+  const save = useCallback(
+    async (proposal: PlanningProposal): Promise<boolean> => {
       if (pending.current) return false;
       if (tripId === undefined || proposal.changes.length === 0) return true;
       pending.current = true;
       working.current = true;
       setFeedback({ proposal, state: "saving" });
-      void (async () => {
-        let completed = 0;
-        try {
-          for (const change of proposal.changes) {
-            await savePlanningChange(tripId, change);
-            proposal.onCommitted?.(change);
-            completed++;
-          }
-          pending.current = false;
-          setFeedback({ proposal, state: "saved" });
-        } catch (error) {
-          const reason =
-            error instanceof Error
-              ? error.message
-              : "The save couldn't be confirmed. Reload saved planning before trying again.";
-          setFeedback({
-            proposal,
-            state: "error",
-            failedChange: proposal.changes[completed],
-            message:
-              completed > 0
-                ? `${completed} of ${proposal.changes.length} changes saved. ${reason}`
-                : reason
-          });
-        } finally {
-          working.current = false;
+      let completed = 0;
+      try {
+        for (const change of proposal.changes) {
+          await savePlanningChange(tripId, change);
+          proposal.onCommitted?.(change);
+          completed++;
         }
-      })();
-      return true;
+        pending.current = false;
+        setFeedback({ proposal, state: "saved" });
+        return true;
+      } catch (error) {
+        const failedChange = proposal.changes[completed];
+        const unconfirmed =
+          !(error instanceof PlanningSaveError) || error.unconfirmed;
+        pending.current = unconfirmed || !proposal.allowRetryAfterRejection;
+        const reason =
+          error instanceof Error
+            ? error.message
+            : "The save couldn't be confirmed. Reload saved planning before trying again.";
+        setFeedback({
+          proposal,
+          state: "error",
+          failedChange,
+          unconfirmed,
+          message:
+            completed > 0
+              ? `${completed} of ${proposal.changes.length} changes saved. ${reason}`
+              : reason
+        });
+        return false;
+      } finally {
+        working.current = false;
+      }
     },
     [tripId]
+  );
+
+  const submit = useCallback(
+    (proposal: PlanningProposal): boolean => {
+      if (pending.current) return false;
+      void save(proposal);
+      return true;
+    },
+    [save]
   );
 
   const clearSaveError = useCallback(() => {
@@ -108,9 +124,17 @@ export const useTripPlanningSave = (
 
   return {
     feedback,
-    blocked: feedback !== undefined && feedback.state !== "saved",
+    blocked:
+      feedback !== undefined &&
+      feedback.state !== "saved" &&
+      !(
+        feedback.state === "error" &&
+        feedback.proposal.allowRetryAfterRejection &&
+        !feedback.unconfirmed
+      ),
     isBlocked: useCallback(() => pending.current, []),
     submit,
+    save,
     clearSaveError,
     reload
   };

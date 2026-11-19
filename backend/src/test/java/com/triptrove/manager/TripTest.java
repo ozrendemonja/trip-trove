@@ -376,6 +376,133 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
+    @Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    @Sql(value = "/db/attractions-test-data.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
+    void rejectedPrepareChangeShouldKeepEarlierConfirmedChanges() throws Exception {
+        mockMvc.perform(delete("/trips/1/attractions/1").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        var confirmed = mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/trips/1/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"attractionId": 999, "attractionGroup": "PRIMARY"}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("OBJECT_NOT_FOUND"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The requested resource '999' could not be found. Please refresh and try again."));
+
+        var afterRejection = mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(afterRejection)).isEqualTo(mapper.readTree(confirmed));
+
+        mockMvc.perform(post("/trips/1/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"attractionId": 4, "attractionGroup": "PRIMARY"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        var saved = mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var board = mapper.readValue(saved, GetTripAttractionResponse[].class);
+        assertThat(board).extracting(GetTripAttractionResponse::attractionId)
+                .containsExactly(2L, 3L, 4L);
+        assertThat(List.of(board).subList(0, 2))
+                .containsExactly(mapper.readValue(confirmed, GetTripAttractionResponse[].class));
+    }
+
+    @Test
+    void preparedAttractionsShouldBePositionedWithSeparateMoveRequests() throws Exception {
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET name = 'Prepare neighbour ' || id,
+                    city_id = 1, region_id = 1, country_id = 1
+                WHERE id IN (1, 2, 3, 4, 5)
+                """).executeUpdate();
+        entityManager.createNativeQuery("""
+                UPDATE trip_attraction SET attraction_group = 'PRIMARY', board_position = attraction_id
+                WHERE trip_id = 1
+                """).executeUpdate();
+
+        mockMvc.perform(delete("/trips/1/attractions/1").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/1/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"attractionId": 4, "attractionGroup": "PRIMARY"}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/1/board/attractions/4").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "PRIMARY", "previousAttractionId": 2, "nextAttractionId": 3}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/trips/1/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"attractionId": 5, "attractionGroup": "PRIMARY"}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/1/board/attractions/5").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "PRIMARY", "previousAttractionId": 4, "nextAttractionId": 3}
+                                """))
+                .andExpect(status().isNoContent());
+        var afterAdditions = mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readValue(afterAdditions, GetTripAttractionResponse[].class))
+                .extracting(GetTripAttractionResponse::attractionId).containsExactly(2L, 4L, 5L, 3L);
+
+        mockMvc.perform(put("/trips/1/board/attractions/3").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "PRIMARY", "previousAttractionId": 2, "nextAttractionId": 4}
+                                """))
+                .andExpect(status().isNoContent());
+        var afterMove = mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readValue(afterMove, GetTripAttractionResponse[].class))
+                .extracting(GetTripAttractionResponse::attractionId).containsExactly(2L, 3L, 4L, 5L);
+    }
+
+    @Test
+    void prepareChangesShouldSeedMustVisitOnceAndKeepCatalogueTipsOutOfTripNotes() throws Exception {
+        var body = """
+                {"attractionId": 1, "attractionGroup": "PRIMARY"}
+                """;
+        mockMvc.perform(post("/trips/3/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/trips/3/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].mustVisit").value(true))
+                .andExpect(jsonPath("$[0].note").isEmpty())
+                .andExpect(jsonPath("$[0].tip").value("Test tip"));
+
+        mockMvc.perform(put("/trips/3/attractions/1/must-visit").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"mustVisit": false}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/3/attractions/1/note").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"note": "Existing trip note"}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/3/board/attractions/1").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "SECONDARY"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/3/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].mustVisit").value(false))
+                .andExpect(jsonPath("$[0].note").value("Existing trip note"))
+                .andExpect(jsonPath("$[0].tip").value("Test tip"));
+    }
+
+    @Test
     void attractionShouldBeAddedUnderTripWhenValidRequestIsSent() throws Exception {
         var request = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
 
@@ -432,18 +559,21 @@ public class TripTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldInheritNoteFromAttractionTipWhenAttractionIsAddedUnderTrip() throws Exception {
+    void shouldStartWithEmptyTripNoteWhenAttractionWithCatalogueTipIsAdded() throws Exception {
         var request = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
         mockMvc.perform(post("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
 
-        var tripAttraction = tripRepo.findById(3L).get().getAttractions().getLast();
-        assertThat(tripAttraction.getAttraction().getId()).isEqualTo(1);
-        assertThat(tripAttraction.getNote()).isEqualTo("Test tip");
+        mockMvc.perform(get("/trips/3/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].attractionId").value(1))
+                .andExpect(jsonPath("$[0].note").isEmpty())
+                .andExpect(jsonPath("$[0].tip").value("Test tip"));
     }
 
     @Test
-    void shouldReturnNoteInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
+    void shouldReturnEmptyNoteInResponseWhenAttractionIsAddedUnderTrip() throws Exception {
         var addRequest = new AddAttractionUnderTripRequest(1L, TripAttractionGroupDTO.PRIMARY);
 
         mockMvc.perform(post("/trips/" + 3 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
@@ -452,7 +582,8 @@ public class TripTest extends AbstractIntegrationTest {
 
         GetTripAttractionResponse[] response = mapper.readValue(jsonResponse, GetTripAttractionResponse[].class);
         var added = java.util.Arrays.stream(response).filter(r -> r.attractionId().equals(1L)).findFirst().orElseThrow();
-        assertThat(added.note()).isEqualTo("Test tip");
+        assertThat(added.note()).isNull();
+        assertThat(added.tip()).isEqualTo("Test tip");
     }
 
     @Test

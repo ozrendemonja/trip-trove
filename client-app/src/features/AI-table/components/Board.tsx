@@ -4,10 +4,25 @@ import React, {
   useRef,
   useEffect,
   useId,
-  useMemo
+  useMemo,
+  useImperativeHandle
 } from "react";
-import { Button, Field, Select, Text } from "@fluentui/react-components";
-import { Filter20Regular, Save20Regular } from "@fluentui/react-icons";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Field,
+  MessageBar,
+  MessageBarBody,
+  Select,
+  Spinner,
+  Text
+} from "@fluentui/react-components";
+import { Filter20Regular } from "@fluentui/react-icons";
 import AttractionList from "./AttractionList";
 import type { Attraction } from "./AttractionList.types";
 import "../styles/Board.css";
@@ -17,12 +32,11 @@ import {
   fetchTripBoard,
   updateTripAttractionWouldVisitAgain
 } from "../../my-trip/infra/TripApi";
-import type { TripAttractionGroup } from "../../my-trip/infra/TripApi";
 import type { TripPlanningChange } from "../../my-trip/domain/TripPlanning.types";
 import { useTripPlanningSave } from "../../my-trip/useTripPlanningSave";
 import { MarkedPlanningChange } from "../../my-trip/MarkedPlanningChange";
 import { Rating } from "../../my-trip/domain/Trip.types";
-import type { Column, TouristDestination, BoardProps } from "./Board.types";
+import type { TouristDestination, BoardProps } from "./Board.types";
 import {
   applyVisitHistoryToCities,
   mapSavedTripAttractionsToBoard,
@@ -30,14 +44,45 @@ import {
 } from "../utils/Mapper";
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
+import {
+  applyPrepareChanges,
+  buildPrepareChanges,
+  COLUMN_TO_GROUP,
+  indexBoard,
+  sameColumn,
+  type BoardPlacement
+} from "../utils/PrepareDraft";
 
 export type { Column, TouristDestination } from "./Board.types";
 
-const COLUMN_TO_GROUP: Record<string, TripAttractionGroup> = {
-  "Top Attractions": "PRIMARY",
-  "Secondary Spots": "SECONDARY",
-  "Excluded Attractions": "EXCLUDED"
-};
+function restorationIndex(
+  removed: BoardPlacement,
+  tasks: Attraction[],
+  history: Map<number, BoardPlacement>
+): number {
+  const present = new Set(tasks.map((task) => task.id));
+  const reference =
+    Array.from(history.values())
+      .reverse()
+      .find(
+        (placement) =>
+          sameColumn(placement, removed) &&
+          placement.column.tasks.some((task) => task.id === removed.task.id) &&
+          placement.column.tasks.some((task) => present.has(task.id))
+      ) ?? removed;
+  const index = reference.column.tasks.findIndex(
+    (task) => task.id === removed.task.id
+  );
+  const next = reference.column.tasks
+    .slice(index + 1)
+    .find((task) => present.has(task.id));
+  if (next) return tasks.findIndex((task) => task.id === next.id);
+  const previous = reference.column.tasks
+    .slice(0, index)
+    .reverse()
+    .find((task) => present.has(task.id));
+  return previous ? tasks.findIndex((task) => task.id === previous.id) + 1 : 0;
+}
 
 interface DragState {
   fromColumnId: string;
@@ -53,11 +98,13 @@ interface DragUIState {
 // No local sample; expect data to be passed in via props
 
 const Board: React.FC<BoardProps> = ({
+  ref,
   initialCities,
   tripId,
   initialReviewData,
   initialSavedAttractionIds,
   onPlanningBlockedChange,
+  onPrepareDraftChange,
   visitHistory,
   mode: boardMode
 }) => {
@@ -73,19 +120,37 @@ const Board: React.FC<BoardProps> = ({
   const isPlanMode = boardMode === "readOnly";
   const reviewMode = boardMode === "review";
   // "prepare" is a staging mode: you may add, remove and re-group attractions
-  // (like edit) but per-attraction detail edits are disabled and nothing is
-  // persisted until you commit (explicitly, or by leaving the mode).
+  // (like edit) but per-attraction detail edits are disabled.
   const isPrepare = boardMode === "prepare";
   const canManageAttractions = boardMode === "edit" || boardMode === "prepare";
   const persistImmediately = boardMode === "edit";
   const savedAttractionIdsRef = useRef<Set<number>>(
     new Set(initialSavedAttractionIds ?? [])
   );
+  const savedCitiesRef = useRef(initialCities ?? []);
+  const previousModeRef = useRef(boardMode);
   // Bumped after a prepare-mode commit to re-render the pending count/button,
   // whose source of truth (saved attraction ids) lives in a ref.
   const [, setCommitVersion] = useState(0);
+  const [saveNotice, setSaveNotice] = useState<{ count: number }>();
+  const savedPrepareCount = saveNotice?.count ?? 0;
+  const activePrepareSave = useRef<Promise<boolean> | null>(null);
+  const [inspectionOpen, setInspectionOpen] = useState(false);
+  const [inspectionLoading, setInspectionLoading] = useState(false);
+  const [inspectionError, setInspectionError] = useState<string>();
+  const [inspectedCities, setInspectedCities] =
+    useState<TouristDestination[]>();
   // Board moves made in prepare mode, ordered by their latest move.
   const pendingBoardMovesRef = useRef<number[]>([]);
+  // Later re-adds may need neighbours from an earlier removal snapshot.
+  const removedPlacementsRef = useRef(new Map<number, BoardPlacement>());
+  const prepareCityOrderRef = useRef(
+    (initialCities ?? []).map((city) => city.name)
+  );
+  const boardElementRef = useRef<HTMLDivElement>(null);
+  const [highlightedAttractionIds, setHighlightedAttractionIds] = useState(
+    new Set<number>()
+  );
   const [collapsedByCity, setCollapsedByCity] = useState<
     Record<string, boolean>
   >({});
@@ -101,7 +166,6 @@ const Board: React.FC<BoardProps> = ({
       { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
     >
   >(initialReviewData ?? {});
-  const prevBoardModeRef = useRef(boardMode);
   const refreshPlanning = useCallback(async () => {
     if (tripId === undefined) {
       throw new Error("A trip is required to refresh planning.");
@@ -112,6 +176,8 @@ const Board: React.FC<BoardProps> = ({
       visitHistory
     );
     setCities(currentCities);
+    savedCitiesRef.current = currentCities;
+    prepareCityOrderRef.current = currentCities.map((city) => city.name);
     savedAttractionIdsRef.current = new Set(
       board.map((item) => item.attractionId)
     );
@@ -121,6 +187,7 @@ const Board: React.FC<BoardProps> = ({
   const planning = useTripPlanningSave(tripId, refreshPlanning);
   const {
     submit: submitPlanning,
+    save: savePlanning,
     isBlocked: isPlanningBlocked,
     clearSaveError
   } = planning;
@@ -217,14 +284,17 @@ const Board: React.FC<BoardProps> = ({
       setFilters((prev) => ({ ...prev, [key]: value }));
     };
 
-  const resetFilters = () =>
-    setFilters({
-      isCountrywide: "any",
-      mustVisit: "any",
-      isTraditional: "any",
-      stable: "any",
-      category: "any"
-    });
+  const resetFilters = useCallback(
+    () =>
+      setFilters({
+        isCountrywide: "any",
+        mustVisit: "any",
+        isTraditional: "any",
+        stable: "any",
+        category: "any"
+      }),
+    []
+  );
 
   const matchesFilters = (task: Attraction): boolean =>
     (filters.isCountrywide === "any" ||
@@ -322,6 +392,11 @@ const Board: React.FC<BoardProps> = ({
           targetCityIdx === -1 ||
           targetColIdx === -1
         ) {
+          return;
+        }
+        if (sourceCityIdx !== targetCityIdx) {
+          setDragState(null);
+          setDragUI({ overColumnId: null, insertionIndex: -1 });
           return;
         }
 
@@ -472,6 +547,10 @@ const Board: React.FC<BoardProps> = ({
       if (!isPrepare) return;
       void setAttractionPermanentlyClosed(attractionId, isClosed)
         .then(() => {
+          pendingBoardMovesRef.current = [
+            ...pendingBoardMovesRef.current.filter((id) => id !== attractionId),
+            attractionId
+          ];
           setCities((prev) =>
             setPermanentClosureInCities(
               prev,
@@ -545,8 +624,10 @@ const Board: React.FC<BoardProps> = ({
   useEffect(() => {
     if (isPlanningBlocked()) return;
     // Always sync to prop, even when it's an empty array initially
-    const next = applyVisitHistoryToCities(initialCities ?? [], visitHistory);
+    const next = initialCities ?? [];
     setCities(next);
+    savedCitiesRef.current = next;
+    prepareCityOrderRef.current = next.map((city) => city.name);
     setDragState(null);
     setDragUI({ overColumnId: null, insertionIndex: -1 });
     // Preserve existing collapse states; initialize new city keys to false
@@ -557,7 +638,17 @@ const Board: React.FC<BoardProps> = ({
       }
       return merged;
     });
-  }, [initialCities, visitHistory, isPlanningBlocked]);
+  }, [initialCities, isPlanningBlocked]);
+
+  useEffect(() => {
+    if (previousModeRef.current !== "prepare" && isPrepare) {
+      savedCitiesRef.current = cities;
+      prepareCityOrderRef.current = cities.map((city) => city.name);
+      pendingBoardMovesRef.current = [];
+      removedPlacementsRef.current.clear();
+    }
+    previousModeRef.current = boardMode;
+  }, [boardMode, cities, isPrepare]);
 
   // Sync saved IDs when prop changes (e.g. after DB load)
   useEffect(() => {
@@ -576,112 +667,307 @@ const Board: React.FC<BoardProps> = ({
     }
   }, [initialReviewData]);
 
-  // Auto-save attractions to DB when cities change in edit mode with a tripId
-  useEffect(() => {
-    if (
-      boardMode !== "edit" ||
-      !tripId ||
-      prevBoardModeRef.current === "prepare" ||
-      isPlanningBlocked()
-    )
-      return;
-    const changes: TripPlanningChange[] = [];
-    for (const city of cities) {
-      for (const col of city.columns) {
-        for (const task of col.tasks) {
-          if (!savedAttractionIdsRef.current.has(task.id)) {
-            changes.push({
-              type: "attach",
-              attractionId: task.id,
-              attractionGroup: COLUMN_TO_GROUP[col.title]
-            });
-          }
-        }
-      }
-    }
-    submitPlanning({
-      subjectIds: changes.flatMap((change) =>
-        change.type === "attach" ? [change.attractionId] : []
-      ),
-      subjectName: "added attractions",
-      description: `Add ${changes.length} attractions to the trip`,
-      changes,
-      onCommitted: onPlanningCommitted
-    });
-  }, [
-    cities,
-    boardMode,
-    tripId,
-    submitPlanning,
-    isPlanningBlocked,
-    onPlanningCommitted
-  ]);
-
-  // Reconcile the prepare-mode draft with the backend: attach newly added
-  // attractions, persist the final board, and remove any that were pruned.
-  // Runs on an explicit "Save to trip" click and when leaving prepare mode.
-  const commitPreparedChanges = useCallback(() => {
-    if (!tripId) return;
-    const saved = savedAttractionIdsRef.current;
-    const onBoard = new Set<number>();
-    const boardItems: {
-      attractionId: number;
-      group: TripAttractionGroup;
-    }[] = [];
-    const boardChanged = pendingBoardMovesRef.current.length > 0;
-    const changes: TripPlanningChange[] = [];
-
-    for (const city of cities) {
-      for (const col of city.columns) {
-        const group = COLUMN_TO_GROUP[col.title];
-        for (const task of col.tasks) {
-          onBoard.add(task.id);
-          boardItems.push({ attractionId: task.id, group });
-          if (!saved.has(task.id)) {
-            changes.push({
-              type: "attach",
-              attractionId: task.id,
-              attractionGroup: group
-            });
-          }
-        }
-      }
-    }
-
-    // Remove attractions that were saved before but pruned during preparation.
-    for (const attractionId of Array.from(saved)) {
-      if (!onBoard.has(attractionId)) {
-        changes.push({ type: "remove", attractionId });
-      }
-    }
-
-    if (boardChanged) {
-      changes.push({ type: "arrange", attractions: boardItems });
-    }
-    submitPlanning({
+  const prepareChanges = isPrepare
+    ? buildPrepareChanges(
+        savedCitiesRef.current,
+        cities,
+        savedAttractionIdsRef.current,
+        pendingBoardMovesRef.current
+      )
+    : [];
+  const pendingCommitCount = new Set(
+    prepareChanges.map((change) => change.attractionId)
+  ).size;
+  const commitPreparedChanges = useCallback((): Promise<boolean> => {
+    if (activePrepareSave.current) return activePrepareSave.current;
+    if (isPlanningBlocked()) return Promise.resolve(false);
+    if (pendingCommitCount === 0) return Promise.resolve(true);
+    const changes = buildPrepareChanges(
+      savedCitiesRef.current,
+      cities,
+      savedAttractionIdsRef.current,
+      pendingBoardMovesRef.current
+    );
+    // An attachment may succeed before its placement, including a lost reply.
+    pendingBoardMovesRef.current = Array.from(
+      new Set([
+        ...pendingBoardMovesRef.current,
+        ...changes
+          .filter((change) => change.type === "attach")
+          .map((change) => change.attractionId)
+      ])
+    );
+    let committedCount = 0;
+    const savedIds = new Set<number>();
+    const save = savePlanning({
       subjectIds: Array.from(
-        new Set([
-          ...pendingBoardMovesRef.current,
-          ...changes.flatMap((change) =>
-            "attractionId" in change ? [change.attractionId] : []
-          )
-        ])
+        new Set(changes.map((change) => change.attractionId))
       ),
       subjectName: "prepared attractions",
       description: "Save prepared attractions",
       changes,
-      onCommitted: onPlanningCommitted
+      allowRetryAfterRejection: true,
+      onCommitted: () => {
+        const change = changes[committedCount];
+        savedCitiesRef.current = applyPrepareChanges(
+          savedCitiesRef.current,
+          cities,
+          savedAttractionIdsRef.current,
+          [change]
+        );
+        savedAttractionIdsRef.current = new Set(
+          indexBoard(savedCitiesRef.current).keys()
+        );
+        committedCount++;
+        savedIds.add(change.attractionId);
+        if (committedCount === changes.length) {
+          savedCitiesRef.current = cities;
+          prepareCityOrderRef.current = cities.map((city) => city.name);
+          pendingBoardMovesRef.current = [];
+        }
+        for (const id of removedPlacementsRef.current.keys()) {
+          if (!savedAttractionIdsRef.current.has(id)) {
+            removedPlacementsRef.current.delete(id);
+          }
+        }
+      }
+    }).finally(() => {
+      if (savedIds.size > 0) setSaveNotice({ count: savedIds.size });
+      setCommitVersion((version) => version + 1);
+      activePrepareSave.current = null;
     });
-  }, [cities, tripId, submitPlanning, onPlanningCommitted]);
+    activePrepareSave.current = save;
+    return save;
+  }, [cities, pendingCommitCount, isPlanningBlocked, savePlanning]);
 
-  // Commit staged changes automatically when leaving prepare mode.
+  const addPreparedAttractions = useCallback(
+    (incomingCities: TouristDestination[]): void => {
+      if (!isPrepare || isPlanningBlocked()) {
+        throw new Error(
+          "Resolve the pending planning change before adding attractions in Prepare."
+        );
+      }
+      const ids = new Set(indexBoard(cities).keys());
+      const addedIds: number[] = [];
+      const next = cities.map((city) => ({
+        ...city,
+        columns: city.columns.map((column) => ({
+          ...column,
+          tasks: [...column.tasks]
+        }))
+      }));
+      for (const incomingCity of incomingCities) {
+        for (const incomingColumn of incomingCity.columns) {
+          for (const incomingTask of incomingColumn.tasks) {
+            if (ids.has(incomingTask.id)) continue;
+            const removed = removedPlacementsRef.current.get(incomingTask.id);
+            const sourceCity = removed?.city ?? incomingCity;
+            const sourceColumn = removed?.column ?? incomingColumn;
+            const task = removed
+              ? {
+                  ...incomingTask,
+                  mustVisit: removed.task.mustVisit,
+                  note: removed.task.note,
+                  workingHours: removed.task.workingHours,
+                  VisitTime: removed.task.VisitTime
+                }
+              : incomingTask;
+            let city = next.find((item) => item.name === sourceCity.name);
+            if (!city) {
+              city = {
+                ...sourceCity,
+                columns: sourceCity.columns.map((column) => ({
+                  ...column,
+                  tasks: []
+                }))
+              };
+              if (!prepareCityOrderRef.current.includes(city.name)) {
+                prepareCityOrderRef.current.push(city.name);
+              }
+              const rank = prepareCityOrderRef.current.indexOf(city.name);
+              const index = next.findIndex(
+                (item) => prepareCityOrderRef.current.indexOf(item.name) > rank
+              );
+              next.splice(index < 0 ? next.length : index, 0, city);
+            }
+            const column = city.columns.find(
+              (item) => item.title === sourceColumn.title
+            );
+            if (!column) {
+              throw new Error(
+                "The attraction's board column could not be found."
+              );
+            }
+            const index = removed
+              ? restorationIndex(
+                  removed,
+                  column.tasks,
+                  removedPlacementsRef.current
+                )
+              : column.tasks.length;
+            column.tasks.splice(index, 0, task);
+            ids.add(task.id);
+            addedIds.push(task.id);
+          }
+        }
+      }
+      setCities(next);
+      if (addedIds.length === 0) return;
+      const added = new Set(addedIds);
+      resetFilters();
+      setCollapsedByCity((previous) => {
+        const expanded = { ...previous };
+        for (const city of next) {
+          if (
+            city.columns.some((column) =>
+              column.tasks.some((task) => added.has(task.id))
+            )
+          ) {
+            expanded[city.name] = false;
+          }
+        }
+        return expanded;
+      });
+      setHighlightedAttractionIds(added);
+    },
+    [cities, isPrepare, isPlanningBlocked, resetFilters]
+  );
+
   useEffect(() => {
-    const prev = prevBoardModeRef.current;
-    prevBoardModeRef.current = boardMode;
-    if (prev === "prepare" && boardMode !== "prepare") {
-      commitPreparedChanges();
+    if (highlightedAttractionIds.size === 0) return;
+    boardElementRef.current
+      ?.querySelector<HTMLElement>('[data-just-added="true"]')
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const timer = window.setTimeout(
+      () => setHighlightedAttractionIds(new Set()),
+      2500
+    );
+    return () => window.clearTimeout(timer);
+  }, [highlightedAttractionIds]);
+
+  const discardPreparedChanges = useCallback((): void => {
+    if (planning.feedback?.state === "saving") return;
+    setCities(
+      savedCitiesRef.current
+        .map((city) => ({
+          ...city,
+          columns: city.columns.map((column) => ({
+            ...column,
+            tasks: column.tasks.filter((task) =>
+              savedAttractionIdsRef.current.has(task.id)
+            )
+          }))
+        }))
+        .filter((city) =>
+          city.columns.some((column) => column.tasks.length > 0)
+        )
+    );
+    pendingBoardMovesRef.current = [];
+    removedPlacementsRef.current.clear();
+    prepareCityOrderRef.current = savedCitiesRef.current.map(
+      (city) => city.name
+    );
+    setSaveNotice(undefined);
+    clearSaveError();
+  }, [clearSaveError, planning.feedback?.state]);
+
+  const inspectSavedPlanning = useCallback(async (): Promise<void> => {
+    if (tripId === undefined) return;
+    setInspectionOpen(true);
+    if (inspectionLoading) return;
+    setInspectionLoading(true);
+    setInspectionError(undefined);
+    setInspectedCities(undefined);
+    try {
+      const saved = await fetchTripBoard(tripId);
+      setInspectedCities(mapSavedTripAttractionsToBoard(saved));
+    } catch (error) {
+      setInspectionError(
+        error instanceof Error
+          ? error.message
+          : "Saved planning couldn't be loaded. Your draft is still here."
+      );
+    } finally {
+      setInspectionLoading(false);
     }
-  }, [boardMode, commitPreparedChanges]);
+  }, [inspectionLoading, tripId]);
+
+  const acceptInspectedPlanning = (keepDraft: boolean): void => {
+    if (!inspectedCities) return;
+    const previouslySaved = savedAttractionIdsRef.current;
+    savedCitiesRef.current = inspectedCities;
+    savedAttractionIdsRef.current = new Set(
+      inspectedCities.flatMap((city) =>
+        city.columns.flatMap((column) => column.tasks.map((task) => task.id))
+      )
+    );
+    for (const id of previouslySaved) {
+      if (!savedAttractionIdsRef.current.has(id))
+        removedPlacementsRef.current.delete(id);
+    }
+    if (!keepDraft) {
+      setCities(inspectedCities);
+      pendingBoardMovesRef.current = [];
+      removedPlacementsRef.current.clear();
+      prepareCityOrderRef.current = inspectedCities.map((city) => city.name);
+    } else {
+      const relevantCities = new Set(
+        [...inspectedCities, ...cities].map((city) => city.name)
+      );
+      prepareCityOrderRef.current = prepareCityOrderRef.current.filter((name) =>
+        relevantCities.has(name)
+      );
+    }
+    setCommitVersion((version) => version + 1);
+    clearSaveError();
+    setInspectionOpen(false);
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      addAttractions: addPreparedAttractions,
+      save: commitPreparedChanges,
+      discard: discardPreparedChanges,
+      inspect: inspectSavedPlanning
+    }),
+    [
+      addPreparedAttractions,
+      commitPreparedChanges,
+      discardPreparedChanges,
+      inspectSavedPlanning
+    ]
+  );
+
+  useEffect(() => {
+    onPrepareDraftChange?.({
+      count: pendingCommitCount,
+      saving: isPrepare && planning.feedback?.state === "saving",
+      savedCount: savedPrepareCount,
+      unconfirmed:
+        isPrepare &&
+        planning.feedback?.state === "error" &&
+        planning.feedback.unconfirmed,
+      error:
+        isPrepare && planning.feedback?.state === "error"
+          ? planning.feedback.message
+          : undefined
+    });
+  }, [
+    onPrepareDraftChange,
+    isPrepare,
+    pendingCommitCount,
+    planning.feedback?.message,
+    planning.feedback?.unconfirmed,
+    planning.feedback?.state,
+    savedPrepareCount
+  ]);
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const timer = window.setTimeout(() => setSaveNotice(undefined), 6000);
+    return () => window.clearTimeout(timer);
+  }, [saveNotice]);
 
   const toggleCityCollapse = useCallback((cityName: string) => {
     setCollapsedByCity((prev) => ({ ...prev, [cityName]: !prev[cityName] }));
@@ -694,6 +980,13 @@ const Board: React.FC<BoardProps> = ({
         .flatMap((city) => city.columns)
         .flatMap((column) => column.tasks)
         .find((task) => task.id === attractionId);
+      if (isPrepare) {
+        const placement = indexBoard(cities).get(attractionId);
+        if (placement) {
+          removedPlacementsRef.current.delete(attractionId);
+          removedPlacementsRef.current.set(attractionId, placement);
+        }
+      }
       if (
         persistImmediately &&
         !submitPlanning({
@@ -721,6 +1014,7 @@ const Board: React.FC<BoardProps> = ({
     [
       canManageAttractions,
       persistImmediately,
+      isPrepare,
       cities,
       submitPlanning,
       onPlanningCommitted
@@ -735,6 +1029,16 @@ const Board: React.FC<BoardProps> = ({
       const attractionIds = city.columns.flatMap((col) =>
         col.tasks.map((t) => t.id)
       );
+      if (isPrepare) {
+        const placements = indexBoard(cities);
+        for (const id of attractionIds) {
+          const placement = placements.get(id);
+          if (placement) {
+            removedPlacementsRef.current.delete(id);
+            removedPlacementsRef.current.set(id, placement);
+          }
+        }
+      }
       if (
         persistImmediately &&
         !submitPlanning({
@@ -754,6 +1058,7 @@ const Board: React.FC<BoardProps> = ({
     [
       canManageAttractions,
       persistImmediately,
+      isPrepare,
       cities,
       submitPlanning,
       onPlanningCommitted
@@ -817,36 +1122,12 @@ const Board: React.FC<BoardProps> = ({
     [tripId]
   );
 
-  // Number of staged attach/remove operations awaiting commit in prepare mode.
-  const pendingCommitCount = ((): number => {
-    if (boardMode !== "prepare" || !tripId) return 0;
-    const saved = savedAttractionIdsRef.current;
-    const onBoard = new Set<number>();
-    let adds = 0;
-    for (const city of cities) {
-      for (const col of city.columns) {
-        for (const task of col.tasks) {
-          onBoard.add(task.id);
-          if (!saved.has(task.id)) adds++;
-        }
-      }
-    }
-    let removes = 0;
-    for (const id of Array.from(saved)) {
-      if (!onBoard.has(id)) removes++;
-    }
-    const moves = new Set(
-      pendingBoardMovesRef.current.filter(
-        (attractionId) => saved.has(attractionId) && onBoard.has(attractionId)
-      )
-    ).size;
-    return adds + removes + moves;
-  })();
-
   const markedChange = planning.feedback ? (
     <MarkedPlanningChange
       feedback={planning.feedback}
-      onReload={() => void planning.reload()}
+      onReload={() =>
+        void (isPrepare ? inspectSavedPlanning() : planning.reload())
+      }
     />
   ) : null;
   const hasFeedbackHost = cities.some(
@@ -862,21 +1143,73 @@ const Board: React.FC<BoardProps> = ({
   );
 
   return (
-    <div className="attraction-board-wrapper">
+    <div className="attraction-board-wrapper" ref={boardElementRef}>
+      <Dialog
+        open={inspectionOpen}
+        onOpenChange={(_event, data) => {
+          if (!data.open) setInspectionOpen(false);
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Inspect saved trip</DialogTitle>
+            <DialogContent>
+              <Text>
+                Compare the saved board with your Prepare draft before choosing
+                what to keep. No save will be repeated automatically.
+              </Text>
+              {inspectionLoading && <Spinner label="Loading saved trip" />}
+              {inspectionError && (
+                <MessageBar intent="error">
+                  <MessageBarBody>{inspectionError}</MessageBarBody>
+                </MessageBar>
+              )}
+              {inspectedCities?.length === 0 && <p>The saved trip is empty.</p>}
+              {inspectedCities?.map((city) => (
+                <section key={city.name} aria-label={city.name}>
+                  <Text as="h3" weight="semibold">
+                    {city.name}
+                  </Text>
+                  {city.columns
+                    .filter((column) => column.tasks.length > 0)
+                    .map((column) => (
+                      <div key={column.id}>
+                        <Text weight="semibold">{column.title}</Text>
+                        <ul>
+                          {column.tasks.map((task) => (
+                            <li key={task.id}>{task.name}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                </section>
+              ))}
+            </DialogContent>
+            <DialogActions>
+              {inspectedCities && (
+                <>
+                  <Button
+                    appearance="primary"
+                    onClick={() => acceptInspectedPlanning(true)}
+                  >
+                    Keep draft
+                  </Button>
+                  <Button onClick={() => acceptInspectedPlanning(false)}>
+                    Use saved trip
+                  </Button>
+                </>
+              )}
+              {inspectionError && (
+                <Button onClick={() => void inspectSavedPlanning()}>
+                  Load saved trip again
+                </Button>
+              )}
+              <Button onClick={() => setInspectionOpen(false)}>Close</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <div className="board-toolbar">
-        {boardMode === "prepare" && tripId && (
-          <Button
-            appearance="primary"
-            size="small"
-            icon={<Save20Regular />}
-            onClick={commitPreparedChanges}
-            disabled={pendingCommitCount === 0 || planning.blocked}
-            title="Save staged attractions and removals to this trip"
-          >
-            Save to trip
-            {pendingCommitCount ? ` (${pendingCommitCount})` : ""}
-          </Button>
-        )}
         {planning.blocked && (
           <Text size={200}>
             {planning.feedback?.state === "saving"
@@ -1028,6 +1361,7 @@ const Board: React.FC<BoardProps> = ({
                       <h2>{col.title}</h2>
                       <AttractionList
                         attractions={filteredTasks}
+                        highlightedAttractionIds={highlightedAttractionIds}
                         showPlaceholder={!!showPlaceholder}
                         insertionIndex={dragUI.insertionIndex}
                         placeholderHeight={dragState?.height}

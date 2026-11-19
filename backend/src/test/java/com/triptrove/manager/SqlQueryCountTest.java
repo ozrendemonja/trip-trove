@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,6 +45,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -829,6 +832,87 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(resultSize));
 
         assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void prepareAdditionUsesFourSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize + 1);
+        var addedId = boardSize + 1L;
+        entityManager.createNativeQuery("DELETE FROM trip_attraction WHERE attraction_id = :id")
+                .setParameter("id", addedId).executeUpdate();
+        entityManager.createNativeQuery("SELECT setval('trip_attraction_id_seq', :lastId)")
+                .setParameter("lastId", addedId).getSingleResult();
+        var request = new AddAttractionUnderTripRequest(addedId, TripAttractionGroupDTO.PRIMARY);
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isNoContent());
+
+        assertSelectCount(4);
+        assertInsertCount(1);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void prepareRemovalUsesNoSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(delete("/trips/1/attractions/1").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        assertSelectCount(0);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 20})
+    void prepareGroupChangeUsesThreeSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/board/attractions/1").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "SECONDARY"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        assertSelectCount(3);
+        assertInsertCount(0);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 20})
+    void prepareMoveBetweenNeighborsUsesSevenSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        entityManager.createNativeQuery("UPDATE attraction SET city_id = 1 WHERE id IN (1, 2, 3)")
+                .executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/board/attractions/3").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"targetGroup": "PRIMARY", "previousAttractionId": 1, "nextAttractionId": 2}
+                                """))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(7);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
     }
 
     @ParameterizedTest

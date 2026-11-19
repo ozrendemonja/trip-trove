@@ -4,6 +4,16 @@ import type { TripPlanningChange } from "../domain/TripPlanning.types";
 
 managerClient();
 
+export class PlanningSaveError extends Error {
+  constructor(
+    message: string,
+    readonly unconfirmed: boolean,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+  }
+}
+
 const requestFor = (
   tripId: number,
   change: TripPlanningChange
@@ -72,9 +82,10 @@ export const savePlanningChange = async (
     }
   });
   if (!response || !response.ok) {
-    throw new Error(
+    throw new PlanningSaveError(
       error?.errorMessage ??
         "The save couldn't be confirmed. Reload saved planning before trying again.",
+      !response || response.status >= 500,
       { cause: error }
     );
   }

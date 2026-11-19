@@ -51,7 +51,7 @@ public class Trip {
     )
     private List<TripAttraction> attractions = new ArrayList<>();
 
-    public void attachAttraction(Attraction attraction, TripAttractionGroup attractionGroup, BigDecimal boardPosition) {
+    public TripAttraction attachAttraction(Attraction attraction, TripAttractionGroup attractionGroup, BigDecimal boardPosition) {
         Objects.requireNonNull(attraction, "attraction must not be null");
 
         TripAttraction tripAttraction = new TripAttraction();
@@ -61,7 +61,7 @@ public class Trip {
         tripAttraction.setAttractionGroup(attractionGroup);
         tripAttraction.setBoardPosition(boardPosition);
         tripAttraction.setMustVisit(attraction.isMustVisit());
-        tripAttraction.setNote(attraction.getTip().orElse(null));
         attractions.add(tripAttraction);
+        return tripAttraction;
     }
 }

@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Response as MirageResponse } from "miragejs";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import {
   expect,
   fireEvent,
@@ -10,7 +10,10 @@ import {
   within
 } from "storybook/test";
 import makeServer from "../../ServerSetup";
-import type { GetSearchAttractionResponse } from "../../clients/manager";
+import type {
+  AddAttractionUnderTripRequest,
+  GetSearchAttractionResponse
+} from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
 
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
@@ -95,13 +98,16 @@ const meta: Meta<typeof MyTrip> = {
       const initialTripId = context.parameters.initialTripId ?? TRIP_ID;
       return (
         <>
-          <MemoryRouter initialEntries={[`/my-trips/${initialTripId}`]}>
-            <Routes>
-              <Route path="/" element={<div>Home page</div>} />
-              <Route path="/my-trips" element={<div>My Trips list page</div>} />
-              <Route path="/my-trips/:tripId" element={<Story />} />
-            </Routes>
-          </MemoryRouter>
+          <RouterProvider
+            router={createMemoryRouter(
+              [
+                { path: "/", element: <div>Home page</div> },
+                { path: "/my-trips", element: <div>My Trips list page</div> },
+                { path: "/my-trips/:tripId", element: <Story /> }
+              ],
+              { initialEntries: [`/my-trips/${initialTripId}`] }
+            )}
+          />
           <style>{styleOverrides}</style>
         </>
       );
@@ -130,7 +136,9 @@ const openSearchForAttraction = async (
   user: User
 ): Promise<HTMLElement> => {
   await user.click(
-    await within(canvasElement).findByRole("button", { name: "Search" })
+    await within(canvasElement).findByRole("button", {
+      name: "Add attractions"
+    })
   );
   const heading = await overlay(canvasElement).findByRole("heading", {
     name: "Modifying Trip Planner"
@@ -180,7 +188,9 @@ export const HeaderCardOwnsTripSteps: Story = {
     await expect(header.getByRole("heading", { name: "Italy" })).toBeVisible();
     await expect(header.getByText(/Jun 10, 2025.*Jun 24, 2025/)).toBeVisible();
     await expect(header.getByText("15 days")).toBeVisible();
-    await expect(header.getByRole("button", { name: "Search" })).toBeVisible();
+    await expect(
+      header.queryByRole("button", { name: "Add attractions" })
+    ).not.toBeInTheDocument();
 
     const steps = within(
       header.getByRole("navigation", { name: "Trip steps" })
@@ -658,6 +668,16 @@ const searchAndAddCountry = async (
   const update = modal.getByRole("button", { name: "Update" });
   await waitFor(() => expect(update).toBeEnabled());
   await user.click(update);
+  await waitFor(
+    () =>
+      expect(
+        overlay(canvasElement).queryByRole("heading", {
+          name: "Modifying Trip Planner"
+        })
+      ).not.toBeInTheDocument(),
+    { timeout: 8000 }
+  );
+  await within(canvasElement).findByRole("button", { name: "Add attractions" });
 };
 
 export const AddsAttractionsWhenSearchSubmitted: Story = {
@@ -677,6 +697,661 @@ export const AddsAttractionsWhenSearchSubmitted: Story = {
     await expect(
       canvas.getByRole("button", { name: "Remove Casino Square from trip" })
     ).toBeInTheDocument();
+  }
+};
+
+export const StagesCompletePrepareDraft: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    const otherWrites = fn();
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/:attractionId",
+      otherWrites
+    );
+    server.put("http://localhost:8080/trips/1/board", otherWrites);
+
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove Casino Square from trip"
+      })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    const header = within(
+      canvas.getByRole("region", { name: "Trip overview" })
+    );
+    await expect(saves).not.toHaveBeenCalled();
+    await expect(otherWrites).not.toHaveBeenCalled();
+    await expect(boardMoves).not.toHaveBeenCalled();
+    await user.click(
+      await header.findByRole("button", { name: "Save to trip (2)" })
+    );
+
+    await header.findByText("2 changes saved");
+    await expect(saves).toHaveBeenCalledTimes(2);
+    await expect(saves).toHaveBeenNthCalledWith(1, {
+      attractionId: 0,
+      attractionGroup: "SECONDARY"
+    });
+    await expect(saves).toHaveBeenNthCalledWith(2, {
+      attractionId: 2,
+      attractionGroup: "EXCLUDED"
+    });
+    await expect(otherWrites).not.toHaveBeenCalled();
+    await expect(
+      header.queryByRole("button", { name: /Save to trip/ })
+    ).not.toBeInTheDocument();
+    await expect(
+      header.getByRole("button", { name: "Prepare" })
+    ).toHaveAttribute("aria-current", "step");
+  }
+};
+
+export const GuardsLeavingTheWholePrepareDraft: Story = {
+  parameters: { savedAttractions: SAVED_ATTRACTIONS },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove Casino of Monte-Carlo from trip"
+      })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await user.click(canvas.getByRole("button", { name: "My Trips" }));
+
+    const dialog = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Save your Prepare changes?"
+      })
+    );
+    await user.click(dialog.getByRole("button", { name: "Stay" }));
+    await expect(
+      await canvas.findByRole("button", { name: "Save to trip (2)" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Vilnius Old Town" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("link", { name: "Casino of Monte-Carlo" })
+    ).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "My Trips" }));
+    await user.click(
+      await overlay(canvasElement).findByRole("button", {
+        name: "Leave without saving"
+      })
+    );
+    await expect(await canvas.findByText("My Trips list page")).toBeVisible();
+  }
+};
+
+export const KeepsRejectedPrepareDraftForCorrection: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    const responses = [
+      new MirageResponse(400, {}, { errorMessage: "Review this selection." }),
+      new MirageResponse(204),
+      new MirageResponse(204)
+    ];
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return responses.shift() ?? new MirageResponse(500);
+      },
+      { timing: 200 }
+    );
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    const edit = await canvas.findByRole("button", { name: "Edit" });
+    await user.click(edit);
+    await canvas.findAllByText("Review this selection.");
+    await expect(
+      canvas.getByRole("button", { name: "Prepare" })
+    ).toHaveAttribute("aria-current", "step");
+    await expect(
+      await canvas.findByRole("button", { name: "Save to trip (3)" })
+    ).toBeEnabled();
+
+    await user.click(
+      canvas.getByRole("button", { name: "Remove Casino Square from trip" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await user.click(edit);
+    await waitFor(() => expect(edit).toHaveAttribute("aria-current", "step"));
+    await expect(saves).toHaveBeenCalledTimes(3);
+    await expect(saves).toHaveBeenNthCalledWith(2, {
+      attractionId: 0,
+      attractionGroup: "SECONDARY"
+    });
+    await expect(saves).toHaveBeenNthCalledWith(3, {
+      attractionId: 2,
+      attractionGroup: "EXCLUDED"
+    });
+    await expect(
+      canvas.queryByRole("button", { name: "Add attractions" })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const RetriesPlacementWithoutAddingTheAttractionAgain: Story = {
+  parameters: { savedAttractions: SAVED_ATTRACTIONS },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const additions = fn();
+    const moves = fn();
+    const responses = [
+      new MirageResponse(400, {}, { errorMessage: "Review this placement." }),
+      new MirageResponse(204)
+    ];
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        additions(JSON.parse(request.requestBody));
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+    server.put(
+      "http://localhost:8080/trips/1/board/attractions/1",
+      (_schema, request) => {
+        moves(JSON.parse(request.requestBody));
+        return responses.shift() ?? new MirageResponse(500);
+      },
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    await user.click(
+      canvas.getByRole("button", { name: "Remove Larvotto Beach from trip" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    const top = columnFor(canvasElement, "Top Attractions");
+    const square = within(top)
+      .getByRole("link", { name: "Casino Square" })
+      .closest("li.attraction") as HTMLElement;
+    const dataTransfer = new DataTransfer();
+    fireEvent.dragStart(square, { dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.dragOver(top, { clientY: -1, dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.drop(top, { dataTransfer });
+    await expect(additions).not.toHaveBeenCalled();
+    await expect(moves).not.toHaveBeenCalled();
+
+    await user.click(
+      await canvas.findByRole("button", { name: "Save to trip (1)" })
+    );
+    await canvas.findAllByText(
+      /1 of 2 changes saved\. Review this placement\./
+    );
+    await expect(additions).toHaveBeenCalledTimes(1);
+    await expect(additions).toHaveBeenCalledWith({
+      attractionId: 1,
+      attractionGroup: "PRIMARY"
+    });
+    await expect(moves).toHaveBeenCalledTimes(1);
+    await expect(moves).toHaveBeenCalledWith({
+      targetGroup: "PRIMARY",
+      previousAttractionId: null,
+      nextAttractionId: 0
+    });
+    const retry = await canvas.findByRole("button", {
+      name: "Save to trip (1)"
+    });
+    await expect(retry).toBeEnabled();
+    await expect(
+      Array.from(top.querySelectorAll("li.attraction")).map((card) =>
+        card.getAttribute("data-id")
+      )
+    ).toEqual(["1", "0"]);
+
+    await user.click(retry);
+    await waitFor(() => expect(moves).toHaveBeenCalledTimes(2));
+    await expect(moves.mock.calls[1]).toEqual(moves.mock.calls[0]);
+    await expect(additions).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("button", { name: /Save to trip/ })
+      ).not.toBeInTheDocument()
+    );
+  }
+};
+
+export const InspectsSavedTripBeforeResubmittingUnconfirmedPrepare: Story = {
+  parameters: { savedAttractions: SAVED_ATTRACTIONS },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    const responses = [
+      new MirageResponse(500, {}, { errorMessage: "Save not confirmed." }),
+      new MirageResponse(204)
+    ];
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return responses.shift() ?? new MirageResponse(500);
+      },
+      { timing: 0 }
+    );
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
+    await user.click(canvas.getByRole("button", { name: "Save to trip (1)" }));
+    await canvas.findAllByText("Save not confirmed.");
+    const save = await canvas.findByRole("button", {
+      name: "Save to trip (1)"
+    });
+    await expect(save).toBeDisabled();
+    await expect(
+      canvas.getByRole("link", { name: "Vilnius Old Town" })
+    ).toBeVisible();
+    await user.click(
+      canvas.getAllByRole("button", { name: "Reload saved planning" })[0]
+    );
+    const inspection = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Inspect saved trip"
+      })
+    );
+    await waitFor(() =>
+      expect(inspection.getByText("Casino of Monte-Carlo")).toBeVisible()
+    );
+    await expect(
+      inspection.queryByText("Vilnius Old Town")
+    ).not.toBeInTheDocument();
+    await expect(saves).toHaveBeenCalledTimes(1);
+    await user.click(
+      await inspection.findByRole("button", { name: "Keep draft" })
+    );
+    await expect(
+      await canvas.findByRole("link", { name: "Vilnius Old Town" })
+    ).toBeVisible();
+    await expect(save).toBeEnabled();
+    await expect(saves).toHaveBeenCalledTimes(1);
+
+    await user.click(save);
+    await waitFor(() => expect(saves).toHaveBeenCalledTimes(2));
+    await canvas.findByText("1 change saved");
+  }
+};
+
+export const ReaddingAStagedRemovalRestoresTripData: Story = {
+  parameters: {
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        mustVisit: false,
+        note: "Keep my trip note."
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await user.click(
+      canvas.getByRole("button", {
+        name: "Remove Casino of Monte-Carlo from trip"
+      })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+
+    await expect(
+      within(columnFor(canvasElement, "Top Attractions")).getByRole("link", {
+        name: "Casino of Monte-Carlo"
+      })
+    ).toBeVisible();
+    await expect(canvas.getByText("Keep my trip note.")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Save to trip (2)" })
+    ).toBeVisible();
+
+    const square = canvas
+      .getByRole("link", { name: "Casino Square" })
+      .closest("li.attraction") as HTMLElement;
+    const dataTransfer = new DataTransfer();
+    fireEvent.dragStart(square, { dataTransfer });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fireEvent.drop(columnFor(canvasElement, "Secondary Spots"), {
+      dataTransfer
+    });
+    await user.click(
+      canvas.getByRole("button", { name: "Remove Casino Square from trip" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await expect(
+      await canvas.findByRole("button", { name: "Save to trip (1)" })
+    ).toBeVisible();
+
+    await user.click(
+      canvas.getByRole("button", { name: "Remove Larvotto Beach from trip" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await expect(await canvas.findByText("All changes saved")).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: /Save to trip/ })
+    ).not.toBeInTheDocument();
+    await expect(canvas.getByText("Keep my trip note.")).toBeVisible();
+  }
+};
+
+export const NewTripNotesDoNotCopyCatalogueTips: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    await user.click(edit);
+    await waitFor(() => expect(edit).toHaveAttribute("aria-current", "step"));
+    const card = within(
+      canvas
+        .getByRole("link", { name: "Vilnius Old Town" })
+        .closest("li.attraction") as HTMLElement
+    );
+    await expect(
+      await card.findByRole("button", { name: "+ Add note" })
+    ).toBeVisible();
+    await expect(
+      card.getByRole("note", { name: "Catalogue tip" })
+    ).toHaveTextContent("There are no hard rules for tipping");
+  }
+};
+
+export const EmptySavedTripNotesDoNotFallBackToCatalogueTips: Story = {
+  parameters: {
+    savedAttractions: [
+      { ...SAVED_ATTRACTIONS[0], note: null, tip: "Catalogue advice" }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = within(
+      (
+        await canvas.findByRole("link", { name: "Casino of Monte-Carlo" })
+      ).closest("li.attraction") as HTMLElement
+    );
+    await expect(
+      await card.findByRole("button", { name: "+ Add note" })
+    ).toBeVisible();
+    await expect(
+      card.getByRole("note", { name: "Catalogue tip" })
+    ).toHaveTextContent("Catalogue advice");
+  }
+};
+
+export const IdenticalCatalogueTipsAndTripNotesRemainSeparate: Story = {
+  parameters: {
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        note: "Catalogue advice",
+        tip: "Catalogue advice"
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("note", { name: "Catalogue tip" })
+    ).toHaveTextContent("Catalogue advice");
+    await expect(
+      canvas.getByRole("note", { name: "Trip note" })
+    ).toHaveTextContent("Catalogue advice");
+    await expect(canvas.getAllByText("Catalogue advice")).toHaveLength(2);
+  }
+};
+
+export const FormSaveShortcutAndPendingEditUseOnePrepareSave: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return new MirageResponse(204);
+      },
+      { timing: 200 }
+    );
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    const modal = within(await openSearchForAttraction(canvasElement, user));
+    await user.type(modal.getByRole("textbox"), "Lith");
+    await user.click(await modal.findByRole("menuitem", { name: "Lithuania" }));
+    await user.keyboard("{Control>}s{/Control}");
+    await canvas.findByRole("button", { name: "Save to trip (4)" });
+    await expect(saves).not.toHaveBeenCalled();
+
+    const unsavedUnload = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(unsavedUnload);
+    await expect(unsavedUnload.defaultPrevented).toBe(true);
+
+    await user.keyboard("{Control>}s{/Control}");
+    await canvas.findByRole("button", { name: "Saving..." });
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    await user.click(edit);
+    await expect(
+      canvas.getByRole("button", { name: "Prepare" })
+    ).toHaveAttribute("aria-current", "step");
+    await waitFor(() => expect(edit).toHaveAttribute("aria-current", "step"), {
+      timeout: 3000
+    });
+    await expect(saves).toHaveBeenCalledTimes(4);
+    await expect(
+      new Set(saves.mock.calls.map(([body]) => body.attractionId)).size
+    ).toBe(4);
+    const savedUnload = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(savedUnload);
+    await expect(savedUnload.defaultPrevented).toBe(false);
+  }
+};
+
+export const SavesPrepareBeforeUsingAppNavigation: Story = {
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return new MirageResponse(204);
+      },
+      { timing: 500 }
+    );
+    await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
+    await user.click(canvas.getByRole("button", { name: "Trip Trove" }));
+    const dialog = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Save your Prepare changes?"
+      })
+    );
+    await user.click(dialog.getByRole("button", { name: "Save to trip" }));
+    await expect(
+      await dialog.findByRole("button", { name: "Saving..." })
+    ).toBeDisabled();
+    await expect(
+      dialog.getByRole("button", { name: "Leave without saving" })
+    ).toBeDisabled();
+    await expect(canvas.queryByText("Home page")).not.toBeInTheDocument();
+    await expect(await canvas.findByText("Home page")).toBeVisible();
+    await expect(saves).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const InspectionRecognisesAnAlreadyCommittedPrepare: Story = {
+  parameters: { savedAttractions: SAVED_ATTRACTIONS },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves = fn();
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves(JSON.parse(request.requestBody));
+        return new MirageResponse(500, {}, { errorMessage: "Reply lost." });
+      },
+      { timing: 0 }
+    );
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
+    server.get(
+      "http://localhost:8080/trips/1/attractions",
+      () => [
+        ...SAVED_ATTRACTIONS,
+        {
+          ...SAVED_ATTRACTIONS[0],
+          attractionId: 3,
+          attractionName: "Vilnius Old Town",
+          cityName: "Vilnius",
+          countryName: "Lithuania",
+          regionName: "Vilnius",
+          note: null
+        }
+      ],
+      { timing: 0 }
+    );
+    await user.click(canvas.getByRole("button", { name: "Save to trip (1)" }));
+    await canvas.findAllByText("Reply lost.");
+    await user.click(
+      canvas.getAllByRole("button", { name: "Reload saved planning" })[0]
+    );
+    const inspection = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Inspect saved trip"
+      })
+    );
+    await waitFor(() =>
+      expect(inspection.getByText("Vilnius Old Town")).toBeVisible()
+    );
+    await user.click(
+      await inspection.findByRole("button", { name: "Keep draft" })
+    );
+    await canvas.findByText("All changes saved");
+    await user.keyboard("{Control>}s{/Control}");
+    await expect(saves).toHaveBeenCalledTimes(1);
+    await expect(
+      canvas.queryByRole("button", { name: /Save to trip/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const ReaddingACollectionRestoresSavedPlaceAndCardOrder: Story = {
+  parameters: {
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 2,
+        attractionName: "Larvotto Beach"
+      },
+      { ...SAVED_ATTRACTIONS[0], note: "Keep my trip note." },
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 3,
+        attractionName: "Vilnius Old Town",
+        cityName: "Vilnius",
+        regionName: "Vilnius",
+        countryName: "Lithuania"
+      }
+    ]
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await user.click(
+      canvas.getByRole("button", { name: "Remove all attractions from Monaco" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    );
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    await expect(
+      canvas
+        .getAllByRole("heading", { name: /^(Monaco|Vilnius)$/ })
+        .map((heading) => heading.textContent)
+    ).toEqual(["Monaco", "Vilnius"]);
+    const monaco = within(
+      canvas
+        .getByRole("heading", { name: /^Monaco$/ })
+        .closest(".city-group") as HTMLElement
+    );
+    const top = within(
+      monaco
+        .getByRole("heading", { name: "Top Attractions" })
+        .closest(".attraction-board-column") as HTMLElement
+    );
+    await expect(
+      top.getAllByRole("link").map((link) => link.textContent)
+    ).toEqual(["Larvotto Beach", "Casino of Monte-Carlo", "Casino Square"]);
+    await expect(monaco.getByText("Keep my trip note.")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Save to trip (1)" })
+    ).toBeVisible();
+  }
+};
+
+export const PrepareWaitsForAnExistingPlanningChange: Story = {
+  parameters: { savedAttractions: SAVED_ATTRACTIONS },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    server.put(
+      "http://localhost:8080/trips/1/attractions/0/note",
+      () => new MirageResponse(204),
+      { timing: 800 }
+    );
+    const card = within(
+      (
+        await canvas.findByRole("link", { name: "Casino of Monte-Carlo" })
+      ).closest("li.attraction") as HTMLElement
+    );
+    await user.click(card.getByRole("button", { name: "+ Add note" }));
+    await user.type(card.getByRole("textbox"), "Save before preparing");
+    await user.click(card.getByRole("button", { name: "Save" }));
+    const prepare = canvas.getByRole("button", { name: "Prepare" });
+    await waitFor(() => expect(prepare).toBeDisabled());
+    await expect(prepare).toHaveAccessibleDescription("Finish pending change");
+    await user.click(canvas.getByRole("button", { name: "Plan" }));
+    await expect(canvas.getByRole("button", { name: "Plan" })).toHaveAttribute(
+      "aria-current",
+      "step"
+    );
+    await card.findByText("Saved");
+    await waitFor(() => expect(prepare).toBeEnabled());
   }
 };
 
@@ -713,6 +1388,183 @@ const LOCATION_SEARCH_RESULTS: GetSearchAttractionResponse[] = [
     cityName: "Beta"
   }
 ];
+
+const PREPARE_ATTRACTIONS = Array.from({ length: 450 }, (_, index) => ({
+  ...LOCATION_ATTRACTION,
+  attractionId: index + 1001,
+  attractionName: `Prepared landmark ${index + 1}`,
+  cityName: "Monaco"
+}));
+
+const servePrepareAttractions = (
+  attractions: GetSearchAttractionResponse[]
+): void => {
+  server.get(
+    "http://localhost:8080/search/country/:id/attractions",
+    (_schema, request) => {
+      const anchor = attractions.findIndex(
+        (attraction) =>
+          String(attraction.attractionId) === request.queryParams.attractionId
+      );
+      return attractions.slice(anchor + 1, anchor + 201);
+    },
+    { timing: 0 }
+  );
+};
+
+export const ResumesOnlyTheRemainingPrepareChanges: Story = {
+  parameters: {
+    savedAttractions: PREPARE_ATTRACTIONS.slice(0, 447).map((attraction) => ({
+      ...attraction,
+      attractionGroup: "PRIMARY",
+      status: "PLANNED"
+    }))
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves: AddAttractionUnderTripRequest[] = [];
+    const responses = [
+      new MirageResponse(204),
+      new MirageResponse(204),
+      new MirageResponse(400, {}, { errorMessage: "Review this attraction." }),
+      new MirageResponse(204)
+    ];
+    servePrepareAttractions(PREPARE_ATTRACTIONS);
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves.push(JSON.parse(request.requestBody));
+        return responses.shift() ?? new MirageResponse(500);
+      },
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    await user.click(
+      await canvas.findByRole("button", { name: "Save to trip (3)" })
+    );
+    await waitFor(() => expect(saves).toHaveLength(3), {
+      timeout: 15000
+    });
+    await canvas.findAllByText(
+      /2 of 3 changes saved\. Review this attraction\./,
+      {},
+      { timeout: 8000 }
+    );
+    const retry = await canvas.findByRole("button", {
+      name: "Save to trip (1)"
+    });
+    await expect(retry).toBeEnabled();
+    await expect(saves).toHaveLength(3);
+    await expect(saves.slice(0, 2).map((body) => body.attractionId)).toEqual(
+      PREPARE_ATTRACTIONS.slice(447, 449).map((item) => item.attractionId)
+    );
+
+    await user.click(retry);
+    await canvas.findByText("1 change saved", {}, { timeout: 8000 });
+    await expect(saves).toHaveLength(4);
+    await expect(saves[3]).toEqual(saves[2]);
+    await expect(saves.slice(3).map((body) => body.attractionId)).toEqual(
+      PREPARE_ATTRACTIONS.slice(449).map((item) => item.attractionId)
+    );
+    await expect(
+      canvas.queryByRole("button", { name: /Save to trip/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const InspectsAnUnconfirmedAdditionBeforeSavingTheRemaining50: Story = {
+  parameters: {
+    savedAttractions: PREPARE_ATTRACTIONS.slice(0, 398).map((attraction) => ({
+      ...attraction,
+      attractionGroup: "PRIMARY",
+      status: "PLANNED"
+    }))
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    const saves: AddAttractionUnderTripRequest[] = [];
+    const responses = [
+      new MirageResponse(204),
+      new MirageResponse(500, {}, { errorMessage: "Reply lost." }),
+      ...Array.from({ length: 50 }, () => new MirageResponse(204))
+    ];
+    servePrepareAttractions(PREPARE_ATTRACTIONS);
+    server.post(
+      "http://localhost:8080/trips/1/attractions",
+      (_schema, request) => {
+        saves.push(JSON.parse(request.requestBody));
+        return responses.shift() ?? new MirageResponse(500);
+      },
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
+    server.get(
+      "http://localhost:8080/trips/1/attractions",
+      () =>
+        PREPARE_ATTRACTIONS.slice(0, 400).map((attraction) => ({
+          ...attraction,
+          attractionGroup: "PRIMARY",
+          status: "PLANNED"
+        })),
+      { timing: 0 }
+    );
+    await user.click(
+      await canvas.findByRole("button", { name: "Save to trip (52)" })
+    );
+    await waitFor(() => expect(saves).toHaveLength(2), {
+      timeout: 15000
+    });
+    await canvas.findAllByText(/Reply lost\./, {}, { timeout: 8000 });
+    await expect(
+      await canvas.findByRole(
+        "button",
+        { name: "Save to trip (51)" },
+        { timeout: 8000 }
+      )
+    ).toBeDisabled();
+    await expect(saves).toHaveLength(2);
+
+    await user.click(
+      canvas.getAllByRole("button", { name: "Reload saved planning" })[0]
+    );
+    const inspection = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Inspect saved trip"
+      })
+    );
+    await inspection.findByText("Prepared landmark 400", {}, { timeout: 8000 });
+    await user.click(
+      await inspection.findByRole("button", { name: "Keep draft" })
+    );
+    await waitFor(() =>
+      expect(
+        overlay(canvasElement).queryByRole("dialog", {
+          name: "Inspect saved trip"
+        })
+      ).not.toBeInTheDocument()
+    );
+    await expect(saves).toHaveLength(2);
+    const save = await canvas.findByRole(
+      "button",
+      { name: "Save to trip (50)" },
+      { timeout: 8000 }
+    );
+    await expect(save).toBeEnabled();
+
+    await user.click(save);
+    await waitFor(() => expect(saves).toHaveLength(52), { timeout: 8000 });
+    await canvas.findByText("50 changes saved", {}, { timeout: 8000 });
+    await expect(saves.slice(2).map((body) => body.attractionId)).toEqual(
+      PREPARE_ATTRACTIONS.slice(400).map((item) => item.attractionId)
+    );
+  }
+};
 
 const expectAllLocationPagesAdded = async (
   canvasElement: HTMLElement,
@@ -869,6 +1721,7 @@ export const KeepsExistingAttractionsWhenAddingMore: Story = {
     );
 
     const user = setupUser();
+    await user.click(canvas.getByRole("button", { name: "Prepare" }));
     await searchAndAddCountry(canvasElement, user, "Lith", "Lithuania");
 
     await canvas.findByRole(

@@ -30,6 +30,8 @@ interface TripHeaderProps {
   mode: BoardMode;
   onModeChange: (mode: BoardMode) => void;
   onBack: () => void;
+  onSavePrepare?: () => void;
+  planningBlocked?: boolean;
   actions?: ReactNode;
 }
 
@@ -72,6 +74,8 @@ export const TripHeader = ({
   mode,
   onModeChange,
   onBack,
+  onSavePrepare,
+  planningBlocked,
   actions
 }: TripHeaderProps): ReactElement => {
   const classes = useClasses();
@@ -81,16 +85,18 @@ export const TripHeader = ({
       STEPS.map((step) => ({
         ...step,
         unavailableReason:
-          mode === "prepare" &&
-          (step.mode === "readOnly" || step.mode === "review")
-            ? "After Edit"
-            : step.mode === "review" &&
-                trip?.status !== "past" &&
-                trip?.status !== "archived"
-              ? "After the trip"
-              : undefined
+          step.mode === "prepare" && mode !== "prepare" && planningBlocked
+            ? "Finish pending change"
+            : mode === "prepare" &&
+                (step.mode === "readOnly" || step.mode === "review")
+              ? "After Edit"
+              : step.mode === "review" &&
+                  trip?.status !== "past" &&
+                  trip?.status !== "archived"
+                ? "After the trip"
+                : undefined
       })),
-    [mode, trip?.status]
+    [mode, planningBlocked, trip?.status]
   );
   const dates = trip?.startDate
     ? trip.endDate
@@ -108,6 +114,7 @@ export const TripHeader = ({
       const combo = keyComboFromEvent(event);
       if (isShortcut("form.save", combo)) {
         event.preventDefault();
+        if (mode === "prepare") onSavePrepare?.();
         return;
       }
       if (isTypingInFormField(event.target)) return;
@@ -126,7 +133,7 @@ export const TripHeader = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mode, onModeChange, steps]);
+  }, [mode, onModeChange, onSavePrepare, steps]);
 
   return (
     <Card className={classes.card} role="region" aria-label="Trip overview">
@@ -138,11 +145,12 @@ export const TripHeader = ({
             <>
               <Button
                 appearance="subtle"
+                aria-label="My Trips"
                 icon={<ArrowLeft24Regular />}
                 onClick={onBack}
                 className={classes.backButton}
               >
-                My Trips
+                <span className={classes.backLabel}>My Trips</span>
               </Button>
               <Divider vertical className={classes.backDivider} />
             </>
@@ -151,7 +159,13 @@ export const TripHeader = ({
         header={{
           className: classes.identity,
           children: (
-            <Text as="h1" size={500} weight="semibold" className={classes.name}>
+            <Text
+              as="h1"
+              size={500}
+              weight="semibold"
+              className={classes.name}
+              title={trip?.name ?? "Trip Planner"}
+            >
               {trip?.name ?? "Trip Planner"}
             </Text>
           )

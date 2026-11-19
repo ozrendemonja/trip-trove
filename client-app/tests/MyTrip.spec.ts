@@ -1,4 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+const openAddAttractions = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "Prepare", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Add attractions", exact: true })
+    .click();
+};
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2100-01-01T12:00:00Z"));
@@ -20,7 +27,13 @@ test("Show back button to navigate to My Trips", async ({ page }) => {
 });
 
 test("Show search button for adding attractions", async ({ page }) => {
-  await expect(page.getByLabel("Search")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add attractions" })
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Prepare", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Add attractions" })
+  ).toBeVisible();
   await expect(page).toHaveScreenshot();
 });
 
@@ -117,7 +130,7 @@ test("Cycle through all available trip steps using Ctrl+V", async ({
 });
 
 test("Show search modal when search button is clicked", async ({ page }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
 
   await expect(page.getByText("Modifying Trip Planner")).toBeVisible();
   await expect(page).toHaveScreenshot();
@@ -126,7 +139,7 @@ test("Show search modal when search button is clicked", async ({ page }) => {
 test("Update button is disabled when no search item is selected", async ({
   page
 }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
 
   await expect(page.getByRole("button", { name: "Update" })).toBeDisabled();
   await expect(page).toHaveScreenshot();
@@ -135,7 +148,7 @@ test("Update button is disabled when no search item is selected", async ({
 test("Show search suggestions when typing in the search field", async ({
   page
 }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
   await page.getByRole("textbox", { name: "Search" }).fill("Mon");
 
   await expect(page.getByRole("menuitem", { name: "Monaco" })).toBeVisible();
@@ -145,7 +158,7 @@ test("Show search suggestions when typing in the search field", async ({
 test("Attractions are loaded when search item is selected and Update is clicked", async ({
   page
 }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
   await page.getByRole("textbox", { name: "Search" }).fill("Mon");
   await page.getByRole("menuitem", { name: "Monaco" }).click();
 
@@ -157,7 +170,7 @@ test("Attractions are loaded when search item is selected and Update is clicked"
 });
 
 test("Search modal is closed when close icon is clicked", async ({ page }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
   await expect(page.getByText("Modifying Trip Planner")).toBeVisible();
 
   await page.getByLabel("Close modify popup").click();
@@ -169,13 +182,17 @@ test("Search modal is closed when close icon is clicked", async ({ page }) => {
 test("Attach attraction in Review mode after loading attractions", async ({
   page
 }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
   await page.getByRole("textbox", { name: "Search" }).fill("Mon");
   await page.getByRole("menuitem", { name: "Monaco" }).click();
   await page.getByRole("button", { name: "Update" }).click();
 
   await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
 
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Edit", exact: true })
+  ).toHaveAttribute("aria-current", "step");
   await page.getByRole("button", { name: /Review/i }).click();
   await page.getByRole("button", { name: "Excellent" }).first().click();
   await page
@@ -190,13 +207,17 @@ test("Attach attraction in Review mode after loading attractions", async ({
 test("Detach attraction in Review mode after attaching it", async ({
   page
 }) => {
-  await page.getByLabel("Search").click();
+  await openAddAttractions(page);
   await page.getByRole("textbox", { name: "Search" }).fill("Mon");
   await page.getByRole("menuitem", { name: "Monaco" }).click();
   await page.getByRole("button", { name: "Update" }).click();
 
   await expect(page.getByText("Casino of Monte-Carlo")).toBeVisible();
 
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Edit", exact: true })
+  ).toHaveAttribute("aria-current", "step");
   await page.getByRole("button", { name: /Review/i }).click();
   await page.getByRole("button", { name: "Excellent" }).first().click();
   await page
@@ -276,6 +297,7 @@ for (const scenario of [
       "aria-current",
       "step"
     );
+    await steps.getByRole("button", { name: "Prepare", exact: true }).click();
 
     const nameBounds = await name.evaluate((element) => {
       const { left, right, bottom } = element.getBoundingClientRect();
@@ -285,7 +307,7 @@ for (const scenario of [
       .getByRole("button", { name: "My Trips" })
       .evaluate((element) => element.getBoundingClientRect().right);
     const searchLeft = await header
-      .getByRole("button", { name: "Search" })
+      .getByRole("button", { name: "Add attractions" })
       .evaluate((element) => element.getBoundingClientRect().left);
     const stepsTop = await steps.evaluate(
       (element) => element.getBoundingClientRect().top
@@ -334,6 +356,49 @@ for (const scenario of [
     }
   });
 }
+
+test("Each Prepare save confirmation lasts exactly six seconds", async ({
+  page
+}) => {
+  await openAddAttractions(page);
+  const modal = page.getByRole("dialog", { name: "Modifying Trip Planner" });
+  await modal.getByRole("textbox").fill("Lith");
+  await modal.getByRole("menuitem", { name: "Lithuania" }).click();
+  await modal.getByRole("button", { name: "Update", exact: true }).click();
+  const header = page.getByRole("region", { name: "Trip overview" });
+  const save = header.getByRole("button", { name: "Save to trip (1)" });
+  await expect(save).toBeEnabled();
+
+  await page.evaluate(() => {
+    window.fetch = async () => new Response(null, { status: 204 });
+  });
+  await page.clock.install({ time: new Date("2100-01-01T12:00:00Z") });
+  await page.clock.pauseAt(new Date("2100-01-01T12:00:01Z"));
+  await save.click();
+  await expect(
+    header.getByText("1 change saved", { exact: true })
+  ).toBeVisible();
+  await page.clock.runFor(1000);
+
+  const attraction = page.locator("li.attraction").filter({
+    has: page.getByRole("link", { name: "Vilnius Old Town" })
+  });
+  const secondary = page.locator(".attraction-board-column").filter({
+    has: page.getByRole("heading", { name: "Secondary Spots" })
+  });
+  await attraction.dragTo(secondary);
+  await expect(save).toBeEnabled();
+  await save.click();
+  const confirmation = header.getByText("1 change saved", { exact: true });
+  await expect(confirmation).toBeVisible();
+  await page.clock.runFor(5999);
+  await expect(confirmation).toBeVisible();
+  await page.clock.runFor(1);
+  await expect(confirmation).toHaveCount(0);
+  await expect(
+    header.getByText("All changes saved", { exact: true })
+  ).toBeVisible();
+});
 
 test("Trip header stays put when a step adds the vertical scrollbar", async ({
   page

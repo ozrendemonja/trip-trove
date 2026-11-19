@@ -1,10 +1,32 @@
 import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   MessageBar,
   MessageBarBody,
-  Spinner
+  Spinner,
+  Text
 } from "@fluentui/react-components";
-import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Checkmark20Regular, Save20Regular } from "@fluentui/react-icons";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  useLayoutEffect
+} from "react";
+import {
+  useBeforeUnload,
+  useBlocker,
+  useNavigate,
+  useParams,
+  type BlockerFunction
+} from "react-router";
 import Navigation from "../../shared/navigation/Navigation";
 import {
   fetchTripById,
@@ -15,8 +37,9 @@ import type { AttractionVisitHistory } from "./domain/VisitHistory.types";
 import Board from "../AI-table/components/Board";
 import type {
   TouristDestination,
-  Column,
-  BoardMode
+  BoardMode,
+  PrepareBoardHandle,
+  PrepareDraftState
 } from "../AI-table/components/Board.types";
 import {
   mapServerResponseToTouristDestinations,
@@ -35,94 +58,27 @@ import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { TripHeader } from "./TripHeader";
 
-// Helper function to merge cities by name and combine their attractions
-function mergeCities(
-  baseCities: TouristDestination[],
-  newCities: TouristDestination[]
-): TouristDestination[] {
-  const cityMap = new Map<string, TouristDestination>();
-
-  // Collect all existing attraction IDs from baseCities (across all columns)
-  const existingAttractionIds = new Set<number>();
-  for (const city of baseCities) {
-    for (const col of city.columns) {
-      for (const task of col.tasks) {
-        existingAttractionIds.add(task.id);
-      }
-    }
-  }
-
-  // Add base cities first
-  for (const city of baseCities) {
-    cityMap.set(city.name, {
-      ...city,
-      columns: city.columns.map((col: Column) => ({
-        ...col,
-        tasks: [...col.tasks]
-      }))
-    });
-  }
-
-  // Merge new cities, but skip attractions that already exist anywhere in baseCities
-  for (const newCity of newCities) {
-    const existingCity = cityMap.get(newCity.name);
-    if (existingCity) {
-      // Merge columns by matching column titles
-      for (const newCol of newCity.columns) {
-        const existingCol = existingCity.columns.find(
-          (c: Column) => c.title === newCol.title
-        );
-        if (existingCol) {
-          // Merge tasks, avoiding duplicates by id (check against ALL existing attractions)
-          for (const task of newCol.tasks) {
-            if (!existingAttractionIds.has(task.id)) {
-              existingCol.tasks.push(task);
-              existingAttractionIds.add(task.id); // Mark as added
-            }
-          }
-        } else {
-          // Add new column, but only with non-duplicate tasks
-          const filteredTasks = newCol.tasks.filter(
-            (task: { id: number }) => !existingAttractionIds.has(task.id)
-          );
-          if (filteredTasks.length > 0) {
-            existingCity.columns.push({ ...newCol, tasks: filteredTasks });
-            filteredTasks.forEach((task: { id: number }) =>
-              existingAttractionIds.add(task.id)
-            );
-          }
-        }
-      }
-    } else {
-      // Add new city, but filter out any attractions that exist in other cities
-      const filteredColumns = newCity.columns.map((col: Column) => ({
-        ...col,
-        tasks: col.tasks.filter(
-          (task: { id: number }) => !existingAttractionIds.has(task.id)
-        )
-      }));
-      // Mark these as added
-      for (const col of filteredColumns) {
-        for (const task of col.tasks) {
-          existingAttractionIds.add(task.id);
-        }
-      }
-      cityMap.set(newCity.name, {
-        ...newCity,
-        columns: filteredColumns
-      });
-    }
-  }
-
-  return Array.from(cityMap.values());
-}
-
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const classes = useClasses();
   const [trip, setTrip] = useState<Trip>();
   const [planningBlocked, setPlanningBlocked] = useState(false);
+  const boardRef = useRef<PrepareBoardHandle>(null);
+  const activeTripId = useRef(tripId);
+  const modeChangeGeneration = useRef(0);
+  useEffect(() => {
+    activeTripId.current = tripId;
+    modeChangeGeneration.current++;
+    return () => {
+      activeTripId.current = undefined;
+    };
+  }, [tripId]);
+  const [prepareDraft, setPrepareDraft] = useState<PrepareDraftState>({
+    count: 0,
+    saving: false,
+    savedCount: 0
+  });
   const [loadError, setLoadError] = useState<string>();
   // The tripId each async source has finished loading for, so the Board's
   // landing mode is never computed from a previous trip's data.
@@ -148,8 +104,6 @@ export const MyTrip: React.FC = () => {
       .finally(() => setMetadataTripId(Number(tripId)));
   }, [tripId]);
 
-  // Source of truth: all attractions from server responses
-  const [allAttractions, setAllAttractions] = useState<Attraction[]>([]);
   // Cities loaded from saved trip attractions in DB
   const [savedCities, setSavedCities] = useState<TouristDestination[]>([]);
   // Review data (rating + reviewNote + wouldVisitAgain) from DB for pre-populating review mode
@@ -226,49 +180,35 @@ export const MyTrip: React.FC = () => {
       .finally(() => setAttractionsTripId(Number(tripId)));
   }, [tripId]);
 
-  // Derive display attractions from server results and saved trip attractions.
   const visitHistoryMap = useMemo(
     () => buildVisitHistoryMap(visitHistory),
     [visitHistory]
   );
 
-  const attractions = useMemo(() => {
-    const fromServer = mapServerResponseToTouristDestinations(
-      allAttractions,
-      visitHistoryMap
-    );
-    return mergeCities(savedCities, fromServer);
-  }, [allAttractions, savedCities, visitHistoryMap]);
-
   const handleUpdate = async (value: SearchTarget) => {
+    const targetTripId = tripId;
     const newAttractions = await loadAllAttractionsUnder(
       value.whereToSearch,
       value.id
     );
 
-    // Merge and remove duplicates by id
-    let mergedAttractions = Array.from(
-      new Map(
-        [...allAttractions, ...newAttractions].map((item) => [item.id, item])
-      ).values()
-    );
-
-    // sort it to be in order
-    mergedAttractions = sortAttractions(mergedAttractions);
-
-    // Fetch visit history for the new attractions (excluding current trip)
-    // BEFORE updating state, so that the attractions and their visit history
-    // are applied in the same render. Otherwise the board would briefly show
-    // (and auto-save) the attractions without visit history, persisting the
-    // wrong column group, which then survives a page refresh.
     let history: AttractionVisitHistory[] = [];
     if (tripId) {
       const newIds = newAttractions.map((a) => a.id);
       history = await fetchAttractionsVisitHistory(Number(tripId), newIds);
     }
 
-    setAllAttractions(mergedAttractions);
-
+    if (activeTripId.current !== targetTripId || !boardRef.current) {
+      throw new Error(
+        "The trip changed before attractions finished loading. Nothing was added."
+      );
+    }
+    boardRef.current.addAttractions(
+      mapServerResponseToTouristDestinations(
+        sortAttractions(newAttractions),
+        buildVisitHistoryMap(history)
+      )
+    );
     if (tripId) {
       setVisitHistory((prev) => {
         const map = new Map<number, AttractionVisitHistory>();
@@ -277,7 +217,6 @@ export const MyTrip: React.FC = () => {
         return Array.from(map.values());
       });
     }
-    // attractions will be automatically recomputed via useMemo
   };
 
   const currentTripId = tripId ? Number(tripId) : undefined;
@@ -295,6 +234,39 @@ export const MyTrip: React.FC = () => {
     selectedMode?.tripId === tripId && selectedMode
       ? selectedMode.mode
       : initialMode;
+  const hasPrepareChanges =
+    boardMode === "prepare" &&
+    (prepareDraft.count > 0 || prepareDraft.saving || planningBlocked);
+  const prepareGuard = useRef(hasPrepareChanges);
+  useLayoutEffect(() => {
+    prepareGuard.current = hasPrepareChanges;
+  }, [hasPrepareChanges]);
+  const blocker = useBlocker(
+    useCallback<BlockerFunction>(
+      ({ currentLocation, nextLocation }) =>
+        prepareGuard.current &&
+        currentLocation.pathname !== nextLocation.pathname,
+      []
+    )
+  );
+  const resumingNavigation = useRef(false);
+  useBeforeUnload(
+    useCallback((event: BeforeUnloadEvent) => {
+      if (!prepareGuard.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    }, [])
+  );
+  useEffect(() => {
+    if (blocker.state !== "blocked") {
+      resumingNavigation.current = false;
+      return;
+    }
+    if (!hasPrepareChanges && !resumingNavigation.current) {
+      resumingNavigation.current = true;
+      blocker.proceed();
+    }
+  }, [blocker, hasPrepareChanges]);
 
   return (
     <>
@@ -309,23 +281,69 @@ export const MyTrip: React.FC = () => {
             <TripHeader
               trip={trip}
               mode={boardMode}
-              onModeChange={(mode) => setSelectedMode({ tripId, mode })}
+              planningBlocked={planningBlocked}
+              onModeChange={async (mode) => {
+                const generation = ++modeChangeGeneration.current;
+                if (
+                  boardMode === "prepare" &&
+                  mode === "edit" &&
+                  (prepareDraft.count > 0 || planningBlocked) &&
+                  !(await boardRef.current?.save())
+                )
+                  return;
+                if (
+                  generation !== modeChangeGeneration.current ||
+                  activeTripId.current !== tripId
+                )
+                  return;
+                setSelectedMode({ tripId, mode });
+              }}
+              onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
               actions={
-                <SearchAttractionsModal
-                  text="Trip Planner"
-                  onUpdateClick={handleUpdate}
-                  planningBlocked={planningBlocked}
-                />
+                <>
+                  {boardMode === "prepare" && (
+                    <SearchAttractionsModal
+                      text="Trip Planner"
+                      onUpdateClick={handleUpdate}
+                      planningBlocked={planningBlocked}
+                      primary={prepareDraft.count === 0}
+                    />
+                  )}
+                  {boardMode === "prepare" && prepareDraft.count > 0 ? (
+                    <Button
+                      appearance="primary"
+                      icon={<Save20Regular />}
+                      disabled={planningBlocked}
+                      onClick={() => void boardRef.current?.save()}
+                    >
+                      {prepareDraft.saving
+                        ? "Saving..."
+                        : `Save to trip (${prepareDraft.count})`}
+                    </Button>
+                  ) : prepareDraft.savedCount > 0 ? (
+                    <Text role="status">
+                      <Checkmark20Regular /> {prepareDraft.savedCount}{" "}
+                      {prepareDraft.savedCount === 1 ? "change" : "changes"}{" "}
+                      saved
+                    </Text>
+                  ) : boardMode === "prepare" ? (
+                    <Text role="status">
+                      <Checkmark20Regular /> All changes saved
+                    </Text>
+                  ) : null}
+                </>
               }
             />
             <Board
               key={tripId}
-              initialCities={attractions}
+              ref={boardRef}
+              initialCities={savedCities}
               tripId={currentTripId}
               initialReviewData={savedReviewData}
               initialSavedAttractionIds={savedAttractionIds}
               onPlanningBlockedChange={setPlanningBlocked}
+              onPrepareDraftChange={setPrepareDraft}
               visitHistory={visitHistoryMap}
               mode={boardMode}
             />
@@ -334,6 +352,74 @@ export const MyTrip: React.FC = () => {
           <Spinner label="Loading trip" />
         )}
       </main>
+      <Dialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(_event, data) => {
+          if (
+            !data.open &&
+            !prepareDraft.saving &&
+            blocker.state === "blocked"
+          ) {
+            blocker.reset();
+          }
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Save your Prepare changes?</DialogTitle>
+            <DialogContent>
+              Your remaining additions, removals and board moves have not been
+              saved. Changes already saved will stay in the trip.
+              {prepareDraft.unconfirmed && (
+                <p>
+                  An unconfirmed save may already have reached the trip. Leaving
+                  discards the local draft, not a save already committed.
+                </p>
+              )}
+              {prepareDraft.error && (
+                <MessageBar intent="error">
+                  <MessageBarBody>{prepareDraft.error}</MessageBarBody>
+                </MessageBar>
+              )}
+            </DialogContent>
+            <DialogActions>
+              {prepareDraft.unconfirmed && (
+                <Button
+                  onClick={() => {
+                    if (blocker.state === "blocked") blocker.reset();
+                    void boardRef.current?.inspect();
+                  }}
+                >
+                  Inspect saved trip
+                </Button>
+              )}
+              <Button
+                appearance="primary"
+                disabled={planningBlocked}
+                onClick={() => void boardRef.current?.save()}
+              >
+                {prepareDraft.saving ? "Saving..." : "Save to trip"}
+              </Button>
+              <Button
+                disabled={prepareDraft.saving}
+                onClick={() => {
+                  boardRef.current?.discard();
+                }}
+              >
+                Leave without saving
+              </Button>
+              <Button
+                disabled={prepareDraft.saving}
+                onClick={() => {
+                  if (blocker.state === "blocked") blocker.reset();
+                }}
+              >
+                Stay
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </>
   );
 };

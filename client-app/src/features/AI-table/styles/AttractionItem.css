@@ -16,6 +16,7 @@
 .attraction-name.traditional::after { content: "●"; margin-left: var(--spacingHorizontalXS); font-size: 0.6rem; color: var(--colorNeutralForeground2); }
 .attraction-name.unstable { color: var(--colorStatusWarningForeground1); }
 .attraction-meta { color: var(--colorNeutralForeground2); font-size: 0.7rem; }
+.catalogue-tip-text { white-space: pre-line; }
 .attraction-hours { font-size: 0.7rem; color: var(--colorNeutralForeground1); }
 .attraction-hours { font-size: 0.7rem; color: var(--colorNeutralForeground1); display: flex; align-items: center; gap: var(--spacingHorizontalSNudge); flex-wrap: wrap; }
 .hours-segment { display: inline-flex; align-items: center; gap: var(--spacingHorizontalXS); }

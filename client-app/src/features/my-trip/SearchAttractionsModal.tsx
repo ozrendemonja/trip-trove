@@ -1,5 +1,5 @@
-import { Caption1, Link } from "@fluentui/react-components";
-import { Search24Regular } from "@fluentui/react-icons";
+import { Button, Caption1, Link } from "@fluentui/react-components";
+import { Add20Regular } from "@fluentui/react-icons";
 import {
   searchAttraction,
   searchCity,
@@ -35,6 +35,7 @@ interface SearchAttractionsModalInterface {
   text: string;
   onUpdateClick: (value: SearchTarget) => void | Promise<void>;
   planningBlocked?: boolean;
+  primary?: boolean;
 }
 
 export interface SearchTarget {
@@ -67,69 +68,82 @@ const SearchAttractionsModal: React.FunctionComponent<
   const [searchQuery, setSearchQuery] = useState(() => searchCountry);
   const [selected, setSelected] = useState<string>(country);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+  const [open, setOpen] = useState(false);
 
   return (
-    <EditProperty
-      editIconAriaLabel={"Search"}
-      editIcon={<Search24Regular />}
-      text={props.text}
-      onUpdateClick={async () => {
-        await props.onUpdateClick({
-          whereToSearch: selected,
-          id: selectedId ?? -1
-        });
-      }}
-      isFormValid={selectedId != undefined && !props.planningBlocked}
-      contentClassName={classes.searchModalContent}
-    >
-      <Flex gap={0} className={classes.searchModalLayout}>
-        {props.planningBlocked && (
-          <Caption1>
-            Resolve the pending planning change before adding attractions.
-          </Caption1>
-        )}
-        <div
-          role="toolbar"
-          aria-label="Search options"
-          className={classes.searchOptions}
-        >
-          {searchOptions
-            .map((option): SearchOptionAction => ({
-              key: option.key,
-              name: option.name,
-              onClick: () => {
-                setSearchQuery(() => option.searchQuery);
-                setSelected(option.name);
-                setSelectedId(undefined);
-              },
-              className:
-                selected == option.name
-                  ? classes.selectedSearchOption
-                  : classes.notSelectedSearchOption,
-              selected: selected === option.name
-            }))
-            .map((item) => (
-              <Link
-                key={item.key}
-                data-fluent-link
-                className={item.className}
-                aria-pressed={item.selected}
-                onClick={item.onClick}
-              >
-                {item.name}
-              </Link>
-            ))}
-        </div>
-        <AutocompleteField
-          key={selected}
-          {...searchConfig}
-          getSuggestions={searchQuery}
-          onSelectItem={(id: number | string | undefined) => {
-            setSelectedId(Number(id));
-          }}
-        />
-      </Flex>
-    </EditProperty>
+    <>
+      <Button
+        appearance={props.primary ? "primary" : "secondary"}
+        icon={<Add20Regular />}
+        disabled={props.planningBlocked}
+        onClick={() => setOpen(true)}
+      >
+        Add attractions
+      </Button>
+      <EditProperty
+        editIconAriaLabel="Add attractions"
+        isOpen={open}
+        onDismiss={() => setOpen(false)}
+        saveErrorMessage="Attractions couldn't be added. Your Prepare draft is unchanged. Review the selection and try again."
+        text={props.text}
+        onUpdateClick={async () => {
+          await props.onUpdateClick({
+            whereToSearch: selected,
+            id: selectedId ?? -1
+          });
+        }}
+        isFormValid={selectedId != undefined && !props.planningBlocked}
+        contentClassName={classes.searchModalContent}
+      >
+        <Flex gap={0} className={classes.searchModalLayout}>
+          {props.planningBlocked && (
+            <Caption1>
+              Resolve the pending planning change before adding attractions.
+            </Caption1>
+          )}
+          <div
+            role="toolbar"
+            aria-label="Search options"
+            className={classes.searchOptions}
+          >
+            {searchOptions
+              .map((option): SearchOptionAction => ({
+                key: option.key,
+                name: option.name,
+                onClick: () => {
+                  setSearchQuery(() => option.searchQuery);
+                  setSelected(option.name);
+                  setSelectedId(undefined);
+                },
+                className:
+                  selected == option.name
+                    ? classes.selectedSearchOption
+                    : classes.notSelectedSearchOption,
+                selected: selected === option.name
+              }))
+              .map((item) => (
+                <Link
+                  key={item.key}
+                  data-fluent-link
+                  className={item.className}
+                  aria-pressed={item.selected}
+                  onClick={item.onClick}
+                >
+                  {item.name}
+                </Link>
+              ))}
+          </div>
+          <AutocompleteField
+            key={selected}
+            {...searchConfig}
+            getSuggestions={searchQuery}
+            onSelectItem={(id: number | string | undefined) => {
+              setSelectedId(Number(id));
+            }}
+          />
+        </Flex>
+      </EditProperty>
+    </>
   );
 };
 

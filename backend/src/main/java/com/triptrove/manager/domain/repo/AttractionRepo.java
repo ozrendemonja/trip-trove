@@ -16,6 +16,9 @@ import java.util.Optional;
 public interface AttractionRepo extends JpaRepository<Attraction, Long>, JpaSpecificationExecutor<Attraction>, AttractionDetailsRepo {
     List<Attraction> findByName(String name);
 
+    @EntityGraph("Attraction.withDetails")
+    List<Attraction> findAllByIdIn(List<Long> ids);
+
     @Override
     @EntityGraph("Attraction.withDetails")
     Page<Attraction> findAll(Specification<Attraction> specification, Pageable pageable);

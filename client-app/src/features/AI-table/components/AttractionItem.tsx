@@ -496,6 +496,16 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
           )}
         </div>
       )}
+      {attraction.catalogueTip && (
+        <div role="note" aria-label="Catalogue tip">
+          <Text block size={200} weight="semibold">
+            Catalogue tip
+          </Text>
+          <Text block size={200} className="catalogue-tip-text">
+            {attraction.catalogueTip}
+          </Text>
+        </div>
+      )}
       {(attraction.note ||
         attraction.infoFrom ||
         editing ||
@@ -506,7 +516,18 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
             <div className={`sticky-note${reviewMode ? " review-muted" : ""}`}>
               {!editing && (
                 <>
-                  {attraction.note}
+                  {attraction.catalogueTip && attraction.note ? (
+                    <div role="note" aria-label="Trip note">
+                      <Text block size={200} weight="semibold">
+                        Trip note
+                      </Text>
+                      <Text block size={200}>
+                        {attraction.note}
+                      </Text>
+                    </div>
+                  ) : (
+                    attraction.note
+                  )}
                   {attraction.optimalVisitPeriod && (
                     <div>
                       Optimal visit time: {attraction.optimalVisitPeriod}
@@ -540,6 +561,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
               {editing && (
                 <div className="note-edit-wrap">
                   <textarea
+                    aria-label="Trip note"
                     className="note-textarea"
                     disabled={noteDisabled}
                     value={draft}

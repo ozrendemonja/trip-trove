@@ -41,7 +41,8 @@ export function mapSavedTripAttractionsToBoard(
       address: item.attractionAddress || "",
       category: item.attractionCategory || "",
       infoFrom: (item.infoFrom || "") + " " + (item.infoRecorded || ""),
-      note: item.note || item.tip || "",
+      catalogueTip: item.tip ?? undefined,
+      note: item.note ?? "",
       optimalVisitPeriod: item.optimalVisitPeriod
         ? `${item.optimalVisitPeriod.fromDate} - ${item.optimalVisitPeriod.toDate}`
         : undefined,
@@ -145,7 +146,8 @@ export function mapAttractionToBoardTask(a: Attraction): BoardAttraction {
     address: a.address.streetAddress || "",
     category: a.category,
     infoFrom: a.infoFrom.source + " " + a.infoFrom.recorded,
-    note: a.tip || "",
+    catalogueTip: a.tip,
+    note: "",
     optimalVisitPeriod: a.optimalVisitPeriod
       ? `${a.optimalVisitPeriod.fromDate} - ${a.optimalVisitPeriod.toDate}`
       : undefined,

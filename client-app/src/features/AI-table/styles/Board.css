@@ -7,6 +7,29 @@ html {
   flex-direction: column;
 }
 
+.attraction[data-just-added="true"] {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: prepare-attraction-added 2.5s ease-out;
+}
+
+@keyframes prepare-attraction-added {
+  from {
+    outline-color: var(--colorBrandStroke1);
+    background-color: var(--colorBrandBackground2);
+  }
+  to {
+    outline-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attraction[data-just-added="true"] {
+    animation: none;
+    outline-color: var(--colorBrandStroke1);
+  }
+}
+
 .board-toolbar {
   display: flex;
   flex-wrap: wrap;

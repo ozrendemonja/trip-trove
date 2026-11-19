@@ -15,6 +15,7 @@ export interface Attraction {
   address: string;
   category: string;
   infoFrom: string;
+  catalogueTip?: string;
   note: string;
   optimalVisitPeriod?: string;
   workingHours?: string;
@@ -23,6 +24,7 @@ export interface Attraction {
 
 export interface AttractionListProps {
   attractions: Attraction[];
+  highlightedAttractionIds?: ReadonlySet<number>;
   showPlaceholder: boolean;
   insertionIndex: number;
   placeholderHeight?: number;

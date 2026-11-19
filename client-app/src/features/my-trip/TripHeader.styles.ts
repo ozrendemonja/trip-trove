@@ -2,6 +2,7 @@ import { makeStyles, tokens } from "@fluentui/react-components";
 
 export const useClasses = makeStyles({
   card: {
+    containerType: "inline-size",
     minWidth: 0,
     paddingInline: tokens.spacingHorizontalL,
     paddingBottom: 0,
@@ -9,14 +10,30 @@ export const useClasses = makeStyles({
   },
   topRow: {
     gridTemplateColumns: "auto minmax(0, 1fr) auto",
-    minWidth: 0
+    minWidth: 0,
+    "@container (max-width: 440px)": {
+      gridTemplateColumns: "auto minmax(0, 1fr)",
+      rowGap: tokens.spacingVerticalS
+    }
   },
   backNavigation: {
     alignItems: "center",
-    columnGap: tokens.spacingHorizontalM
+    columnGap: tokens.spacingHorizontalM,
+    "@container (max-width: 850px)": {
+      columnGap: tokens.spacingHorizontalS
+    }
   },
   backButton: {
-    paddingInline: 0
+    paddingInline: 0,
+    "@container (max-width: 850px)": {
+      minWidth: "32px",
+      width: "32px"
+    }
+  },
+  backLabel: {
+    "@container (max-width: 850px)": {
+      display: "none"
+    }
   },
   backDivider: {
     alignSelf: "stretch",
@@ -27,16 +44,32 @@ export const useClasses = makeStyles({
   },
   name: {
     margin: 0,
-    overflowWrap: "anywhere"
+    display: "block",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis"
   },
   dates: {
     display: "flex",
     flexWrap: "wrap",
     columnGap: tokens.spacingHorizontalXS,
-    color: tokens.colorNeutralForeground2
+    color: tokens.colorNeutralForeground2,
+    "@container (max-width: 850px)": {
+      display: "none"
+    }
   },
   actions: {
-    alignSelf: "center"
+    alignSelf: "center",
+    minHeight: "32px",
+    display: "flex",
+    alignItems: "center",
+    columnGap: tokens.spacingHorizontalS,
+    whiteSpace: "nowrap",
+    "@container (max-width: 440px)": {
+      gridColumn: "1 / -1",
+      justifyContent: "flex-end",
+      flexWrap: "wrap"
+    }
   },
   steps: {
     display: "grid",

@@ -22,8 +22,7 @@ export function mapSavedTripAttractionsToBoard(
 ): TouristDestination[] {
   const cityColumnMap = new Map<string, Map<string, BoardAttraction[]>>();
   for (const item of items) {
-    const cityOrRegion = item.cityName?.trim() || item.regionName.trim();
-    const cityKey = cityOrRegion || item.countryName;
+    const cityKey = item.cityName || item.regionName || item.countryName;
     const columnTitle = GROUP_TO_COLUMN[item.attractionGroup];
     let columns = cityColumnMap.get(cityKey);
     if (!columns) {
@@ -162,9 +161,10 @@ export function mapServerResponseToTouristDestinations(
 ): TouristDestination[] {
   const groups = new Map<string, BoardAttraction[]>();
   for (const a of items) {
-    const cityOrRegion =
-      a.destination.cityName?.trim() || a.destination.regionName.trim();
-    const key = cityOrRegion || a.destination.countryName;
+    const key =
+      a.destination.cityName ||
+      a.destination.regionName ||
+      a.destination.countryName;
     const task = mapAttractionToBoardTask(a);
     const arr = groups.get(key) || [];
     arr.push(task);

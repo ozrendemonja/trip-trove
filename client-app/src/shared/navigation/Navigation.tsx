@@ -1,4 +1,4 @@
-import { Text, tokens } from "@fluentui/react-components";
+import { mergeClasses, Text, tokens } from "@fluentui/react-components";
 import {
   NavigationEntry,
   NavigationMenu,
@@ -30,7 +30,9 @@ const renderSectionHeader = (section: NavigationSection): JSX.Element => {
   );
 };
 
-export const Navigation: React.FunctionComponent = () => {
+export const Navigation: React.FunctionComponent<{ className?: string }> = ({
+  className
+}) => {
   const classes = useClasses();
   const [expanded, { toggle: toggleExpanded }] = useBooleanState(false);
   const navigate = useNavigate();
@@ -49,7 +51,7 @@ export const Navigation: React.FunctionComponent = () => {
   };
 
   return (
-    <Flex gap={15} className={classes.container}>
+    <Flex gap={15} className={mergeClasses(classes.container, className)}>
       <HomePageInfo className={classes.homePageInfo} />
       <NavigationMenu
         renderSectionHeader={renderSectionHeader}

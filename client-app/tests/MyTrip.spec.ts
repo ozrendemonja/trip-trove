@@ -386,6 +386,113 @@ for (const scenario of [
   });
 }
 
+test("The itinerary pool fits beside the days and every card is tabbable", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await page.goto(
+    "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--shows-unscheduled-attractions-in-board-order"
+  );
+  await page.getByRole("button", { name: "Itinerary", exact: true }).click();
+  const pool = page.getByRole("region", { name: "Unscheduled attractions" });
+  const days = page.getByRole("region", { name: "Itinerary days" });
+  await expect(pool.getByRole("article")).toHaveCount(5);
+  await expect(days.getByRole("article")).toHaveCount(2);
+  const dayCards = days.getByRole("article");
+  expect(
+    await dayCards
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().bottom)
+  ).toBe(
+    await dayCards
+      .last()
+      .evaluate((element) => element.getBoundingClientRect().bottom)
+  );
+  const pager = page.getByRole("navigation", {
+    name: "Itinerary day navigation"
+  });
+  await expect(pager.getByRole("button", { name: "Days 1–2 of 15" })).toBeVisible();
+  await pager.getByRole("button", { name: "Next day" }).click();
+  await expect(pager.getByRole("button", { name: "Days 2–3 of 15" })).toBeVisible();
+  await pager.getByRole("button", { name: "Previous day" }).click();
+  await pager.getByRole("button", { name: "Days 1–2 of 15" }).click();
+  await page.getByRole("menuitem", { name: "Friday, Jun 20, 2025" }).click();
+  await expect(
+    pager.getByRole("button", { name: "Days 11–12 of 15" })
+  ).toBeVisible();
+
+  await page.setViewportSize({ width: 768, height: 800 });
+  await expect(dayCards).toHaveCount(1);
+  expect(
+    await pool.evaluate((element) => element.getBoundingClientRect().right)
+  ).toBeLessThan(
+    await days.evaluate((element) => element.getBoundingClientRect().left)
+  );
+
+  await page.getByRole("button", { name: "Review", exact: true }).focus();
+  for (const name of ["Zurich Zoo", "Arcade", "Temple", "Viewpoint", "Bistro"]) {
+    await page.keyboard.press("Tab");
+    await expect(pool.getByRole("article", { name, exact: true })).toBeFocused();
+  }
+  expect(
+    await pool.evaluate((element) => element.scrollWidth <= element.clientWidth)
+  ).toBe(true);
+
+  await page.setViewportSize({ width: 480, height: 800 });
+  await expect(days.getByRole("article")).toHaveCount(1);
+  expect(
+    await pool.evaluate((element) => element.getBoundingClientRect().bottom)
+  ).toBeLessThan(
+    await days.evaluate((element) => element.getBoundingClientRect().top)
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth
+    )
+  ).toBe(true);
+});
+
+test("The empty pool offers a readable keyboard route to Prepare at 320px", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto(
+    "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--goes-to-prepare-from-an-empty-pool"
+  );
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Itinerary", exact: true }).click();
+  const pool = page.getByRole("region", { name: "Unscheduled attractions" });
+  const prepare = pool.getByRole("button", {
+    name: "Find more attractions on the board"
+  });
+  await expect(prepare).toBeVisible();
+  const bounds = await prepare.evaluate((button) => {
+    const region = button.closest('[role="region"]');
+    const poolBounds = region?.getBoundingClientRect();
+    const buttonBounds = button.getBoundingClientRect();
+    return {
+      labelFits: button.scrollWidth <= button.clientWidth,
+      insidePool:
+        poolBounds !== undefined && buttonBounds.right <= poolBounds.right,
+      noHorizontalScroll:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth
+    };
+  });
+  expect(bounds).toEqual({
+    labelFits: true,
+    insidePool: true,
+    noHorizontalScroll: true
+  });
+  await prepare.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Add attractions", exact: true })
+  ).toBeFocused();
+});
+
 test("Each Prepare save confirmation lasts exactly six seconds", async ({
   page
 }) => {

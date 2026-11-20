@@ -38,6 +38,8 @@ export interface BoardProps {
   initialCities?: TouristDestination[]; // optional; defaults to empty
   tripId?: number; // needed to persist board changes and attraction reviews
   onPlanningBlockedChange?: (blocked: boolean) => void;
+  onReloadSavedPlanning?: () => Promise<void>;
+  onPlaceOrderChange?: (places: string[]) => void;
   onPrepareDraftChange?: (draft: PrepareDraftState) => void;
   initialReviewData?: Record<
     number,

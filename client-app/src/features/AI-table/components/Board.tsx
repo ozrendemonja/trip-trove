@@ -104,6 +104,8 @@ const Board: React.FC<BoardProps> = ({
   initialReviewData,
   initialSavedAttractionIds,
   onPlanningBlockedChange,
+  onReloadSavedPlanning,
+  onPlaceOrderChange,
   onPrepareDraftChange,
   visitHistory,
   mode: boardMode
@@ -171,6 +173,7 @@ const Board: React.FC<BoardProps> = ({
       throw new Error("A trip is required to refresh planning.");
     }
     const board = await fetchTripBoard(tripId);
+    await onReloadSavedPlanning?.();
     const currentCities = applyVisitHistoryToCities(
       mapSavedTripAttractionsToBoard(board),
       visitHistory
@@ -183,7 +186,7 @@ const Board: React.FC<BoardProps> = ({
     );
     pendingBoardMovesRef.current = [];
     setCommitVersion((version) => version + 1);
-  }, [tripId, visitHistory]);
+  }, [onReloadSavedPlanning, tripId, visitHistory]);
   const planning = useTripPlanningSave(tripId, refreshPlanning);
   const {
     submit: submitPlanning,
@@ -222,6 +225,9 @@ const Board: React.FC<BoardProps> = ({
   useEffect(() => {
     onPlanningBlockedChange?.(planning.blocked);
   }, [onPlanningBlockedChange, planning.blocked]);
+  useEffect(() => {
+    onPlaceOrderChange?.(cities.map((city) => city.name));
+  }, [cities, onPlaceOrderChange]);
   const categoryOptions = [
     "POINT_OF_INTEREST_AND_LANDMARK",
     "HISTORIC_SITE",

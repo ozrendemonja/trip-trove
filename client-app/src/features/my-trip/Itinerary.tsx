@@ -28,6 +28,7 @@ import {
   type RefCallback
 } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
+import { ItineraryPool } from "./ItineraryPool";
 import { fetchTripItinerary } from "./infra/TripApi";
 import {
   DAY_COLUMN_GAP,
@@ -44,9 +45,10 @@ type LoadState = {
 
 interface ItineraryView {
   days: GetItineraryResponse["days"];
+  unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"];
   loading: boolean;
   failed: boolean;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<boolean>;
   measureDayRow: RefCallback<HTMLElement>;
   start: number;
   lastStart: number;
@@ -77,7 +79,7 @@ export const useItinerary = (
   const [load, setLoad] = useState<LoadState>();
   const request = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
-    if (!open || tripId === undefined) return;
+    if (!open || tripId === undefined) return false;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -91,6 +93,7 @@ export const useItinerary = (
       const data = await fetchTripItinerary(tripId, controller.signal);
       if (!controller.signal.aborted) {
         setLoad({ tripId, data, loading: false, failed: false });
+        return true;
       }
     } catch {
       if (!controller.signal.aborted) {
@@ -102,6 +105,7 @@ export const useItinerary = (
         }));
       }
     }
+    return false;
   }, [open, tripId]);
 
   useEffect(() => {
@@ -152,6 +156,7 @@ export const useItinerary = (
 
   return {
     days,
+    unscheduledAttractions: current?.data?.unscheduledAttractions ?? [],
     loading: current?.loading ?? true,
     failed: current?.failed ?? false,
     refresh,
@@ -225,14 +230,27 @@ export const ItineraryDayPager = ({
   );
 };
 
-export const ItineraryDays = ({
-  itinerary
+export const ItineraryContent = ({
+  itinerary,
+  boardPlaceOrder,
+  prepareBlocked,
+  onPrepare
 }: {
   itinerary: ItineraryView;
+  boardPlaceOrder: readonly string[];
+  prepareBlocked: boolean;
+  onPrepare: () => void;
 }): ReactElement => {
   const classes = useClasses();
-  const { days, failed, loading, refresh, visibleDays, measureDayRow } =
-    itinerary;
+  const {
+    days,
+    unscheduledAttractions,
+    failed,
+    loading,
+    refresh,
+    visibleDays,
+    measureDayRow
+  } = itinerary;
 
   if (!days.length) {
     return failed ? (
@@ -258,42 +276,49 @@ export const ItineraryDays = ({
       {failed && (
         <MessageBar intent="warning">
           <MessageBarBody>
-            The itinerary couldn&apos;t be refreshed. These days may be out of
-            date.
+            The itinerary couldn&apos;t be refreshed. Days and unscheduled
+            attractions may be out of date.
           </MessageBarBody>
         </MessageBar>
       )}
-      <section
-        ref={measureDayRow}
-        aria-label="Itinerary days"
-        aria-busy={loading}
-        className={classes.dayRow}
-        style={{
-          gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))`
-        }}
-      >
-        {visibleDays.map((day) => {
-          const date = new Date(day.date);
-          return (
-            <Card key={day.id} role="article" className={classes.day}>
-              <Text
-                as="h2"
-                className={classes.dayHeading}
-                aria-label={dateLabel.format(date)}
-              >
-                <time dateTime={day.date} className={classes.dayLabel}>
-                  <Caption1>{weekday.format(date)}</Caption1>
-                  <Text weight="semibold" className={classes.dateNumber}>
-                    {date.getUTCDate()}
-                  </Text>
-                  <Caption1>{month.format(date)}</Caption1>
-                </time>
-              </Text>
-              <Divider />
-            </Card>
-          );
-        })}
-      </section>
+      <div className={classes.itineraryColumns} aria-busy={loading}>
+        <ItineraryPool
+          attractions={unscheduledAttractions}
+          boardPlaceOrder={boardPlaceOrder}
+          prepareBlocked={prepareBlocked}
+          onPrepare={onPrepare}
+        />
+        <section
+          ref={measureDayRow}
+          aria-label="Itinerary days"
+          className={classes.dayRow}
+          style={{
+            gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))`
+          }}
+        >
+          {visibleDays.map((day) => {
+            const date = new Date(day.date);
+            return (
+              <Card key={day.id} role="article" className={classes.day}>
+                <Text
+                  as="h2"
+                  className={classes.dayHeading}
+                  aria-label={dateLabel.format(date)}
+                >
+                  <time dateTime={day.date} className={classes.dayLabel}>
+                    <Caption1>{weekday.format(date)}</Caption1>
+                    <Text weight="semibold" className={classes.dateNumber}>
+                      {date.getUTCDate()}
+                    </Text>
+                    <Caption1>{month.format(date)}</Caption1>
+                  </time>
+                </Text>
+                <Divider />
+              </Card>
+            );
+          })}
+        </section>
+      </div>
     </div>
   );
 };

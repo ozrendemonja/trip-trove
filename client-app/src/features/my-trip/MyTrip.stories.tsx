@@ -12,6 +12,7 @@ import {
 import makeServer from "../../ServerSetup";
 import type {
   AddAttractionUnderTripRequest,
+  GetItineraryResponse,
   GetSearchAttractionResponse
 } from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
@@ -19,6 +20,29 @@ import { MyTrip } from "./MyTrip";
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
 const TRIP_ID = "1";
+const ITINERARY_TRIP = {
+  tripId: 1,
+  tripName: "Italy",
+  fromDate: "2025-06-10",
+  toDate: "2025-06-24",
+  archived: false
+};
+
+const itineraryFixture = (
+  fromDate: string,
+  toDate: string
+): GetItineraryResponse => {
+  const lastDay = new Date(toDate);
+  const days: { id: number; date: string }[] = [];
+  for (
+    const date = new Date(fromDate);
+    date <= lastDay;
+    date.setUTCDate(date.getUTCDate() + 1)
+  ) {
+    days.push({ id: days.length + 1, date: date.toISOString().slice(0, 10) });
+  }
+  return { tripId: 1, days };
+};
 
 // A saved-attractions payload (shape of GET /trips/:id/attractions) used to put a
 // trip into the "already has attractions" state so the Board lands in edit mode.
@@ -42,7 +66,8 @@ const SAVED_ATTRACTIONS = [
 
 // Kept across renders so a previous story's Mirage instance is torn down before
 // the next one starts; stacked Pretender instances corrupt subsequent requests.
-let server: ReturnType<typeof makeServer>;
+type Server = ReturnType<typeof makeServer>;
+let server: Server;
 const boardMoves = fn();
 
 const meta: Meta<typeof MyTrip> = {
@@ -66,6 +91,18 @@ const meta: Meta<typeof MyTrip> = {
           { timing: 0 }
         );
       }
+      const { fromDate, toDate } = context.parameters.trip ?? {
+        fromDate: "2099-06-10",
+        toDate: "2099-06-24"
+      };
+      server.get(
+        "http://localhost:8080/trips/1/itinerary",
+        () => itineraryFixture(fromDate, toDate),
+        { timing: 0 }
+      );
+      const configureTripServer: ((server: Server) => void) | undefined =
+        context.parameters.configureTripServer;
+      configureTripServer?.(server);
       boardMoves.mockClear();
       server.put(
         "http://localhost:8080/trips/:id/board/attractions/:attractionId",
@@ -197,9 +234,10 @@ export const HeaderCardOwnsTripSteps: Story = {
     );
     await expect(
       steps.getAllByRole("button").map((button) => button.ariaLabel)
-    ).toEqual(["Prepare", "Edit", "Plan", "Review"]);
+    ).toEqual(["Prepare", "Edit", "Itinerary", "Plan", "Review"]);
     await expect(steps.getByText("Choose attractions")).toBeVisible();
     await expect(steps.getByText("Add hours, lengths, notes")).toBeVisible();
+    await expect(steps.getByText("Arrange the days")).toBeVisible();
     await expect(steps.getByText("See what's scheduled")).toBeVisible();
     await expect(steps.getByText("Rate visited attractions")).toBeVisible();
     await expect(
@@ -246,28 +284,35 @@ export const PrepareOnlyContinuesToEdit: Story = {
 
     const prepare = canvas.getByRole("button", { name: "Prepare" });
     const edit = canvas.getByRole("button", { name: "Edit" });
+    const itinerary = canvas.getByRole("button", { name: "Itinerary" });
     const plan = canvas.getByRole("button", { name: "Plan" });
     const review = canvas.getByRole("button", { name: "Review" });
 
+    await expect(itinerary).toBeDisabled();
+    await expect(itinerary).toHaveAccessibleDescription("After Edit");
     await expect(plan).toBeDisabled();
     await expect(plan).toHaveAccessibleDescription("After Edit");
     await expect(review).toBeDisabled();
     await expect(review).toHaveAccessibleDescription("After Edit");
+    await user.click(itinerary);
     await user.click(plan);
     await user.click(review);
-    await user.keyboard("{Alt>}3{/Alt}{Alt>}4{/Alt}");
+    await user.keyboard("{Alt>}3{/Alt}{Alt>}4{/Alt}{Alt>}5{/Alt}");
     await expect(prepare).toHaveAttribute("aria-current", "step");
 
     await user.keyboard("{Control>}v{/Control}");
     await expect(edit).toHaveAttribute("aria-current", "step");
+    await expect(itinerary).toBeEnabled();
     await expect(plan).toBeEnabled();
     await expect(plan).toHaveAccessibleDescription("See what's scheduled");
     await expect(review).toBeDisabled();
     await expect(review).toHaveAccessibleDescription("After the trip");
-    await user.keyboard("{Alt>}4{/Alt}");
+    await user.keyboard("{Alt>}5{/Alt}");
     await expect(edit).toHaveAttribute("aria-current", "step");
 
-    await user.click(plan);
+    await user.keyboard("{Control>}v{/Control}");
+    await expect(itinerary).toHaveAttribute("aria-current", "step");
+    await user.keyboard("{Control>}v{/Control}");
     await expect(plan).toHaveAttribute("aria-current", "step");
     await user.keyboard("{Control>}v{/Control}");
     await expect(prepare).toHaveAttribute("aria-current", "step");
@@ -324,13 +369,13 @@ export const PastTripLandsInReview: Story = {
     await user.click(canvas.getByRole("button", { name: "Prepare" }));
     await expect(review).toBeDisabled();
     await expect(review).toHaveAccessibleDescription("After Edit");
-    await user.keyboard("{Alt>}4{/Alt}");
+    await user.keyboard("{Alt>}5{/Alt}");
     await expect(
       canvas.getByRole("button", { name: "Prepare" })
     ).toHaveAttribute("aria-current", "step");
     await user.click(canvas.getByRole("button", { name: "Edit" }));
     await expect(review).toBeEnabled();
-    await user.keyboard("{Alt>}4{/Alt}");
+    await user.keyboard("{Alt>}5{/Alt}");
     await expect(review).toHaveAttribute("aria-current", "step");
   }
 };
@@ -351,6 +396,172 @@ export const EmptyPastTripLandsInReview: Story = {
       await canvas.findByRole("button", { name: "Review" })
     ).toHaveAttribute("aria-current", "step");
     await expect(canvas.getByRole("button", { name: "Plan" })).toBeEnabled();
+  }
+};
+
+export const PagesThroughTheItineraryAt768Pixels: Story = {
+  parameters: { trip: ITINERARY_TRIP },
+  decorators: [
+    (Story) => (
+      <div style={{ width: "768px", maxWidth: "100%" }}>
+        <Story />
+      </div>
+    )
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const itinerary = await canvas.findByRole("button", { name: "Itinerary" });
+    await user.click(itinerary);
+
+    const days = await canvas.findByRole("region", { name: "Itinerary days" });
+    const pager = within(canvas.getByRole("region", { name: "Trip overview" }));
+    await pager.findByRole("button", { name: "Days 1–2 of 15" });
+    const cards = within(days).getAllByRole("article");
+    await expect(cards).toHaveLength(2);
+    await expect(days.scrollWidth).toBeLessThanOrEqual(days.clientWidth);
+    await expect(cards[0].getBoundingClientRect().bottom).toBe(
+      cards[1].getBoundingClientRect().bottom
+    );
+    await expect(cards[1].getBoundingClientRect().right).toBeCloseTo(
+      days.getBoundingClientRect().right,
+      0
+    );
+    await expect(
+      within(days).getByRole("heading", { name: "Tuesday, Jun 10, 2025" })
+    ).toBeVisible();
+    await expect(
+      pager.getByRole("button", { name: "Previous day" })
+    ).toBeDisabled();
+
+    await user.click(pager.getByRole("button", { name: "Next day" }));
+    await pager.findByRole("button", { name: "Days 2–3 of 15" });
+    await user.click(pager.getByRole("button", { name: "Previous day" }));
+    await user.click(pager.getByRole("button", { name: "Days 1–2 of 15" }));
+    await user.click(
+      await overlay(canvasElement).findByRole("menuitem", {
+        name: "Friday, Jun 20, 2025"
+      })
+    );
+    await pager.findByRole("button", { name: "Days 11–12 of 15" });
+
+    await user.keyboard("{Alt>}4{/Alt}");
+    await expect(canvas.getByRole("button", { name: "Plan" })).toHaveAttribute(
+      "aria-current",
+      "step"
+    );
+    await expect(
+      canvas.queryByRole("region", { name: "Itinerary days" })
+    ).not.toBeInTheDocument();
+    await user.keyboard("{Alt>}3{/Alt}");
+    await pager.findByRole("button", { name: "Days 11–12 of 15" });
+    await expect(
+      canvas.getByRole("heading", { name: "Friday, Jun 20, 2025" })
+    ).toBeVisible();
+  }
+};
+
+export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
+  parameters: {
+    trip: ITINERARY_TRIP,
+    configureTripServer: (server: Server) => {
+      const responses = [
+        new MirageResponse(503),
+        itineraryFixture("2025-06-10", "2025-06-24"),
+        new MirageResponse(503),
+        itineraryFixture("2025-06-10", "2025-06-25"),
+        itineraryFixture("2025-06-10", "2025-06-26")
+      ];
+      server.get(
+        "http://localhost:8080/trips/1/itinerary",
+        () => responses.shift() ?? new MirageResponse(500),
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const day = "Tuesday, Jun 10, 2025";
+    const stale =
+      "The itinerary couldn't be refreshed. These days may be out of date.";
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await canvas.findByText("The itinerary couldn't be loaded.");
+    await expect(
+      canvas.queryByRole("region", { name: "Itinerary days" })
+    ).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Retry" }));
+    await canvas.findByRole("heading", { name: day });
+
+    const ownerDocument = canvasElement.ownerDocument;
+    let visibility: DocumentVisibilityState = "hidden";
+    Object.defineProperty(ownerDocument, "visibilityState", {
+      configurable: true,
+      get: () => visibility
+    });
+    try {
+      fireEvent(ownerDocument, new Event("visibilitychange"));
+      visibility = "visible";
+      fireEvent(ownerDocument, new Event("visibilitychange"));
+      await canvas.findByText(stale);
+    } finally {
+      Reflect.deleteProperty(ownerDocument, "visibilityState");
+    }
+    await expect(canvas.getByRole("heading", { name: day })).toBeVisible();
+
+    await user.click(canvas.getByRole("button", { name: "Refresh itinerary" }));
+    await canvas.findByRole("button", { name: /^Days? .+ of 16$/ });
+    const header = within(
+      canvas.getByRole("region", { name: "Trip overview" })
+    );
+    await expect(header.getByText("16 days")).toBeInTheDocument();
+    await expect(canvas.queryByText(stale)).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Plan" }));
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await canvas.findByRole("button", { name: /^Days? .+ of 17$/ });
+    await expect(header.getByText("17 days")).toBeInTheDocument();
+  }
+};
+
+export const ShowsBoardSaveRecoveryInItinerary: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      server.put(
+        "http://localhost:8080/trips/1/attractions/0/note",
+        () =>
+          new MirageResponse(
+            503,
+            {},
+            {
+              errorMessage: "The save couldn't be confirmed."
+            }
+          ),
+        { timing: 800 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "+ Add note" }));
+    await user.type(canvas.getByRole("textbox"), "Arrive before lunch");
+    await user.click(canvas.getByRole("button", { name: "Save" }));
+    await canvas.findByText("Saving");
+
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await canvas.findByRole("region", { name: "Itinerary days" });
+    const feedback = within(
+      canvas.getByRole("status", {
+        name: "Marked change for Casino of Monte-Carlo"
+      })
+    );
+    await feedback.findByText("The save couldn't be confirmed.");
+    await expect(
+      feedback.getByRole("button", { name: "Reload saved planning" })
+    ).toBeVisible();
   }
 };
 
@@ -1773,8 +1984,9 @@ export const SwitchesBoardModesWithAltNumberShortcuts: Story = {
     );
     await waitForPrepareMode(canvasElement);
     await switchModeWithShortcut(canvasElement, user, "2", /Edit/);
-    await switchModeWithShortcut(canvasElement, user, "3", /Plan/);
-    await switchModeWithShortcut(canvasElement, user, "4", /Review/);
+    await switchModeWithShortcut(canvasElement, user, "3", /Itinerary/);
+    await switchModeWithShortcut(canvasElement, user, "4", /Plan/);
+    await switchModeWithShortcut(canvasElement, user, "5", /Review/);
     await switchModeWithShortcut(canvasElement, user, "1", /Prepare/);
 
     const canvas = within(canvasElement);

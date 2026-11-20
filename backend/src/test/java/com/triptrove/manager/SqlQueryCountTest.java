@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -832,6 +833,25 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(resultSize));
 
         assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 45})
+    void itineraryReadUsesOneSelectRegardlessOfDayCount(int dayCount) throws Exception {
+        var firstDate = LocalDate.of(2028, 2, 1);
+        tripService.saveTrip("Another itinerary", firstDate, firstDate);
+        var trip = tripService.saveTrip("Itinerary query budget", firstDate, firstDate.plusDays(dayCount - 1));
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET initial_zone = 'Europe/Belgrade', last_checked_at = '2028-01-30T09:00:00Z'
+                WHERE trip_id = :tripId
+                """).setParameter("tripId", trip.getId()).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/{id}/itinerary", trip.getId()).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days.length()").value(dayCount));
+
+        assertReadOnlySelectCount(1);
     }
 
     @ParameterizedTest

@@ -1,9 +1,11 @@
 import {
   detachAttraction,
+  getItinerary,
   getTrip,
   getTrips,
   saveTrip,
   updateTripDetail,
+  type GetItineraryResponse,
   GetTripResponse
 } from "../../../clients/manager";
 import { client } from "../../../clients/manager";
@@ -204,6 +206,22 @@ export const fetchTripById = async (id: number): Promise<Trip> => {
     throw new Error("The server returned incomplete trip details.");
   }
   return trip;
+};
+
+export const fetchTripItinerary = async (
+  id: number,
+  signal: AbortSignal
+): Promise<GetItineraryResponse> => {
+  const { data, error } = await getItinerary({
+    path: { id },
+    headers: { "x-api-version": "1" },
+    signal,
+    cache: "no-store"
+  });
+  if (error || data?.tripId !== id || !data.days?.length) {
+    throw new Error("The itinerary couldn't be loaded.", { cause: error });
+  }
+  return data;
 };
 
 export const updateTripName = async (

@@ -49,6 +49,15 @@ The frontend's [tracked API contract](../client-app/openapi-doc/api-docs.json)
 matches this contract; run `yarn openapi-ts` in `client-app` to regenerate the
 ignored SDK after contract changes.
 
+Every trip has one itinerary, with a saved day for each date in its inclusive
+range. `GET /trips/{id}/itinerary` returns those days in date order. The read
+query selects itinerary and day fields without loading the associated trip.
+Liquibase creates the itinerary tables and backfills existing trips in one
+transaction. The backfill only initializes trips that have no itinerary. If it
+reports invalid saved dates, the entire migration is rolled back; correct the
+source trip dates before restarting. The migration does not guess replacements
+or reset any existing itinerary.
+
 ## Location-grouped Attraction Search
 
 Country and region attraction searches always group results by location.

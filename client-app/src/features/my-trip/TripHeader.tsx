@@ -49,6 +49,12 @@ const STEPS = [
     shortcut: "board.mode.edit"
   },
   {
+    mode: "itinerary",
+    label: "Itinerary",
+    purpose: "Arrange the days",
+    shortcut: "board.mode.itinerary"
+  },
+  {
     mode: "readOnly",
     label: "Plan",
     purpose: "See what's scheduled",
@@ -88,7 +94,9 @@ export const TripHeader = ({
           step.mode === "prepare" && mode !== "prepare" && planningBlocked
             ? "Finish pending change"
             : mode === "prepare" &&
-                (step.mode === "readOnly" || step.mode === "review")
+                (step.mode === "itinerary" ||
+                  step.mode === "readOnly" ||
+                  step.mode === "review")
               ? "After Edit"
               : step.mode === "review" &&
                   trip?.status !== "past" &&

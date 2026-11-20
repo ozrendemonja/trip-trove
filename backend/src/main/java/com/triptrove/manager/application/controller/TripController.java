@@ -86,6 +86,16 @@ public class TripController {
         return GetTripResponse.from(attraction);
     }
 
+    @GetMapping("/{id:\\d+}/itinerary")
+    @Operation(summary = "Retrieve the trip's itinerary with its days in date order", responses = {
+            @ApiResponse(description = "Itinerary details", responseCode = "200"),
+            @ApiResponse(description = "Itinerary not found", responseCode = "404",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public GetItineraryResponse getItinerary(@PathVariable Long id) {
+        return GetItineraryResponse.from(tripService.getItinerary(id));
+    }
+
     @PutMapping("/{id:\\d+}/name")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update trip name", responses = {

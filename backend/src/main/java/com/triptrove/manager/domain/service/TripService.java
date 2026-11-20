@@ -10,6 +10,8 @@ public interface TripService {
 
     Trip getTrip(Long id);
 
+    ItineraryDetails getItinerary(Long tripId);
+
     void updateTripName(Long id, String newName);
 
     void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip);

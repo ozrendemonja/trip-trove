@@ -27,18 +27,23 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
             """)
     int deleteEmptyTrip(Long tripId);
 
+    default boolean existsByNameAndDatesBetween(String name, LocalDate startDate, LocalDate endDate) {
+        return existsByNameAndDatesBetween(name, startDate, endDate, null);
+    }
+
     @Query("""
                 SELECT CASE WHEN EXISTS (
                     SELECT t
                     FROM Trip t
                     WHERE t.name = :name
+                      AND t.id IS DISTINCT FROM :excludedTripId
                       AND (
                             t.from BETWEEN :startDate AND :endDate
                          OR t.to   BETWEEN :startDate AND :endDate
                       )
                 ) THEN TRUE ELSE FALSE END
             """)
-    boolean existsByNameAndDatesBetween(String name, LocalDate startDate, LocalDate endDate);
+    boolean existsByNameAndDatesBetween(String name, LocalDate startDate, LocalDate endDate, Long excludedTripId);
 
     @Query("""
             SELECT t FROM Trip t

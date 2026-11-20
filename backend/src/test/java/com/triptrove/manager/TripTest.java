@@ -283,12 +283,21 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldUpdateTripRangeWhenNewRangeDoesNotOverlapWithSameNamedRanges() throws Exception {
         LocalDate fromDate = LocalDate.now().minusDays(10);
         LocalDate toDate = LocalDate.now().minusDays(2);
+        var original = new SaveTripRequest("Trip to reschedule", fromDate.minusMonths(1), toDate.minusMonths(1));
+        var trip = mockMvc.perform(post("/trips").contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1").content(mapper.writeValueAsString(original)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
         var request = new UpdateTripRangeRequest(fromDate, toDate);
 
-        mockMvc.perform(put("/trips/" + 1 + "/range").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(request))).andExpect(status().isNoContent());
+        mockMvc.perform(put(trip + "/range").contentType(MediaType.APPLICATION_JSON)
+                        .header("x-api-version", "1").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
 
-        assertThat(tripRepo.findById(1L).get().getFrom()).isEqualTo(fromDate);
-        assertThat(tripRepo.findById(1L).get().getTo()).isEqualTo(toDate);
+        mockMvc.perform(get(trip).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fromDate").value(fromDate.toString()))
+                .andExpect(jsonPath("$.toDate").value(toDate.toString()));
     }
 
     @Test

@@ -855,6 +855,29 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void itineraryReadWithAnUnscheduledPoolUsesOneSelectRegardlessOfBoardSize(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        entityManager.createNativeQuery("""
+                INSERT INTO itinerary(trip_id, initial_zone, last_checked_at)
+                VALUES (1, 'Europe/Belgrade', '2026-08-31T09:00:00Z');
+                INSERT INTO itinerary_day(trip_id, day_date)
+                SELECT id, trip_start_date + day_offset
+                FROM trip
+                CROSS JOIN LATERAL generate_series(0, trip_end_date - trip_start_date) AS days(day_offset)
+                WHERE id = 1;
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(boardSize));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {1, 20})
     void prepareAdditionUsesFourSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
         KeysetTestFixtures.clear(entityManager);

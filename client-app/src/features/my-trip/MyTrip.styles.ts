@@ -60,6 +60,18 @@ export const useClasses = makeStyles({
     width: "100%",
     minWidth: 0
   },
+  tripNavigation: {
+    "@media (max-width: 420px)": {
+      float: "none",
+      position: "static",
+      width: "100%",
+      maxWidth: "100%",
+      height: "auto",
+      marginRight: 0,
+      marginBottom: tokens.spacingVerticalS,
+      "& > nav": { maxHeight: "112px" }
+    }
+  },
   itineraryWorkspace: {
     boxSizing: "border-box",
     minHeight: "calc(100dvh - 8px)"

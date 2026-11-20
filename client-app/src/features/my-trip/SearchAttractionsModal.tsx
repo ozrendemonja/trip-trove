@@ -10,7 +10,7 @@ import {
 import { AutocompleteFieldProps } from "../../shared/autocomplete-field/AutocompleteField.types";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import { useClasses } from "./MyTrip.styles";
-import React, { useState } from "react";
+import React, { useState, type Ref } from "react";
 import { AutocompleteField } from "../../shared/autocomplete-field/AutocompleteField";
 import { Flex } from "../../shared/ui/Flex";
 
@@ -36,6 +36,7 @@ interface SearchAttractionsModalInterface {
   onUpdateClick: (value: SearchTarget) => void | Promise<void>;
   planningBlocked?: boolean;
   primary?: boolean;
+  triggerRef?: Ref<HTMLButtonElement>;
 }
 
 export interface SearchTarget {
@@ -73,6 +74,7 @@ const SearchAttractionsModal: React.FunctionComponent<
   return (
     <>
       <Button
+        ref={props.triggerRef}
         appearance={props.primary ? "primary" : "secondary"}
         icon={<Add20Regular />}
         disabled={props.planningBlocked}

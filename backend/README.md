@@ -50,8 +50,12 @@ matches this contract; run `yarn openapi-ts` in `client-app` to regenerate the
 ignored SDK after contract changes.
 
 Every trip has one itinerary, with a saved day for each date in its inclusive
-range. `GET /trips/{id}/itinerary` returns those days in date order. The read
-query selects itinerary and day fields without loading the associated trip.
+range. `GET /trips/{id}/itinerary` returns those days in date order and the
+unscheduled pool. The pool preserves board column, place and card order, and
+does not include Excluded or permanently closed attractions. Both are read
+in one SELECT without loading trip, day or attraction entities. When the
+board is already open, the itinerary keeps its visible place order while
+refreshing the attractions and their order within each place.
 Liquibase creates the itinerary tables and backfills existing trips in one
 transaction. The backfill only initializes trips that have no itinerary. If it
 reports invalid saved dates, the entire migration is rolled back; correct the

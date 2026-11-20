@@ -58,7 +58,7 @@ import { toLastReadAttraction } from "../continent/pages/list-attraction/ListAtt
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { TripHeader } from "./TripHeader";
-import { ItineraryDayPager, ItineraryDays, useItinerary } from "./Itinerary";
+import { ItineraryContent, ItineraryDayPager, useItinerary } from "./Itinerary";
 
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -66,7 +66,10 @@ export const MyTrip: React.FC = () => {
   const classes = useClasses();
   const [trip, setTrip] = useState<Trip>();
   const [planningBlocked, setPlanningBlocked] = useState(false);
+  const [boardPlaceOrder, setBoardPlaceOrder] = useState<string[]>([]);
   const boardRef = useRef<PrepareBoardHandle>(null);
+  const addAttractionsButton = useRef<HTMLButtonElement>(null);
+  const focusPrepareAction = useRef(false);
   const activeTripId = useRef(tripId);
   const modeChangeGeneration = useRef(0);
   useEffect(() => {
@@ -236,9 +239,20 @@ export const MyTrip: React.FC = () => {
     selectedMode?.tripId === tripId && selectedMode
       ? selectedMode.mode
       : initialMode;
+  useLayoutEffect(() => {
+    if (boardMode !== "prepare" || !focusPrepareAction.current) return;
+    focusPrepareAction.current = false;
+    addAttractionsButton.current?.focus();
+  }, [boardMode]);
   const itineraryOpen =
     tripDataReady && !loadError && boardMode === "itinerary";
   const itinerary = useItinerary(currentTripId, itineraryOpen);
+  const { refresh: refreshItinerary } = itinerary;
+  const reloadOpenItinerary = useCallback(async (): Promise<void> => {
+    if (!(await refreshItinerary())) {
+      throw new Error("The itinerary couldn't be refreshed.");
+    }
+  }, [refreshItinerary]);
   const headerTrip = trip && {
     ...trip,
     startDate: itinerary.days[0]?.date ?? trip.startDate,
@@ -278,9 +292,28 @@ export const MyTrip: React.FC = () => {
     }
   }, [blocker, hasPrepareChanges]);
 
+  const changeMode = async (mode: BoardMode): Promise<void> => {
+    if (mode === "prepare" && boardMode !== "prepare" && planningBlocked)
+      return;
+    const generation = ++modeChangeGeneration.current;
+    if (
+      boardMode === "prepare" &&
+      mode === "edit" &&
+      (prepareDraft.count > 0 || planningBlocked) &&
+      !(await boardRef.current?.save())
+    )
+      return;
+    if (
+      generation !== modeChangeGeneration.current ||
+      activeTripId.current !== tripId
+    )
+      return;
+    setSelectedMode({ tripId, mode });
+  };
+
   return (
     <>
-      <Navigation />
+      <Navigation className={classes.tripNavigation} />
       <main
         className={mergeClasses(
           classes.workspace,
@@ -297,22 +330,7 @@ export const MyTrip: React.FC = () => {
               trip={headerTrip}
               mode={boardMode}
               planningBlocked={planningBlocked}
-              onModeChange={async (mode) => {
-                const generation = ++modeChangeGeneration.current;
-                if (
-                  boardMode === "prepare" &&
-                  mode === "edit" &&
-                  (prepareDraft.count > 0 || planningBlocked) &&
-                  !(await boardRef.current?.save())
-                )
-                  return;
-                if (
-                  generation !== modeChangeGeneration.current ||
-                  activeTripId.current !== tripId
-                )
-                  return;
-                setSelectedMode({ tripId, mode });
-              }}
+              onModeChange={changeMode}
               onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
               actions={
@@ -321,6 +339,7 @@ export const MyTrip: React.FC = () => {
                   {boardMode === "prepare" && (
                     <SearchAttractionsModal
                       text="Trip Planner"
+                      triggerRef={addAttractionsButton}
                       onUpdateClick={handleUpdate}
                       planningBlocked={planningBlocked}
                       primary={prepareDraft.count === 0}
@@ -359,11 +378,26 @@ export const MyTrip: React.FC = () => {
               initialReviewData={savedReviewData}
               initialSavedAttractionIds={savedAttractionIds}
               onPlanningBlockedChange={setPlanningBlocked}
+              onReloadSavedPlanning={
+                itineraryOpen ? reloadOpenItinerary : undefined
+              }
+              onPlaceOrderChange={setBoardPlaceOrder}
               onPrepareDraftChange={setPrepareDraft}
               visitHistory={visitHistoryMap}
               mode={boardMode}
             />
-            {itineraryOpen && <ItineraryDays itinerary={itinerary} />}
+            {itineraryOpen && (
+              <ItineraryContent
+                itinerary={itinerary}
+                boardPlaceOrder={boardPlaceOrder}
+                prepareBlocked={planningBlocked}
+                onPrepare={() => {
+                  if (planningBlocked) return;
+                  focusPrepareAction.current = true;
+                  void changeMode("prepare");
+                }}
+              />
+            )}
           </>
         ) : (
           <Spinner label="Loading trip" />

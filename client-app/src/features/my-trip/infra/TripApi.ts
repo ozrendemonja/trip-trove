@@ -218,7 +218,12 @@ export const fetchTripItinerary = async (
     signal,
     cache: "no-store"
   });
-  if (error || data?.tripId !== id || !data.days?.length) {
+  if (
+    error ||
+    data?.tripId !== id ||
+    !data.days?.length ||
+    !Array.isArray(data.unscheduledAttractions)
+  ) {
     throw new Error("The itinerary couldn't be loaded.", { cause: error });
   }
   return data;

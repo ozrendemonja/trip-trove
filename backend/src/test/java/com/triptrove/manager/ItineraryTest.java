@@ -35,7 +35,8 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.days[*].date", contains(dates.toArray(String[]::new))))
                 .andExpect(jsonPath("$.initialZone").doesNotExist())
-                .andExpect(jsonPath("$.lastCheckedAt").doesNotExist());
+                .andExpect(jsonPath("$.lastCheckedAt").doesNotExist())
+                .andExpect(jsonPath("$.unscheduledAttractions").isEmpty());
     }
 
     private static Stream<Arguments> newTrips() {
@@ -59,6 +60,97 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.tripId").value(tripId))
                 .andExpect(jsonPath("$.initialZone").value("Europe/Belgrade"))
                 .andExpect(jsonPath("$.lastCheckedAt").value("2028-01-30T09:00:00Z"));
+    }
+
+    @Test
+    void theUnscheduledPoolPreservesBoardOrderAndIncludesEligibleSubAttractions() throws Exception {
+        seedItineraryWithBoard(9);
+        entityManager.createNativeQuery("UPDATE city SET name = 'Zurich' WHERE id = 1").executeUpdate();
+        entityManager.createNativeQuery("UPDATE city SET name = 'Athens' WHERE id = 2").executeUpdate();
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET city_id = 1 WHERE id IN (3, 4, 6);
+                UPDATE attraction SET city_id = 2 WHERE id IN (5, 7);
+                UPDATE attraction SET name = 'Closed gate', permanently_closed_at = '2026-08-01' WHERE id = 1;
+                UPDATE attraction SET name = 'Zurich zoo' WHERE id = 3;
+                UPDATE attraction SET name = 'Arcade', main_attraction_id = 5 WHERE id = 4;
+                UPDATE attraction SET name = 'Bistro', category = 'EATERY' WHERE id = 6;
+                UPDATE attraction SET city_id = null WHERE id = 8;
+                UPDATE trip_attraction SET attraction_group = 'EXCLUDED' WHERE id = 5;
+                UPDATE trip_attraction SET attraction_group = 'SECONDARY' WHERE id IN (6, 7, 8);
+                UPDATE trip_attraction SET must_visit = false, visit_time = '45-60 min' WHERE id = 4;
+                UPDATE trip_attraction SET status = 'VISITED' WHERE id = 7;
+                UPDATE trip_attraction SET trip_id = 2 WHERE id = 9;
+                """).executeUpdate();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[*].date", contains("2026-09-01", "2026-09-02")))
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(3, 4, 2, 6, 7, 8)))
+                .andExpect(jsonPath("$.unscheduledAttractions[*].place", contains(
+                        "Zurich", "Zurich", "Athens", "Zurich", "Athens", "Keyset region 8")))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].name").value("Arcade"))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].attractionGroup").value("PRIMARY"))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].mustVisit").value(false))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].workingHours").value("09:00-17:00"))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].visitDuration").value("45-60 min"))
+                .andExpect(jsonPath("$.unscheduledAttractions[3].category").value("EATERY"))
+                .andExpect(jsonPath("$.unscheduledAttractions[3].attractionGroup").value("SECONDARY"));
+    }
+
+    @Test
+    void refreshingThePoolReflectsSavedBoardMovesAndMustVisitChanges() throws Exception {
+        seedItineraryWithBoard(4);
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET city_id = 1 WHERE id IN (2, 3, 4);
+                UPDATE trip_attraction SET attraction_group = 'SECONDARY' WHERE id IN (3, 4);
+                UPDATE trip_attraction SET must_visit = false WHERE id IN (2, 3);
+                """).executeUpdate();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(1, 2, 3, 4)))
+                .andExpect(jsonPath("$.unscheduledAttractions[2].attractionGroup").value("SECONDARY"))
+                .andExpect(jsonPath("$.unscheduledAttractions[2].mustVisit").value(false));
+
+        mockMvc.perform(put("/trips/1/board/attractions/3").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"targetGroup":"PRIMARY","nextAttractionId":1}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/1/board/attractions/2").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"targetGroup":"PRIMARY","nextAttractionId":3}
+                                """))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/1/attractions/3/must-visit").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"mustVisit":true}
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 3, 1, 4)))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].attractionGroup").value("PRIMARY"))
+                .andExpect(jsonPath("$.unscheduledAttractions[1].mustVisit").value(true));
+    }
+
+    @Test
+    void thePoolTreatsPaddedLabelsAsTheSameBoardPlace() throws Exception {
+        seedItineraryWithBoard(3);
+        entityManager.createNativeQuery("""
+                UPDATE city SET name = 'Paris' WHERE id = 1;
+                UPDATE city SET name = 'Madrid' WHERE id = 2;
+                UPDATE city SET name = U&'\\00A0Paris' WHERE id = 3;
+                """).executeUpdate();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(1, 3, 2)))
+                .andExpect(jsonPath("$.unscheduledAttractions[*].place", contains("Paris", "Paris", "Madrid")));
     }
 
     @Test
@@ -110,5 +202,15 @@ class ItineraryTest extends AbstractIntegrationTest {
                                 """.formatted(name, from, to)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+    }
+
+    private void seedItineraryWithBoard(int size) {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, size);
+        entityManager.createNativeQuery("""
+                UPDATE trip SET trip_end_date = DATE '2026-09-02' WHERE id = 1;
+                INSERT INTO itinerary(trip_id) VALUES (1);
+                INSERT INTO itinerary_day(trip_id, day_date) VALUES (1, '2026-09-01'), (1, '2026-09-02');
+                """).executeUpdate();
     }
 }

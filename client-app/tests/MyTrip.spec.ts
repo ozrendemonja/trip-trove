@@ -42,11 +42,12 @@ test("Show Edit and Plan steps in the header, not on Board", async ({
 }) => {
   const header = page.getByRole("region", { name: "Trip overview" });
   await expect(header.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(header.getByRole("button", { name: "Itinerary" })).toBeVisible();
   await expect(header.getByRole("button", { name: "Plan" })).toBeVisible();
   await expect(
     page
       .locator(".attraction-board-wrapper")
-      .getByRole("button", { name: /^(Prepare|Edit|Plan|Review)$/ })
+      .getByRole("button", { name: /^(Prepare|Edit|Itinerary|Plan|Review)$/ })
   ).toHaveCount(0);
   await expect(page).toHaveScreenshot();
 });
@@ -66,10 +67,10 @@ test("Switch to Review mode and show review forms", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
-test("Switch to Review mode using Alt+4 keyboard shortcut", async ({
+test("Switch to Review mode using Alt+5 keyboard shortcut", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+4");
+  await page.keyboard.press("Alt+5");
 
   await expect(page.getByRole("button", { name: /Review/i })).toHaveAttribute(
     "aria-current",
@@ -77,10 +78,10 @@ test("Switch to Review mode using Alt+4 keyboard shortcut", async ({
   );
 });
 
-test("Switch to Plan mode using Alt+3 keyboard shortcut on MyTrip", async ({
+test("Switch to Plan mode using Alt+4 keyboard shortcut on MyTrip", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+4");
 
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
     "aria-current",
@@ -91,7 +92,7 @@ test("Switch to Plan mode using Alt+3 keyboard shortcut on MyTrip", async ({
 test("Switch back to Edit mode using Alt+2 keyboard shortcut on MyTrip", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+4");
+  await page.keyboard.press("Alt+5");
   await page.keyboard.press("Alt+2");
 
   await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
@@ -105,6 +106,11 @@ test("Cycle through all available trip steps using Ctrl+V", async ({
 }) => {
   await page.keyboard.press("Alt+2");
 
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: "Itinerary" })).toHaveAttribute(
+    "aria-current",
+    "step"
+  );
   await page.keyboard.press("Control+v");
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
     "aria-current",
@@ -263,7 +269,7 @@ for (const scenario of [
       await edit.click();
       await expect(review).toBeDisabled();
       await expect(review).toHaveAccessibleDescription("After the trip");
-      await page.keyboard.press("Alt+4");
+      await page.keyboard.press("Alt+5");
       await expect(edit).toHaveAttribute("aria-current", "step");
 
       await page.clock.setFixedTime(new Date(scenario.afterEndDate));
@@ -339,7 +345,7 @@ for (const scenario of [
           return { x, y };
         })
       );
-    for (const step of ["Prepare", "Edit", "Plan", "Review"]) {
+    for (const step of ["Prepare", "Edit", "Itinerary", "Plan", "Review"]) {
       await steps.getByRole("button", { name: step, exact: true }).click();
       await expect(
         steps.getByRole("button", { name: step, exact: true })
@@ -354,6 +360,29 @@ for (const scenario of [
         )
       ).toEqual(stepPositions);
     }
+
+    await page.keyboard.press("Alt+3");
+    const pager = header.getByRole("navigation", {
+      name: "Itinerary day navigation"
+    });
+    await expect(pager).toBeVisible();
+    const pagerLeft = await pager.evaluate(
+      (element) => element.getBoundingClientRect().left
+    );
+    const nameRight = await name.evaluate(
+      (element) => element.getBoundingClientRect().right
+    );
+    expect(nameRight).toBeLessThan(pagerLeft);
+    await expect(
+      page.getByRole("region", { name: "Itinerary days" })
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth
+      )
+    ).toBe(true);
   });
 }
 

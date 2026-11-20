@@ -73,11 +73,14 @@ export const useClasses = makeStyles({
   },
   steps: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     columnGap: tokens.spacingHorizontalM,
     listStyleType: "none",
     margin: 0,
-    padding: 0
+    padding: 0,
+    "@container (max-width: 420px)": {
+      gridTemplateColumns: "repeat(3, minmax(0, 1fr))"
+    }
   },
   step: {
     display: "flex",
@@ -88,7 +91,10 @@ export const useClasses = makeStyles({
   stepConnector: {
     flex: "1 0 12px",
     minWidth: "12px",
-    marginTop: "18px"
+    marginTop: "18px",
+    "@container (max-width: 650px)": {
+      display: "none"
+    }
   },
   stepButton: {
     display: "flex",

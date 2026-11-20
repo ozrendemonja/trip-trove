@@ -14,7 +14,8 @@ export interface TouristDestination {
   columns: Column[];
 }
 
-export type BoardMode = "edit" | "prepare" | "readOnly" | "review";
+export type BoardMode =
+  "edit" | "prepare" | "itinerary" | "readOnly" | "review";
 
 export interface PrepareDraftState {
   count: number;

@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
+import com.triptrove.manager.domain.repo.ItineraryRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -30,12 +31,14 @@ class TripServiceImplTest {
     private AttractionRepo attractionRepo;
     @Mock
     private TripAttractionRepo tripAttractionRepo;
+    @Mock
+    private ItineraryRepo itineraryRepo;
 
     private TripServiceImpl tripService;
 
     @BeforeEach
     void setUp() {
-        tripService = new TripServiceImpl(managerProperties, tripRepo, attractionRepo, tripAttractionRepo);
+        tripService = new TripServiceImpl(managerProperties, tripRepo, attractionRepo, tripAttractionRepo, itineraryRepo);
     }
 
     @Test

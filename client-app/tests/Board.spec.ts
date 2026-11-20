@@ -58,11 +58,11 @@ test("Trip header owns the steps and Board renders no mode buttons", async ({
 }) => {
   await expect(
     page.getByRole("navigation", { name: "Trip steps" }).getByRole("button")
-  ).toHaveCount(4);
+  ).toHaveCount(5);
   await expect(
     page
       .locator(".attraction-board-wrapper")
-      .getByRole("button", { name: /^(Prepare|Edit|Plan|Review)$/ })
+      .getByRole("button", { name: /^(Prepare|Edit|Itinerary|Plan|Review)$/ })
   ).toHaveCount(0);
   await expect(page).toHaveScreenshot();
 });
@@ -79,8 +79,8 @@ test("Show filter dropdowns on demand", async ({ page }) => {
   await expect(page).toHaveScreenshot();
 });
 
-test("Switch to Plan mode using Alt+3 keyboard shortcut", async ({ page }) => {
-  await page.keyboard.press("Alt+3");
+test("Switch to Plan mode using Alt+4 keyboard shortcut", async ({ page }) => {
+  await page.keyboard.press("Alt+4");
 
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
     "aria-current",
@@ -91,7 +91,7 @@ test("Switch to Plan mode using Alt+3 keyboard shortcut", async ({ page }) => {
 test("Switch back to Edit mode using Alt+2 keyboard shortcut", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+4");
   await page.keyboard.press("Alt+2");
 
   await expect(page.getByRole("button", { name: /Edit/i })).toHaveAttribute(
@@ -100,9 +100,12 @@ test("Switch back to Edit mode using Alt+2 keyboard shortcut", async ({
   );
 });
 
-test("Cycle from Edit to Plan using Ctrl+V keyboard shortcut", async ({
-  page
-}) => {
+test("Cycle from Edit to Itinerary and Plan using Ctrl+V", async ({ page }) => {
+  await page.keyboard.press("Control+v");
+  await expect(page.getByRole("button", { name: "Itinerary" })).toHaveAttribute(
+    "aria-current",
+    "step"
+  );
   await page.keyboard.press("Control+v");
 
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
@@ -114,7 +117,7 @@ test("Cycle from Edit to Plan using Ctrl+V keyboard shortcut", async ({
 test("Cycle from Plan through Review and Prepare back to Edit", async ({
   page
 }) => {
-  await page.keyboard.press("Alt+3");
+  await page.keyboard.press("Alt+4");
   await page.keyboard.press("Control+v");
   await expect(page.getByRole("button", { name: "Review" })).toHaveAttribute(
     "aria-current",
@@ -133,9 +136,9 @@ test("Cycle from Plan through Review and Prepare back to Edit", async ({
   );
 });
 
-test("Alt+4 cannot bypass Edit from Prepare", async ({ page }) => {
+test("Alt+5 cannot bypass Edit from Prepare", async ({ page }) => {
   await page.keyboard.press("Alt+1");
-  await page.keyboard.press("Alt+4");
+  await page.keyboard.press("Alt+5");
 
   await expect(page.getByRole("button", { name: "Prepare" })).toHaveAttribute(
     "aria-current",

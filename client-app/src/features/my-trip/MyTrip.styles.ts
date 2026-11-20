@@ -60,6 +60,10 @@ export const useClasses = makeStyles({
     width: "100%",
     minWidth: 0
   },
+  itineraryWorkspace: {
+    boxSizing: "border-box",
+    minHeight: "calc(100dvh - 8px)"
+  },
   workspace: {
     display: "flex",
     flexDirection: "column",

@@ -1142,6 +1142,8 @@ const Board: React.FC<BoardProps> = ({
       )
   );
 
+  if (boardMode === "itinerary") return markedChange;
+
   return (
     <div className="attraction-board-wrapper" ref={boardElementRef}>
       <Dialog

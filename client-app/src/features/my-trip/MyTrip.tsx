@@ -9,7 +9,8 @@ import {
   MessageBar,
   MessageBarBody,
   Spinner,
-  Text
+  Text,
+  mergeClasses
 } from "@fluentui/react-components";
 import { Checkmark20Regular, Save20Regular } from "@fluentui/react-icons";
 import React, {
@@ -57,6 +58,7 @@ import { toLastReadAttraction } from "../continent/pages/list-attraction/ListAtt
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { TripHeader } from "./TripHeader";
+import { ItineraryDayPager, ItineraryDays, useItinerary } from "./Itinerary";
 
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -234,6 +236,14 @@ export const MyTrip: React.FC = () => {
     selectedMode?.tripId === tripId && selectedMode
       ? selectedMode.mode
       : initialMode;
+  const itineraryOpen =
+    tripDataReady && !loadError && boardMode === "itinerary";
+  const itinerary = useItinerary(currentTripId, itineraryOpen);
+  const headerTrip = trip && {
+    ...trip,
+    startDate: itinerary.days[0]?.date ?? trip.startDate,
+    endDate: itinerary.days.at(-1)?.date ?? trip.endDate
+  };
   const hasPrepareChanges =
     boardMode === "prepare" &&
     (prepareDraft.count > 0 || prepareDraft.saving || planningBlocked);
@@ -271,7 +281,12 @@ export const MyTrip: React.FC = () => {
   return (
     <>
       <Navigation />
-      <main className={classes.workspace}>
+      <main
+        className={mergeClasses(
+          classes.workspace,
+          itineraryOpen && classes.itineraryWorkspace
+        )}
+      >
         {loadError ? (
           <MessageBar intent="error">
             <MessageBarBody>{loadError}</MessageBarBody>
@@ -279,7 +294,7 @@ export const MyTrip: React.FC = () => {
         ) : tripDataReady ? (
           <>
             <TripHeader
-              trip={trip}
+              trip={headerTrip}
               mode={boardMode}
               planningBlocked={planningBlocked}
               onModeChange={async (mode) => {
@@ -302,6 +317,7 @@ export const MyTrip: React.FC = () => {
               onBack={() => navigate("/my-trips")}
               actions={
                 <>
+                  {itineraryOpen && <ItineraryDayPager itinerary={itinerary} />}
                   {boardMode === "prepare" && (
                     <SearchAttractionsModal
                       text="Trip Planner"
@@ -347,6 +363,7 @@ export const MyTrip: React.FC = () => {
               visitHistory={visitHistoryMap}
               mode={boardMode}
             />
+            {itineraryOpen && <ItineraryDays itinerary={itinerary} />}
           </>
         ) : (
           <Spinner label="Loading trip" />

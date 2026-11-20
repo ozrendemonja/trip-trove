@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.algorithm.FractionalIndexing;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
+import com.triptrove.manager.domain.repo.ItineraryRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
 import com.triptrove.manager.infra.ManagerProperties;
@@ -25,8 +26,10 @@ public class TripServiceImpl implements TripService {
     private final TripRepo tripRepo;
     private final AttractionRepo attractionRepo;
     private final TripAttractionRepo tripAttractionRepo;
+    private final ItineraryRepo itineraryRepo;
 
     @Override
+    @Transactional
     public Trip saveTrip(String tripName, LocalDate from, LocalDate to) {
         log.atInfo().log("Processing save trip request for trip '{}'", tripName);
         if (tripRepo.existsByNameAndDatesBetween(tripName, from, to)) {
@@ -39,6 +42,7 @@ public class TripServiceImpl implements TripService {
         trip.setFrom(from);
         trip.setTo(to);
         var result = tripRepo.save(trip);
+        itineraryRepo.save(new Itinerary(result));
 
         log.atInfo().log("Trip '{}' successfully saved", result.getName());
         return result;
@@ -48,6 +52,14 @@ public class TripServiceImpl implements TripService {
     public Trip getTrip(Long id) {
         log.atInfo().log("Getting trip with id '{}'", id);
         return tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ItineraryDetails getItinerary(Long tripId) {
+        return itineraryRepo.findDetailsByTripId(tripId)
+                .orElseThrow(() -> new BaseApiException("Itinerary not found for trip",
+                        BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId));
     }
 
     @Override
@@ -69,13 +81,18 @@ public class TripServiceImpl implements TripService {
     public void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip) {
         log.atInfo().log("Updating the trip range");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
-        if (tripRepo.existsByNameAndDatesBetween(trip.getName(), fromTrip, toTrip)) {
+        if (trip.getFrom().equals(fromTrip) && trip.getTo().equals(toTrip)) {
+            return;
+        }
+        if (tripRepo.existsByNameAndDatesBetween(trip.getName(), fromTrip, toTrip, id)) {
             throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, trip.getName(), fromTrip, toTrip);
         }
 
+        var itinerary = itineraryRepo.findWithDaysByTripId(id)
+                .orElseThrow(() -> new IllegalStateException("Missing itinerary for trip " + id));
+        itinerary.resizeEmptyDays(fromTrip, toTrip);
         trip.setFrom(fromTrip);
         trip.setTo(toTrip);
-        tripRepo.save(trip);
         log.atInfo().log("Trip range has been updated");
     }
 

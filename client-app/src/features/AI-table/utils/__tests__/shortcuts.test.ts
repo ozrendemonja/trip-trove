@@ -131,8 +131,9 @@ describe("getShortcut & isShortcut", () => {
   test("isShortcut matches the configured combo for each action", () => {
     expect(isShortcut("board.mode.prepare", "Alt+1")).toBe(true);
     expect(isShortcut("board.mode.edit", "Alt+2")).toBe(true);
-    expect(isShortcut("board.mode.plan", "Alt+3")).toBe(true);
-    expect(isShortcut("board.mode.review", "Alt+4")).toBe(true);
+    expect(isShortcut("board.mode.itinerary", "Alt+3")).toBe(true);
+    expect(isShortcut("board.mode.plan", "Alt+4")).toBe(true);
+    expect(isShortcut("board.mode.review", "Alt+5")).toBe(true);
     expect(isShortcut("board.mode.cycle", "Ctrl+V")).toBe(true);
     expect(isShortcut("form.save", "Ctrl+S")).toBe(true);
     expect(isShortcut("form.submit", "Enter")).toBe(true);

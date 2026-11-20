@@ -7,10 +7,10 @@
     "start": "vite --open",
     "build": "vite build",
     "openapi-ts": "openapi-ts",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "storybook": "openapi-ts && storybook dev -p 6006",
+    "build-storybook": "openapi-ts && storybook build",
     "test-unit": "jest",
-    "test-storybook": "vitest --project=storybook",
+    "test-storybook": "openapi-ts && vitest --project=storybook",
     "test-e2e": "playwright test",
     "lint:ts": "eslint \"src/**/*.{js,ts,tsx}\""
   },

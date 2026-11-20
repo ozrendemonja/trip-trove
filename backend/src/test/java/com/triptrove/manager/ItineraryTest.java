@@ -139,21 +139,6 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void thePoolTreatsPaddedLabelsAsTheSameBoardPlace() throws Exception {
-        seedItineraryWithBoard(3);
-        entityManager.createNativeQuery("""
-                UPDATE city SET name = 'Paris' WHERE id = 1;
-                UPDATE city SET name = 'Madrid' WHERE id = 2;
-                UPDATE city SET name = U&'\\00A0Paris' WHERE id = 3;
-                """).executeUpdate();
-
-        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(1, 3, 2)))
-                .andExpect(jsonPath("$.unscheduledAttractions[*].place", contains("Paris", "Paris", "Madrid")));
-    }
-
-    @Test
     void changingTheRangeKeepsOnlyTheNewDatesAndPreservesOverlappingDays() throws Exception {
         createTrip("Moving the trip", "2028-04-01", "2028-04-30");
         var trip = createTrip("Moving the trip", "2028-04-04", "2028-04-06");

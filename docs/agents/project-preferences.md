@@ -1,5 +1,11 @@
 # Project Preferences
 
+For trip-planning API changes:
+
+- Follow the existing planning writes: a successful mutation returns `204 No
+  Content`. Do not load and return the itinerary from the write. If the client
+  needs the updated itinerary, use `GET /trips/{id}/itinerary`.
+
 For frontend UI:
 
 - Prefer Fluent UI v9 components over custom equivalents wherever practical.

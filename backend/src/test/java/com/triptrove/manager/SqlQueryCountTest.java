@@ -81,6 +81,9 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     private TripRepo tripRepo;
 
     @Autowired
+    private ItineraryRepo itineraryRepo;
+
+    @Autowired
     private SearchService searchService;
 
     @Autowired
@@ -842,7 +845,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         tripService.saveTrip("Another itinerary", firstDate, firstDate);
         var trip = tripService.saveTrip("Itinerary query budget", firstDate, firstDate.plusDays(dayCount - 1));
         entityManager.createNativeQuery("""
-                UPDATE itinerary SET initial_zone = 'Europe/Belgrade', last_checked_at = '2028-01-30T09:00:00Z'
+                UPDATE itinerary SET time_zone = 'Europe/Belgrade', last_checked_at = '2028-01-30T09:00:00Z'
                 WHERE trip_id = :tripId
                 """).setParameter("tripId", trip.getId()).executeUpdate();
         resetSqlStatementCounts();
@@ -856,13 +859,13 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {3, 30})
-    void itineraryReadWithAnUnscheduledPoolUsesOneSelectRegardlessOfBoardSize(int boardSize) throws Exception {
+    void itineraryReadWithUnscheduledAttractionsUsesOneSelectRegardlessOfBoardSize(int boardSize) throws Exception {
         KeysetTestFixtures.clear(entityManager);
         KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
         entityManager.createNativeQuery("""
-                INSERT INTO itinerary(trip_id, initial_zone, last_checked_at)
+                INSERT INTO itinerary(trip_id, time_zone, last_checked_at)
                 VALUES (1, 'Europe/Belgrade', '2026-08-31T09:00:00Z');
-                INSERT INTO itinerary_day(trip_id, day_date)
+                INSERT INTO itinerary_day(trip_id, date)
                 SELECT id, trip_start_date + day_offset
                 FROM trip
                 CROSS JOIN LATERAL generate_series(0, trip_end_date - trip_start_date) AS days(day_offset)
@@ -872,9 +875,224 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.timeZone").exists())
                 .andExpect(jsonPath("$.unscheduledAttractions.length()").value(boardSize));
 
         assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void entrySummariesUseOneSelectRegardlessOfEntryCount(int entryCount) {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        var entries = itineraryRepo.findEntrySummariesByTripId(1L);
+
+        assertThat(entries).hasSize(entryCount);
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void itineraryReadWithEntriesStillUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.start").exists())
+                .andExpect(jsonPath("$.days[1].entries[0].timing.end").exists())
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2, false", "30, false", "2, true", "30, true"})
+    void itineraryReadWithRepeatedClocksStillUsesOneSelect(int entryCount, boolean secondOccurrence) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, entryCount + 1);
+        entityManager.createNativeQuery("""
+                UPDATE trip SET trip_start_date = DATE '2026-10-25', trip_end_date = DATE '2026-10-25' WHERE id = 1;
+                INSERT INTO itinerary(trip_id, time_zone) VALUES (1, 'Europe/Belgrade');
+                INSERT INTO itinerary_day(trip_id, date) VALUES (1, DATE '2026-10-25');
+                INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                    start_time, second_start_occurrence, planned_minutes, fixed_start)
+                SELECT 1, DATE '2026-10-25', position, position, 'Europe/Belgrade',
+                    TIME '02:30', :secondOccurrence, 30, false
+                FROM generate_series(1, :size) AS entries(position);
+                """).setParameter("size", entryCount).setParameter("secondOccurrence", secondOccurrence).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").exists())
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").exists())
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void schedulingWithMissingInputsUsesTwoSelectsAndDoesNotWrite(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"attractionId":%d,"date":"2026-09-03"}
+                                """.formatted(entryCount + 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.schedulingInputs").exists());
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void anAttractionMissingFromTheTripUsesTwoSelectsAndDoesNotWrite(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var attractionNotOnBoard = entryCount + 2;
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"attractionId":%d,"date":"2026-09-03"}
+                                """.formatted(attractionNotOnBoard)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").exists());
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void tripOverviewWithEntriesStillUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasItineraryEntries").exists());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void appendingAnEntryUsesTwoSelects(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var intent = """
+                {"attractionId":%d,"date":"2026-09-02","startTime":"22:00"}
+                """.formatted(entryCount + 1);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(intent))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void insertingBeforeSavedEntriesUsesTwoBulkUpdatesAndTwoSelects(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var intent = """
+                {"attractionId":%d,"date":"2026-09-02","startTime":"04:00"}
+                """.formatted(entryCount + 1);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(intent))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void firstEntryWithSourceCorrectionHasABoundedSqlBudget(int boardSize) throws Exception {
+        seedSchedulingBoard(boardSize);
+        entityManager.createNativeQuery("UPDATE trip_attraction SET visit_time = NULL WHERE id = 1").executeUpdate();
+        var intent = """
+                {"attractionId":1,"date":"2026-09-02","startTime":"09:00","timeZone":"Europe/Belgrade","visitDuration":"45m"}
+                """;
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(intent))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(4);
+        assertInsertCount(1);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void aRepeatedStartUsesTwoSelects(int boardSize) throws Exception {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        entityManager.createNativeQuery("""
+                UPDATE trip SET trip_start_date = DATE '2026-10-25', trip_end_date = DATE '2026-10-25' WHERE id = 1;
+                UPDATE attraction SET city_id = NULL WHERE id = 2;
+                INSERT INTO itinerary(trip_id, time_zone) VALUES (1, 'Europe/Belgrade');
+                INSERT INTO itinerary_day(trip_id, date) VALUES (1, DATE '2026-10-25');
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"attractionId":1,"date":"2026-10-25","startTime":"02:30"}
+                                """))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+    }
+
+    private void seedItineraryWithEntries(int entryCount) {
+        seedSchedulingBoard(entryCount + 1);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET time_zone = 'Europe/Belgrade' WHERE trip_id = 1;
+                INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                    start_time, planned_minutes, fixed_start)
+                SELECT 1, DATE '2026-09-02', position, position, 'Europe/Belgrade',
+                    TIME '07:00' + (position - 1) * INTERVAL '30 minutes', 30, false
+                FROM generate_series(1, :size) AS entries(position);
+                """).setParameter("size", entryCount).executeUpdate();
+    }
+
+    private void seedSchedulingBoard(int boardSize) {
+        KeysetTestFixtures.clear(entityManager);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET city_id = NULL WHERE id = 2;
+                INSERT INTO itinerary(trip_id) VALUES (1);
+                INSERT INTO itinerary_day(trip_id, date)
+                SELECT 1, DATE '2026-09-01' + day_offset FROM generate_series(0, 29) AS days(day_offset);
+                """).executeUpdate();
     }
 
     @ParameterizedTest

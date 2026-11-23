@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.AttractionVisit;
 import com.triptrove.manager.domain.model.AttractionVisitFlag;
+import com.triptrove.manager.domain.model.SchedulingSummary;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionDetails;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -19,6 +20,15 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
     boolean existsByTripIdAndAttractionId(Long tripId, Long attractionId);
 
     Optional<TripAttraction> findByTripIdAndAttractionId(Long tripId, Long attractionId);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.SchedulingSummary(
+                item.id, item.attractionGroup, attraction.permanentlyClosedAt, item.visitTime)
+            FROM TripAttraction item
+            JOIN item.attraction attraction
+            WHERE item.trip.id = :tripId AND attraction.id = :attractionId
+            """)
+    Optional<SchedulingSummary> findSchedulingSummaryByTripIdAndAttractionId(Long tripId, Long attractionId);
 
     @EntityGraph(attributePaths = {"trip", "attraction.country", "attraction.region", "attraction.city", "attraction.main", "attraction.informationProvider"})
     @Query("""

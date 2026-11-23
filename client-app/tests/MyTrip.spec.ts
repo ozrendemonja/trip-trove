@@ -386,7 +386,7 @@ for (const scenario of [
   });
 }
 
-test("The itinerary pool fits beside the days and every card is tabbable", async ({
+test("Unscheduled attractions fit beside the days and every card and add menu is tabbable", async ({
   page
 }) => {
   await page.setViewportSize({ width: 1000, height: 800 });
@@ -394,9 +394,11 @@ test("The itinerary pool fits beside the days and every card is tabbable", async
     "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--shows-unscheduled-attractions-in-board-order"
   );
   await page.getByRole("button", { name: "Itinerary", exact: true }).click();
-  const pool = page.getByRole("region", { name: "Unscheduled attractions" });
+  const unscheduled = page.getByRole("region", {
+    name: "Unscheduled attractions"
+  });
   const days = page.getByRole("region", { name: "Itinerary days" });
-  await expect(pool.getByRole("article")).toHaveCount(5);
+  await expect(unscheduled.getByRole("article")).toHaveCount(5);
   await expect(days.getByRole("article")).toHaveCount(2);
   const dayCards = days.getByRole("article");
   expect(
@@ -424,7 +426,9 @@ test("The itinerary pool fits beside the days and every card is tabbable", async
   await page.setViewportSize({ width: 768, height: 800 });
   await expect(dayCards).toHaveCount(1);
   expect(
-    await pool.evaluate((element) => element.getBoundingClientRect().right)
+    await unscheduled.evaluate(
+      (element) => element.getBoundingClientRect().right
+    )
   ).toBeLessThan(
     await days.evaluate((element) => element.getBoundingClientRect().left)
   );
@@ -432,16 +436,26 @@ test("The itinerary pool fits beside the days and every card is tabbable", async
   await page.getByRole("button", { name: "Review", exact: true }).focus();
   for (const name of ["Zurich Zoo", "Arcade", "Temple", "Viewpoint", "Bistro"]) {
     await page.keyboard.press("Tab");
-    await expect(pool.getByRole("article", { name, exact: true })).toBeFocused();
+    await expect(
+      unscheduled.getByRole("article", { name, exact: true })
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(
+      unscheduled.getByRole("button", { name: `Add ${name}`, exact: true })
+    ).toBeFocused();
   }
   expect(
-    await pool.evaluate((element) => element.scrollWidth <= element.clientWidth)
+    await unscheduled.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
   ).toBe(true);
 
   await page.setViewportSize({ width: 480, height: 800 });
   await expect(days.getByRole("article")).toHaveCount(1);
   expect(
-    await pool.evaluate((element) => element.getBoundingClientRect().bottom)
+    await unscheduled.evaluate(
+      (element) => element.getBoundingClientRect().bottom
+    )
   ).toBeLessThan(
     await days.evaluate((element) => element.getBoundingClientRect().top)
   );
@@ -454,28 +468,30 @@ test("The itinerary pool fits beside the days and every card is tabbable", async
   ).toBe(true);
 });
 
-test("The empty pool offers a readable keyboard route to Prepare at 320px", async ({
+test("Without unscheduled attractions, a readable keyboard route leads to Prepare at 320px", async ({
   page
 }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(
-    "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--goes-to-prepare-from-an-empty-pool"
+    "http://localhost:6006/iframe.html?id=features-my-trip-mytrip--goes-to-prepare-without-unscheduled-attractions"
   );
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Itinerary", exact: true }).click();
-  const pool = page.getByRole("region", { name: "Unscheduled attractions" });
-  const prepare = pool.getByRole("button", {
+  const unscheduled = page.getByRole("region", {
+    name: "Unscheduled attractions"
+  });
+  const prepare = unscheduled.getByRole("button", {
     name: "Find more attractions on the board"
   });
   await expect(prepare).toBeVisible();
   const bounds = await prepare.evaluate((button) => {
     const region = button.closest('[role="region"]');
-    const poolBounds = region?.getBoundingClientRect();
+    const regionBounds = region?.getBoundingClientRect();
     const buttonBounds = button.getBoundingClientRect();
     return {
       labelFits: button.scrollWidth <= button.clientWidth,
-      insidePool:
-        poolBounds !== undefined && buttonBounds.right <= poolBounds.right,
+      insideRegion:
+        regionBounds !== undefined && buttonBounds.right <= regionBounds.right,
       noHorizontalScroll:
         document.documentElement.scrollWidth <=
         document.documentElement.clientWidth
@@ -483,7 +499,7 @@ test("The empty pool offers a readable keyboard route to Prepare at 320px", asyn
   });
   expect(bounds).toEqual({
     labelFits: true,
-    insidePool: true,
+    insideRegion: true,
     noHorizontalScroll: true
   });
   await prepare.focus();

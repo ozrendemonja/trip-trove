@@ -51,8 +51,8 @@ ignored SDK after contract changes.
 
 Every trip has one itinerary, with a saved day for each date in its inclusive
 range. `GET /trips/{id}/itinerary` returns those days in date order and the
-unscheduled pool. The pool preserves board column, place and card order, and
-does not include Excluded or permanently closed attractions. Both are read
+unscheduled attractions. They keep board column, place and card order, and
+leave out Excluded or permanently closed attractions. Both are read
 in one SELECT without loading trip, day or attraction entities. When the
 board is already open, the itinerary keeps its visible place order while
 refreshing the attractions and their order within each place.

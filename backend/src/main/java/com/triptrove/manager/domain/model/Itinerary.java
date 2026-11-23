@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 @Table(name = "itinerary")
 public class Itinerary {
     @Id
-    @Column(name = "trip_id")
+    @Column(name = "trip_id", nullable = false)
     private Long tripId;
 
     @MapsId
     @OneToOne(optional = false)
-    @JoinColumn(name = "trip_id")
+    @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
-    @Column(name = "initial_zone")
-    private String initialZone;
+    @Column(name = "time_zone")
+    private String timeZone;
 
     @Column(name = "last_checked_at")
     private Instant lastCheckedAt;
@@ -35,6 +35,13 @@ public class Itinerary {
     public Itinerary(Trip trip) {
         this.trip = trip;
         resizeEmptyDays(trip.getFrom(), trip.getTo());
+    }
+
+    public void initializeTimeZone(String timeZone) {
+        if (this.timeZone != null) {
+            throw new IllegalStateException("Time zone already set for trip " + tripId);
+        }
+        this.timeZone = timeZone;
     }
 
     public void resizeEmptyDays(LocalDate from, LocalDate to) {

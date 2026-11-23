@@ -3,11 +3,12 @@ import { Text } from "@fluentui/react-components";
 import React, { useRef, useState } from "react";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import { updateTripName } from "./infra/TripApi";
-import { savePlanningChange } from "./infra/PlanningApi";
+import { PlanningSaveError, savePlanningChange } from "./infra/PlanningApi";
 import { useMyTripListClasses } from "./MyTripList.styles";
 import { EditTripDetailsProps } from "./EditTripDetails.types";
 import { detectTripChanges } from "./EditTripDetails.utils";
 import { Flex } from "../../shared/ui/Flex";
+import { getApiErrorCode } from "../../shared/hooks/UseSaveError";
 
 const toDateInputValue = (iso?: string): string =>
   iso ? iso.substring(0, 10) : "";
@@ -32,7 +33,12 @@ const EditTripDetails: React.FunctionComponent<EditTripDetailsProps> = (
       isOpen={props.isOpen}
       onDismiss={props.onDismiss}
       conflictErrorMessage="A trip with this name already exists in the selected date range."
-      saveErrorMessage="The save couldn't be completed. Your details are still here; review them and try again."
+      saveErrorMessage={(error) =>
+        error instanceof PlanningSaveError &&
+        getApiErrorCode(error) === "RESOURCE_HAS_DEPENDENCIES"
+          ? error.message
+          : "The save couldn't be completed. Your details are still here; review them and try again."
+      }
       isFormValid={!!name.trim() && !!startDate && !!endDate}
       pending={saving}
       onUpdateClick={async () => {

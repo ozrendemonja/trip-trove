@@ -49,9 +49,10 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    public Trip getTrip(Long id) {
+    public TripOverviewSummary getTrip(Long id) {
         log.atInfo().log("Getting trip with id '{}'", id);
-        return tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
+        return tripRepo.findOverviewSummaryById(id)
+                .orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
     }
 
     @Override
@@ -88,6 +89,11 @@ public class TripServiceImpl implements TripService {
             throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, trip.getName(), fromTrip, toTrip);
         }
 
+        if (itineraryRepo.findEntrySummariesByTripId(id).stream()
+                .anyMatch(entry -> !entry.timing().fitsTripDates(fromTrip, toTrip))) {
+            throw new BaseApiException("Proposed trip dates omit part of an entry",
+                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRIP_DATES, id);
+        }
         var itinerary = itineraryRepo.findWithDaysByTripId(id)
                 .orElseThrow(() -> new IllegalStateException("Missing itinerary for trip " + id));
         itinerary.resizeEmptyDays(fromTrip, toTrip);
@@ -155,6 +161,9 @@ public class TripServiceImpl implements TripService {
     public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
         log.atInfo().log("Updating attraction group for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
+        if (attractionGroup == TripAttractionGroup.EXCLUDED) {
+            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
+        }
         attraction.setAttractionGroup(attractionGroup);
         tripAttractionRepo.save(attraction);
         tripRepo.recomputeArchived(tripId);
@@ -169,6 +178,9 @@ public class TripServiceImpl implements TripService {
         var previousAttraction = previousAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, previousAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, previousAttractionId, tripId));
         var nextAttraction = nextAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, nextAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, nextAttractionId, tripId));
         var previousGroup = attraction.getAttractionGroup();
+        if (targetGroup == TripAttractionGroup.EXCLUDED) {
+            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
+        }
         TripBoard.moveAttraction(attraction, targetGroup, previousAttraction, nextAttraction);
         tripAttractionRepo.save(attraction);
         if (previousGroup != attraction.getAttractionGroup()) {
@@ -186,6 +198,8 @@ public class TripServiceImpl implements TripService {
 
         var currentBoardAttractions = tripAttractionRepo.findBoardAttractionsByTripId(tripId);
         var currentGroupsByAttractionId = currentBoardAttractions.stream().collect(Collectors.toMap(attraction -> attraction.getAttraction().getId(), TripAttraction::getAttractionGroup));
+        refuseDroppingScheduledAttractions(tripId, boardItems.stream().filter(item -> item.group() == TripAttractionGroup.EXCLUDED)
+                .map(TripBoardItem::attractionId).toList());
         var changedAttractions = TripBoard.arrange(currentBoardAttractions, boardItems);
         tripAttractionRepo.saveAll(changedAttractions);
         var hasAttractionGroupChanged = changedAttractions.stream().anyMatch(attraction -> currentGroupsByAttractionId.get(attraction.getAttraction().getId()) != attraction.getAttractionGroup());
@@ -249,12 +263,20 @@ public class TripServiceImpl implements TripService {
     @Transactional
     public void detachAttraction(Long tripId, Long attractionId) {
         log.atInfo().log("Removing attraction from trip");
-        if (tripRepo.deleteTripAttraction(tripId, attractionId) < 1) {
+        if (tripRepo.deleteUnscheduledTripAttraction(tripId, attractionId) < 1) {
+            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
             throw new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId);
         }
         tripRepo.recomputeArchived(tripId);
 
         log.atInfo().log("Attraction '{}' removed from trip '{}'", attractionId, tripId);
+    }
+
+    private void refuseDroppingScheduledAttractions(Long tripId, List<Long> attractionIds) {
+        if (!attractionIds.isEmpty() && itineraryRepo.hasScheduledAttractions(tripId, attractionIds)) {
+            throw new BaseApiException("Board change would drop scheduled attractions",
+                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.BOARD_MEMBERSHIP, tripId);
+        }
     }
 
     @Override

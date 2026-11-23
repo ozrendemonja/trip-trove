@@ -87,7 +87,9 @@ const EditProperty: React.FunctionComponent<EditPropertyProps> = (props) => {
       setSubmitError(
         isConflict && props.conflictErrorMessage
           ? props.conflictErrorMessage
-          : (props.saveErrorMessage ??
+          : typeof props.saveErrorMessage === "function"
+            ? props.saveErrorMessage(error)
+            : (props.saveErrorMessage ??
               "The changes weren't saved. Your details are still here, so you can review or edit them and try again.")
       );
     } finally {

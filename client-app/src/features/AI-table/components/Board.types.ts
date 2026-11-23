@@ -30,6 +30,7 @@ export interface PrepareBoardHandle {
   save: () => Promise<boolean>;
   discard: () => void;
   inspect: () => Promise<void>;
+  reflectSavedVisitDuration: (attractionId: number, duration: string) => void;
 }
 
 export interface BoardProps {

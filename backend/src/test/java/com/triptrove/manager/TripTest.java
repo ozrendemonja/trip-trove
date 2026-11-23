@@ -210,7 +210,7 @@ public class TripTest extends AbstractIntegrationTest {
     void shouldReturnTripWhenGivenIdIsPresent() throws Exception {
         var jsonResponse = mockMvc.perform(get("/trips/" + 1).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        GetTripResponse response = mapper.readValue(jsonResponse, GetTripResponse.class);
+        var response = mapper.readValue(jsonResponse, GetTripOverviewResponse.class);
         assertThat(response.tripName()).isEqualTo("Test trip name 1");
         assertThat(response.fromDate()).isEqualTo(LocalDate.of(2024, Month.AUGUST, 20));
         assertThat(response.toDate()).isEqualTo(LocalDate.of(2024, Month.SEPTEMBER, 2));
@@ -1096,7 +1096,7 @@ public class TripTest extends AbstractIntegrationTest {
 
     @Test
     void countriesSummaryShouldCountOnlyCountriesWhenAtLeastOneMustVisitAttractionIsVisited() throws Exception {
-        tripRepo.deleteTripAttraction(2L, 1L);
+        tripRepo.deleteUnscheduledTripAttraction(2L, 1L);
 
         var jsonResponse = mockMvc.perform(get("/trips/countries/summary").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
@@ -1291,12 +1291,12 @@ public class TripTest extends AbstractIntegrationTest {
     void tripShouldNotBeArchivedAfterClearingTheReviewOfAPrimaryAttraction() throws Exception {
         var tripId = 1L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
 
         mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 1 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        GetTripResponse response = mapper.readValue(jsonResponse, GetTripResponse.class);
+        var response = mapper.readValue(jsonResponse, GetTripOverviewResponse.class);
 
         assertThat(response.archived()).isFalse();
     }
@@ -1305,70 +1305,70 @@ public class TripTest extends AbstractIntegrationTest {
     void tripShouldBeArchivedAgainAfterTheLastMissingReviewIsAdded() throws Exception {
         var tripId = 5L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
 
         var reviewRequest = new ReviewTripAttractionRequest(RatingDTO.VERY_GOOD, "Re-reviewed");
         mockMvc.perform(post("/trips/" + tripId + "/attractions/" + 3 + "/review").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(reviewRequest))).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
     }
 
     @Test
     void tripShouldNotBeArchivedAfterAttachingANewUnreviewedPrimaryAttraction() throws Exception {
         var tripId = 1L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
 
         var addRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.PRIMARY);
         mockMvc.perform(post("/trips/" + 1 + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
     }
 
     @Test
     void tripShouldBeArchivedAgainAfterMovingTheLastUnreviewedAttractionToExcluded() throws Exception {
         var tripId = 5L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
 
         var groupRequest = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED);
         mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 3 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(groupRequest))).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
     }
 
     @Test
     void tripShouldBecomeUnarchivedWhenAnExcludedAttractionIsPromotedToPrimaryWithoutReview() throws Exception {
         var tripId = 1L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
 
         var addExcludedRequest = new AddAttractionUnderTripRequest(4L, TripAttractionGroupDTO.EXCLUDED);
         mockMvc.perform(post("/trips/" + tripId + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addExcludedRequest))).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
 
         var promoteRequest = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.PRIMARY);
         mockMvc.perform(put("/trips/" + tripId + "/attractions/" + 4 + "/group").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(promoteRequest))).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
     }
 
     @Test
     void tripShouldBeArchivedAfterDetachingTheLastUnreviewedAttraction() throws Exception {
         var tripId = 5L;
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
 
         mockMvc.perform(delete("/trips/" + tripId + "/attractions/" + 3).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isNoContent());
 
         jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isTrue();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isTrue();
     }
 
     @Test
@@ -1378,7 +1378,7 @@ public class TripTest extends AbstractIntegrationTest {
         mockMvc.perform(post("/trips/" + tripId + "/attractions").contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1").content(mapper.writeValueAsString(addRequest))).andExpect(status().isNoContent());
 
         var jsonResponse = mockMvc.perform(get("/trips/" + tripId).contentType(MediaType.APPLICATION_JSON).header("x-api-version", "1")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(mapper.readValue(jsonResponse, GetTripResponse.class).archived()).isFalse();
+        assertThat(mapper.readValue(jsonResponse, GetTripOverviewResponse.class).archived()).isFalse();
     }
 
     @Test

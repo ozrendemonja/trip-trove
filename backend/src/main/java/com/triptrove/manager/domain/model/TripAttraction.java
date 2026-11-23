@@ -10,6 +10,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
+import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
+
 @Getter
 @Setter
 @Entity
@@ -87,5 +90,9 @@ public class TripAttraction {
         this.reviewNote = null;
         this.wouldVisitAgain = false;
         this.status = TripAttractionStatus.PLANNED;
+    }
+
+    public static boolean isEligibleForScheduling(TripAttractionGroup group, LocalDateTime permanentlyClosedAt) {
+        return (group == PRIMARY || group == SECONDARY) && permanentlyClosedAt == null;
     }
 }

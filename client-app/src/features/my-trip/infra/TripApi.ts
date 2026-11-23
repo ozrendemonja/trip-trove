@@ -50,12 +50,8 @@ export interface TripAttractionFromServer {
 
 managerClient();
 
-const computeStatus = (
-  endDate: string | undefined,
-  archived: boolean | undefined
-): TripStatus => {
-  if (archived) return "archived";
-  if (!endDate) return "active";
+export const isTripPast = (endDate: string | undefined): boolean => {
+  if (!endDate) return false;
   const today = new Date();
   const todayDate = [
     today.getFullYear(),
@@ -63,7 +59,15 @@ const computeStatus = (
     String(today.getDate()).padStart(2, "0")
   ].join("-");
   // Date-only trip bounds use the local calendar, not UTC instants.
-  return endDate < todayDate ? "past" : "active";
+  return endDate < todayDate;
+};
+
+const computeStatus = (
+  endDate: string | undefined,
+  archived: boolean | undefined
+): TripStatus => {
+  if (archived) return "archived";
+  return isTripPast(endDate) ? "past" : "active";
 };
 
 // Maps a trip DTO from the backend into the domain `Trip`, or `undefined` when
@@ -191,7 +195,9 @@ export const deleteTripById = async (id: number): Promise<void> => {
   }
 };
 
-export const fetchTripById = async (id: number): Promise<Trip> => {
+export const fetchTripById = async (
+  id: number
+): Promise<Trip & { hasItineraryEntries: boolean }> => {
   const { data, error } = await getTrip({
     path: { id },
     headers: { "x-api-version": "1" }
@@ -205,8 +211,18 @@ export const fetchTripById = async (id: number): Promise<Trip> => {
   if (!trip) {
     throw new Error("The server returned incomplete trip details.");
   }
-  return trip;
+  return { ...trip, hasItineraryEntries: data.hasItineraryEntries === true };
 };
+
+const isSavedItinerary = (
+  data: GetItineraryResponse | undefined,
+  id: number
+): data is GetItineraryResponse =>
+  data?.tripId === id &&
+  Array.isArray(data.days) &&
+  data.days.length > 0 &&
+  data.days.every((day) => Array.isArray(day.entries)) &&
+  Array.isArray(data.unscheduledAttractions);
 
 export const fetchTripItinerary = async (
   id: number,
@@ -218,12 +234,7 @@ export const fetchTripItinerary = async (
     signal,
     cache: "no-store"
   });
-  if (
-    error ||
-    data?.tripId !== id ||
-    !data.days?.length ||
-    !Array.isArray(data.unscheduledAttractions)
-  ) {
+  if (error || !isSavedItinerary(data, id)) {
     throw new Error("The itinerary couldn't be loaded.", { cause: error });
   }
   return data;

@@ -1,0 +1,41 @@
+import {
+  scheduleAttraction,
+  type ErrorResponse,
+  type ScheduleAttractionRequest
+} from "../../../clients/manager";
+import { PlanningSaveError } from "./PlanningApi";
+
+const itineraryHeaders = { "x-api-version": "1" } as const;
+const requestTimeoutMs = 15_000;
+
+export class EntrySaveError extends PlanningSaveError {
+  constructor(
+    message: string,
+    unconfirmed: boolean,
+    readonly schedulingInputs: ErrorResponse["schedulingInputs"]
+  ) {
+    super(message, unconfirmed);
+  }
+}
+
+export async function saveEntry(
+  tripId: number,
+  intent: ScheduleAttractionRequest
+): Promise<void> {
+  const { response, error } = await scheduleAttraction({
+    path: { id: tripId },
+    body: intent,
+    headers: itineraryHeaders,
+    signal: AbortSignal.timeout(requestTimeoutMs)
+  });
+  if (!response?.ok) {
+    const inputs = error?.schedulingInputs;
+    throw new EntrySaveError(
+      error?.errorMessage ?? "The attraction couldn't be added.",
+      !response || response.status >= 500,
+      response?.status === 400 && Array.isArray(inputs?.requiredInputs)
+        ? inputs
+        : undefined
+    );
+  }
+}

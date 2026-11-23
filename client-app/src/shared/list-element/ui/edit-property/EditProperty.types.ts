@@ -32,7 +32,7 @@ export interface EditPropertyProps {
   /**
    * Fallback shown when an update fails for another reason.
    */
-  saveErrorMessage?: string;
+  saveErrorMessage?: string | ((error: unknown) => string);
 
   /**
    * Clears the submit error when this value changes.

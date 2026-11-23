@@ -1,12 +1,14 @@
 package com.triptrove.manager.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 @Entity
 @Table(name = "itinerary_entry")
 public class ItineraryEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Getter
     private Long id;
 
     @Column(name = "trip_id", nullable = false)
@@ -19,13 +21,21 @@ public class ItineraryEntry {
     private int position;
 
     @Embedded
+    @Getter
     private ItineraryTiming timing;
 
     @Column(name = "fixed_start", nullable = false)
+    @Getter
     private boolean fixedStart;
 
     @Column(name = "included_in_last_check", nullable = false)
     private boolean includedInLastCheck;
+
+    @Column(name = "start_changed_since_check", nullable = false)
+    private boolean startChangedSinceCheck;
+
+    @Column(name = "planned_length_changed_since_check", nullable = false)
+    private boolean plannedLengthChangedSinceCheck;
 
     protected ItineraryEntry() {
     }
@@ -35,5 +45,18 @@ public class ItineraryEntry {
         this.attractionId = attractionId;
         this.position = position;
         this.timing = timing;
+    }
+
+    public void changeTiming(ItineraryTiming replacement) {
+        if (!timing.date().equals(replacement.date()) || !timing.zone().equals(replacement.zone())) {
+            throw new IllegalArgumentException("A timing edit must keep the entry's date and zone");
+        }
+        if (!timing.start().equals(replacement.start())) {
+            startChangedSinceCheck = true;
+        }
+        if (timing.plannedMinutes() != replacement.plannedMinutes()) {
+            plannedLengthChangedSinceCheck = true;
+        }
+        timing = replacement;
     }
 }

@@ -142,11 +142,47 @@ export const useClasses = makeStyles({
   clocks: {
     display: "grid",
     alignContent: "center",
+    width: "76px",
     color: tokens.colorNeutralForeground2,
     fontVariantNumeric: "tabular-nums"
   },
-  clockOffset: {
-    display: "block"
+  clockInput: {
+    minWidth: 0,
+    width: "100%",
+    fontVariantNumeric: "tabular-nums",
+    "& input": { minWidth: 0 }
+  },
+  endClock: {
+    ":focus-within": {
+      position: "relative",
+      zIndex: 1,
+      width: "20ch",
+      backgroundColor: tokens.colorNeutralBackground1
+    }
+  },
+  entryCard: {
+    minWidth: 0
+  },
+  plannedLength: {
+    display: "flex",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+    columnGap: tokens.spacingHorizontalXS,
+    "& > span:last-child": { width: "80px", maxWidth: "100%" }
+  },
+  entryMessage: {
+    gridColumn: "1 / -1",
+    marginTop: tokens.spacingVerticalXS
+  },
+  entryError: {
+    color: tokens.colorStatusDangerForeground1
+  },
+  freeTime: {
+    color: tokens.colorNeutralForeground2,
+    borderInlineStartColor: tokens.colorNeutralStroke2,
+    borderInlineStartStyle: "solid",
+    borderInlineStartWidth: "1px",
+    paddingInlineStart: tokens.spacingHorizontalS
   },
   entryDraft: {
     display: "grid",

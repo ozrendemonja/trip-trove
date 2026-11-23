@@ -66,10 +66,12 @@ or reset any existing itinerary.
 whole itinerary, including an empty one. It saves the check time and renews
 the reference for which entries were checked in one transaction. It returns
 `204` with a `Location` pointing to the itinerary; GET supplies the check
-state and the grouped change notices. An addition after a check produces one
-notice for the added entry. Until the first check, additions produce no
-notices. An unconfirmed check must be inspected with GET before the user
-confirms again.
+state and the change notices grouped by entry. After a check, a notice shows
+if an entry was added, its start moved, or its planned length changed. A
+timing change stays on the notice even if the user puts the old value back;
+only the next manual check clears it. Previous timing values are not stored.
+There are no notices before the first check. An unconfirmed check must be
+inspected with GET before the user confirms again.
 
 ## Location-grouped Attraction Search
 

@@ -73,7 +73,7 @@ public class TripServiceImpl implements TripService {
             throw new BaseApiException("Itinerary not found for trip",
                     BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
         }
-        itineraryEntryRepo.markEntriesIncludedInLastCheck(tripId);
+        itineraryEntryRepo.markEntriesChecked(tripId);
     }
 
     @Override

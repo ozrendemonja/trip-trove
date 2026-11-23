@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0014-track-itinerary-timing-changes
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary_entry
+            columns:
+              - column:
+                  name: start_changed_since_check
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: planned_length_changed_since_check
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

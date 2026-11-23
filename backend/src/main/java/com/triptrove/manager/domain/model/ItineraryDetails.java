@@ -20,7 +20,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
 
     public record ChangeNoticeSummary(Long entryId, String subject, LocalDate date, List<Reason> reasons) {
         public enum Reason {
-            ATTRACTION_ADDED
+            ATTRACTION_ADDED, START_CHANGED, PLANNED_LENGTH_CHANGED
         }
     }
 

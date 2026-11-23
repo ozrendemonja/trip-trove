@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ItineraryMigrationTest {
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
     private static final int PRE_ITINERARY_CHANGESETS = 13;
+    private static final int PRE_TIMING_CHANGE_FLAGS = PRE_ITINERARY_CHANGESETS + 2;
 
     @Test
     void backfillsExistingTripsWithoutChangingSavedPlanningOrOverwritingItinerariesOnRerun() throws Exception {
@@ -92,11 +93,13 @@ class ItineraryMigrationTest {
     }
 
     @Test
-    void createsLocalClockEntriesAndPreservesSavedTimingOnRerun() throws Exception {
+    void initializesChangeFlagsAndPreservesLocalTimingAndPendingChangesOnRerun() throws Exception {
         try (var postgres = new PostgreSQLContainer("postgres:17-alpine")) {
             postgres.start();
             var source = new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-            migrate(source);
+            try (var liquibase = openChangelog(source)) {
+                liquibase.update(PRE_TIMING_CHANGE_FLAGS, new Contexts(), new LabelExpression());
+            }
             try (var connection = source.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/attractions-test-data.sql"));
             }
@@ -110,7 +113,15 @@ class ItineraryMigrationTest {
                            (1, '2027-10-31', 2, 2, 'Europe/Belgrade', '02:30', true, 30, false),
                            (1, '2027-10-31', 3, 3, 'Asia/Bangkok', '10:00:15.123456', null, 120, false)
                     """);
+            migrate(source);
 
+            assertThat(jdbc.queryForList("SELECT start_changed_since_check FROM itinerary_entry ORDER BY path_position",
+                    Boolean.class)).containsExactly(false, false, false);
+            assertThat(jdbc.queryForList("SELECT planned_length_changed_since_check FROM itinerary_entry ORDER BY path_position",
+                    Boolean.class)).containsExactly(false, false, false);
+
+            jdbc.update("UPDATE itinerary_entry SET start_changed_since_check = true WHERE attraction_id = 1");
+            jdbc.update("UPDATE itinerary_entry SET planned_length_changed_since_check = true WHERE attraction_id = 2");
             jdbc.update("DELETE FROM databasechangelog WHERE id = '0012-create-itinerary'");
             migrate(source);
 
@@ -119,7 +130,12 @@ class ItineraryMigrationTest {
                     WHERE table_schema = 'public' AND table_name = 'itinerary_entry'
                     """, String.class))
                     .contains("date", "start_time", "second_start_occurrence", "planned_minutes")
-                    .doesNotContain("start_local", "start_offset_seconds", "end_local", "end_offset_seconds");
+                    .doesNotContain("start_local", "start_offset_seconds", "end_local", "end_offset_seconds",
+                            "start_before_change", "occurrence_before_change", "length_before_change");
+            assertThat(jdbc.queryForList("SELECT start_changed_since_check FROM itinerary_entry ORDER BY path_position",
+                    Boolean.class)).containsExactly(true, false, false);
+            assertThat(jdbc.queryForList("SELECT planned_length_changed_since_check FROM itinerary_entry ORDER BY path_position",
+                    Boolean.class)).containsExactly(false, true, false);
             assertThat(jdbc.queryForList("""
                     SELECT second_start_occurrence FROM itinerary_entry ORDER BY path_position
                     """, Boolean.class)).containsExactly(false, true, null);

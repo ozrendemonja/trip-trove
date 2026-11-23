@@ -82,8 +82,10 @@ let server: Server;
 const boardMoves = fn();
 const schedulingPosts = fn();
 const checkPosts = fn();
+const timingPuts = fn();
 const itineraryUrl = "http://localhost:8080/trips/1/itinerary";
 const schedulingUrl = "http://localhost:8080/trips/1/itinerary/attractions";
+const entryUrl = `${itineraryUrl}/entries/:entryId`;
 
 const meta: Meta<typeof MyTrip> = {
   component: MyTrip,
@@ -488,6 +490,264 @@ export const CancelsAnInlineAttractionDraft: Story = {
   }
 };
 
+function savedTimeline(start: string, end: string): GetItineraryResponse {
+  const saved = itineraryFixture("2099-06-10", "2099-06-24");
+  saved.timeZone = "Europe/Rome";
+  saved.lastCheckedAt = "2099-06-01T10:00:00Z";
+  saved.checkState = "MANUALLY_CHECKED";
+  saved.days[0].entries.push({
+    entryId: 42,
+    attractionId: 5,
+    name: "Museum",
+    attractionGroup: "PRIMARY",
+    category: "ART_MUSEUM",
+    fixedStart: false,
+    mustVisit: true,
+    timing: { start, end, zone: "Europe/Rome" }
+  });
+  return saved;
+}
+
+export const EditsSavedTimingAndShowsUpdatedFreeTime: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      timingPuts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      const [museum] = saved.days[0].entries;
+      const garden: typeof museum = {
+        ...museum,
+        entryId: 43,
+        attractionId: 6,
+        name: "Garden",
+        category: "PARK",
+        timing: {
+          zone: "Europe/Rome",
+          start: "2099-06-10T10:00+02:00",
+          end: "2099-06-10T10:30+02:00"
+        }
+      };
+      saved.days[0].entries.push(garden);
+      const museumNotice = {
+        entryId: museum.entryId,
+        subject: museum.name,
+        date: saved.days[0].date
+      };
+      const changes = {
+        start: () => {
+          museum.timing.start = "2099-06-10T09:10+02:00";
+          museum.timing.end = "2099-06-10T09:40+02:00";
+          saved.changeNotices = [
+            { ...museumNotice, reasons: ["START_CHANGED"] }
+          ];
+        },
+        end: () => {
+          museum.timing.end = "2099-06-10T10:15+02:00";
+          garden.timing.start = "2099-06-10T10:15+02:00";
+          garden.timing.end = "2099-06-10T10:45+02:00";
+          saved.changeNotices = [
+            {
+              ...museumNotice,
+              reasons: ["START_CHANGED", "PLANNED_LENGTH_CHANGED"]
+            },
+            {
+              entryId: garden.entryId,
+              subject: garden.name,
+              date: saved.days[0].date,
+              reasons: ["START_CHANGED"]
+            }
+          ];
+        },
+        "planned-length": () => {
+          museum.timing.end = "2099-06-10T09:40+02:00";
+        }
+      };
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      for (const [field, apply] of Object.entries(changes)) {
+        server.put(
+          `${entryUrl}/${field}`,
+          (_schema, request) => {
+            timingPuts(
+              field,
+              request.params.entryId,
+              JSON.parse(request.requestBody)
+            );
+            apply();
+            saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+            return new MirageResponse(204);
+          },
+          { timing: 0 }
+        );
+      }
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await expect(await canvas.findByText("30m free")).toBeVisible();
+    const museum = within(canvas.getByRole("listitem", { name: "Museum" }));
+    const start = museum.getByRole("textbox", {
+      name: "Start clock for Museum"
+    });
+    const end = museum.getByRole("textbox", { name: "End clock for Museum" });
+    const length = museum.getByRole("textbox", {
+      name: "Planned length for Museum"
+    });
+    await expect(museum.queryByText("10 Jun")).not.toBeInTheDocument();
+
+    await user.clear(start);
+    await user.type(start, "09:10{Enter}");
+    await expect(await canvas.findByText("20m free")).toBeVisible();
+    await expect(start).toHaveValue("09:10");
+    await expect(length).toHaveValue("30");
+
+    await user.clear(end);
+    await user.type(end, "10:15");
+    await user.tab();
+    const gardenStart = canvas.getByRole("textbox", {
+      name: "Start clock for Garden"
+    });
+    await waitFor(() => expect(gardenStart).toHaveValue("10:15"));
+    await expect(length).toHaveValue("65");
+    await expect(canvas.queryByText(/m free$/)).not.toBeInTheDocument();
+
+    await user.clear(length);
+    await user.type(length, "30{Enter}");
+    await expect(await canvas.findByText("35m free")).toBeVisible();
+    await expect(gardenStart).toHaveValue("10:15");
+    await expect(timingPuts).toHaveBeenCalledTimes(3);
+    await expect(timingPuts).toHaveBeenNthCalledWith(1, "start", "42", {
+      startTime: "09:10"
+    });
+    await expect(timingPuts).toHaveBeenNthCalledWith(2, "end", "42", {
+      endDate: "2099-06-10",
+      endTime: "10:15"
+    });
+    await expect(timingPuts).toHaveBeenNthCalledWith(
+      3,
+      "planned-length",
+      "42",
+      {
+        plannedMinutes: 30
+      }
+    );
+
+    await expect(canvas.getByText("Changed since last check")).toBeVisible();
+    await user.click(
+      canvas.getByRole("button", { name: "2 changes to check" })
+    );
+    const notice = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Itinerary changes"
+      })
+    );
+    await waitFor(async () => {
+      await expect(notice.getAllByText("Start clock changed")).toHaveLength(2);
+      await expect(notice.getByText("Planned length changed")).toBeVisible();
+    });
+  }
+};
+
+export const RejectsASavedClockThenAcceptsAnExplicitOvernightEnd: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      timingPuts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T23:00+02:00",
+        "2099-06-10T23:30+02:00"
+      );
+      const replies = [
+        () =>
+          new MirageResponse(
+            400,
+            { "Content-Type": "application/json" },
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage: "Include the end date if it differs."
+            }
+          ),
+        () => {
+          saved.days[0].entries[0].timing.end = "2099-06-11T01:00+02:00";
+          saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+          saved.changeNotices = [
+            {
+              entryId: 42,
+              subject: "Museum",
+              date: saved.days[0].date,
+              reasons: ["PLANNED_LENGTH_CHANGED"]
+            }
+          ];
+          return new MirageResponse(204);
+        }
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${entryUrl}/end`,
+        (_schema, request) => {
+          timingPuts(
+            "end",
+            request.params.entryId,
+            JSON.parse(request.requestBody)
+          );
+          return replies.shift()?.() ?? new MirageResponse(500);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const museum = within(
+      await canvas.findByRole("listitem", { name: "Museum" })
+    );
+    const end = museum.getByRole("textbox", { name: "End clock for Museum" });
+    await user.clear(end);
+    await user.type(end, "01:00");
+    await user.click(museum.getByText("Museum"));
+    await expect(await museum.findByRole("alert")).toHaveTextContent(
+      "Include the end date if it differs."
+    );
+    await expect(end).toHaveValue("23:30");
+    await expect(end).toHaveAccessibleDescription(
+      /Include the end date if it differs/
+    );
+
+    await user.click(end);
+    await expect(museum.getByRole("alert")).toBeVisible();
+    await user.click(canvas.getByRole("button", { name: "Check itinerary" }));
+    const dialog = await overlay(canvasElement).findByRole("dialog", {
+      name: "Check itinerary"
+    });
+    await waitFor(() => expect(dialog).toBeVisible());
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await expect(museum.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.clear(end);
+    await user.type(end, "2099-06-11 01:00{Enter}");
+    await expect(await museum.findByText("11 Jun")).toBeVisible();
+    await expect(end).toHaveValue("01:00");
+    await expect(
+      museum.getByRole("textbox", { name: "Planned length for Museum" })
+    ).toHaveValue("120");
+    await expect(timingPuts).toHaveBeenNthCalledWith(1, "end", "42", {
+      endDate: "2099-06-10",
+      endTime: "01:00"
+    });
+    await expect(timingPuts).toHaveBeenNthCalledWith(2, "end", "42", {
+      endDate: "2099-06-11",
+      endTime: "01:00"
+    });
+  }
+};
+
 export const ChecksAnEmptyItineraryExplicitly: Story = {
   parameters: {
     savedAttractions: SAVED_ATTRACTIONS,
@@ -814,7 +1074,14 @@ export const OpensTheSavedItineraryAndSavesTheSuggestedClockOnBlur: Story = {
     ).toHaveAttribute("aria-current", "step");
     const day = within(await canvas.findByRole("list", { name: "Main path" }));
     const garden = within(day.getByRole("listitem", { name: "Garden" }));
-    await expect(garden.getAllByText("02:30")).toHaveLength(2);
+    const start = garden.getByRole("textbox", {
+      name: "Start clock for Garden"
+    });
+    const end = garden.getByRole("textbox", { name: "End clock for Garden" });
+    await expect(start).toBeVisible();
+    await expect(start).toHaveValue("02:30");
+    await expect(end).toBeVisible();
+    await expect(end).toHaveValue("02:30");
     await expect(garden.getByText("UTC+02:00")).toBeVisible();
     await expect(garden.getByText("UTC+01:00")).toBeVisible();
     await expect(garden.queryByText("Brief stop")).not.toBeInTheDocument();
@@ -839,7 +1106,14 @@ export const OpensTheSavedItineraryAndSavesTheSuggestedClockOnBlur: Story = {
       await day.findByRole("listitem", { name: "Market steps" })
     );
     await expect(stop.getByText("Brief stop")).toBeVisible();
-    await expect(stop.getAllByText("02:30")).toHaveLength(1);
+    const stopClock = stop.getByRole("textbox", {
+      name: "Start clock for Market steps"
+    });
+    await expect(stopClock).toBeVisible();
+    await expect(stopClock).toHaveValue("02:30");
+    await expect(
+      stop.queryByRole("textbox", { name: "End clock for Market steps" })
+    ).not.toBeInTheDocument();
     await expect(stop.getByText("If passing by")).toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: "Add Market steps" })
@@ -974,7 +1248,11 @@ export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
     const louvre = within(
       await canvas.findByRole("listitem", { name: "Louvre" })
     );
-    await expect(louvre.getByText("11:45")).toBeVisible();
+    const start = louvre.getByRole("textbox", {
+      name: "Start clock for Louvre"
+    });
+    await expect(start).toBeVisible();
+    await expect(start).toHaveValue("11:45");
     await expect(schedulingPosts).toHaveBeenCalledTimes(1);
     await expect(schedulingPosts).toHaveBeenCalledWith({
       attractionId: 42,
@@ -1235,8 +1513,16 @@ export const KeepsAnInvalidSpringClockAndSavesTheFirstFallOccurrenceWithoutAProm
       const museum = within(
         await canvas.findByRole("listitem", { name: "Art museum" })
       );
-      await expect(museum.getByText("02:30")).toBeVisible();
-      await expect(museum.getByText("02:00")).toBeVisible();
+      const start = museum.getByRole("textbox", {
+        name: "Start clock for Art museum"
+      });
+      const end = museum.getByRole("textbox", {
+        name: "End clock for Art museum"
+      });
+      await expect(start).toBeVisible();
+      await expect(start).toHaveValue("02:30");
+      await expect(end).toBeVisible();
+      await expect(end).toHaveValue("02:00");
       await expect(schedulingPosts).toHaveBeenLastCalledWith({
         attractionId: 42,
         date: "2027-10-31",

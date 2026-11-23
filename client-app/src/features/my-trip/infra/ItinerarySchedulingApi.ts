@@ -1,7 +1,13 @@
 import {
   scheduleAttraction,
+  updateItineraryEntryEnd,
+  updateItineraryEntryPlannedLength,
+  updateItineraryEntryStart,
   type ErrorResponse,
-  type ScheduleAttractionRequest
+  type ScheduleAttractionRequest,
+  type UpdateItineraryEntryEndRequest,
+  type UpdateItineraryEntryPlannedLengthRequest,
+  type UpdateItineraryEntryStartRequest
 } from "../../../clients/manager";
 import { PlanningSaveError } from "./PlanningApi";
 
@@ -15,6 +21,37 @@ export class EntrySaveError extends PlanningSaveError {
     readonly schedulingInputs: ErrorResponse["schedulingInputs"]
   ) {
     super(message, unconfirmed);
+  }
+}
+
+export type TimingEdit =
+  | UpdateItineraryEntryStartRequest
+  | UpdateItineraryEntryEndRequest
+  | UpdateItineraryEntryPlannedLengthRequest;
+
+export async function saveTimingEdit(
+  tripId: number,
+  entryId: number,
+  body: TimingEdit
+): Promise<void> {
+  const options = {
+    path: { id: tripId, entryId },
+    headers: itineraryHeaders,
+    signal: AbortSignal.timeout(requestTimeoutMs)
+  };
+  const result =
+    "startTime" in body
+      ? updateItineraryEntryStart({ ...options, body })
+      : "endTime" in body
+        ? updateItineraryEntryEnd({ ...options, body })
+        : updateItineraryEntryPlannedLength({ ...options, body });
+  const { response, error } = await result;
+  if (!response?.ok) {
+    throw new PlanningSaveError(
+      error?.errorMessage ?? "The itinerary timing couldn't be saved.",
+      !response || response.status >= 500,
+      { cause: error }
+    );
   }
 }
 

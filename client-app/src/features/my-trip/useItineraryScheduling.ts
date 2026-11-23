@@ -5,6 +5,7 @@ import type {
   ScheduleAttractionRequest
 } from "../../clients/manager";
 import { EntrySaveError, saveEntry } from "./infra/ItinerarySchedulingApi";
+import { clockOffset, localClock } from "./itineraryClocks";
 
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
 type Day = GetItineraryResponse["days"][number];
@@ -17,19 +18,13 @@ const durationFormat =
 export const hasVisitDurationFormat = (value?: string): boolean =>
   durationFormat.test(value?.trim() ?? "");
 
-export const clockOffset = (clock: string): string =>
-  clock.match(/([+-]\d\d:\d\d(?::\d\d)?|Z)$/)?.[0] ?? "";
-
 const suggestedStart = ({
   date,
   entries
 }: Day): Pick<ScheduleAttractionRequest, "startTime"> => {
   const end = entries.at(-1)?.timing.end;
-  if (!end?.startsWith(`${date}T`)) return {};
-  const offset = clockOffset(end);
-  return offset
-    ? { startTime: end.slice(date.length + 1, -offset.length) }
-    : {};
+  if (!end?.startsWith(`${date}T`) || !clockOffset(end)) return {};
+  return { startTime: localClock(end) };
 };
 
 export interface EntryDraft {

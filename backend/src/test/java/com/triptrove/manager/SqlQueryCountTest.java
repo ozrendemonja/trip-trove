@@ -926,6 +926,53 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void itineraryReadWithPendingTimingChangesUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET last_checked_at = '2026-08-31T09:00:00Z' WHERE trip_id = 1;
+                UPDATE itinerary_entry SET included_in_last_check = true, planned_length_changed_since_check = true
+                WHERE trip_id = 1;
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.changeNotices.length()").value(entryCount));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+             2 | start          | {"startTime":"07:01"}
+            30 | start          | {"startTime":"07:01"}
+             2 | end            | {"endDate":"2026-09-02","endTime":"07:31"}
+            30 | end            | {"endDate":"2026-09-02","endTime":"07:31"}
+             2 | planned-length | {"plannedMinutes":31}
+            30 | planned-length | {"plannedMinutes":31}
+            """)
+    void editingTimingAndPropagatingUsesOneSelect(int entryCount, String field, String request) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("UPDATE trip_attraction SET visit_time = '30-45m' WHERE id = 1").executeUpdate();
+        var firstEntryId = entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = 1
+                """).getSingleResult();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/{field}", firstEntryId, field)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(entryCount);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {0, 2, 30})
     void recordingACheckUsesTwoUpdatesAndNoSelects(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);

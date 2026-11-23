@@ -25,7 +25,6 @@ import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.stream.Collectors;
 
-import static com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.Reason.ATTRACTION_ADDED;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
 
@@ -103,7 +102,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
-                entry.timing, entry.includedInLastCheck)
+                entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
+                entry.plannedLengthChangedSinceCheck)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
@@ -139,11 +139,11 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             return List.of();
         }
         return rows.stream()
-                .filter(row -> row.entryId() != null && !row.entryIncludedInLastCheck())
+                .filter(row -> row.entryId() != null && (!row.entryIncludedInLastCheck()
+                        || row.startChangedSinceCheck() || row.plannedLengthChangedSinceCheck()))
                 .sorted(Comparator.comparing(ItineraryAndBoardRow::entryDate)
                         .thenComparing(ItineraryAndBoardRow::entryPosition))
-                .map(row -> new ChangeNoticeSummary(row.entryId(), row.attractionName(), row.entryDate(),
-                        List.of(ATTRACTION_ADDED)))
+                .map(ItineraryAndBoardRow::toChangeNotice)
                 .toList();
     }
 

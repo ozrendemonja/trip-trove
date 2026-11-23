@@ -2,11 +2,14 @@ package com.triptrove.manager.infra;
 
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.AttractionToSchedule.MissingInputs;
 import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.ItineraryDependency;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -136,21 +139,37 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<ErrorResponse> onBaseApiException(BaseApiException exception) {
         var responseCode = ErrorCodeResponse.from(exception.getErrorCode());
         var userMessage = userMessage(exception);
-        log.error("Domain error {} - {}: ", exception.getErrorCode(), userMessage, exception);
+        MissingInputs schedulingInputs = null;
+        if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_INPUT_REQUIRED
+                && exception.getContext().getFirst() instanceof MissingInputs inputs) {
+            schedulingInputs = inputs;
+            log.warn("Scheduling needs more input: {}", inputs);
+        } else {
+            log.error("Domain error {} - {}: ", exception.getErrorCode(), userMessage, exception);
+        }
 
         return ResponseEntity.status(httpStatus(responseCode)).contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(responseCode, userMessage));
+                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs));
     }
 
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<ErrorResponse> onOtherException(Exception exception) {
+        if (NestedExceptionUtils.getMostSpecificCause(exception) instanceof BaseApiException domainException) {
+            return onBaseApiException(domainException);
+        }
         log.error("Unexpected request failure", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).contentType(MediaType.APPLICATION_JSON)
                 .body(new ErrorResponse(ErrorCodeResponse.INTERNAL_SERVER_ERROR, DEFAULT_SERVER_ERROR_MESSAGE));
     }
 
     private String userMessage(BaseApiException exception) {
-        return messageSource.getMessage("error." + exception.getErrorCode(),
+        var key = "error." + exception.getErrorCode();
+        if (exception.getErrorCode() == BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES
+                && !exception.getContext().isEmpty()
+                && exception.getContext().getFirst() instanceof ItineraryDependency dependency) {
+            key += "." + dependency;
+        }
+        return messageSource.getMessage(key,
                 exception.getContext().stream().map(String::valueOf).toArray(),
                 "Request could not be processed due to a domain constraint.", Locale.ENGLISH);
     }

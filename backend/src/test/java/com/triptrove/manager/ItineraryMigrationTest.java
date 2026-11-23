@@ -1,5 +1,6 @@
 package com.triptrove.manager;
 
+import com.triptrove.manager.domain.model.ItineraryTiming;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -15,6 +16,8 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import javax.sql.DataSource;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,15 +59,15 @@ class ItineraryMigrationTest {
             migrate(source);
 
             assertThat(jdbc.queryForList("""
-                    SELECT t.name || ': ' || d.day_date FROM trip t JOIN itinerary_day d ON d.trip_id = t.id
-                    ORDER BY t.id, d.day_date
+                    SELECT t.name || ': ' || d.date FROM trip t JOIN itinerary_day d ON d.trip_id = t.id
+                    ORDER BY t.id, d.date
                     """, String.class)).containsExactly(
                     "Archived: 2024-08-31", "Archived: 2024-09-01", "Archived: 2024-09-02",
                     "Past empty board: 2025-01-01",
                     "Active empty board: 2099-12-31", "Active empty board: 2100-01-01");
             assertThat(jdbc.queryForObject("SELECT count(*) FROM itinerary", Integer.class)).isEqualTo(3);
             assertThat(jdbc.queryForObject("""
-                    SELECT count(*) FROM itinerary WHERE initial_zone IS NOT NULL OR last_checked_at IS NOT NULL
+                    SELECT count(*) FROM itinerary WHERE time_zone IS NOT NULL OR last_checked_at IS NOT NULL
                     """, Integer.class)).isZero();
             assertThat(jdbc.queryForList("SELECT to_jsonb(t)::text FROM trip t ORDER BY t.id", String.class))
                     .containsExactlyElementsOf(tripRows);
@@ -72,7 +75,7 @@ class ItineraryMigrationTest {
                     .containsExactlyElementsOf(boardRows);
 
             jdbc.update("""
-                    UPDATE itinerary SET initial_zone = 'Europe/Belgrade', last_checked_at = '2025-04-03T10:00:00Z'
+                    UPDATE itinerary SET time_zone = 'Europe/Belgrade', last_checked_at = '2025-04-03T10:00:00Z'
                     WHERE trip_id = 1
                     """);
             var itineraries = jdbc.queryForList("SELECT to_jsonb(i)::text FROM itinerary i ORDER BY i.trip_id", String.class);
@@ -85,6 +88,53 @@ class ItineraryMigrationTest {
                     .containsExactlyElementsOf(itineraries);
             assertThat(jdbc.queryForList("SELECT to_jsonb(d)::text FROM itinerary_day d ORDER BY d.id", String.class))
                     .containsExactlyElementsOf(days);
+        }
+    }
+
+    @Test
+    void createsLocalClockEntriesAndPreservesSavedTimingOnRerun() throws Exception {
+        try (var postgres = new PostgreSQLContainer("postgres:17-alpine")) {
+            postgres.start();
+            var source = new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+            migrate(source);
+            try (var connection = source.getConnection()) {
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/attractions-test-data.sql"));
+            }
+            var jdbc = new JdbcTemplate(source);
+            jdbc.update("INSERT INTO itinerary(trip_id, time_zone) VALUES (1, 'Europe/Belgrade')");
+            jdbc.update("INSERT INTO itinerary_day(trip_id, date) VALUES (1, '2027-10-31')");
+            jdbc.update("""
+                    INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                        start_time, second_start_occurrence, planned_minutes, fixed_start)
+                    VALUES (1, '2027-10-31', 1, 1, 'Europe/Belgrade', '02:30', false, 30, false),
+                           (1, '2027-10-31', 2, 2, 'Europe/Belgrade', '02:30', true, 30, false),
+                           (1, '2027-10-31', 3, 3, 'Asia/Bangkok', '10:00:15.123456', null, 120, false)
+                    """);
+
+            jdbc.update("DELETE FROM databasechangelog WHERE id = '0012-create-itinerary'");
+            migrate(source);
+
+            assertThat(jdbc.queryForList("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'itinerary_entry'
+                    """, String.class))
+                    .contains("date", "start_time", "second_start_occurrence", "planned_minutes")
+                    .doesNotContain("start_local", "start_offset_seconds", "end_local", "end_offset_seconds");
+            assertThat(jdbc.queryForList("""
+                    SELECT second_start_occurrence FROM itinerary_entry ORDER BY path_position
+                    """, Boolean.class)).containsExactly(false, true, null);
+            assertThat(jdbc.queryForList("""
+                    SELECT (date + start_time)::text || '/' || planned_minutes FROM itinerary_entry ORDER BY path_position
+                    """, String.class)).containsExactly("2027-10-31 02:30:00/30", "2027-10-31 02:30:00/30",
+                    "2027-10-31 10:00:15.123456/120");
+            var museum = jdbc.queryForObject("""
+                    SELECT zone_id, date, start_time, second_start_occurrence, planned_minutes
+                    FROM itinerary_entry WHERE attraction_id = 3
+                    """, (rs, row) -> new ItineraryTiming(rs.getString("zone_id"),
+                    rs.getObject("date", LocalDate.class), rs.getObject("start_time", LocalTime.class),
+                    rs.getObject("second_start_occurrence", Boolean.class), rs.getInt("planned_minutes")));
+            assertThat(museum.start().toString()).isEqualTo("2027-10-31T10:00:15.123456+07:00");
+            assertThat(museum.end().toString()).isEqualTo("2027-10-31T12:00:15.123456+07:00");
         }
     }
 
@@ -108,7 +158,7 @@ class ItineraryMigrationTest {
                     .hasStackTraceContaining("32 (2025-03-01 to infinity)");
             assertThat(jdbc.queryForObject("""
                     SELECT count(*) FROM information_schema.tables
-                    WHERE table_schema = 'public' AND table_name IN ('itinerary', 'itinerary_day')
+                    WHERE table_schema = 'public' AND table_name IN ('itinerary', 'itinerary_day', 'itinerary_entry')
                     """, Integer.class)).isZero();
         }
     }

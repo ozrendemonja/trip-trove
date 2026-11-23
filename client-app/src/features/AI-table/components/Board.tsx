@@ -935,7 +935,23 @@ const Board: React.FC<BoardProps> = ({
       addAttractions: addPreparedAttractions,
       save: commitPreparedChanges,
       discard: discardPreparedChanges,
-      inspect: inspectSavedPlanning
+      inspect: inspectSavedPlanning,
+      reflectSavedVisitDuration: (attractionId, duration) => {
+        const apply = (current: TouristDestination[]): TouristDestination[] =>
+          current.map((city) => ({
+            ...city,
+            columns: city.columns.map((column) => ({
+              ...column,
+              tasks: column.tasks.map((task) =>
+                task.id === attractionId
+                  ? { ...task, VisitTime: duration }
+                  : task
+              )
+            }))
+          }));
+        savedCitiesRef.current = apply(savedCitiesRef.current);
+        setCities(apply);
+      }
     }),
     [
       addPreparedAttractions,

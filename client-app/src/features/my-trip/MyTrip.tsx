@@ -32,7 +32,8 @@ import Navigation from "../../shared/navigation/Navigation";
 import {
   fetchTripById,
   fetchTripBoard,
-  fetchAttractionsVisitHistory
+  fetchAttractionsVisitHistory,
+  isTripPast
 } from "./infra/TripApi";
 import type { AttractionVisitHistory } from "./domain/VisitHistory.types";
 import Board from "../AI-table/components/Board";
@@ -64,7 +65,7 @@ export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const classes = useClasses();
-  const [trip, setTrip] = useState<Trip>();
+  const [trip, setTrip] = useState<Trip & { hasItineraryEntries: boolean }>();
   const [planningBlocked, setPlanningBlocked] = useState(false);
   const [boardPlaceOrder, setBoardPlaceOrder] = useState<string[]>([]);
   const boardRef = useRef<PrepareBoardHandle>(null);
@@ -230,11 +231,13 @@ export const MyTrip: React.FC = () => {
     metadataTripId === currentTripId &&
     attractionsTripId === currentTripId;
   const initialMode: BoardMode =
-    trip?.status === "past" || trip?.status === "archived"
-      ? "review"
-      : savedAttractionIds.length === 0
-        ? "prepare"
-        : "edit";
+    trip?.hasItineraryEntries && !isTripPast(trip.endDate)
+      ? "itinerary"
+      : trip?.status === "past" || trip?.status === "archived"
+        ? "review"
+        : savedAttractionIds.length === 0
+          ? "prepare"
+          : "edit";
   const boardMode =
     selectedMode?.tripId === tripId && selectedMode
       ? selectedMode.mode
@@ -246,7 +249,13 @@ export const MyTrip: React.FC = () => {
   }, [boardMode]);
   const itineraryOpen =
     tripDataReady && !loadError && boardMode === "itinerary";
-  const itinerary = useItinerary(currentTripId, itineraryOpen);
+  const itinerary = useItinerary(
+    currentTripId,
+    itineraryOpen,
+    (attractionId, duration) =>
+      boardRef.current?.reflectSavedVisitDuration(attractionId, duration)
+  );
+  const entryDraft = itinerary.scheduling.draft;
   const { refresh: refreshItinerary } = itinerary;
   const reloadOpenItinerary = useCallback(async (): Promise<void> => {
     if (!(await refreshItinerary())) {
@@ -261,14 +270,15 @@ export const MyTrip: React.FC = () => {
   const hasPrepareChanges =
     boardMode === "prepare" &&
     (prepareDraft.count > 0 || prepareDraft.saving || planningBlocked);
-  const prepareGuard = useRef(hasPrepareChanges);
+  const hasPlanningChanges = hasPrepareChanges || !!entryDraft;
+  const planningGuard = useRef(hasPlanningChanges);
   useLayoutEffect(() => {
-    prepareGuard.current = hasPrepareChanges;
-  }, [hasPrepareChanges]);
+    planningGuard.current = hasPlanningChanges;
+  }, [hasPlanningChanges]);
   const blocker = useBlocker(
     useCallback<BlockerFunction>(
       ({ currentLocation, nextLocation }) =>
-        prepareGuard.current &&
+        planningGuard.current &&
         currentLocation.pathname !== nextLocation.pathname,
       []
     )
@@ -276,7 +286,7 @@ export const MyTrip: React.FC = () => {
   const resumingNavigation = useRef(false);
   useBeforeUnload(
     useCallback((event: BeforeUnloadEvent) => {
-      if (!prepareGuard.current) return;
+      if (!planningGuard.current) return;
       event.preventDefault();
       event.returnValue = "";
     }, [])
@@ -286,13 +296,14 @@ export const MyTrip: React.FC = () => {
       resumingNavigation.current = false;
       return;
     }
-    if (!hasPrepareChanges && !resumingNavigation.current) {
+    if (!hasPlanningChanges && !resumingNavigation.current) {
       resumingNavigation.current = true;
       blocker.proceed();
     }
-  }, [blocker, hasPrepareChanges]);
+  }, [blocker, hasPlanningChanges]);
 
   const changeMode = async (mode: BoardMode): Promise<void> => {
+    if (entryDraft && mode !== "itinerary") return;
     if (mode === "prepare" && boardMode !== "prepare" && planningBlocked)
       return;
     const generation = ++modeChangeGeneration.current;
@@ -330,6 +341,7 @@ export const MyTrip: React.FC = () => {
               trip={headerTrip}
               mode={boardMode}
               planningBlocked={planningBlocked}
+              hasEntryDraft={!!entryDraft}
               onModeChange={changeMode}
               onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
@@ -409,6 +421,7 @@ export const MyTrip: React.FC = () => {
           if (
             !data.open &&
             !prepareDraft.saving &&
+            !entryDraft?.activity &&
             blocker.state === "blocked"
           ) {
             blocker.reset();
@@ -417,57 +430,88 @@ export const MyTrip: React.FC = () => {
       >
         <DialogSurface>
           <DialogBody>
-            <DialogTitle>Save your Prepare changes?</DialogTitle>
-            <DialogContent>
-              Your remaining additions, removals and board moves have not been
-              saved. Changes already saved will stay in the trip.
-              {prepareDraft.unconfirmed && (
-                <p>
-                  An unconfirmed save may already have reached the trip. Leaving
-                  discards the local draft, not a save already committed.
-                </p>
-              )}
-              {prepareDraft.error && (
-                <MessageBar intent="error">
-                  <MessageBarBody>{prepareDraft.error}</MessageBarBody>
-                </MessageBar>
-              )}
-            </DialogContent>
-            <DialogActions>
-              {prepareDraft.unconfirmed && (
-                <Button
-                  onClick={() => {
-                    if (blocker.state === "blocked") blocker.reset();
-                    void boardRef.current?.inspect();
-                  }}
-                >
-                  Inspect saved trip
-                </Button>
-              )}
-              <Button
-                appearance="primary"
-                disabled={planningBlocked}
-                onClick={() => void boardRef.current?.save()}
-              >
-                {prepareDraft.saving ? "Saving..." : "Save to trip"}
-              </Button>
-              <Button
-                disabled={prepareDraft.saving}
-                onClick={() => {
-                  boardRef.current?.discard();
-                }}
-              >
-                Leave without saving
-              </Button>
-              <Button
-                disabled={prepareDraft.saving}
-                onClick={() => {
-                  if (blocker.state === "blocked") blocker.reset();
-                }}
-              >
-                Stay
-              </Button>
-            </DialogActions>
+            {entryDraft ? (
+              <>
+                <DialogTitle>Finish adding to the itinerary?</DialogTitle>
+                <DialogContent>
+                  {entryDraft.activity
+                    ? "The itinerary is still processing this attraction."
+                    : entryDraft.unconfirmed
+                      ? "Return to the itinerary to check whether this attraction was saved before continuing."
+                      : "Leaving now discards the draft."}
+                </DialogContent>
+                <DialogActions>
+                  {!entryDraft.activity && !entryDraft.unconfirmed && (
+                    <Button onClick={itinerary.scheduling.cancel}>
+                      Leave without saving
+                    </Button>
+                  )}
+                  <Button
+                    appearance="primary"
+                    onClick={() => {
+                      if (blocker.state === "blocked") blocker.reset();
+                    }}
+                  >
+                    Stay
+                  </Button>
+                </DialogActions>
+              </>
+            ) : (
+              <>
+                <DialogTitle>Save your Prepare changes?</DialogTitle>
+                <DialogContent>
+                  Your remaining additions, removals and board moves have not
+                  been saved. Changes already saved will stay in the trip.
+                  {prepareDraft.unconfirmed && (
+                    <p>
+                      An unconfirmed save may already have reached the trip.
+                      Leaving discards the local draft, not a save already
+                      committed.
+                    </p>
+                  )}
+                  {prepareDraft.error && (
+                    <MessageBar intent="error">
+                      <MessageBarBody>{prepareDraft.error}</MessageBarBody>
+                    </MessageBar>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  {prepareDraft.unconfirmed && (
+                    <Button
+                      onClick={() => {
+                        if (blocker.state === "blocked") blocker.reset();
+                        void boardRef.current?.inspect();
+                      }}
+                    >
+                      Inspect saved trip
+                    </Button>
+                  )}
+                  <Button
+                    appearance="primary"
+                    disabled={planningBlocked}
+                    onClick={() => void boardRef.current?.save()}
+                  >
+                    {prepareDraft.saving ? "Saving..." : "Save to trip"}
+                  </Button>
+                  <Button
+                    disabled={prepareDraft.saving}
+                    onClick={() => {
+                      boardRef.current?.discard();
+                    }}
+                  >
+                    Leave without saving
+                  </Button>
+                  <Button
+                    disabled={prepareDraft.saving}
+                    onClick={() => {
+                      if (blocker.state === "blocked") blocker.reset();
+                    }}
+                  >
+                    Stay
+                  </Button>
+                </DialogActions>
+              </>
+            )}
           </DialogBody>
         </DialogSurface>
       </Dialog>

@@ -28,7 +28,16 @@ import {
   type RefCallback
 } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
-import { ItineraryPool } from "./ItineraryPool";
+import {
+  attractionImportance,
+  UnscheduledAttractions
+} from "./UnscheduledAttractions";
+import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
+import {
+  clockOffset,
+  useItineraryScheduling,
+  type ItineraryScheduling
+} from "./useItineraryScheduling";
 import { fetchTripItinerary } from "./infra/TripApi";
 import {
   DAY_COLUMN_GAP,
@@ -43,17 +52,20 @@ type LoadState = {
   failed: boolean;
 };
 
+type Entry = GetItineraryResponse["days"][number]["entries"][number];
+
 interface ItineraryView {
   days: GetItineraryResponse["days"];
   unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"];
   loading: boolean;
   failed: boolean;
-  refresh: () => Promise<boolean>;
+  refresh: () => Promise<GetItineraryResponse | undefined>;
   measureDayRow: RefCallback<HTMLElement>;
   start: number;
   lastStart: number;
   visibleDays: GetItineraryResponse["days"];
   showDate: (date: string) => void;
+  scheduling: ItineraryScheduling;
 }
 
 const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -71,15 +83,17 @@ const month = new Intl.DateTimeFormat("en-US", {
   month: "short",
   timeZone: "UTC"
 });
+const formatDate = (date: string): string => dateLabel.format(new Date(date));
 
 export const useItinerary = (
   tripId: number | undefined,
-  open: boolean
+  open: boolean,
+  onDurationCorrected: (attractionId: number, duration: string) => void
 ): ItineraryView => {
   const [load, setLoad] = useState<LoadState>();
   const request = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
-    if (!open || tripId === undefined) return false;
+    if (!open || tripId === undefined) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -93,7 +107,7 @@ export const useItinerary = (
       const data = await fetchTripItinerary(tripId, controller.signal);
       if (!controller.signal.aborted) {
         setLoad({ tripId, data, loading: false, failed: false });
-        return true;
+        return data;
       }
     } catch {
       if (!controller.signal.aborted) {
@@ -105,18 +119,12 @@ export const useItinerary = (
         }));
       }
     }
-    return false;
   }, [open, tripId]);
 
   useEffect(() => {
     if (!open) return;
     void refresh();
-    const refreshWhenVisible = (): void => {
-      if (document.visibilityState === "visible") void refresh();
-    };
-    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
       request.current?.abort();
     };
   }, [open, refresh]);
@@ -153,6 +161,23 @@ export const useItinerary = (
   const showDate = (date: string): void => {
     if (tripId !== undefined) setAnchor({ tripId, date });
   };
+  const scheduling = useItineraryScheduling({
+    tripId,
+    timeZone: current?.data?.timeZone,
+    loadSaved: refresh,
+    showDate,
+    onDurationCorrected
+  });
+  const hasDraft = !!scheduling.draft;
+  useEffect(() => {
+    if (!open || hasDraft) return;
+    const refreshWhenVisible = (): void => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () =>
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [open, hasDraft, refresh]);
 
   return {
     days,
@@ -164,7 +189,8 @@ export const useItinerary = (
     start,
     lastStart,
     visibleDays,
-    showDate
+    showDate,
+    scheduling
   };
 };
 
@@ -223,10 +249,60 @@ export const ItineraryDayPager = ({
         icon={<ArrowClockwise20Regular />}
         aria-label="Refresh itinerary"
         title="Refresh itinerary"
-        disabledFocusable={loading}
+        disabledFocusable={loading || !!itinerary.scheduling.draft}
         onClick={() => void refresh()}
       />
     </nav>
+  );
+};
+
+const TimelineEntry = ({ entry }: { entry: Entry }): ReactElement => {
+  const classes = useClasses();
+  const { Icon, tone, label } = attractionImportance(entry);
+  const { start, end, zone } = entry.timing;
+  // Exact equality also handles historical offsets with seconds, which Date.parse cannot read.
+  const isBriefStop = start === end || Date.parse(start) === Date.parse(end);
+  const startOffset = clockOffset(start);
+  const endOffset = clockOffset(end);
+  const showOffsets = startOffset !== endOffset;
+  return (
+    <li className={classes.entry} aria-label={entry.name}>
+      <div className={classes.clocks}>
+        <time dateTime={start} title={`${start} (${zone})`}>
+          <Caption1>{start.slice(11, 16)}</Caption1>
+          {showOffsets && (
+            <Caption1 className={classes.clockOffset}>
+              UTC{startOffset === "Z" ? "+00:00" : startOffset}
+            </Caption1>
+          )}
+        </time>
+        {!isBriefStop && (
+          <time dateTime={end} title={`${end} (${zone})`}>
+            <Caption1>{end.slice(11, 16)}</Caption1>
+            {end.slice(0, 10) !== start.slice(0, 10) && (
+              <Caption1>
+                {" "}
+                {new Date(end.slice(0, 10)).getUTCDate()}{" "}
+                {month.format(new Date(end.slice(0, 10)))}
+              </Caption1>
+            )}
+            {showOffsets && (
+              <Caption1 className={classes.clockOffset}>
+                UTC{endOffset === "Z" ? "+00:00" : endOffset}
+              </Caption1>
+            )}
+          </time>
+        )}
+      </div>
+      <Card size="small" appearance="outline">
+        <div className={classes.iconLabel}>
+          <Icon aria-hidden className={classes[tone]} />
+          <Text weight="semibold">{entry.name}</Text>
+          <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
+        </div>
+        {isBriefStop && <Caption1>Brief stop</Caption1>}
+      </Card>
+    </li>
   );
 };
 
@@ -249,8 +325,17 @@ export const ItineraryContent = ({
     loading,
     refresh,
     visibleDays,
-    measureDayRow
+    measureDayRow,
+    scheduling
   } = itinerary;
+  const { draft, feedback } = scheduling;
+  const activeDraft = draft && (
+    <ItineraryEntryDraft
+      draft={draft}
+      scheduling={scheduling}
+      blocked={prepareBlocked}
+    />
+  );
 
   if (!days.length) {
     return failed ? (
@@ -273,6 +358,13 @@ export const ItineraryContent = ({
 
   return (
     <div className={classes.itinerary}>
+      {feedback && <Text role="status">{feedback}</Text>}
+      {draft && !visibleDays.some((day) => day.date === draft.intent.date) && (
+        <Card size="small">
+          <Caption1>{formatDate(draft.intent.date)}</Caption1>
+          {activeDraft}
+        </Card>
+      )}
       {failed && (
         <MessageBar intent="warning">
           <MessageBarBody>
@@ -282,11 +374,15 @@ export const ItineraryContent = ({
         </MessageBar>
       )}
       <div className={classes.itineraryColumns} aria-busy={loading}>
-        <ItineraryPool
+        <UnscheduledAttractions
           attractions={unscheduledAttractions}
           boardPlaceOrder={boardPlaceOrder}
-          prepareBlocked={prepareBlocked}
+          prepareBlocked={prepareBlocked || !!draft}
           onPrepare={onPrepare}
+          days={days}
+          formatDate={formatDate}
+          scheduleBlocked={prepareBlocked || loading || failed || !!draft}
+          onSchedule={scheduling.choose}
         />
         <section
           ref={measureDayRow}
@@ -314,6 +410,14 @@ export const ItineraryContent = ({
                   </time>
                 </Text>
                 <Divider />
+                {day.entries.length > 0 && (
+                  <ol className={classes.timeline} aria-label="Main path">
+                    {day.entries.map((entry) => (
+                      <TimelineEntry key={entry.entryId} entry={entry} />
+                    ))}
+                  </ol>
+                )}
+                {draft?.intent.date === day.date && activeDraft}
               </Card>
             );
           })}

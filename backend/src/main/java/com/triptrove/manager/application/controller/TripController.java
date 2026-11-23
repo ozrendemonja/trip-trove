@@ -79,11 +79,10 @@ public class TripController {
 
     @GetMapping("/{id:\\d+}")
     @Operation(summary = "Retrieve trip by id", responses = {
-            @ApiResponse(description = "Requested trip", responseCode = "204"),
+            @ApiResponse(description = "Requested trip overview", responseCode = "200"),
     })
-    public GetTripResponse getTrip(@PathVariable Long id) {
-        var attraction = tripService.getTrip(id);
-        return GetTripResponse.from(attraction);
+    public GetTripOverviewResponse getTrip(@PathVariable Long id) {
+        return GetTripOverviewResponse.from(tripService.getTrip(id));
     }
 
     @GetMapping("/{id:\\d+}/itinerary")
@@ -109,6 +108,9 @@ public class TripController {
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update trip range", responses = {
             @ApiResponse(description = "Trip range is updated", responseCode = "204"),
+            @ApiResponse(description = "A scheduled entry would fall outside the trip, or the trip name conflicts",
+                    responseCode = "409",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void updateTripRange(@PathVariable Long id, @RequestBody @Valid UpdateTripRangeRequest tripRangeRequest) {
         tripService.updateTripRange(id, tripRangeRequest.fromDate(), tripRangeRequest.toDate());
@@ -167,7 +169,9 @@ public class TripController {
             @ApiResponse(description = "Attraction group updated successfully", responseCode = "204"),
             @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                     {@Content(mediaType = "application/json", schema =
-                    @Schema(implementation = ErrorResponse.class))})
+                    @Schema(implementation = ErrorResponse.class))}),
+            @ApiResponse(description = "A scheduled attraction cannot be excluded", responseCode = "409",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId,
             @RequestBody @Valid UpdateAttractionGroupRequest request) {
@@ -183,7 +187,9 @@ public class TripController {
                     @ApiResponse(description = "Attraction moved successfully", responseCode = "204"),
                     @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                             {@Content(mediaType = "application/json", schema =
-                            @Schema(implementation = ErrorResponse.class))})
+                            @Schema(implementation = ErrorResponse.class))}),
+                    @ApiResponse(description = "A scheduled attraction cannot be excluded", responseCode = "409",
+                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
             })
     public void moveAttractionOnBoard(@PathVariable Long id, @PathVariable Long attractionId,
             @RequestBody @Valid MoveAttractionOnBoardRequest request) {
@@ -197,7 +203,9 @@ public class TripController {
             @ApiResponse(description = "Trip board arranged successfully", responseCode = "204"),
             @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                     {@Content(mediaType = "application/json", schema =
-                    @Schema(implementation = ErrorResponse.class))})
+                    @Schema(implementation = ErrorResponse.class))}),
+            @ApiResponse(description = "A scheduled attraction cannot be excluded", responseCode = "409",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void arrangeTripBoard(@PathVariable Long id, @RequestBody @Valid ArrangeTripBoardRequest request) {
         var boardItems = request.attractions().stream()
@@ -274,6 +282,8 @@ public class TripController {
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Remove attraction from trip", responses = {
             @ApiResponse(description = "Attraction removed from trip", responseCode = "204"),
+            @ApiResponse(description = "A scheduled attraction cannot be removed", responseCode = "409",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void detachAttraction(@PathVariable Long id, @PathVariable Long attractionId) {
         tripService.detachAttraction(id, attractionId);

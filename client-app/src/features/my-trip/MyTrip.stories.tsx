@@ -34,13 +34,17 @@ const itineraryFixture = (
   unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"] = []
 ): GetItineraryResponse => {
   const lastDay = new Date(toDate);
-  const days: { id: number; date: string }[] = [];
+  const days: GetItineraryResponse["days"] = [];
   for (
     const date = new Date(fromDate);
     date <= lastDay;
     date.setUTCDate(date.getUTCDate() + 1)
   ) {
-    days.push({ id: days.length + 1, date: date.toISOString().slice(0, 10) });
+    days.push({
+      id: days.length + 1,
+      date: date.toISOString().slice(0, 10),
+      entries: []
+    });
   }
   return { tripId: 1, days, unscheduledAttractions };
 };
@@ -70,6 +74,8 @@ const SAVED_ATTRACTIONS = [
 type Server = ReturnType<typeof makeServer>;
 let server: Server;
 const boardMoves = fn();
+const schedulingPosts = fn();
+const schedulingUrl = "http://localhost:8080/trips/1/itinerary/attractions";
 
 const meta: Meta<typeof MyTrip> = {
   component: MyTrip,
@@ -400,6 +406,561 @@ export const EmptyPastTripLandsInReview: Story = {
   }
 };
 
+export const CancelsAnInlineAttractionDraft: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      schedulingPosts.mockClear();
+      server.get("http://localhost:8080/trips/1/itinerary", () =>
+        itineraryFixture("2099-06-10", "2099-06-11", [
+          {
+            attractionId: 42,
+            name: "Art museum",
+            place: "Florence",
+            attractionGroup: "PRIMARY",
+            mustVisit: true,
+            category: "ART_MUSEUM",
+            visitDuration: "Ask at the desk"
+          }
+        ])
+      );
+      server.post(schedulingUrl, (_schema, request) => {
+        schedulingPosts(JSON.parse(request.requestBody));
+        return new MirageResponse(500);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Add Art museum" })
+    );
+    await user.click(
+      await within(canvasElement.ownerDocument.body).findByRole("menuitem", {
+        name: /June? 11, 2099/
+      })
+    );
+    const days = within(
+      await canvas.findByRole("region", { name: "Itinerary days" })
+    );
+    const draft = within(
+      await days.findByRole("form", { name: "Add Art museum" })
+    );
+    await user.type(await draft.findByLabelText("Visit duration"), "1h");
+    await expect(draft.getByLabelText("Start clock")).toBeVisible();
+    await expect(draft.getByLabelText("Itinerary time zone")).toHaveValue("");
+    await user.click(draft.getByRole("button", { name: "Cancel" }));
+    await expect(days.queryByRole("form")).not.toBeInTheDocument();
+    await expect(
+      canvas.getByText("Visit duration: Ask at the desk")
+    ).toBeVisible();
+    await expect(schedulingPosts).not.toHaveBeenCalled();
+  }
+};
+
+export const OpensTheSavedItineraryAndSavesTheSuggestedClockOnBlur: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      ...ITINERARY_TRIP,
+      fromDate: "2099-10-25",
+      toDate: "2099-10-25",
+      hasItineraryEntries: true
+    },
+    configureTripServer: (server: Server) => {
+      schedulingPosts.mockClear();
+      const saved = itineraryFixture("2099-10-25", "2099-10-25", [
+        {
+          attractionId: 42,
+          name: "Market steps",
+          place: "Florence",
+          attractionGroup: "SECONDARY",
+          mustVisit: false,
+          category: "HISTORIC_SITE",
+          visitDuration: "0m"
+        }
+      ]);
+      saved.timeZone = "Europe/Belgrade";
+      saved.days[0].entries = [
+        {
+          entryId: 21,
+          attractionId: 41,
+          name: "Garden",
+          category: "PARK",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          fixedStart: false,
+          timing: {
+            zone: "Europe/Belgrade",
+            start: "2099-10-25T02:30+02:00",
+            end: "2099-10-25T02:30+01:00"
+          }
+        }
+      ];
+      const timing = {
+        zone: "Europe/Belgrade",
+        start: "2099-10-25T02:30+02:00",
+        end: "2099-10-25T02:30+02:00"
+      };
+      server.get("http://localhost:8080/trips/1/itinerary", () => saved);
+      server.post(schedulingUrl, (_schema, request) => {
+        schedulingPosts(JSON.parse(request.requestBody));
+        saved.days[0].entries.unshift({
+          entryId: 22,
+          attractionId: 42,
+          name: "Market steps",
+          category: "HISTORIC_SITE",
+          attractionGroup: "SECONDARY",
+          mustVisit: false,
+          fixedStart: false,
+          timing
+        });
+        saved.unscheduledAttractions = [];
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await expect(
+      await canvas.findByRole("button", { name: "Itinerary" })
+    ).toHaveAttribute("aria-current", "step");
+    const day = within(await canvas.findByRole("list", { name: "Main path" }));
+    const garden = within(day.getByRole("listitem", { name: "Garden" }));
+    await expect(garden.getAllByText("02:30")).toHaveLength(2);
+    await expect(garden.getByText("UTC+02:00")).toBeVisible();
+    await expect(garden.getByText("UTC+01:00")).toBeVisible();
+    await expect(garden.queryByText("Brief stop")).not.toBeInTheDocument();
+    await user.click(
+      await canvas.findByRole("button", { name: "Add Market steps" })
+    );
+    await user.click(
+      await within(canvasElement.ownerDocument.body).findByRole("menuitem", {
+        name: /Oct 25, 2099/
+      })
+    );
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Market steps" })
+    );
+    const clock = draft.getByLabelText("Start clock");
+    await expect(clock).toHaveValue("02:30");
+    await expect(clock).toHaveFocus();
+    await expect(schedulingPosts).not.toHaveBeenCalled();
+
+    await user.tab();
+    const stop = within(
+      await day.findByRole("listitem", { name: "Market steps" })
+    );
+    await expect(stop.getByText("Brief stop")).toBeVisible();
+    await expect(stop.getAllByText("02:30")).toHaveLength(1);
+    await expect(stop.getByText("If passing by")).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: "Add Market steps" })
+    ).not.toBeInTheDocument();
+    await expect(schedulingPosts).toHaveBeenCalledTimes(1);
+    await expect(schedulingPosts).toHaveBeenCalledWith({
+      attractionId: 42,
+      date: "2099-10-25",
+      startTime: "02:30"
+    });
+  }
+};
+
+export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: {
+      ...ITINERARY_TRIP,
+      fromDate: "2099-06-10",
+      toDate: "2099-06-10",
+      hasItineraryEntries: true
+    },
+    configureTripServer: (server: Server) => {
+      schedulingPosts.mockClear();
+      const date = "2099-06-10";
+      const zone = "Europe/Paris";
+      const saved = itineraryFixture(date, date, [
+        {
+          attractionId: 42,
+          name: "Louvre",
+          place: "Paris",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          category: "ART_MUSEUM",
+          visitDuration: "90m"
+        }
+      ]);
+      saved.timeZone = zone;
+      saved.days[0].entries = [
+        {
+          entryId: 21,
+          attractionId: 41,
+          name: "Eiffel Tower",
+          category: "HISTORIC_SITE",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          fixedStart: false,
+          timing: {
+            zone,
+            start: `${date}T09:00+02:00`,
+            end: `${date}T11:00+02:00`
+          }
+        }
+      ];
+      const reads = [saved, new MirageResponse(503)];
+      server.get(
+        "http://localhost:8080/trips/1/itinerary",
+        () => reads.shift() ?? saved
+      );
+      server.post(schedulingUrl, (_schema, request) => {
+        schedulingPosts(JSON.parse(request.requestBody));
+        saved.days[0].entries.push({
+          entryId: 22,
+          attractionId: 42,
+          name: "Louvre",
+          category: "ART_MUSEUM",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          fixedStart: false,
+          timing: {
+            zone,
+            start: `${date}T11:45+02:00`,
+            end: `${date}T13:15+02:00`
+          }
+        });
+        saved.unscheduledAttractions = [];
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const user = setupUser();
+    const addLouvre = async (): Promise<HTMLElement> => {
+      await user.click(
+        await canvas.findByRole("button", { name: "Add Louvre" })
+      );
+      await user.click(
+        await body.findByRole("menuitem", { name: /Jun 10, 2099/ })
+      );
+      return canvas.findByRole("form", { name: "Add Louvre" });
+    };
+    const canceled = within(await addLouvre());
+    await expect(canceled.getByLabelText("Start clock")).toHaveFocus();
+    await user.click(canceled.getByRole("button", { name: "Cancel" }));
+    await expect(
+      canvas.queryByRole("form", { name: "Add Louvre" })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: "Add Louvre" })
+    ).toHaveFocus();
+    await expect(schedulingPosts).not.toHaveBeenCalled();
+
+    const dismissed = within(await addLouvre());
+    await expect(dismissed.getByLabelText("Start clock")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    await expect(
+      canvas.queryByRole("form", { name: "Add Louvre" })
+    ).not.toBeInTheDocument();
+    await expect(schedulingPosts).not.toHaveBeenCalled();
+
+    const draft = within(await addLouvre());
+    const clock = draft.getByLabelText("Start clock");
+    await expect(clock).toHaveValue("11:00");
+    await expect(clock).toHaveFocus();
+    fireEvent.change(clock, { target: { value: "11:45" } });
+    await expect(clock).toHaveValue("11:45");
+    await expect(schedulingPosts).not.toHaveBeenCalled();
+    await user.click(canvas.getByRole("listitem", { name: "Eiffel Tower" }));
+
+    await expect(
+      await canvas.findByText(/The itinerary couldn't be refreshed/)
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Louvre is saved in the itinerary.")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("form", { name: "Add Louvre" })
+    ).not.toBeInTheDocument();
+    await user.click(canvas.getByRole("button", { name: "Refresh itinerary" }));
+    const louvre = within(
+      await canvas.findByRole("listitem", { name: "Louvre" })
+    );
+    await expect(louvre.getByText("11:45")).toBeVisible();
+    await expect(schedulingPosts).toHaveBeenCalledTimes(1);
+    await expect(schedulingPosts).toHaveBeenCalledWith({
+      attractionId: 42,
+      date: "2099-06-10",
+      startTime: "11:45"
+    });
+  }
+};
+
+export const InspectsSavedItineraryBeforeRetryingAnUnconfirmedEntry: Story = {
+  parameters: {
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 42,
+        attractionName: "Art museum",
+        attractionCategory: "ART_MUSEUM",
+        cityName: "Florence",
+        regionName: "Tuscany",
+        countryName: "Italy"
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      schedulingPosts.mockClear();
+      const day = "2099-06-10";
+      const original = itineraryFixture(day, day, [
+        {
+          attractionId: 42,
+          name: "Art museum",
+          place: "Florence",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          category: "ART_MUSEUM",
+          visitDuration: "3-2h"
+        }
+      ]);
+      const timing = {
+        zone: "Europe/Belgrade",
+        start: `${day}T09:00+02:00`,
+        end: `${day}T09:45+02:00`
+      };
+      const saved = itineraryFixture(day, day);
+      saved.timeZone = timing.zone;
+      saved.days[0].entries = [
+        {
+          entryId: 21,
+          attractionId: 42,
+          name: "Art museum",
+          category: "ART_MUSEUM",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          fixedStart: false,
+          timing
+        }
+      ];
+      const reads = [original, new MirageResponse(503), original];
+      server.get(
+        "http://localhost:8080/trips/1/itinerary",
+        () => reads.shift() ?? saved
+      );
+      const writes = [
+        new MirageResponse(
+          400,
+          {},
+          {
+            errorCode: "BAD_REQUEST",
+            errorMessage: "Enter the required details to add this attraction.",
+            schedulingInputs: { requiredInputs: ["VISIT_DURATION"] }
+          }
+        ),
+        new MirageResponse(503)
+      ];
+      server.post(schedulingUrl, (_schema, request) => {
+        schedulingPosts(JSON.parse(request.requestBody));
+        return writes.shift() ?? new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Add Art museum" })
+    );
+    await user.click(
+      await body.findByRole("menuitem", { name: /Jun 10, 2099/ })
+    );
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Art museum" })
+    );
+    fireEvent.change(await draft.findByLabelText("Start clock"), {
+      target: { value: "09:00" }
+    });
+    await user.type(
+      draft.getByLabelText("Itinerary time zone"),
+      "Europe/Belgrade"
+    );
+    await user.click(draft.getByRole("button", { name: "Add to day" }));
+    await expect(schedulingPosts).toHaveBeenCalledTimes(1);
+    await expect(schedulingPosts).toHaveBeenCalledWith({
+      attractionId: 42,
+      date: "2099-06-10",
+      startTime: "09:00",
+      timeZone: "Europe/Belgrade"
+    });
+    await user.type(await draft.findByLabelText("Visit duration"), "30-45m");
+    await user.click(draft.getByRole("button", { name: "Add to day" }));
+
+    await user.click(
+      await draft.findByRole("button", { name: "Inspect saved itinerary" })
+    );
+    await draft.findByText(
+      "The saved itinerary couldn't be loaded. Try inspecting it again."
+    );
+    await expect(
+      draft.queryByRole("button", { name: "Add to day" })
+    ).not.toBeInTheDocument();
+    await user.click(
+      draft.getByRole("button", { name: "Inspect saved itinerary" })
+    );
+    await draft.findByText(
+      /The saved itinerary does not contain this attraction/
+    );
+    await expect(draft.getByLabelText("Visit duration")).toHaveValue("30-45m");
+    await expect(schedulingPosts).toHaveBeenCalledTimes(2);
+    const request = {
+      attractionId: 42,
+      date: "2099-06-10",
+      startTime: "09:00",
+      visitDuration: "30-45m",
+      timeZone: "Europe/Belgrade"
+    };
+    await expect(schedulingPosts).toHaveBeenNthCalledWith(2, request);
+
+    await user.click(draft.getByRole("button", { name: "Add to day" }));
+    await expect(
+      await canvas.findByRole("listitem", { name: "Art museum" })
+    ).toBeVisible();
+    await expect(schedulingPosts).toHaveBeenCalledTimes(3);
+    await expect(schedulingPosts).toHaveBeenNthCalledWith(3, request);
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await expect(await canvas.findByText("30-45m")).toBeVisible();
+  }
+};
+
+export const ATripWithSavedEntriesStillOpensInReviewAfterTheTrip: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    trip: { ...ITINERARY_TRIP, hasItineraryEntries: true }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("button", { name: "Review" })
+    ).toHaveAttribute("aria-current", "step");
+  }
+};
+
+export const KeepsAnInvalidSpringClockAndSavesTheFirstFallOccurrenceWithoutAPrompt: Story =
+  {
+    parameters: {
+      savedAttractions: SAVED_ATTRACTIONS,
+      trip: { ...ITINERARY_TRIP, fromDate: "2027-03-28", toDate: "2027-10-31" },
+      configureTripServer: (server: Server) => {
+        schedulingPosts.mockClear();
+        // Only the two dates exercised here; the server's timing is not simulated in the browser.
+        const original = itineraryFixture("2027-03-28", "2027-03-28", [
+          {
+            attractionId: 42,
+            name: "Art museum",
+            place: "Florence",
+            attractionGroup: "PRIMARY",
+            mustVisit: true,
+            category: "ART_MUSEUM",
+            visitDuration: "30m"
+          }
+        ]);
+        original.days.push({ id: 2, date: "2027-10-31", entries: [] });
+        original.timeZone = "Europe/Belgrade";
+        const saved = structuredClone(original);
+        saved.unscheduledAttractions = [];
+        saved.days[1].entries.push({
+          entryId: 21,
+          attractionId: 42,
+          name: "Art museum",
+          category: "ART_MUSEUM",
+          attractionGroup: "PRIMARY",
+          mustVisit: true,
+          fixedStart: false,
+          timing: {
+            zone: "Europe/Belgrade",
+            start: "2027-10-31T02:30+02:00",
+            end: "2027-10-31T02:00+01:00"
+          }
+        });
+        const reads = [original, saved];
+        server.get(
+          "http://localhost:8080/trips/1/itinerary",
+          () => reads.shift() ?? saved
+        );
+        const writes = [
+          new MirageResponse(
+            400,
+            {},
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage:
+                "That start clock does not occur in Europe/Belgrade on this date. Choose another time."
+            }
+          ),
+          new MirageResponse(204)
+        ];
+        server.post(schedulingUrl, (_schema, request) => {
+          schedulingPosts(JSON.parse(request.requestBody));
+          return writes.shift() ?? new MirageResponse(500);
+        });
+      }
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const body = within(canvasElement.ownerDocument.body);
+      const user = setupUser();
+      await user.click(
+        await canvas.findByRole("button", { name: "Itinerary" })
+      );
+      await user.click(
+        await canvas.findByRole("button", { name: "Add Art museum" })
+      );
+      await user.click(
+        await body.findByRole("menuitem", { name: /Mar 28, 2027/ })
+      );
+      const spring = within(
+        await canvas.findByRole("form", { name: "Add Art museum" })
+      );
+      fireEvent.change(await spring.findByLabelText("Start clock"), {
+        target: { value: "02:30" }
+      });
+      await user.click(spring.getByRole("button", { name: "Add to day" }));
+      await expect(
+        await spring.findByText(/That start clock does not occur/)
+      ).toBeVisible();
+      await expect(spring.getByLabelText("Start clock")).toHaveValue("02:30");
+      await user.click(spring.getByRole("button", { name: "Cancel" }));
+
+      await user.click(canvas.getByRole("button", { name: "Add Art museum" }));
+      await user.click(
+        await body.findByRole("menuitem", { name: /Oct 31, 2027/ })
+      );
+      const fall = within(
+        await canvas.findByRole("form", { name: "Add Art museum" })
+      );
+      fireEvent.change(await fall.findByLabelText("Start clock"), {
+        target: { value: "02:30" }
+      });
+      await user.click(fall.getByRole("button", { name: "Add to day" }));
+      const museum = within(
+        await canvas.findByRole("listitem", { name: "Art museum" })
+      );
+      await expect(museum.getByText("02:30")).toBeVisible();
+      await expect(museum.getByText("02:00")).toBeVisible();
+      await expect(schedulingPosts).toHaveBeenLastCalledWith({
+        attractionId: 42,
+        date: "2027-10-31",
+        startTime: "02:30"
+      });
+    }
+  };
+
 export const PagesThroughTheItineraryAt768Pixels: Story = {
   parameters: { trip: ITINERARY_TRIP },
   decorators: [
@@ -517,10 +1078,12 @@ export const ShowsUnscheduledAttractionsInBoardOrder: Story = {
     const canvas = within(canvasElement);
     const user = setupUser();
     await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
-    const pool = within(
+    const unscheduled = within(
       await canvas.findByRole("region", { name: "Unscheduled attractions" })
     );
-    const top = within(pool.getByRole("region", { name: "Top Attractions" }));
+    const top = within(
+      unscheduled.getByRole("region", { name: "Top Attractions" })
+    );
     const [zoo, arcade, temple] = top.getAllByRole("article");
     await expect(zoo).toHaveAccessibleName("Zurich Zoo");
     await expect(zoo).toHaveAccessibleDescription(/Must see/);
@@ -534,7 +1097,7 @@ export const ShowsUnscheduledAttractionsInBoardOrder: Story = {
     await expect(arcade).toHaveAccessibleDescription(/Worth seeing/);
     await expect(temple).toHaveAccessibleName("Temple");
     const secondary = within(
-      pool.getByRole("region", { name: "Secondary Spots" })
+      unscheduled.getByRole("region", { name: "Secondary Spots" })
     );
     await expect(
       secondary.getByRole("article", { name: "Viewpoint" })
@@ -583,19 +1146,19 @@ export const CardMoveKeepsPlacesInOpenBoardOrder: Story = {
         place: "Florence"
       };
       const pantheon = { ...colosseum, attractionId: 9, name: "Pantheon" };
-      let savedPool = [colosseum, pantheon, uffizi];
+      let savedUnscheduled = [colosseum, pantheon, uffizi];
       server.put(
         "http://localhost:8080/trips/1/board/attractions/7",
         (_schema, request) => {
           boardMoves("1", "7", JSON.parse(request.requestBody));
-          savedPool = [uffizi, pantheon, colosseum];
+          savedUnscheduled = [uffizi, pantheon, colosseum];
           return new MirageResponse(204);
         },
         { timing: 0 }
       );
       server.get(
         "http://localhost:8080/trips/1/itinerary",
-        () => itineraryFixture("2099-06-10", "2099-06-24", savedPool),
+        () => itineraryFixture("2099-06-10", "2099-06-24", savedUnscheduled),
         { timing: 0 }
       );
     }
@@ -605,10 +1168,10 @@ export const CardMoveKeepsPlacesInOpenBoardOrder: Story = {
     const user = setupUser();
     const itinerary = await canvas.findByRole("button", { name: "Itinerary" });
     await user.click(itinerary);
-    const pool = await canvas.findByRole("region", {
+    const unscheduled = await canvas.findByRole("region", {
       name: "Unscheduled attractions"
     });
-    const [first, second, third] = within(pool).getAllByRole("article");
+    const [first, second, third] = within(unscheduled).getAllByRole("article");
     await expect(first).toHaveAccessibleName("Colosseum");
     await expect(second).toHaveAccessibleName("Pantheon");
     await expect(third).toHaveAccessibleName("Uffizi");
@@ -645,34 +1208,36 @@ export const CardMoveKeepsPlacesInOpenBoardOrder: Story = {
     ).toEqual(["Rome", "Florence"]);
 
     await user.click(itinerary);
-    const refreshedPool = within(
+    const refreshedUnscheduled = within(
       await canvas.findByRole("region", { name: "Unscheduled attractions" })
     );
     await waitFor(async () => {
       await expect(
-        refreshedPool.getAllByRole("article")[0]
+        refreshedUnscheduled.getAllByRole("article")[0]
       ).toHaveAccessibleName("Pantheon");
     });
-    const [, moved, florence] = refreshedPool.getAllByRole("article");
+    const [, moved, florence] = refreshedUnscheduled.getAllByRole("article");
     await expect(moved).toHaveAccessibleName("Colosseum");
     await expect(florence).toHaveAccessibleName("Uffizi");
   }
 };
 
-export const GoesToPrepareFromAnEmptyPool: Story = {
+export const GoesToPrepareWithoutUnscheduledAttractions: Story = {
   parameters: { trip: ITINERARY_TRIP },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const user = setupUser();
     await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
-    const pool = within(
+    const unscheduled = within(
       await canvas.findByRole("region", { name: "Unscheduled attractions" })
     );
     await expect(
-      pool.getByText("No attractions are available to schedule.")
+      unscheduled.getByText("No attractions are available to schedule.")
     ).toBeVisible();
     await user.click(
-      pool.getByRole("button", { name: "Find more attractions on the board" })
+      unscheduled.getByRole("button", {
+        name: "Find more attractions on the board"
+      })
     );
     await expect(
       canvas.getByRole("button", { name: "Prepare" })
@@ -703,7 +1268,7 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
         mustVisit: false,
         category: "HISTORIC_SITE"
       } as const;
-      const changedPool: GetItineraryResponse["unscheduledAttractions"] = [
+      const changed: GetItineraryResponse["unscheduledAttractions"] = [
         { ...arcade, mustVisit: true },
         { ...zoo, attractionGroup: "SECONDARY", mustVisit: false }
       ];
@@ -711,8 +1276,8 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
         new MirageResponse(503),
         itineraryFixture("2025-06-10", "2025-06-24", [zoo, arcade]),
         new MirageResponse(503),
-        itineraryFixture("2025-06-10", "2025-06-25", changedPool),
-        itineraryFixture("2025-06-10", "2025-06-26", changedPool)
+        itineraryFixture("2025-06-10", "2025-06-25", changed),
+        itineraryFixture("2025-06-10", "2025-06-26", changed)
       ];
       server.get(
         "http://localhost:8080/trips/1/itinerary",
@@ -738,15 +1303,15 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
 
     await user.click(canvas.getByRole("button", { name: "Retry" }));
     await canvas.findByRole("heading", { name: day });
-    const pool = within(
+    const unscheduled = within(
       canvas.getByRole("region", { name: "Unscheduled attractions" })
     );
-    await expect(pool.getAllByRole("article")[0]).toHaveAccessibleName(
+    await expect(unscheduled.getAllByRole("article")[0]).toHaveAccessibleName(
       "Zurich Zoo"
     );
-    await expect(pool.getAllByRole("article")[0]).toHaveAccessibleDescription(
-      /Must see/
-    );
+    await expect(
+      unscheduled.getAllByRole("article")[0]
+    ).toHaveAccessibleDescription(/Must see/);
 
     const ownerDocument = canvasElement.ownerDocument;
     let visibility: DocumentVisibilityState = "hidden";
@@ -763,7 +1328,7 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
       Reflect.deleteProperty(ownerDocument, "visibilityState");
     }
     await expect(canvas.getByRole("heading", { name: day })).toBeVisible();
-    await expect(pool.getAllByRole("article")[0]).toHaveAccessibleName(
+    await expect(unscheduled.getAllByRole("article")[0]).toHaveAccessibleName(
       "Zurich Zoo"
     );
 
@@ -774,7 +1339,7 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
     );
     await expect(header.getByText("16 days")).toBeInTheDocument();
     await expect(canvas.queryByText(stale)).not.toBeInTheDocument();
-    const [first, second] = pool.getAllByRole("article");
+    const [first, second] = unscheduled.getAllByRole("article");
     await expect(first).toHaveAccessibleName("Arcade");
     await expect(first).toHaveAccessibleDescription(/Must see/);
     await expect(second).toHaveAccessibleName("Zurich Zoo");
@@ -827,68 +1392,69 @@ export const ShowsBoardSaveRecoveryInItinerary: Story = {
   }
 };
 
-export const ReloadingSavedPlanningAlsoRefreshesThePool: Story = {
-  parameters: {
-    savedAttractions: [{ ...SAVED_ATTRACTIONS[0], mustVisit: false }],
-    configureTripServer: (server: Server) => {
-      const casino = {
-        attractionId: 0,
-        name: "Casino of Monte-Carlo",
-        place: "Monaco",
-        attractionGroup: "PRIMARY",
-        mustVisit: false,
-        category: "POINT_OF_INTEREST_AND_LANDMARK"
-      } as const;
-      const saved = itineraryFixture("2099-06-10", "2099-06-24", [
-        { ...casino, mustVisit: true }
-      ]);
-      const responses = [
-        itineraryFixture("2099-06-10", "2099-06-24", [casino]),
-        new MirageResponse(503),
-        saved
-      ];
-      server.get(
-        "http://localhost:8080/trips/1/itinerary",
-        () => responses.shift() ?? saved,
-        { timing: 0 }
+export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
+  {
+    parameters: {
+      savedAttractions: [{ ...SAVED_ATTRACTIONS[0], mustVisit: false }],
+      configureTripServer: (server: Server) => {
+        const casino = {
+          attractionId: 0,
+          name: "Casino of Monte-Carlo",
+          place: "Monaco",
+          attractionGroup: "PRIMARY",
+          mustVisit: false,
+          category: "POINT_OF_INTEREST_AND_LANDMARK"
+        } as const;
+        const saved = itineraryFixture("2099-06-10", "2099-06-24", [
+          { ...casino, mustVisit: true }
+        ]);
+        const responses = [
+          itineraryFixture("2099-06-10", "2099-06-24", [casino]),
+          new MirageResponse(503),
+          saved
+        ];
+        server.get(
+          "http://localhost:8080/trips/1/itinerary",
+          () => responses.shift() ?? saved,
+          { timing: 0 }
+        );
+        server.put(
+          "http://localhost:8080/trips/1/attractions/0/must-visit",
+          () =>
+            new MirageResponse(503, {}, { errorMessage: "Save unconfirmed." }),
+          { timing: 800 }
+        );
+      }
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = setupUser();
+      await user.click(await canvas.findByTitle("Mark must visit"));
+      await canvas.findByText("Saving");
+      await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+      const card = await canvas.findByRole("article", {
+        name: "Casino of Monte-Carlo"
+      });
+      await expect(card).toHaveAccessibleDescription(/Worth seeing/);
+      await canvas.findByText("Save unconfirmed.");
+
+      await user.click(
+        canvas.getByRole("button", { name: "Reload saved planning" })
       );
-      server.put(
-        "http://localhost:8080/trips/1/attractions/0/must-visit",
-        () =>
-          new MirageResponse(503, {}, { errorMessage: "Save unconfirmed." }),
-        { timing: 800 }
+      await canvas.findByText(/Saved planning couldn't be loaded/);
+      await expect(card).toHaveAccessibleDescription(/Worth seeing/);
+
+      await user.click(
+        canvas.getByRole("button", { name: "Reload saved planning" })
       );
+      await waitFor(async () => {
+        await expect(card).toHaveAccessibleDescription(/Must see/);
+      });
+      await expect(
+        canvas.queryByRole("button", { name: "Reload saved planning" })
+      ).not.toBeInTheDocument();
     }
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const user = setupUser();
-    await user.click(await canvas.findByTitle("Mark must visit"));
-    await canvas.findByText("Saving");
-    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
-    const card = await canvas.findByRole("article", {
-      name: "Casino of Monte-Carlo"
-    });
-    await expect(card).toHaveAccessibleDescription(/Worth seeing/);
-    await canvas.findByText("Save unconfirmed.");
-
-    await user.click(
-      canvas.getByRole("button", { name: "Reload saved planning" })
-    );
-    await canvas.findByText(/Saved planning couldn't be loaded/);
-    await expect(card).toHaveAccessibleDescription(/Worth seeing/);
-
-    await user.click(
-      canvas.getByRole("button", { name: "Reload saved planning" })
-    );
-    await waitFor(async () => {
-      await expect(card).toHaveAccessibleDescription(/Must see/);
-    });
-    await expect(
-      canvas.queryByRole("button", { name: "Reload saved planning" })
-    ).not.toBeInTheDocument();
-  }
-};
+  };
 
 export const ArchivedTripRemainsReviewable: Story = {
   parameters: {

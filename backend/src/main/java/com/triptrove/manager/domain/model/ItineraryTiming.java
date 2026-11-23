@@ -1,0 +1,112 @@
+package com.triptrove.manager.domain.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+import org.hibernate.annotations.Instantiator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.List;
+
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_CLOCK_GAP;
+
+@Embeddable
+@Getter
+@Accessors(fluent = true)
+@EqualsAndHashCode
+@ToString
+public final class ItineraryTiming {
+    @Column(name = "zone_id", nullable = false)
+    private final String zone;
+
+    @Column(name = "date", nullable = false)
+    private final LocalDate date;
+
+    @Column(name = "start_time", nullable = false)
+    @JdbcTypeCode(SqlTypes.LOCAL_TIME)
+    private final LocalTime startTime;
+
+    @Column(name = "second_start_occurrence")
+    private final Boolean secondStartOccurrence;
+
+    @Column(name = "planned_minutes", nullable = false)
+    private final int plannedMinutes;
+
+    public ItineraryTiming(LocalDate date, LocalTime startTime, ZoneId zone, int minutes) {
+        var offsets = validOffsets(date, startTime, zone);
+        this(zone.getId(), date, startTime, offsets.size() > 1 ? false : null, minutes);
+    }
+
+    @Instantiator({"zone", "date", "startTime", "secondStartOccurrence", "plannedMinutes"})
+    public ItineraryTiming(String zone, LocalDate date, LocalTime startTime,
+                           Boolean secondStartOccurrence, int plannedMinutes) {
+        if (zone == null) {
+            throw new IllegalArgumentException("Itinerary zone must not be null");
+        }
+        validOffsets(date, startTime, ZoneId.of(zone));
+        if (plannedMinutes < 0) {
+            throw new IllegalArgumentException("Planned minutes must not be negative");
+        }
+        this.zone = zone;
+        this.date = date;
+        this.startTime = startTime;
+        this.secondStartOccurrence = secondStartOccurrence;
+        this.plannedMinutes = plannedMinutes;
+    }
+
+    private static List<ZoneOffset> validOffsets(LocalDate date, LocalTime time, ZoneId zone) {
+        if (date == null || time == null || zone == null) {
+            throw new IllegalArgumentException("Itinerary start and zone must not be null");
+        }
+        var offsets = zone.getRules().getValidOffsets(date.atTime(time));
+        if (offsets.isEmpty()) {
+            throw new BaseApiException("Local clock falls in a zone gap", ITINERARY_CLOCK_GAP, zone.getId());
+        }
+        return offsets;
+    }
+
+    private ZonedDateTime zonedStart() {
+        var zoneId = ZoneId.of(zone);
+        var offsets = validOffsets(date, startTime, zoneId);
+        var offset = Boolean.TRUE.equals(secondStartOccurrence) ? offsets.getLast() : offsets.getFirst();
+        return ZonedDateTime.ofStrict(date.atTime(startTime), offset, zoneId);
+    }
+
+    public OffsetDateTime start() {
+        return zonedStart().toOffsetDateTime();
+    }
+
+    public OffsetDateTime end() {
+        return zonedStart().plusMinutes(plannedMinutes).toOffsetDateTime();
+    }
+
+    public boolean fitsTripDates(LocalDate from, LocalDate to) {
+        if (date.isBefore(from) || date.isAfter(to)) {
+            return false;
+        }
+        var end = end();
+        var endDate = end.toLocalDate();
+        if (endDate.isBefore(from)) {
+            return false;
+        }
+        var afterLastDate = to.plusDays(1).atStartOfDay(ZoneId.of(zone)).toInstant();
+        var endInstant = end.toInstant();
+        return endInstant.equals(afterLastDate)
+                || (!endDate.isAfter(to) && endInstant.isBefore(afterLastDate));
+    }
+
+    public boolean overlaps(ItineraryTiming other) {
+        // Strict comparisons let a brief stop meet either boundary, but not lie inside an interval.
+        return start().isBefore(other.end()) && other.start().isBefore(end());
+    }
+}

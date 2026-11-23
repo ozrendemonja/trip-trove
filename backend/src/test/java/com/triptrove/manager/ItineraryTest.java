@@ -34,7 +34,7 @@ class ItineraryTest extends AbstractIntegrationTest {
         mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.days[*].date", contains(dates.toArray(String[]::new))))
-                .andExpect(jsonPath("$.initialZone").doesNotExist())
+                .andExpect(jsonPath("$.timeZone").doesNotExist())
                 .andExpect(jsonPath("$.lastCheckedAt").doesNotExist())
                 .andExpect(jsonPath("$.unscheduledAttractions").isEmpty());
     }
@@ -51,19 +51,20 @@ class ItineraryTest extends AbstractIntegrationTest {
         var trip = createTrip("Checked itinerary", "2028-02-01", "2028-02-02");
         var tripId = Long.parseLong(trip.substring(trip.lastIndexOf('/') + 1));
         entityManager.createNativeQuery("""
-                UPDATE itinerary SET initial_zone = 'Europe/Belgrade', last_checked_at = '2028-01-30T09:00:00Z'
+                UPDATE itinerary SET time_zone = 'Europe/Belgrade', last_checked_at = '2028-01-30T09:00:00Z'
                 WHERE trip_id = :tripId
                 """).setParameter("tripId", tripId).executeUpdate();
 
         mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tripId").value(tripId))
-                .andExpect(jsonPath("$.initialZone").value("Europe/Belgrade"))
+                .andExpect(jsonPath("$.timeZone").value("Europe/Belgrade"))
+                .andExpect(jsonPath("$.initialZone").doesNotHaveJsonPath())
                 .andExpect(jsonPath("$.lastCheckedAt").value("2028-01-30T09:00:00Z"));
     }
 
     @Test
-    void theUnscheduledPoolPreservesBoardOrderAndIncludesEligibleSubAttractions() throws Exception {
+    void unscheduledAttractionsPreserveBoardOrderAndIncludeEligibleSubAttractions() throws Exception {
         seedItineraryWithBoard(9);
         entityManager.createNativeQuery("UPDATE city SET name = 'Zurich' WHERE id = 1").executeUpdate();
         entityManager.createNativeQuery("UPDATE city SET name = 'Athens' WHERE id = 2").executeUpdate();
@@ -98,7 +99,7 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void refreshingThePoolReflectsSavedBoardMovesAndMustVisitChanges() throws Exception {
+    void refreshingUnscheduledAttractionsReflectsSavedBoardMovesAndMustVisitChanges() throws Exception {
         seedItineraryWithBoard(4);
         entityManager.createNativeQuery("""
                 UPDATE attraction SET city_id = 1 WHERE id IN (2, 3, 4);
@@ -195,7 +196,7 @@ class ItineraryTest extends AbstractIntegrationTest {
         entityManager.createNativeQuery("""
                 UPDATE trip SET trip_end_date = DATE '2026-09-02' WHERE id = 1;
                 INSERT INTO itinerary(trip_id) VALUES (1);
-                INSERT INTO itinerary_day(trip_id, day_date) VALUES (1, '2026-09-01'), (1, '2026-09-02');
+                INSERT INTO itinerary_day(trip_id, date) VALUES (1, '2026-09-01'), (1, '2026-09-02');
                 """).executeUpdate();
     }
 }

@@ -30,7 +30,7 @@ export const useClasses = makeStyles({
       gridTemplateRows: "auto 1fr"
     }
   },
-  pool: {
+  unscheduledAttractions: {
     minWidth: 0,
     alignSelf: "start",
     maxHeight: "70dvh",
@@ -40,49 +40,49 @@ export const useClasses = makeStyles({
       maxHeight: "42dvh"
     }
   },
-  poolHeading: {
+  unscheduledHeading: {
     margin: 0
   },
-  poolPrepare: {
+  unscheduledPrepare: {
     minWidth: 0,
     maxWidth: "100%",
     whiteSpace: "normal"
   },
-  poolLegend: {
+  unscheduledLegend: {
     display: "flex",
     flexWrap: "wrap",
     columnGap: tokens.spacingHorizontalS,
     color: tokens.colorNeutralForeground2
   },
-  poolGroup: {
+  unscheduledGroup: {
     display: "grid",
     minWidth: 0,
     gap: tokens.spacingVerticalXS
   },
-  poolCards: {
+  unscheduledCards: {
     display: "grid",
     margin: 0,
     padding: 0,
     listStyleType: "none",
     gap: tokens.spacingVerticalXS
   },
-  poolCard: {
+  unscheduledCard: {
     minWidth: 0,
     ":focus-visible": {
       outline: `2px solid ${tokens.colorStrokeFocus2}`,
       outlineOffset: "-2px"
     }
   },
-  poolCardHeader: {
+  unscheduledCardHeader: {
     rowGap: tokens.spacingVerticalXXS
   },
-  poolName: {
+  iconLabel: {
     display: "flex",
     alignItems: "baseline",
     columnGap: tokens.spacingHorizontalXS,
     "& svg": { flexShrink: 0, alignSelf: "center" }
   },
-  poolFacts: {
+  unscheduledFacts: {
     display: "flex",
     flexDirection: "column",
     color: tokens.colorNeutralForeground2
@@ -106,7 +106,8 @@ export const useClasses = makeStyles({
     gap: `${DAY_COLUMN_GAP}px`
   },
   day: {
-    minWidth: 0
+    minWidth: 0,
+    overflowWrap: "anywhere"
   },
   dayHeading: {
     margin: 0,
@@ -125,5 +126,40 @@ export const useClasses = makeStyles({
     height: "34px",
     borderRadius: tokens.borderRadiusCircular,
     backgroundColor: tokens.colorNeutralBackground3
+  },
+  timeline: {
+    display: "grid",
+    margin: 0,
+    padding: 0,
+    listStyleType: "none",
+    rowGap: tokens.spacingVerticalS
+  },
+  entry: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    columnGap: tokens.spacingHorizontalS
+  },
+  clocks: {
+    display: "grid",
+    alignContent: "center",
+    color: tokens.colorNeutralForeground2,
+    fontVariantNumeric: "tabular-nums"
+  },
+  clockOffset: {
+    display: "block"
+  },
+  entryDraft: {
+    display: "grid",
+    minWidth: 0,
+    rowGap: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: tokens.spacingHorizontalS,
+    "& input": { minWidth: 0 }
+  },
+  draftActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: tokens.spacingHorizontalXS
   }
 });

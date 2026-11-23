@@ -2,6 +2,7 @@ package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.ScrollPosition;
 import com.triptrove.manager.domain.model.Trip;
+import com.triptrove.manager.domain.model.TripOverviewSummary;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,9 +11,19 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface TripRepo extends JpaRepository<Trip, Long> {
     List<Trip> findByName(String tripName);
+
+    @Query("""
+            SELECT new com.triptrove.manager.domain.model.TripOverviewSummary(
+                trip.id, trip.name, trip.from, trip.to, coalesce(trip.updatedOn, trip.createdOn), trip.archived,
+                EXISTS (SELECT 1 FROM ItineraryEntry entry WHERE entry.tripId = trip.id))
+            FROM Trip trip
+            WHERE trip.id = :id
+            """)
+    Optional<TripOverviewSummary> findOverviewSummaryById(Long id);
 
     default boolean deleteIfEmpty(Long tripId) {
         return deleteEmptyTrip(tripId) == 1;
@@ -58,8 +69,10 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
                 DELETE FROM TripAttraction ta
                 WHERE ta.trip.id = :tripId
                   AND ta.attraction.id = :attractionId
+                  AND NOT EXISTS (SELECT 1 FROM ItineraryEntry entry
+                      WHERE entry.tripId = :tripId AND entry.attractionId = :attractionId)
             """)
-    int deleteTripAttraction(Long tripId, Long attractionId);
+    int deleteUnscheduledTripAttraction(Long tripId, Long attractionId);
 
     @Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)

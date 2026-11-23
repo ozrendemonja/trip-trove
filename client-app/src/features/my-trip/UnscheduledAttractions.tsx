@@ -6,16 +6,22 @@ import {
   CardHeader,
   List,
   ListItem,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   Subtitle2,
   Text
 } from "@fluentui/react-components";
 import {
+  Add16Regular,
   Circle16Regular,
   Food16Regular,
   Star16Filled,
   Star16Regular
 } from "@fluentui/react-icons";
-import { useId, type ReactElement } from "react";
+import { useId, useRef, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import { useClasses } from "./Itinerary.styles";
 
@@ -43,20 +49,48 @@ const columns = [
   }
 ] as const;
 
-type Importance = (typeof importance)[keyof typeof importance];
+type Days = GetItineraryResponse["days"];
+type ScheduleAttraction = (
+  attraction: Attraction,
+  day: Days[number],
+  trigger: HTMLButtonElement | null
+) => void;
+
+export const attractionImportance = ({
+  attractionGroup,
+  mustVisit,
+  category
+}: Pick<Attraction, "attractionGroup" | "mustVisit" | "category">): {
+  label: string;
+  Icon: typeof Star16Regular;
+  tone: (typeof importance)[keyof typeof importance]["tone"];
+} => {
+  const column = attractionGroup === "PRIMARY" ? columns[0] : columns[1];
+  const mark = mustVisit ? column.marked : column.unmarked;
+  return category === "EATERY"
+    ? { ...mark, label: `Eatery: ${mark.label}`, Icon: Food16Regular }
+    : mark;
+};
 
 const AttractionCard = ({
   attraction,
-  mark
+  days,
+  scheduleBlocked,
+  formatDate,
+  onSchedule
 }: {
   attraction: Attraction;
-  mark: Importance;
+  days: Days;
+  scheduleBlocked: boolean;
+  formatDate: (date: string) => string;
+  onSchedule: ScheduleAttraction;
 }): ReactElement => {
   const classes = useClasses();
   const nameId = useId();
   const factsId = useId();
+  const addButton = useRef<HTMLButtonElement>(null);
   const eatery = attraction.category === "EATERY";
-  const Icon = eatery ? Food16Regular : mark.Icon;
+  const { Icon, tone, label } = attractionImportance(attraction);
   return (
     <Card
       role="article"
@@ -65,15 +99,15 @@ const AttractionCard = ({
       appearance="outline"
       aria-labelledby={nameId}
       aria-describedby={factsId}
-      className={classes.poolCard}
+      className={classes.unscheduledCard}
     >
       <CardHeader
-        className={classes.poolCardHeader}
+        className={classes.unscheduledCardHeader}
         header={{
-          className: classes.poolName,
+          className: classes.iconLabel,
           children: (
             <>
-              <Icon aria-hidden className={classes[mark.tone]} />
+              <Icon aria-hidden className={classes[tone]} />
               <Text id={nameId} weight="semibold">
                 {attraction.name}
               </Text>
@@ -82,11 +116,11 @@ const AttractionCard = ({
         }}
         description={{
           id: factsId,
-          className: classes.poolFacts,
+          className: classes.unscheduledFacts,
           children: (
             <>
               <Caption1 className={eatery ? undefined : classes.visuallyHidden}>
-                {eatery ? `Eatery: ${mark.label}` : mark.label}
+                {label}
               </Caption1>
               <Caption1>
                 {attraction.workingHours?.trim()
@@ -101,6 +135,35 @@ const AttractionCard = ({
             </>
           )
         }}
+        action={
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Button
+                ref={addButton}
+                appearance="subtle"
+                size="small"
+                icon={<Add16Regular />}
+                aria-label={`Add ${attraction.name}`}
+                disabledFocusable={scheduleBlocked}
+              />
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList className={classes.dateList}>
+                {days.map((day) => (
+                  <MenuItem
+                    key={day.id}
+                    disabled={scheduleBlocked}
+                    onClick={() =>
+                      onSchedule(attraction, day, addButton.current)
+                    }
+                  >
+                    {formatDate(day.date)}
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        }
       />
     </Card>
   );
@@ -127,22 +190,34 @@ const groupByPlace = (
   );
 };
 
-export const ItineraryPool = ({
+export const UnscheduledAttractions = ({
   attractions,
   boardPlaceOrder,
   prepareBlocked,
-  onPrepare
+  onPrepare,
+  days,
+  formatDate,
+  scheduleBlocked,
+  onSchedule
 }: {
   attractions: Attraction[];
   boardPlaceOrder: readonly string[];
   prepareBlocked: boolean;
   onPrepare: () => void;
+  days: Days;
+  formatDate: (date: string) => string;
+  scheduleBlocked: boolean;
+  onSchedule: ScheduleAttraction;
 }): ReactElement => {
   const classes = useClasses();
   const titleId = useId();
   return (
-    <Card role="region" aria-labelledby={titleId} className={classes.pool}>
-      <Subtitle2 as="h2" id={titleId} className={classes.poolHeading}>
+    <Card
+      role="region"
+      aria-labelledby={titleId}
+      className={classes.unscheduledAttractions}
+    >
+      <Subtitle2 as="h2" id={titleId} className={classes.unscheduledHeading}>
         Unscheduled attractions
       </Subtitle2>
       {attractions.length === 0 && (
@@ -150,7 +225,7 @@ export const ItineraryPool = ({
           <Text>No attractions are available to schedule.</Text>
           <Button
             appearance="secondary"
-            className={classes.poolPrepare}
+            className={classes.unscheduledPrepare}
             disabled={prepareBlocked}
             onClick={onPrepare}
           >
@@ -167,31 +242,42 @@ export const ItineraryPool = ({
         );
         if (!places.length) return null;
         return (
-          <section aria-label={title} className={classes.poolGroup} key={group}>
-            <Text as="h3" weight="semibold" className={classes.poolHeading}>
+          <section
+            aria-label={title}
+            className={classes.unscheduledGroup}
+            key={group}
+          >
+            <Text
+              as="h3"
+              weight="semibold"
+              className={classes.unscheduledHeading}
+            >
               {title}
             </Text>
-            <List className={classes.poolLegend}>
+            <List className={classes.unscheduledLegend}>
               {[marked, unmarked].map(({ label, Icon, tone }) => (
                 <ListItem key={label}>
-                  <Caption1 className={classes.poolName}>
+                  <Caption1 className={classes.iconLabel}>
                     <Icon aria-hidden className={classes[tone]} /> {label}
                   </Caption1>
                 </ListItem>
               ))}
             </List>
             {places.map(([place, cards]) => (
-              <div className={classes.poolGroup} key={place}>
-                <Caption1Strong as="h4" className={classes.poolHeading}>
+              <div className={classes.unscheduledGroup} key={place}>
+                <Caption1Strong as="h4" className={classes.unscheduledHeading}>
                   {place}
                 </Caption1Strong>
                 {/* Fluent List expects grid navigation for focusable children. */}
-                <ul className={classes.poolCards}>
+                <ul className={classes.unscheduledCards}>
                   {cards.map((attraction) => (
                     <li key={attraction.attractionId}>
                       <AttractionCard
                         attraction={attraction}
-                        mark={attraction.mustVisit ? marked : unmarked}
+                        days={days}
+                        formatDate={formatDate}
+                        scheduleBlocked={scheduleBlocked}
+                        onSchedule={onSchedule}
                       />
                     </li>
                   ))}

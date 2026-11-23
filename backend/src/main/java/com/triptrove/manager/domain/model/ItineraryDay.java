@@ -15,10 +15,10 @@ public class ItineraryDay {
     private Long id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "trip_id")
+    @JoinColumn(name = "trip_id", nullable = false)
     private Itinerary itinerary;
 
-    @Column(name = "day_date", nullable = false)
+    @Column(name = "date", nullable = false)
     private LocalDate date;
 
     protected ItineraryDay() {

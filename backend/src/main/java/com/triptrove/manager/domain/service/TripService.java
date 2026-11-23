@@ -8,7 +8,7 @@ import java.util.List;
 public interface TripService {
     Trip saveTrip(String tripName, LocalDate from, LocalDate to);
 
-    Trip getTrip(Long id);
+    TripOverviewSummary getTrip(Long id);
 
     ItineraryDetails getItinerary(Long tripId);
 

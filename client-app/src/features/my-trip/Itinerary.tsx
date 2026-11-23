@@ -20,6 +20,7 @@ import {
   ChevronRight20Regular
 } from "@fluentui/react-icons";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -28,16 +29,18 @@ import {
   type RefCallback
 } from "react";
 import type { ChangeNotice, GetItineraryResponse } from "../../clients/manager";
-import {
-  attractionImportance,
-  UnscheduledAttractions
-} from "./UnscheduledAttractions";
+import { UnscheduledAttractions } from "./UnscheduledAttractions";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
 import {
-  clockOffset,
   useItineraryScheduling,
   type ItineraryScheduling
 } from "./useItineraryScheduling";
+import {
+  useItineraryTimingEdit,
+  type ItineraryTimingEditing
+} from "./useItineraryTimingEdit";
+import { entryTargetId, TimelineEntry } from "./TimelineEntry";
+import { elapsedMinutes, freeTimeLabel } from "./itineraryClocks";
 import { fetchTripItinerary } from "./infra/TripApi";
 import {
   DAY_COLUMN_GAP,
@@ -52,10 +55,8 @@ type LoadState = {
   failed: boolean;
 };
 
-type Entry = GetItineraryResponse["days"][number]["entries"][number];
 type NoticeTarget = Pick<ChangeNotice, "date" | "entryId">;
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
-const entryTargetId = (entryId: number): string => `itinerary-entry-${entryId}`;
 
 interface ItineraryView {
   saved?: GetItineraryResponse;
@@ -71,6 +72,7 @@ interface ItineraryView {
   showDate: (date: string) => void;
   focusNoticeTarget: (target: NoticeTarget) => void;
   scheduling: ItineraryScheduling;
+  timingEditing: ItineraryTimingEditing;
 }
 
 const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -199,6 +201,7 @@ export const useItinerary = (
     showDate,
     onDurationCorrected
   });
+  const timingEditing = useItineraryTimingEdit(tripId, refresh);
   return {
     saved: current?.data,
     days,
@@ -212,7 +215,8 @@ export const useItinerary = (
     visibleDays,
     showDate,
     focusNoticeTarget,
-    scheduling
+    scheduling,
+    timingEditing
   };
 };
 
@@ -274,66 +278,14 @@ export const ItineraryDayPager = ({
         aria-label="Refresh itinerary"
         title="Refresh itinerary"
         disabledFocusable={
-          refreshBlocked || loading || !!itinerary.scheduling.draft
+          refreshBlocked ||
+          loading ||
+          !!itinerary.scheduling.draft ||
+          !!itinerary.timingEditing.pending
         }
         onClick={() => void refresh()}
       />
     </nav>
-  );
-};
-
-const TimelineEntry = ({ entry }: { entry: Entry }): ReactElement => {
-  const classes = useClasses();
-  const { Icon, tone, label } = attractionImportance(entry);
-  const { start, end, zone } = entry.timing;
-  // Exact equality also handles historical offsets with seconds, which Date.parse cannot read.
-  const isBriefStop = start === end || Date.parse(start) === Date.parse(end);
-  const startOffset = clockOffset(start);
-  const endOffset = clockOffset(end);
-  const showOffsets = startOffset !== endOffset;
-  return (
-    <li
-      className={classes.entry}
-      aria-label={entry.name}
-      id={entryTargetId(entry.entryId)}
-      tabIndex={-1}
-    >
-      <div className={classes.clocks}>
-        <time dateTime={start} title={`${start} (${zone})`}>
-          <Caption1>{start.slice(11, 16)}</Caption1>
-          {showOffsets && (
-            <Caption1 className={classes.clockOffset}>
-              UTC{startOffset === "Z" ? "+00:00" : startOffset}
-            </Caption1>
-          )}
-        </time>
-        {!isBriefStop && (
-          <time dateTime={end} title={`${end} (${zone})`}>
-            <Caption1>{end.slice(11, 16)}</Caption1>
-            {end.slice(0, 10) !== start.slice(0, 10) && (
-              <Caption1>
-                {" "}
-                {new Date(end.slice(0, 10)).getUTCDate()}{" "}
-                {month.format(new Date(end.slice(0, 10)))}
-              </Caption1>
-            )}
-            {showOffsets && (
-              <Caption1 className={classes.clockOffset}>
-                UTC{endOffset === "Z" ? "+00:00" : endOffset}
-              </Caption1>
-            )}
-          </time>
-        )}
-      </div>
-      <Card size="small" appearance="outline">
-        <div className={classes.iconLabel}>
-          <Icon aria-hidden className={classes[tone]} />
-          <Text weight="semibold">{entry.name}</Text>
-          <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
-        </div>
-        {isBriefStop && <Caption1>Brief stop</Caption1>}
-      </Card>
-    </li>
   );
 };
 
@@ -357,9 +309,13 @@ export const ItineraryContent = ({
     refresh,
     visibleDays,
     measureDayRow,
-    scheduling
+    scheduling,
+    timingEditing
   } = itinerary;
   const { draft, feedback } = scheduling;
+  const { pending } = timingEditing;
+  const writeBlocked =
+    prepareBlocked || loading || failed || !!draft || !!pending;
   const activeDraft = draft && (
     <ItineraryEntryDraft
       draft={draft}
@@ -390,13 +346,31 @@ export const ItineraryContent = ({
   return (
     <div className={classes.itinerary}>
       {feedback && <Text role="status">{feedback}</Text>}
+      {pending?.recovery && (
+        <MessageBar intent="warning">
+          <MessageBarBody>
+            {pending.recovery === "unconfirmed"
+              ? "The timing save couldn't be confirmed. Inspect the saved itinerary before editing again."
+              : "Timing was saved, but the itinerary couldn't be refreshed."}
+          </MessageBarBody>
+          <MessageBarActions>
+            <Button
+              size="small"
+              disabledFocusable={!!pending.activity}
+              onClick={() => void timingEditing.inspect()}
+            >
+              Inspect saved itinerary
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      )}
       {draft && !visibleDays.some((day) => day.date === draft.intent.date) && (
         <Card size="small">
           <Caption1>{formatItineraryDate(draft.intent.date)}</Caption1>
           {activeDraft}
         </Card>
       )}
-      {failed && (
+      {failed && !pending?.recovery && (
         <MessageBar intent="warning">
           <MessageBarBody>
             The itinerary couldn&apos;t be refreshed. Days and unscheduled
@@ -408,11 +382,11 @@ export const ItineraryContent = ({
         <UnscheduledAttractions
           attractions={unscheduledAttractions}
           boardPlaceOrder={boardPlaceOrder}
-          prepareBlocked={prepareBlocked || !!draft}
+          prepareBlocked={prepareBlocked || !!draft || !!pending}
           onPrepare={onPrepare}
           days={days}
           formatDate={formatItineraryDate}
-          scheduleBlocked={prepareBlocked || loading || failed || !!draft}
+          scheduleBlocked={writeBlocked}
           onSchedule={scheduling.choose}
         />
         <section
@@ -445,9 +419,29 @@ export const ItineraryContent = ({
                 <Divider />
                 {day.entries.length > 0 && (
                   <ol className={classes.timeline} aria-label="Main path">
-                    {day.entries.map((entry) => (
-                      <TimelineEntry key={entry.entryId} entry={entry} />
-                    ))}
+                    {day.entries.map((entry, index) => {
+                      const previous = day.entries[index - 1];
+                      const gap = previous
+                        ? elapsedMinutes(
+                            previous.timing.end,
+                            entry.timing.start
+                          )
+                        : 0;
+                      return (
+                        <Fragment key={entry.entryId}>
+                          {gap > 0 && (
+                            <li className={classes.freeTime}>
+                              <Caption1>{freeTimeLabel(gap)}</Caption1>
+                            </li>
+                          )}
+                          <TimelineEntry
+                            entry={entry}
+                            editing={timingEditing}
+                            blocked={writeBlocked}
+                          />
+                        </Fragment>
+                      );
+                    })}
                   </ol>
                 )}
                 {draft?.intent.date === day.date && activeDraft}

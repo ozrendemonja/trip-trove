@@ -13,10 +13,12 @@ import java.time.LocalTime;
 public record ScheduleAttractionRequest(
         @NotNull @Positive Long attractionId,
         @NotNull LocalDate date,
-        @Pattern(regexp = "(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?")
+        @Pattern(regexp = LOCAL_CLOCK_PATTERN)
         @Schema(description = "The chosen local start clock.", example = "09:00") String startTime,
         @Size(max = 255) String timeZone,
         @Size(max = 64) String visitDuration) {
+    static final String LOCAL_CLOCK_PATTERN = "(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?";
+
     public AttractionToSchedule toSchedulingInput() {
         return new AttractionToSchedule(attractionId, startTime == null ? null : LocalTime.parse(startTime),
                 timeZone, visitDuration);

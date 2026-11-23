@@ -10,6 +10,8 @@ import org.hibernate.annotations.Instantiator;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -19,6 +21,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_CLOCK_GAP;
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_INVALID_END_CLOCK;
 
 @Embeddable
 @Getter
@@ -43,23 +46,28 @@ public final class ItineraryTiming {
     private final int plannedMinutes;
 
     public ItineraryTiming(LocalDate date, LocalTime startTime, ZoneId zone, int minutes) {
-        var offsets = validOffsets(date, startTime, zone);
-        this(zone.getId(), date, startTime, offsets.size() > 1 ? false : null, minutes);
+        this(resolveStart(date, startTime, zone, null), minutes);
     }
 
     @Instantiator({"zone", "date", "startTime", "secondStartOccurrence", "plannedMinutes"})
     public ItineraryTiming(String zone, LocalDate date, LocalTime startTime,
                            Boolean secondStartOccurrence, int plannedMinutes) {
-        if (zone == null) {
-            throw new IllegalArgumentException("Itinerary zone must not be null");
-        }
-        validOffsets(date, startTime, ZoneId.of(zone));
+        this(resolveStart(date, startTime, zone == null ? null : ZoneId.of(zone), secondStartOccurrence),
+                secondStartOccurrence, plannedMinutes);
+    }
+
+    private ItineraryTiming(ZonedDateTime start, int plannedMinutes) {
+        var offsets = start.getZone().getRules().getValidOffsets(start.toLocalDateTime());
+        this(start, offsets.size() > 1 ? start.getOffset().equals(offsets.getLast()) : null, plannedMinutes);
+    }
+
+    private ItineraryTiming(ZonedDateTime start, Boolean secondStartOccurrence, int plannedMinutes) {
         if (plannedMinutes < 0) {
             throw new IllegalArgumentException("Planned minutes must not be negative");
         }
-        this.zone = zone;
-        this.date = date;
-        this.startTime = startTime;
+        this.zone = start.getZone().getId();
+        this.date = start.toLocalDate();
+        this.startTime = start.toLocalTime();
         this.secondStartOccurrence = secondStartOccurrence;
         this.plannedMinutes = plannedMinutes;
     }
@@ -68,18 +76,49 @@ public final class ItineraryTiming {
         if (date == null || time == null || zone == null) {
             throw new IllegalArgumentException("Itinerary start and zone must not be null");
         }
-        var offsets = zone.getRules().getValidOffsets(date.atTime(time));
+        return zone.getRules().getValidOffsets(date.atTime(time));
+    }
+
+    private static ZonedDateTime resolveStart(LocalDate date, LocalTime time, ZoneId zone, Boolean secondOccurrence) {
+        var offsets = validOffsets(date, time, zone);
         if (offsets.isEmpty()) {
             throw new BaseApiException("Local clock falls in a zone gap", ITINERARY_CLOCK_GAP, zone.getId());
         }
-        return offsets;
+        var offset = Boolean.TRUE.equals(secondOccurrence) ? offsets.getLast() : offsets.getFirst();
+        return ZonedDateTime.ofStrict(date.atTime(time), offset, zone);
     }
 
     private ZonedDateTime zonedStart() {
-        var zoneId = ZoneId.of(zone);
-        var offsets = validOffsets(date, startTime, zoneId);
-        var offset = Boolean.TRUE.equals(secondStartOccurrence) ? offsets.getLast() : offsets.getFirst();
-        return ZonedDateTime.ofStrict(date.atTime(startTime), offset, zoneId);
+        return resolveStart(date, startTime, ZoneId.of(zone), secondStartOccurrence);
+    }
+
+    public ItineraryTiming withLocalStart(LocalTime clock) {
+        return new ItineraryTiming(date, clock, ZoneId.of(zone), plannedMinutes);
+    }
+
+    public ItineraryTiming withStartAt(Instant instant) {
+        return new ItineraryTiming(instant.atZone(ZoneId.of(zone)), plannedMinutes);
+    }
+
+    public ItineraryTiming withPlannedMinutes(int minutes) {
+        return new ItineraryTiming(zone, date, startTime, secondStartOccurrence, minutes);
+    }
+
+    public ItineraryTiming withLocalEnd(LocalDate endDate, LocalTime endClock) {
+        var start = zonedStart();
+        var offsets = validOffsets(endDate, endClock, start.getZone());
+        if (offsets.isEmpty()) {
+            throw new BaseApiException("Local end clock falls in a zone gap", ITINERARY_CLOCK_GAP,
+                    ItineraryTimingIssue.END_CLOCK, zone);
+        }
+        var end = endDate.atTime(endClock).toInstant(offsets.getFirst());
+        var elapsed = Duration.between(start.toInstant(), end);
+        if (elapsed.isNegative() || elapsed.getSeconds() % 60 != 0 || elapsed.getNano() != 0
+                || elapsed.toMinutes() > Integer.MAX_VALUE) {
+            throw new BaseApiException("End clock does not give a valid elapsed length", ITINERARY_INVALID_END_CLOCK,
+                    endDate, endClock);
+        }
+        return withPlannedMinutes((int) elapsed.toMinutes());
     }
 
     public OffsetDateTime start() {

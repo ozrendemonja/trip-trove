@@ -25,9 +25,9 @@ database is not a planning edit: there is no historical offset snapshot, warning
 or approval.
 
 Timing is an immutable value object validated at construction. Hibernate loads
-the stored fields through the same validating constructor. The resolved start
-is transient: each load resolves the current zone rules, and subsequent reads
-of that instance reuse the validated start without repeating clock validation.
+the stored fields through the same validating constructor. Only values mapped
+to database columns are fields on the object. The zoned start is derived from
+them when needed, not cached in a separate field.
 
 The itinerary response exposes the zone and the resolved `start` and `end`
 with their UTC offsets, not the stored minutes. A brief stop starts and ends
@@ -46,6 +46,29 @@ If the server cannot resolve a usable visit duration, it requests only
 and `TIME_ZONE` are missing. The client keeps the draft, collects the requested
 details and submits the same action again. There is no separate preview or
 confirmation token for this flow.
+
+Each timing field is saved independently. Under
+`/trips/{id}/itinerary/entries/{entryId}`, the client sends one `PUT` per edit:
+
+| Route | Complete request body | What stays fixed |
+| --- | --- | --- |
+| `/start` | `{"startTime":"09:00"}` | Planned length |
+| `/end` | `{"endDate":"2027-03-30","endTime":"01:00"}` | Start |
+| `/planned-length` | `{"plannedMinutes":45}` | Start |
+
+These are absolute replacements, not increments. Repeating a successful PUT
+without intervening edits does not push following entries again or add a new
+notice. A changed start or planned length stays marked until the next manual
+check, including on an entry pushed by another edit. Returning to the original
+value is still a change; no previous clock or length is stored.
+A clock-only end edit uses the displayed end date; changing the end date
+requires typing it explicitly or changing the planned length. Manual clocks
+use the first occurrence in a repeat. Propagation uses elapsed time and
+preserves the calculated instant, including the second occurrence. Neither
+the edited entry's lock nor the path order is changed. An edit can push
+unlocked entries on its own day only; it cannot overlap entries on another
+day. Success returns `204` with a `Location` for GET; rejection leaves all
+timings unchanged.
 
 Later ways to schedule, including drag into a gap, keep the same focused
 draft and chosen-clock contract. Position-based recalculation for moving an

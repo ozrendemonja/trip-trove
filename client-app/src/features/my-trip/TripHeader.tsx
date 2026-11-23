@@ -34,6 +34,7 @@ interface TripHeaderProps {
   hasEntryDraft?: boolean;
   planningBlocked?: boolean;
   checkBlocked?: boolean;
+  timingEditBlocked?: boolean;
   check?: ReactNode;
   actions?: ReactNode;
 }
@@ -87,6 +88,7 @@ export const TripHeader = ({
   hasEntryDraft,
   planningBlocked,
   checkBlocked,
+  timingEditBlocked,
   check,
   actions
 }: TripHeaderProps): ReactElement => {
@@ -99,22 +101,33 @@ export const TripHeader = ({
         unavailableReason:
           step.mode !== "itinerary" && checkBlocked
             ? "Finish the itinerary check"
-            : hasEntryDraft && step.mode !== "itinerary"
-              ? "Finish or cancel adding the attraction"
-              : step.mode === "prepare" && mode !== "prepare" && planningBlocked
-                ? "Finish pending change"
-                : mode === "prepare" &&
-                    (step.mode === "itinerary" ||
-                      step.mode === "readOnly" ||
-                      step.mode === "review")
-                  ? "After Edit"
-                  : step.mode === "review" &&
-                      trip?.status !== "past" &&
-                      trip?.status !== "archived"
-                    ? "After the trip"
-                    : undefined
+            : step.mode !== "itinerary" && timingEditBlocked
+              ? "Finish the timing edit"
+              : hasEntryDraft && step.mode !== "itinerary"
+                ? "Finish or cancel adding the attraction"
+                : step.mode === "prepare" &&
+                    mode !== "prepare" &&
+                    planningBlocked
+                  ? "Finish pending change"
+                  : mode === "prepare" &&
+                      (step.mode === "itinerary" ||
+                        step.mode === "readOnly" ||
+                        step.mode === "review")
+                    ? "After Edit"
+                    : step.mode === "review" &&
+                        trip?.status !== "past" &&
+                        trip?.status !== "archived"
+                      ? "After the trip"
+                      : undefined
       })),
-    [mode, planningBlocked, trip?.status, hasEntryDraft, checkBlocked]
+    [
+      mode,
+      planningBlocked,
+      trip?.status,
+      hasEntryDraft,
+      checkBlocked,
+      timingEditBlocked
+    ]
   );
   const dates = trip?.startDate
     ? trip.endDate

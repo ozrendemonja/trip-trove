@@ -5,6 +5,7 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.AttractionToSchedule.MissingInputs;
 import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.ItineraryDependency;
+import com.triptrove.manager.domain.model.ItineraryTimingIssue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.TypeMismatchException;
@@ -168,6 +169,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 && !exception.getContext().isEmpty()
                 && exception.getContext().getFirst() instanceof ItineraryDependency dependency) {
             key += "." + dependency;
+        }
+        if (!exception.getContext().isEmpty() && exception.getContext().getFirst() instanceof ItineraryTimingIssue issue) {
+            key += "." + issue;
         }
         return messageSource.getMessage(key,
                 exception.getContext().stream().map(String::valueOf).toArray(),

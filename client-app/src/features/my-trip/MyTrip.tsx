@@ -76,6 +76,10 @@ const unavailableCheckReason = (
     return "Inspect the saved itinerary to resolve the unconfirmed addition.";
   if (draft?.activity) return "Wait for the attraction save to finish.";
   if (draft) return "Finish or cancel adding the attraction first.";
+  if (itinerary.timingEditing.pending?.recovery)
+    return "Inspect the saved timing before checking the itinerary.";
+  if (itinerary.timingEditing.pending)
+    return "Wait for the timing edit to finish.";
   if (planningBlocked)
     return "Finish or resolve the pending planning change first.";
   if (itinerary.loading) return "Wait for the saved itinerary to load.";
@@ -281,6 +285,7 @@ export const MyTrip: React.FC = () => {
       boardRef.current?.reflectSavedVisitDuration(attractionId, duration)
   );
   const entryDraft = itinerary.scheduling.draft;
+  const pendingTimingEdit = itinerary.timingEditing.pending;
   const { refresh: refreshItinerary } = itinerary;
   const check = useItineraryCheck(currentTripId, refreshItinerary);
   const reloadOpenItinerary = useCallback(async (): Promise<void> => {
@@ -302,7 +307,14 @@ export const MyTrip: React.FC = () => {
     planningBlocked
   );
   useEffect(() => {
-    if (!itineraryOpen || check.locked || entryDraft || planningBlocked) return;
+    if (
+      !itineraryOpen ||
+      check.locked ||
+      entryDraft ||
+      pendingTimingEdit ||
+      planningBlocked
+    )
+      return;
     const refreshWhenVisible = (): void => {
       if (document.visibilityState === "visible") void refreshItinerary();
     };
@@ -313,11 +325,13 @@ export const MyTrip: React.FC = () => {
     itineraryOpen,
     check.locked,
     entryDraft,
+    pendingTimingEdit,
     planningBlocked,
     refreshItinerary
   ]);
 
-  const hasPlanningChanges = hasPrepareChanges || !!entryDraft || check.locked;
+  const hasPlanningChanges =
+    hasPrepareChanges || !!entryDraft || check.locked || !!pendingTimingEdit;
   const planningGuard = useRef(hasPlanningChanges);
   useLayoutEffect(() => {
     planningGuard.current = hasPlanningChanges;
@@ -350,7 +364,11 @@ export const MyTrip: React.FC = () => {
   }, [blocker, hasPlanningChanges]);
 
   const changeMode = async (mode: BoardMode): Promise<void> => {
-    if ((entryDraft || check.locked) && mode !== "itinerary") return;
+    if (
+      (entryDraft || check.locked || pendingTimingEdit) &&
+      mode !== "itinerary"
+    )
+      return;
     if (mode === "prepare" && boardMode !== "prepare" && planningBlocked)
       return;
     const generation = ++modeChangeGeneration.current;
@@ -390,6 +408,7 @@ export const MyTrip: React.FC = () => {
               planningBlocked={planningBlocked}
               hasEntryDraft={!!entryDraft}
               checkBlocked={check.locked}
+              timingEditBlocked={!!pendingTimingEdit}
               onModeChange={changeMode}
               onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
@@ -474,7 +493,8 @@ export const MyTrip: React.FC = () => {
                 boardPlaceOrder={boardPlaceOrder}
                 prepareBlocked={planningBlocked || check.locked}
                 onPrepare={() => {
-                  if (planningBlocked || check.locked) return;
+                  if (planningBlocked || check.locked || pendingTimingEdit)
+                    return;
                   focusPrepareAction.current = true;
                   void changeMode("prepare");
                 }}
@@ -507,6 +527,25 @@ export const MyTrip: React.FC = () => {
                   {check.activity
                     ? "Wait for the itinerary check to finish."
                     : "Stay to inspect the saved check state before continuing."}
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    appearance="primary"
+                    onClick={() => {
+                      if (blocker.state === "blocked") blocker.reset();
+                    }}
+                  >
+                    Stay
+                  </Button>
+                </DialogActions>
+              </>
+            ) : pendingTimingEdit ? (
+              <>
+                <DialogTitle>Finish the timing edit?</DialogTitle>
+                <DialogContent>
+                  {pendingTimingEdit.activity
+                    ? "Wait until the saved itinerary is ready."
+                    : "Stay to inspect the saved itinerary before continuing."}
                 </DialogContent>
                 <DialogActions>
                   <Button

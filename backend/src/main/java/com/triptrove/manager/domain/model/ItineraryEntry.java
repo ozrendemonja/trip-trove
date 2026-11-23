@@ -24,6 +24,9 @@ public class ItineraryEntry {
     @Column(name = "fixed_start", nullable = false)
     private boolean fixedStart;
 
+    @Column(name = "included_in_last_check", nullable = false)
+    private boolean includedInLastCheck;
+
     protected ItineraryEntry() {
     }
 

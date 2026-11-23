@@ -5,7 +5,25 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record ItineraryDetails(Long tripId, String timeZone, Instant lastCheckedAt, List<Day> days,
-                               List<UnscheduledAttractionSummary> unscheduledAttractions) {
+                               List<UnscheduledAttractionSummary> unscheduledAttractions,
+                               List<ChangeNoticeSummary> changeNotices) {
+    public CheckState checkState() {
+        if (lastCheckedAt == null) {
+            return CheckState.NOT_YET_CHECKED;
+        }
+        return changeNotices.isEmpty() ? CheckState.MANUALLY_CHECKED : CheckState.CHANGED_SINCE_LAST_CHECK;
+    }
+
+    public enum CheckState {
+        NOT_YET_CHECKED, MANUALLY_CHECKED, CHANGED_SINCE_LAST_CHECK
+    }
+
+    public record ChangeNoticeSummary(Long entryId, String subject, LocalDate date, List<Reason> reasons) {
+        public enum Reason {
+            ATTRACTION_ADDED
+        }
+    }
+
     public record Day(Long id, LocalDate date, List<AttractionEntrySummary> entries) {
     }
 

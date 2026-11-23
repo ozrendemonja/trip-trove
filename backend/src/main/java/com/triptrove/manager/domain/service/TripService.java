@@ -12,6 +12,8 @@ public interface TripService {
 
     ItineraryDetails getItinerary(Long tripId);
 
+    void markItineraryChecked(Long tripId);
+
     void updateTripName(Long id, String newName);
 
     void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip);

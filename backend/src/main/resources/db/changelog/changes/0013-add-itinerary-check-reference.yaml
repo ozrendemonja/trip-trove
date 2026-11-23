@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0013-add-itinerary-check-reference
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary_entry
+            columns:
+              - column:
+                  name: included_in_last_check
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

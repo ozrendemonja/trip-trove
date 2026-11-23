@@ -170,7 +170,7 @@ final class KeysetTestFixtures {
                         new AttractionController(new AttractionServiceImpl(
                                 properties, regionRepo, cityRepo, attractionRepo, informationProviderRepo)),
                         new TripController(new TripServiceImpl(properties, tripRepo, attractionRepo, tripAttractionRepo,
-                                context.getBean(ItineraryRepo.class))),
+                                context.getBean(ItineraryRepo.class), context.getBean(ItineraryEntryRepo.class))),
                         new BucketListController(new BucketListServiceImpl(
                                 properties, context.getBean(BucketListItemRepo.class), cityRepo, regionRepo, tripRepo)),
                         new SearchController(new SearchServiceImpl(properties, continentRepo, countryRepo,

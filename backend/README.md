@@ -62,6 +62,15 @@ reports invalid saved dates, the entire migration is rolled back; correct the
 source trip dates before restarting. The migration does not guess replacements
 or reset any existing itinerary.
 
+`POST /trips/{id}/itinerary/check` records the user's manual assessment of the
+whole itinerary, including an empty one. It saves the check time and renews
+the reference for which entries were checked in one transaction. It returns
+`204` with a `Location` pointing to the itinerary; GET supplies the check
+state and the grouped change notices. An addition after a check produces one
+notice for the added entry. Until the first check, additions produce no
+notices. An unconfirmed check must be inspected with GET before the user
+confirms again.
+
 ## Location-grouped Attraction Search
 
 Country and region attraction searches always group results by location.

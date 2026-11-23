@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.service;
 import com.triptrove.manager.domain.algorithm.FractionalIndexing;
 import com.triptrove.manager.domain.model.*;
 import com.triptrove.manager.domain.repo.AttractionRepo;
+import com.triptrove.manager.domain.repo.ItineraryEntryRepo;
 import com.triptrove.manager.domain.repo.ItineraryRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import com.triptrove.manager.domain.repo.TripRepo;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ public class TripServiceImpl implements TripService {
     private final AttractionRepo attractionRepo;
     private final TripAttractionRepo tripAttractionRepo;
     private final ItineraryRepo itineraryRepo;
+    private final ItineraryEntryRepo itineraryEntryRepo;
 
     @Override
     @Transactional
@@ -61,6 +64,16 @@ public class TripServiceImpl implements TripService {
         return itineraryRepo.findDetailsByTripId(tripId)
                 .orElseThrow(() -> new BaseApiException("Itinerary not found for trip",
                         BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId));
+    }
+
+    @Override
+    @Transactional
+    public void markItineraryChecked(Long tripId) {
+        if (itineraryRepo.recordCheck(tripId, Instant.now()) == 0) {
+            throw new BaseApiException("Itinerary not found for trip",
+                    BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
+        }
+        itineraryEntryRepo.markEntriesIncludedInLastCheck(tripId);
     }
 
     @Override

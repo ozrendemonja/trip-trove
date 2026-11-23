@@ -1,4 +1,5 @@
 import {
+  checkItinerary,
   detachAttraction,
   getItinerary,
   getTrip,
@@ -14,6 +15,7 @@ import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
 import { AttractionVisitHistory } from "../domain/VisitHistory.types";
 import { chunk } from "../../../shared/utils/chunk";
 import type { TripAttractionGroup } from "../domain/TripPlanning.types";
+import { PlanningSaveError } from "./PlanningApi";
 
 export type {
   TripAttractionGroup,
@@ -222,7 +224,11 @@ const isSavedItinerary = (
   Array.isArray(data.days) &&
   data.days.length > 0 &&
   data.days.every((day) => Array.isArray(day.entries)) &&
-  Array.isArray(data.unscheduledAttractions);
+  Array.isArray(data.unscheduledAttractions) &&
+  Array.isArray(data.changeNotices) &&
+  (data.checkState === "NOT_YET_CHECKED" ||
+    data.checkState === "MANUALLY_CHECKED" ||
+    data.checkState === "CHANGED_SINCE_LAST_CHECK");
 
 export const fetchTripItinerary = async (
   id: number,
@@ -238,6 +244,20 @@ export const fetchTripItinerary = async (
     throw new Error("The itinerary couldn't be loaded.", { cause: error });
   }
   return data;
+};
+
+export const saveItineraryCheck = async (id: number): Promise<void> => {
+  const { response, error } = await checkItinerary({
+    path: { id },
+    headers: { "x-api-version": "1" },
+    signal: AbortSignal.timeout(15_000)
+  });
+  if (!response?.ok) {
+    throw new PlanningSaveError(
+      error?.errorMessage ?? "The itinerary couldn't be checked.",
+      !response || response.status >= 500
+    );
+  }
 };
 
 export const updateTripName = async (

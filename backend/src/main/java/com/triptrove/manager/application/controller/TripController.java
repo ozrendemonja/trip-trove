@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.model.TripBoardItem;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -93,6 +94,22 @@ public class TripController {
     })
     public GetItineraryResponse getItinerary(@PathVariable Long id) {
         return GetItineraryResponse.from(tripService.getItinerary(id));
+    }
+
+    @PostMapping("/{id:\\d+}/itinerary/check")
+    @Operation(summary = "Record a manual check of the whole itinerary")
+    @ApiResponse(responseCode = "204", description = "Itinerary check recorded",
+            headers = @Header(name = "Location", description = "URI of the updated itinerary",
+                    schema = @Schema(type = "string", format = "uri")))
+    @ApiResponse(responseCode = "404", description = "Itinerary not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> checkItinerary(@PathVariable Long id) {
+        tripService.markItineraryChecked(id);
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/trips/{id}/itinerary")
+                .buildAndExpand(id)
+                .toUri();
+        return ResponseEntity.noContent().location(location).build();
     }
 
     @PutMapping("/{id:\\d+}/name")

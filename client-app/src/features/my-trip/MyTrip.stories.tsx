@@ -46,7 +46,13 @@ const itineraryFixture = (
       entries: []
     });
   }
-  return { tripId: 1, days, unscheduledAttractions };
+  return {
+    tripId: 1,
+    days,
+    unscheduledAttractions,
+    checkState: "NOT_YET_CHECKED",
+    changeNotices: []
+  };
 };
 
 // A saved-attractions payload (shape of GET /trips/:id/attractions) used to put a
@@ -75,6 +81,8 @@ type Server = ReturnType<typeof makeServer>;
 let server: Server;
 const boardMoves = fn();
 const schedulingPosts = fn();
+const checkPosts = fn();
+const itineraryUrl = "http://localhost:8080/trips/1/itinerary";
 const schedulingUrl = "http://localhost:8080/trips/1/itinerary/attractions";
 
 const meta: Meta<typeof MyTrip> = {
@@ -451,12 +459,288 @@ export const CancelsAnInlineAttractionDraft: Story = {
     await user.type(await draft.findByLabelText("Visit duration"), "1h");
     await expect(draft.getByLabelText("Start clock")).toBeVisible();
     await expect(draft.getByLabelText("Itinerary time zone")).toHaveValue("");
+    await expect(
+      canvas.getByRole("button", { name: "Check itinerary" })
+    ).toHaveAccessibleDescription(
+      "Finish or cancel adding the attraction first."
+    );
+    await user.click(canvas.getByRole("button", { name: "Check details" }));
+    const details = within(
+      await overlay(canvasElement).findByRole("group", {
+        name: "Check details"
+      })
+    );
+    await waitFor(() =>
+      expect(
+        details.getByText("Finish or cancel adding the attraction first.")
+      ).toBeVisible()
+    );
+    await user.keyboard("{Escape}");
     await user.click(draft.getByRole("button", { name: "Cancel" }));
     await expect(days.queryByRole("form")).not.toBeInTheDocument();
     await expect(
       canvas.getByText("Visit duration: Ask at the desk")
     ).toBeVisible();
     await expect(schedulingPosts).not.toHaveBeenCalled();
+    await expect(
+      canvas.getByRole("button", { name: "Check itinerary" })
+    ).not.toHaveAttribute("aria-disabled", "true");
+  }
+};
+
+export const ChecksAnEmptyItineraryExplicitly: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = itineraryFixture("2099-06-10", "2099-06-11");
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/check`,
+        () => {
+          checkPosts();
+          saved.checkState = "MANUALLY_CHECKED";
+          saved.lastCheckedAt = "2026-11-23T16:00:00Z";
+          return new MirageResponse(204);
+        },
+        { timing: 200 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const body = overlay(canvasElement);
+    await canvas.findByText("Not yet checked");
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    const trigger = canvas.getByRole("button", { name: "Check itinerary" });
+    const plan = canvas.getByRole("button", { name: /^Plan$/ });
+    await waitFor(() =>
+      expect(trigger).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(trigger);
+    const confirmation = within(
+      await body.findByRole("dialog", { name: "Check itinerary" })
+    );
+    await waitFor(async () => {
+      await expect(
+        confirmation.getByText(/No attractions or other items are scheduled/)
+      ).toBeVisible();
+      await expect(
+        confirmation.getByText(
+          /does not guarantee that the itinerary is feasible/
+        )
+      ).toBeVisible();
+    });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(trigger).toHaveFocus());
+    await expect(checkPosts).not.toHaveBeenCalled();
+
+    await user.click(trigger);
+    await user.click(
+      await body.findByRole("button", { name: "Mark empty itinerary checked" })
+    );
+    await expect(await canvas.findByText("Saving check...")).toBeVisible();
+    await expect(plan).toBeDisabled();
+    await expect(await canvas.findByText("Manually checked")).toBeVisible();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+    await user.click(await canvas.findByRole("button", { name: /^Plan$/ }));
+    await expect(canvas.getByText("Manually checked")).toBeVisible();
+  }
+};
+
+export const ShowsGroupedChangesAndFocusesTheExistingEntry: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: "390px", maxWidth: "100%" }}>
+        <Story />
+      </div>
+    )
+  ],
+  parameters: {
+    trip: ITINERARY_TRIP,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = itineraryFixture("2025-06-10", "2025-06-24");
+      saved.lastCheckedAt = "2025-06-01T10:00:00Z";
+      saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+      saved.days[10].entries.push({
+        entryId: 42,
+        attractionId: 5,
+        name: "Garden",
+        attractionGroup: "PRIMARY",
+        category: "PARK",
+        fixedStart: false,
+        mustVisit: true,
+        timing: {
+          start: "2025-06-20T09:00+02:00",
+          end: "2025-06-20T09:45+02:00",
+          zone: "Europe/Rome"
+        }
+      });
+      saved.changeNotices = [
+        {
+          entryId: 42,
+          subject: "Garden",
+          date: "2025-06-20",
+          reasons: ["ATTRACTION_ADDED"]
+        },
+        {
+          entryId: 24,
+          subject: "Former entry",
+          date: "2025-06-21",
+          reasons: ["ATTRACTION_ADDED"]
+        }
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/check`,
+        () => {
+          checkPosts();
+          saved.lastCheckedAt = "2025-06-22T10:00:00Z";
+          saved.checkState = "MANUALLY_CHECKED";
+          saved.changeNotices = [];
+          return new MirageResponse(503);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const body = overlay(canvasElement);
+    const header = await canvas.findByRole("region", { name: "Trip overview" });
+    await expect(
+      await within(header).findByText("Changed since last check")
+    ).toBeVisible();
+    await expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
+    const changes = within(header).getByRole("button", {
+      name: "2 changes to check"
+    });
+    changes.focus();
+    await user.keyboard("{Enter}");
+    const dialog = within(
+      await body.findByRole("dialog", { name: "Itinerary changes" })
+    );
+    const tab = dialog.getByRole("tab", { name: "Changes to check" });
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    const panel = within(
+      dialog.getByRole("tabpanel", { name: "Changes to check" })
+    );
+    await waitFor(async () => {
+      await expect(panel.getByText("Garden")).toBeVisible();
+      await expect(panel.getByText("Friday, Jun 20, 2025")).toBeVisible();
+      await expect(panel.getByText("Former entry")).toBeVisible();
+    });
+    await expect(panel.getAllByRole("button")).toHaveLength(1);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(changes).toHaveFocus());
+
+    await user.click(changes);
+    await user.click(await body.findByRole("button", { name: "Go to entry" }));
+    const entry = await canvas.findByRole("listitem", { name: "Garden" });
+    await waitFor(() => expect(entry).toHaveFocus());
+    await expect(
+      canvas.getByRole("heading", { name: "Friday, Jun 20, 2025" })
+    ).toBeVisible();
+
+    const check = canvas.getByRole("button", { name: "Check itinerary" });
+    await waitFor(() =>
+      expect(check).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(check);
+    await user.click(
+      await body.findByRole("button", { name: "Mark as checked" })
+    );
+    const inspect = await canvas.findByRole("button", {
+      name: "Inspect saved check state"
+    });
+    await expect(
+      canvas.getByText("Changed since last check")
+    ).toBeInTheDocument();
+    await expect(canvas.getByText("2 changes to check")).toBeInTheDocument();
+    await user.click(inspect);
+    await expect(
+      await canvas.findByText("The saved itinerary has a newer manual check.")
+    ).toBeVisible();
+    await expect(canvas.getByText("Manually checked")).toBeVisible();
+    await expect(
+      canvas.queryByText("2 changes to check")
+    ).not.toBeInTheDocument();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const InspectsAnUnconfirmedCheckBeforeConfirmingAgain: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = itineraryFixture("2099-06-10", "2099-06-11");
+      const readFailures: MirageResponse[] = [];
+      server.get(itineraryUrl, () => readFailures.shift() ?? saved, {
+        timing: 0
+      });
+      const failedReply = (): MirageResponse => {
+        readFailures.push(new MirageResponse(503));
+        return new MirageResponse(503);
+      };
+      const successfulReply = (): MirageResponse => {
+        saved.lastCheckedAt = "2026-11-23T16:00:00Z";
+        saved.checkState = "MANUALLY_CHECKED";
+        return new MirageResponse(204);
+      };
+      const replies = [failedReply, successfulReply];
+      server.post(
+        `${itineraryUrl}/check`,
+        () => {
+          checkPosts();
+          return (replies.shift() ?? successfulReply)();
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const trigger = canvas.getByRole("button", { name: "Check itinerary" });
+    await waitFor(() =>
+      expect(trigger).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(trigger);
+    await user.click(
+      await body.findByRole("button", { name: "Mark empty itinerary checked" })
+    );
+
+    const inspect = await canvas.findByRole("button", {
+      name: "Inspect saved check state"
+    });
+    await expect(trigger).toHaveAttribute("aria-disabled", "true");
+    await expect(trigger).toHaveAccessibleDescription(
+      "Inspect the saved check state before confirming again."
+    );
+    await user.click(inspect);
+    await expect(
+      await canvas.findByText(/The saved check state couldn't be loaded/)
+    ).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(inspect);
+    await expect(
+      await canvas.findByText(/No newer check was found/)
+    ).toBeVisible();
+    await expect(canvas.getByText("Not yet checked")).toBeVisible();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+    await user.click(trigger);
+    await user.click(
+      await body.findByRole("button", { name: "Mark empty itinerary checked" })
+    );
+    await expect(await canvas.findByText("Manually checked")).toBeVisible();
+    await expect(checkPosts).toHaveBeenCalledTimes(2);
   }
 };
 
@@ -1273,6 +1557,7 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
         { ...zoo, attractionGroup: "SECONDARY", mustVisit: false }
       ];
       const responses = [
+        new MirageResponse(503), // The check state is loaded in the header before opening the itinerary.
         new MirageResponse(503),
         itineraryFixture("2025-06-10", "2025-06-24", [zoo, arcade]),
         new MirageResponse(503),
@@ -1292,6 +1577,7 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
     const day = "Tuesday, Jun 10, 2025";
     const stale =
       "The itinerary couldn't be refreshed. Days and unscheduled attractions may be out of date.";
+    await canvas.findByText("Check state unavailable");
     await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
     await canvas.findByText("The itinerary couldn't be loaded.");
     await expect(
@@ -1301,7 +1587,11 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
       canvas.queryByRole("region", { name: "Unscheduled attractions" })
     ).not.toBeInTheDocument();
 
-    await user.click(canvas.getByRole("button", { name: "Retry" }));
+    const retry = canvas.getByRole("button", { name: "Retry" });
+    await waitFor(() =>
+      expect(retry).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(retry);
     await canvas.findByRole("heading", { name: day });
     const unscheduled = within(
       canvas.getByRole("region", { name: "Unscheduled attractions" })
@@ -1324,6 +1614,12 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
       visibility = "visible";
       fireEvent(ownerDocument, new Event("visibilitychange"));
       await canvas.findByText(stale);
+      await expect(canvas.getByText("Refresh needed")).toBeVisible();
+      await expect(
+        canvas.getByRole("button", { name: "Check itinerary" })
+      ).toHaveAccessibleDescription(
+        "Refresh the itinerary before checking it."
+      );
     } finally {
       Reflect.deleteProperty(ownerDocument, "visibilityState");
     }
@@ -1410,6 +1706,7 @@ export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
         ]);
         const responses = [
           itineraryFixture("2099-06-10", "2099-06-24", [casino]),
+          itineraryFixture("2099-06-10", "2099-06-24", [casino]),
           new MirageResponse(503),
           saved
         ];
@@ -1429,6 +1726,7 @@ export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement);
       const user = setupUser();
+      await canvas.findByText("Not yet checked");
       await user.click(await canvas.findByTitle("Mark must visit"));
       await canvas.findByText("Saving");
       await user.click(canvas.getByRole("button", { name: "Itinerary" }));

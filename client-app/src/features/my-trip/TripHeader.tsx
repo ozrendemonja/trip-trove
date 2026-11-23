@@ -33,6 +33,8 @@ interface TripHeaderProps {
   onSavePrepare?: () => void;
   hasEntryDraft?: boolean;
   planningBlocked?: boolean;
+  checkBlocked?: boolean;
+  check?: ReactNode;
   actions?: ReactNode;
 }
 
@@ -84,6 +86,8 @@ export const TripHeader = ({
   onSavePrepare,
   hasEntryDraft,
   planningBlocked,
+  checkBlocked,
+  check,
   actions
 }: TripHeaderProps): ReactElement => {
   const classes = useClasses();
@@ -93,22 +97,24 @@ export const TripHeader = ({
       STEPS.map((step) => ({
         ...step,
         unavailableReason:
-          hasEntryDraft && step.mode !== "itinerary"
-            ? "Finish or cancel adding the attraction"
-            : step.mode === "prepare" && mode !== "prepare" && planningBlocked
-              ? "Finish pending change"
-              : mode === "prepare" &&
-                  (step.mode === "itinerary" ||
-                    step.mode === "readOnly" ||
-                    step.mode === "review")
-                ? "After Edit"
-                : step.mode === "review" &&
-                    trip?.status !== "past" &&
-                    trip?.status !== "archived"
-                  ? "After the trip"
-                  : undefined
+          step.mode !== "itinerary" && checkBlocked
+            ? "Finish the itinerary check"
+            : hasEntryDraft && step.mode !== "itinerary"
+              ? "Finish or cancel adding the attraction"
+              : step.mode === "prepare" && mode !== "prepare" && planningBlocked
+                ? "Finish pending change"
+                : mode === "prepare" &&
+                    (step.mode === "itinerary" ||
+                      step.mode === "readOnly" ||
+                      step.mode === "review")
+                  ? "After Edit"
+                  : step.mode === "review" &&
+                      trip?.status !== "past" &&
+                      trip?.status !== "archived"
+                    ? "After the trip"
+                    : undefined
       })),
-    [mode, planningBlocked, trip?.status, hasEntryDraft]
+    [mode, planningBlocked, trip?.status, hasEntryDraft, checkBlocked]
   );
   const dates = trip?.startDate
     ? trip.endDate
@@ -122,7 +128,12 @@ export const TripHeader = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.defaultPrevented) return;
+      if (
+        event.defaultPrevented ||
+        (event.target instanceof Element &&
+          event.target.closest('[aria-modal="true"]'))
+      )
+        return;
       const combo = keyComboFromEvent(event);
       if (isShortcut("form.save", combo)) {
         event.preventDefault();
@@ -171,15 +182,18 @@ export const TripHeader = ({
         header={{
           className: classes.identity,
           children: (
-            <Text
-              as="h1"
-              size={500}
-              weight="semibold"
-              className={classes.name}
-              title={trip?.name ?? "Trip Planner"}
-            >
-              {trip?.name ?? "Trip Planner"}
-            </Text>
+            <>
+              <Text
+                as="h1"
+                size={500}
+                weight="semibold"
+                className={classes.name}
+                title={trip?.name ?? "Trip Planner"}
+              >
+                {trip?.name ?? "Trip Planner"}
+              </Text>
+              {check}
+            </>
           )
         }}
         description={{

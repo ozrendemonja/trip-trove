@@ -60,6 +60,31 @@ import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { TripHeader } from "./TripHeader";
 import { ItineraryContent, ItineraryDayPager, useItinerary } from "./Itinerary";
+import { ItineraryCheckControls } from "./ItineraryCheckControls";
+import { useItineraryCheck } from "./useItineraryCheck";
+
+const unavailableCheckReason = (
+  itinerary: ReturnType<typeof useItinerary>,
+  check: ReturnType<typeof useItineraryCheck>,
+  planningBlocked: boolean
+): string | undefined => {
+  const { draft } = itinerary.scheduling;
+  if (check.unconfirmed)
+    return "Inspect the saved check state before confirming again.";
+  if (check.activity) return "Wait for the check to finish saving.";
+  if (draft?.unconfirmed)
+    return "Inspect the saved itinerary to resolve the unconfirmed addition.";
+  if (draft?.activity) return "Wait for the attraction save to finish.";
+  if (draft) return "Finish or cancel adding the attraction first.";
+  if (planningBlocked)
+    return "Finish or resolve the pending planning change first.";
+  if (itinerary.loading) return "Wait for the saved itinerary to load.";
+  if (itinerary.failed)
+    return itinerary.saved
+      ? "Refresh the itinerary before checking it."
+      : "Retry loading the itinerary before checking it.";
+  return undefined;
+};
 
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -250,13 +275,14 @@ export const MyTrip: React.FC = () => {
   const itineraryOpen =
     tripDataReady && !loadError && boardMode === "itinerary";
   const itinerary = useItinerary(
-    currentTripId,
+    tripDataReady && !loadError ? currentTripId : undefined,
     itineraryOpen,
     (attractionId, duration) =>
       boardRef.current?.reflectSavedVisitDuration(attractionId, duration)
   );
   const entryDraft = itinerary.scheduling.draft;
   const { refresh: refreshItinerary } = itinerary;
+  const check = useItineraryCheck(currentTripId, refreshItinerary);
   const reloadOpenItinerary = useCallback(async (): Promise<void> => {
     if (!(await refreshItinerary())) {
       throw new Error("The itinerary couldn't be refreshed.");
@@ -270,7 +296,28 @@ export const MyTrip: React.FC = () => {
   const hasPrepareChanges =
     boardMode === "prepare" &&
     (prepareDraft.count > 0 || prepareDraft.saving || planningBlocked);
-  const hasPlanningChanges = hasPrepareChanges || !!entryDraft;
+  const checkUnavailableReason = unavailableCheckReason(
+    itinerary,
+    check,
+    planningBlocked
+  );
+  useEffect(() => {
+    if (!itineraryOpen || check.locked || entryDraft || planningBlocked) return;
+    const refreshWhenVisible = (): void => {
+      if (document.visibilityState === "visible") void refreshItinerary();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () =>
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [
+    itineraryOpen,
+    check.locked,
+    entryDraft,
+    planningBlocked,
+    refreshItinerary
+  ]);
+
+  const hasPlanningChanges = hasPrepareChanges || !!entryDraft || check.locked;
   const planningGuard = useRef(hasPlanningChanges);
   useLayoutEffect(() => {
     planningGuard.current = hasPlanningChanges;
@@ -303,7 +350,7 @@ export const MyTrip: React.FC = () => {
   }, [blocker, hasPlanningChanges]);
 
   const changeMode = async (mode: BoardMode): Promise<void> => {
-    if (entryDraft && mode !== "itinerary") return;
+    if ((entryDraft || check.locked) && mode !== "itinerary") return;
     if (mode === "prepare" && boardMode !== "prepare" && planningBlocked)
       return;
     const generation = ++modeChangeGeneration.current;
@@ -342,12 +389,35 @@ export const MyTrip: React.FC = () => {
               mode={boardMode}
               planningBlocked={planningBlocked}
               hasEntryDraft={!!entryDraft}
+              checkBlocked={check.locked}
               onModeChange={changeMode}
               onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
+              check={
+                <ItineraryCheckControls
+                  key={tripId}
+                  saved={itinerary.saved}
+                  failed={itinerary.failed}
+                  loading={itinerary.loading}
+                  showAction={itineraryOpen}
+                  unavailableReason={checkUnavailableReason}
+                  jumpBlocked={hasPlanningChanges || planningBlocked}
+                  check={check}
+                  onJump={(notice) => {
+                    itinerary.focusNoticeTarget(notice);
+                    void changeMode("itinerary");
+                  }}
+                  onRetry={() => void refreshItinerary()}
+                />
+              }
               actions={
                 <>
-                  {itineraryOpen && <ItineraryDayPager itinerary={itinerary} />}
+                  {itineraryOpen && (
+                    <ItineraryDayPager
+                      itinerary={itinerary}
+                      refreshBlocked={check.locked}
+                    />
+                  )}
                   {boardMode === "prepare" && (
                     <SearchAttractionsModal
                       text="Trip Planner"
@@ -402,9 +472,9 @@ export const MyTrip: React.FC = () => {
               <ItineraryContent
                 itinerary={itinerary}
                 boardPlaceOrder={boardPlaceOrder}
-                prepareBlocked={planningBlocked}
+                prepareBlocked={planningBlocked || check.locked}
                 onPrepare={() => {
-                  if (planningBlocked) return;
+                  if (planningBlocked || check.locked) return;
                   focusPrepareAction.current = true;
                   void changeMode("prepare");
                 }}
@@ -430,7 +500,26 @@ export const MyTrip: React.FC = () => {
       >
         <DialogSurface>
           <DialogBody>
-            {entryDraft ? (
+            {check.locked ? (
+              <>
+                <DialogTitle>Finish the itinerary check?</DialogTitle>
+                <DialogContent>
+                  {check.activity
+                    ? "Wait for the itinerary check to finish."
+                    : "Stay to inspect the saved check state before continuing."}
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    appearance="primary"
+                    onClick={() => {
+                      if (blocker.state === "blocked") blocker.reset();
+                    }}
+                  >
+                    Stay
+                  </Button>
+                </DialogActions>
+              </>
+            ) : entryDraft ? (
               <>
                 <DialogTitle>Finish adding to the itinerary?</DialogTitle>
                 <DialogContent>

@@ -4,14 +4,17 @@ import com.triptrove.manager.domain.model.Itinerary;
 import com.triptrove.manager.domain.model.ItineraryDaySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
+import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntrySummary;
 import com.triptrove.manager.domain.model.ItinerarySummary;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -22,10 +25,18 @@ import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.stream.Collectors;
 
+import static com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.Reason.ATTRACTION_ADDED;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
 
 public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
+    @Modifying
+    @Query("""
+            UPDATE Itinerary itinerary SET itinerary.lastCheckedAt = :checkedAt
+            WHERE itinerary.tripId = :tripId
+            """)
+    int recordCheck(Long tripId, Instant checkedAt);
+
     @Query("""
             SELECT itinerary FROM Itinerary itinerary
             LEFT JOIN FETCH itinerary.days
@@ -91,7 +102,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date,
                 attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime,
-                attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart, entry.timing)
+                attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
+                entry.timing, entry.includedInLastCheck)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
@@ -118,7 +130,21 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
         }
 
         return Optional.of(new ItineraryDetails(firstRow.tripId(), firstRow.timeZone(), firstRow.lastCheckedAt(),
-                itineraryDaysInDateOrder(itineraryRows), unscheduledAttractionsInBoardOrder(itineraryRows)));
+                itineraryDaysInDateOrder(itineraryRows), unscheduledAttractionsInBoardOrder(itineraryRows),
+                changeNotices(itineraryRows, firstRow.lastCheckedAt())));
+    }
+
+    private static List<ChangeNoticeSummary> changeNotices(List<ItineraryAndBoardRow> rows, Instant lastCheckedAt) {
+        if (lastCheckedAt == null) {
+            return List.of();
+        }
+        return rows.stream()
+                .filter(row -> row.entryId() != null && !row.entryIncludedInLastCheck())
+                .sorted(Comparator.comparing(ItineraryAndBoardRow::entryDate)
+                        .thenComparing(ItineraryAndBoardRow::entryPosition))
+                .map(row -> new ChangeNoticeSummary(row.entryId(), row.attractionName(), row.entryDate(),
+                        List.of(ATTRACTION_ADDED)))
+                .toList();
     }
 
     private static List<ItineraryDetails.Day> itineraryDaysInDateOrder(List<ItineraryAndBoardRow> itineraryRows) {

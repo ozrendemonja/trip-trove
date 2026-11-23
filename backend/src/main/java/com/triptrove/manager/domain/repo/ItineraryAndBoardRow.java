@@ -17,7 +17,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    TripAttractionGroup boardColumn, Boolean mustVisit, AttractionCategory category,
                                    String workingHours, String visitDuration, LocalDateTime permanentlyClosedAt,
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
-                                   ItineraryTiming entryTiming) {
+                                   ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }

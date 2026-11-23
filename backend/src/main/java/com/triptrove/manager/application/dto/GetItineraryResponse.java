@@ -16,7 +16,22 @@ public record GetItineraryResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<Day> days,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                 description = "Eligible, unscheduled attractions in board column, place and card order.")
-        List<UnscheduledAttraction> unscheduledAttractions) {
+        List<UnscheduledAttraction> unscheduledAttractions,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryDetails.CheckState checkState,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Pending grouped changes to check.")
+        List<ChangeNotice> changeNotices) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ChangeNotice(
+            @Schema(description = "Entry referenced by the change; absent for day-level changes.") Long entryId,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String subject,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+            List<ItineraryDetails.ChangeNoticeSummary.Reason> reasons) {
+        private static ChangeNotice from(ItineraryDetails.ChangeNoticeSummary notice) {
+            return new ChangeNotice(notice.entryId(), notice.subject(), notice.date(), notice.reasons());
+        }
+    }
+
     public record Day(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
@@ -66,7 +81,8 @@ public record GetItineraryResponse(
     public static GetItineraryResponse from(ItineraryDetails itinerary) {
         var days = itinerary.days().stream().map(Day::from).toList();
         var unscheduled = itinerary.unscheduledAttractions().stream().map(UnscheduledAttraction::from).toList();
+        var notices = itinerary.changeNotices().stream().map(ChangeNotice::from).toList();
         return new GetItineraryResponse(itinerary.tripId(), itinerary.timeZone(), itinerary.lastCheckedAt(), days,
-                unscheduled);
+                unscheduled, itinerary.checkState(), notices);
     }
 }

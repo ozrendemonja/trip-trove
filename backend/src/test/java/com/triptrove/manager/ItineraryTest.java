@@ -1,6 +1,12 @@
 package com.triptrove.manager;
 
 import com.jayway.jsonpath.JsonPath;
+import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
+import com.triptrove.manager.application.dto.SaveTripRequest;
+import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
+import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
+import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
+import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,12 +17,19 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,6 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ItineraryTest extends AbstractIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JsonMapper mapper;
 
     @ParameterizedTest
     @MethodSource("newTrips")
@@ -61,6 +77,101 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.timeZone").value("Europe/Belgrade"))
                 .andExpect(jsonPath("$.initialZone").doesNotHaveJsonPath())
                 .andExpect(jsonPath("$.lastCheckedAt").value("2028-01-30T09:00:00Z"));
+    }
+
+    @Test
+    void anExplicitCheckCanRecordAnEmptyItinerary() throws Exception {
+        var itinerary = createTrip("Checking an empty itinerary", "2028-02-01", "2028-02-01") + "/itinerary";
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.lastCheckedAt").doesNotExist());
+
+        mockMvc.perform(post(itinerary + "/check").header("x-api-version", "1"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, itinerary))
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.lastCheckedAt").value(not(emptyOrNullString())))
+                .andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.timeZone").doesNotExist())
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    @Test
+    void checkingAnUnknownItineraryReturnsNotFound() throws Exception {
+        mockMvc.perform(post("/trips/9223372036854775807/itinerary/check").header("x-api-version", "1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("OBJECT_NOT_FOUND"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The requested resource '9223372036854775807' could not be found. Please refresh and try again."));
+    }
+
+    @Test
+    void additionsAreGroupedByEntryAfterACheckAndAcknowledgedByTheNextCheck() throws Exception {
+        seedItineraryWithBoard(4);
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET name = 'Museum' WHERE id = 2;
+                UPDATE attraction SET name = 'Garden' WHERE id = 3;
+                """).executeUpdate();
+
+        schedule(new ScheduleAttractionRequest(
+                1L, LocalDate.of(2026, 9, 1), "09:00", "Europe/Belgrade", null))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        var check = post("/trips/1/itinerary/check").header("x-api-version", "1");
+        mockMvc.perform(check).andExpect(status().isNoContent());
+        var checked = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String checkTime = JsonPath.read(checked, "$.lastCheckedAt");
+
+        schedule(new ScheduleAttractionRequest(
+                2L, LocalDate.of(2026, 9, 2), "10:00", null, null))
+                .andExpect(status().isNoContent());
+        schedule(new ScheduleAttractionRequest(
+                3L, LocalDate.of(2026, 9, 1), "15:00", null, null))
+                .andExpect(status().isNoContent());
+        schedule(new ScheduleAttractionRequest(
+                2L, LocalDate.of(2026, 9, 1), "11:00", null, null))
+                .andExpect(status().isBadRequest());
+        schedule(new ScheduleAttractionRequest(
+                4L, LocalDate.of(2026, 9, 2), "10:15", null, null))
+                .andExpect(status().isBadRequest());
+
+        entityManager.clear();
+        var changed = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.lastCheckedAt").value(checkTime))
+                .andExpect(jsonPath("$.changeNotices[*].subject", contains("Garden", "Museum")))
+                .andExpect(jsonPath("$.changeNotices[*].date", contains("2026-09-01", "2026-09-02")))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ATTRACTION_ADDED")))
+                .andExpect(jsonPath("$.changeNotices[1].reasons", contains("ATTRACTION_ADDED")))
+                .andReturn().getResponse().getContentAsString();
+        int museumEntryId = JsonPath.read(changed, "$.days[1].entries[0].entryId");
+        int gardenEntryId = JsonPath.read(changed, "$.days[0].entries[1].entryId");
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeNotices[*].entryId", contains(gardenEntryId, museumEntryId)));
+
+        mockMvc.perform(check).andExpect(status().isNoContent());
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.lastCheckedAt").value(not(checkTime)))
+                .andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andExpect(jsonPath("$.days[0].entries[*].attractionId", contains(1, 3)))
+                .andExpect(jsonPath("$.days[1].entries[*].attractionId", contains(2)));
     }
 
     @Test
@@ -115,21 +226,17 @@ class ItineraryTest extends AbstractIntegrationTest {
 
         mockMvc.perform(put("/trips/1/board/attractions/3").header("x-api-version", "1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"targetGroup":"PRIMARY","nextAttractionId":1}
-                                """))
+                        .content(mapper.writeValueAsString(
+                                new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.PRIMARY, null, 1L))))
                 .andExpect(status().isNoContent());
         mockMvc.perform(put("/trips/1/board/attractions/2").header("x-api-version", "1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"targetGroup":"PRIMARY","nextAttractionId":3}
-                                """))
+                        .content(mapper.writeValueAsString(
+                                new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.PRIMARY, null, 3L))))
                 .andExpect(status().isNoContent());
         mockMvc.perform(put("/trips/1/attractions/3/must-visit").header("x-api-version", "1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"mustVisit":true}
-                                """))
+                        .content(mapper.writeValueAsString(new UpdateTripAttractionMustVisitRequest(true))))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
@@ -148,10 +255,9 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         int aprilFourthId = JsonPath.read(original, "$.days[0].id");
 
+        var range = new UpdateTripRangeRequest(LocalDate.of(2028, 4, 3), LocalDate.of(2028, 4, 5));
         mockMvc.perform(put(trip + "/range").header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"fromDate": "2028-04-03", "toDate": "2028-04-05"}
-                                """))
+                        .content(mapper.writeValueAsString(range)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
@@ -182,12 +288,16 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     private String createTrip(String name, String from, String to) throws Exception {
+        var request = new SaveTripRequest(name, LocalDate.parse(from), LocalDate.parse(to));
         return mockMvc.perform(post("/trips").header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"tripName": "%s", "fromDate": "%s", "toDate": "%s"}
-                                """.formatted(name, from, to)))
+                        .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+    }
+
+    private ResultActions schedule(ScheduleAttractionRequest request) throws Exception {
+        return mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
     }
 
     private void seedItineraryWithBoard(int size) {

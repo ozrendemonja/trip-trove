@@ -27,7 +27,7 @@ import {
   type ReactElement,
   type RefCallback
 } from "react";
-import type { GetItineraryResponse } from "../../clients/manager";
+import type { ChangeNotice, GetItineraryResponse } from "../../clients/manager";
 import {
   attractionImportance,
   UnscheduledAttractions
@@ -53,8 +53,12 @@ type LoadState = {
 };
 
 type Entry = GetItineraryResponse["days"][number]["entries"][number];
+type NoticeTarget = Pick<ChangeNotice, "date" | "entryId">;
+const dayTargetId = (date: string): string => `itinerary-day-${date}`;
+const entryTargetId = (entryId: number): string => `itinerary-entry-${entryId}`;
 
 interface ItineraryView {
+  saved?: GetItineraryResponse;
   days: GetItineraryResponse["days"];
   unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"];
   loading: boolean;
@@ -65,6 +69,7 @@ interface ItineraryView {
   lastStart: number;
   visibleDays: GetItineraryResponse["days"];
   showDate: (date: string) => void;
+  focusNoticeTarget: (target: NoticeTarget) => void;
   scheduling: ItineraryScheduling;
 }
 
@@ -83,7 +88,8 @@ const month = new Intl.DateTimeFormat("en-US", {
   month: "short",
   timeZone: "UTC"
 });
-const formatDate = (date: string): string => dateLabel.format(new Date(date));
+export const formatItineraryDate = (date: string): string =>
+  dateLabel.format(new Date(date));
 
 export const useItinerary = (
   tripId: number | undefined,
@@ -93,7 +99,7 @@ export const useItinerary = (
   const [load, setLoad] = useState<LoadState>();
   const request = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
-    if (!open || tripId === undefined) return;
+    if (tripId === undefined) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -119,14 +125,17 @@ export const useItinerary = (
         }));
       }
     }
-  }, [open, tripId]);
+  }, [tripId]);
 
-  useEffect(() => {
-    if (!open) return;
-    void refresh();
-    return () => {
+  useEffect(
+    () => () => {
       request.current?.abort();
-    };
+      request.current = null;
+    },
+    [refresh]
+  );
+  useEffect(() => {
+    if (open || !request.current) void refresh();
   }, [open, refresh]);
 
   const current = load?.tripId === tripId ? load : undefined;
@@ -161,6 +170,28 @@ export const useItinerary = (
   const showDate = (date: string): void => {
     if (tripId !== undefined) setAnchor({ tripId, date });
   };
+  const [focusTarget, setFocusTarget] = useState<{
+    tripId: number;
+    id: string;
+  }>();
+  const focusNoticeTarget = ({ date, entryId }: NoticeTarget): void => {
+    if (tripId === undefined) return;
+    showDate(date);
+    setFocusTarget({
+      tripId,
+      id: entryId === undefined ? dayTargetId(date) : entryTargetId(entryId)
+    });
+  };
+  useEffect(() => {
+    if (!open || !focusTarget || focusTarget.tripId !== tripId) return;
+    // Let the dialog restore focus before moving it to the revealed target.
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(focusTarget.id)?.focus();
+      setFocusTarget(undefined);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, focusTarget, tripId]);
+
   const scheduling = useItineraryScheduling({
     tripId,
     timeZone: current?.data?.timeZone,
@@ -168,18 +199,8 @@ export const useItinerary = (
     showDate,
     onDurationCorrected
   });
-  const hasDraft = !!scheduling.draft;
-  useEffect(() => {
-    if (!open || hasDraft) return;
-    const refreshWhenVisible = (): void => {
-      if (document.visibilityState === "visible") void refresh();
-    };
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () =>
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-  }, [open, hasDraft, refresh]);
-
   return {
+    saved: current?.data,
     days,
     unscheduledAttractions: current?.data?.unscheduledAttractions ?? [],
     loading: current?.loading ?? true,
@@ -190,14 +211,17 @@ export const useItinerary = (
     lastStart,
     visibleDays,
     showDate,
+    focusNoticeTarget,
     scheduling
   };
 };
 
 export const ItineraryDayPager = ({
-  itinerary
+  itinerary,
+  refreshBlocked
 }: {
   itinerary: ItineraryView;
+  refreshBlocked: boolean;
 }): ReactElement | null => {
   const classes = useClasses();
   const { days, loading, refresh, start, lastStart, visibleDays, showDate } =
@@ -249,7 +273,9 @@ export const ItineraryDayPager = ({
         icon={<ArrowClockwise20Regular />}
         aria-label="Refresh itinerary"
         title="Refresh itinerary"
-        disabledFocusable={loading || !!itinerary.scheduling.draft}
+        disabledFocusable={
+          refreshBlocked || loading || !!itinerary.scheduling.draft
+        }
         onClick={() => void refresh()}
       />
     </nav>
@@ -266,7 +292,12 @@ const TimelineEntry = ({ entry }: { entry: Entry }): ReactElement => {
   const endOffset = clockOffset(end);
   const showOffsets = startOffset !== endOffset;
   return (
-    <li className={classes.entry} aria-label={entry.name}>
+    <li
+      className={classes.entry}
+      aria-label={entry.name}
+      id={entryTargetId(entry.entryId)}
+      tabIndex={-1}
+    >
       <div className={classes.clocks}>
         <time dateTime={start} title={`${start} (${zone})`}>
           <Caption1>{start.slice(11, 16)}</Caption1>
@@ -361,7 +392,7 @@ export const ItineraryContent = ({
       {feedback && <Text role="status">{feedback}</Text>}
       {draft && !visibleDays.some((day) => day.date === draft.intent.date) && (
         <Card size="small">
-          <Caption1>{formatDate(draft.intent.date)}</Caption1>
+          <Caption1>{formatItineraryDate(draft.intent.date)}</Caption1>
           {activeDraft}
         </Card>
       )}
@@ -380,7 +411,7 @@ export const ItineraryContent = ({
           prepareBlocked={prepareBlocked || !!draft}
           onPrepare={onPrepare}
           days={days}
-          formatDate={formatDate}
+          formatDate={formatItineraryDate}
           scheduleBlocked={prepareBlocked || loading || failed || !!draft}
           onSchedule={scheduling.choose}
         />
@@ -400,6 +431,8 @@ export const ItineraryContent = ({
                   as="h2"
                   className={classes.dayHeading}
                   aria-label={dateLabel.format(date)}
+                  id={dayTargetId(day.date)}
+                  tabIndex={-1}
                 >
                   <time dateTime={day.date} className={classes.dayLabel}>
                     <Caption1>{weekday.format(date)}</Caption1>

@@ -107,10 +107,9 @@ test("Cycle through all available trip steps using Ctrl+V", async ({
   await page.keyboard.press("Alt+2");
 
   await page.keyboard.press("Control+v");
-  await expect(page.getByRole("button", { name: "Itinerary" })).toHaveAttribute(
-    "aria-current",
-    "step"
-  );
+  await expect(
+    page.getByRole("button", { name: "Itinerary", exact: true })
+  ).toHaveAttribute("aria-current", "step");
   await page.keyboard.press("Control+v");
   await expect(page.getByRole("button", { name: /Plan/i })).toHaveAttribute(
     "aria-current",

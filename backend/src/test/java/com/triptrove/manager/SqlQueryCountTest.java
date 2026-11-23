@@ -910,6 +910,37 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void itineraryReadWithPendingChangeNoticesStillUsesOneSelect(int noticeCount) throws Exception {
+        seedItineraryWithEntries(noticeCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET last_checked_at = '2026-08-31T09:00:00Z' WHERE trip_id = 1
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeNotices.length()").value(noticeCount));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2, 30})
+    void recordingACheckUsesTwoUpdatesAndNoSelects(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        assertSelectCount(0);
+        assertInsertCount(0);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
     @CsvSource({"2, false", "30, false", "2, true", "30, true"})
     void itineraryReadWithRepeatedClocksStillUsesOneSelect(int entryCount, boolean secondOccurrence) throws Exception {
         KeysetTestFixtures.clear(entityManager);

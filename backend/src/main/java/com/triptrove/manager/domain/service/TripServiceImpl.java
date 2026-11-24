@@ -74,6 +74,7 @@ public class TripServiceImpl implements TripService {
                     BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
         }
         itineraryEntryRepo.markEntriesChecked(tripId);
+        itineraryEntryRepo.clearRemovalNoticesByTripId(tripId);
     }
 
     @Override

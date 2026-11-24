@@ -6,6 +6,7 @@ import com.triptrove.manager.domain.model.AttractionToSchedule.MissingInputs;
 import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.ItineraryDependency;
 import com.triptrove.manager.domain.model.ItineraryTimingIssue;
+import com.triptrove.manager.domain.model.ItineraryMoveStartChoices;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.TypeMismatchException;
@@ -141,16 +142,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         var responseCode = ErrorCodeResponse.from(exception.getErrorCode());
         var userMessage = userMessage(exception);
         MissingInputs schedulingInputs = null;
+        ItineraryMoveStartChoices moveStartChoices = null;
         if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_INPUT_REQUIRED
                 && exception.getContext().getFirst() instanceof MissingInputs inputs) {
             schedulingInputs = inputs;
             log.warn("Scheduling needs more input: {}", inputs);
+        } else if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_MOVE_START_CHOICE_REQUIRED
+                && exception.getContext().getFirst() instanceof ItineraryMoveStartChoices choices) {
+            moveStartChoices = choices;
+            log.warn("Moving an itinerary entry requires a start choice: {}", choices);
         } else {
             log.error("Domain error {} - {}: ", exception.getErrorCode(), userMessage, exception);
         }
 
         return ResponseEntity.status(httpStatus(responseCode)).contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs));
+                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs, moveStartChoices));
     }
 
     @ExceptionHandler(Exception.class)

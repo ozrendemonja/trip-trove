@@ -23,6 +23,10 @@ import {
 } from "@fluentui/react-icons";
 import { useId, useRef, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
+import {
+  ItineraryDragHandle,
+  type DraggedItineraryItem
+} from "./ItineraryDrag";
 import { useClasses } from "./Itinerary.styles";
 
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
@@ -77,13 +81,17 @@ const AttractionCard = ({
   days,
   scheduleBlocked,
   formatDate,
-  onSchedule
+  onSchedule,
+  onGrab,
+  onRelease
 }: {
   attraction: Attraction;
   days: Days;
   scheduleBlocked: boolean;
   formatDate: (date: string) => string;
   onSchedule: ScheduleAttraction;
+  onGrab: (item: DraggedItineraryItem) => void;
+  onRelease: () => void;
 }): ReactElement => {
   const classes = useClasses();
   const nameId = useId();
@@ -107,6 +115,12 @@ const AttractionCard = ({
           className: classes.iconLabel,
           children: (
             <>
+              <ItineraryDragHandle
+                item={{ kind: "pool", attraction }}
+                blocked={scheduleBlocked}
+                onGrab={onGrab}
+                onRelease={onRelease}
+              />
               <Icon aria-hidden className={classes[tone]} />
               <Text id={nameId} weight="semibold">
                 {attraction.name}
@@ -140,6 +154,7 @@ const AttractionCard = ({
             <MenuTrigger disableButtonEnhancement>
               <Button
                 ref={addButton}
+                id={`itinerary-add-${attraction.attractionId}`}
                 appearance="subtle"
                 size="small"
                 icon={<Add16Regular />}
@@ -198,7 +213,9 @@ export const UnscheduledAttractions = ({
   days,
   formatDate,
   scheduleBlocked,
-  onSchedule
+  onSchedule,
+  onGrab,
+  onRelease
 }: {
   attractions: Attraction[];
   boardPlaceOrder: readonly string[];
@@ -208,6 +225,8 @@ export const UnscheduledAttractions = ({
   formatDate: (date: string) => string;
   scheduleBlocked: boolean;
   onSchedule: ScheduleAttraction;
+  onGrab: (item: DraggedItineraryItem) => void;
+  onRelease: () => void;
 }): ReactElement => {
   const classes = useClasses();
   const titleId = useId();
@@ -278,6 +297,8 @@ export const UnscheduledAttractions = ({
                         formatDate={formatDate}
                         scheduleBlocked={scheduleBlocked}
                         onSchedule={onSchedule}
+                        onGrab={onGrab}
+                        onRelease={onRelease}
                       />
                     </li>
                   ))}

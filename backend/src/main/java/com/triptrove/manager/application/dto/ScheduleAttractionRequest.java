@@ -16,11 +16,17 @@ public record ScheduleAttractionRequest(
         @Pattern(regexp = LOCAL_CLOCK_PATTERN)
         @Schema(description = "The chosen local start clock.", example = "09:00") String startTime,
         @Size(max = 255) String timeZone,
-        @Size(max = 64) String visitDuration) {
+        @Size(max = 64) String visitDuration,
+        @Size(max = 9) @Schema(description = "Offset of an unchanged gap suggestion in a repeated hour.") String startOffset) {
     static final String LOCAL_CLOCK_PATTERN = "(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?";
+
+    public ScheduleAttractionRequest(Long attractionId, LocalDate date, String startTime, String timeZone,
+                                     String visitDuration) {
+        this(attractionId, date, startTime, timeZone, visitDuration, null);
+    }
 
     public AttractionToSchedule toSchedulingInput() {
         return new AttractionToSchedule(attractionId, startTime == null ? null : LocalTime.parse(startTime),
-                timeZone, visitDuration);
+                timeZone, visitDuration, startOffset);
     }
 }

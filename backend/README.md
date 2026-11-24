@@ -67,9 +67,10 @@ whole itinerary, including an empty one. It saves the check time and renews
 the reference for which entries were checked in one transaction. It returns
 `204` with a `Location` pointing to the itinerary; GET supplies the check
 state and the change notices grouped by entry. After a check, a notice shows
-if an entry was added or its start, planned length or fixed-start state
-changed. A change stays on the notice even if the user puts the old value back;
-only the next manual check clears it. Previous timing values are not stored.
+if an entry was added, moved, or its start, planned length or fixed-start state
+changed. A removal keeps the entry's label and last day but no entry link.
+A change stays on the notice even if the user puts the old value back; only
+the next manual check clears it. Previous timing values are not stored.
 There are no notices before the first check. An unconfirmed check must be
 inspected with GET before the user confirms again.
 
@@ -78,6 +79,19 @@ inspected with GET before the user confirms again.
 It returns `204` with the itinerary `Location` and does not change the
 interval. A fixed start blocks automatic propagation but can still be
 edited deliberately without losing its lock.
+
+`PUT /trips/{id}/itinerary/entries/{entryId}/position` takes the destination
+`date` and, optionally, `beforeEntryId`. Omit the latter to move to the end
+of the day. If two occurrences of the saved clock fit that position, no
+change is saved. The `400` response supplies `moveStartChoices.offsets`; retry with the chosen
+`startOffset`. The server preserves identity, planned length and the lock,
+resolves the destination time, and pushes following unlocked entries only as
+needed. Moving to the current position leaves the interval unchanged.
+`DELETE /trips/{id}/itinerary/entries/{entryId}` removes the entry without
+removing its attraction from the trip or moving any remaining start earlier.
+Both operations are atomic; on success they return `204` with the itinerary
+`Location` for GET. A move's propagated starts are grouped under that move
+in the check summary.
 
 ## Location-grouped Attraction Search
 

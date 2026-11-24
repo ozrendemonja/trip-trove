@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
@@ -94,7 +95,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             """)
     boolean hasScheduledAttractions(Long tripId, List<Long> attractionIds);
 
-    // Join the board only to the first itinerary day so each attraction is returned once.
+    // Attach each board card and each removal to the first day only, without multiplying either set of rows.
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date,
@@ -102,18 +103,27 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
-                entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck)
+                entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
+                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
-            LEFT JOIN TripAttraction tripAttraction ON tripAttraction.trip = trip AND day.date = trip.from
+            LEFT JOIN (
+                SELECT item.id AS boardId, CAST(NULL AS Long) AS removalId
+                FROM TripAttraction item WHERE item.trip.id = :tripId
+                UNION ALL
+                SELECT CAST(NULL AS Long) AS boardId, removed.id AS removalId
+                FROM ItineraryEntryRemoval removed WHERE removed.tripId = :tripId
+            ) subject ON day.date = trip.from
+            LEFT JOIN TripAttraction tripAttraction ON tripAttraction.id = subject.boardId
+            LEFT JOIN ItineraryEntryRemoval removal ON removal.id = subject.removalId
             LEFT JOIN tripAttraction.attraction attraction
             LEFT JOIN attraction.city city
             LEFT JOIN attraction.region region
             LEFT JOIN attraction.country country
             LEFT JOIN ItineraryEntry entry ON entry.tripId = trip.id AND entry.attractionId = attraction.id
             WHERE itinerary.tripId = :tripId
-            ORDER BY day.date, tripAttraction.boardPosition, tripAttraction.id
+            ORDER BY day.date, tripAttraction.boardPosition, tripAttraction.id, removal.id
             """)
     List<ItineraryAndBoardRow> findItineraryAndBoardRowsByTripId(Long tripId);
 
@@ -137,13 +147,15 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
         if (lastCheckedAt == null) {
             return List.of();
         }
-        return rows.stream()
+        var entries = rows.stream()
                 .filter(row -> row.entryId() != null && (!row.entryIncludedInLastCheck()
                         || row.startChangedSinceCheck() || row.plannedLengthChangedSinceCheck()
-                        || row.fixedStartChangedSinceCheck()))
-                .sorted(Comparator.comparing(ItineraryAndBoardRow::entryDate)
-                        .thenComparing(ItineraryAndBoardRow::entryPosition))
-                .map(ItineraryAndBoardRow::toChangeNotice)
+                        || row.fixedStartChangedSinceCheck() || row.movedSinceCheck()))
+                .sorted(Comparator.comparing(ItineraryAndBoardRow::entryPosition))
+                .map(ItineraryAndBoardRow::toChangeNotice);
+        var removals = rows.stream().filter(row -> row.removedSubject() != null).map(ItineraryAndBoardRow::toRemovalNotice);
+        return Stream.concat(entries, removals)
+                .sorted(Comparator.comparing(ChangeNoticeSummary::date))
                 .toList();
     }
 

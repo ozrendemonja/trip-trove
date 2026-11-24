@@ -34,12 +34,18 @@ export const entryTargetId = (entryId: number): string =>
 
 export function TimelineEntry({
   entry,
+  index,
   editing,
-  blocked
+  blocked,
+  actions,
+  dragHandle
 }: {
   entry: Entry;
+  index: number;
   editing: ItineraryTimingEditing;
   blocked: boolean;
+  actions?: ReactElement;
+  dragHandle?: ReactElement;
 }): ReactElement {
   const classes = useClasses();
   const errorId = useId();
@@ -54,7 +60,7 @@ export function TimelineEntry({
   }>();
   const [lockError, setLockError] = useState<string>();
   const { Icon, tone, label } = attractionImportance(entry);
-  const { start, end, zone } = entry.timing;
+  const { start, end, zone, repeatedStart, repeatedEnd } = entry.timing;
   const minutes = elapsedMinutes(start, end);
   const isBriefStop = minutes === 0;
   const endDate = end.slice(0, 10);
@@ -134,8 +140,8 @@ export function TimelineEntry({
         return;
       }
       setError(undefined);
-      void editing.save(entry.entryId, edit).then((message) => {
-        if (message) setError({ input, field, message });
+      void editing.save(entry.entryId, edit).then((failure) => {
+        if (failure) setError({ input, field, message: failure.message });
       });
     }
   });
@@ -144,6 +150,7 @@ export function TimelineEntry({
     <li
       className={classes.entry}
       aria-label={entry.name}
+      data-itinerary-entry-index={index}
       id={entryTargetId(entry.entryId)}
       tabIndex={-1}
     >
@@ -153,7 +160,7 @@ export function TimelineEntry({
           className={classes.clockInput}
           title={`${start} (${zone})`}
         />
-        {showOffsets && (
+        {(showOffsets || repeatedStart) && (
           <Caption1>UTC{startOffset === "Z" ? "+00:00" : startOffset}</Caption1>
         )}
         {entry.fixedStart && <Caption1>Fixed start</Caption1>}
@@ -173,7 +180,7 @@ export function TimelineEntry({
                 </time>
               </Caption1>
             )}
-            {showOffsets && (
+            {(showOffsets || repeatedEnd) && (
               <Caption1>UTC{endOffset === "Z" ? "+00:00" : endOffset}</Caption1>
             )}
           </>
@@ -182,28 +189,36 @@ export function TimelineEntry({
       <Card size="small" appearance="outline" className={classes.entryCard}>
         <div className={classes.entryHeader}>
           <div className={classes.iconLabel}>
+            {dragHandle}
             <Icon aria-hidden className={classes[tone]} />
             <Text weight="semibold">{entry.name}</Text>
             <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
           </div>
-          <ToggleButton
-            size="small"
-            appearance="subtle"
-            icon={
-              entry.fixedStart ? <LockClosed16Regular /> : <LockOpen16Regular />
-            }
-            checked={entry.fixedStart}
-            aria-label={`Lock start for ${entry.name}`}
-            title={entry.fixedStart ? "Unlock start" : "Lock start"}
-            aria-describedby={lockError ? lockErrorId : undefined}
-            disabledFocusable={blocked}
-            onClick={() => {
-              setLockError(undefined);
-              void editing
-                .save(entry.entryId, { fixedStart: !entry.fixedStart })
-                .then(setLockError);
-            }}
-          />
+          <div className={classes.entryActions}>
+            <ToggleButton
+              size="small"
+              appearance="subtle"
+              icon={
+                entry.fixedStart ? (
+                  <LockClosed16Regular />
+                ) : (
+                  <LockOpen16Regular />
+                )
+              }
+              checked={entry.fixedStart}
+              aria-label={`Lock start for ${entry.name}`}
+              title={entry.fixedStart ? "Unlock start" : "Lock start"}
+              aria-describedby={lockError ? lockErrorId : undefined}
+              disabledFocusable={blocked}
+              onClick={() => {
+                setLockError(undefined);
+                void editing
+                  .save(entry.entryId, { fixedStart: !entry.fixedStart })
+                  .then((failure) => setLockError(failure?.message));
+              }}
+            />
+            {actions}
+          </div>
         </div>
         {isBriefStop && <Caption1>Brief stop</Caption1>}
         <label htmlFor={lengthId} className={classes.plannedLength}>

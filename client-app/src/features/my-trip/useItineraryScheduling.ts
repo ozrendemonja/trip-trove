@@ -11,6 +11,7 @@ type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
 type Day = GetItineraryResponse["days"][number];
 type Input = NonNullable<MissingInputs["requiredInputs"]>[number];
 type Field = "startTime" | "visitDuration" | "timeZone";
+type Suggestion = Pick<ScheduleAttractionRequest, "startTime" | "startOffset">;
 
 const durationFormat =
   /^(?:(?:\d+h(?:\s*\d+m)?|\d+m)(?:\s*-\s*(?:\d+h(?:\s*\d+m)?|\d+m))?|\d+\s*-\s*\d+[hm])$/;
@@ -51,7 +52,8 @@ export interface ItineraryScheduling {
   choose: (
     attraction: Attraction,
     day: Day,
-    button: HTMLButtonElement | null
+    button: HTMLButtonElement | null,
+    suggestion?: Suggestion
   ) => void;
   update: (field: Field, value: string) => void;
   submit: () => Promise<void>;
@@ -127,7 +129,8 @@ export function useItineraryScheduling({
   const choose = (
     attraction: Attraction,
     day: Day,
-    button: HTMLButtonElement | null
+    button: HTMLButtonElement | null,
+    suggestion?: Suggestion
   ): void => {
     if (tripId === undefined || draft || inFlight.current) return;
     trigger.current = button;
@@ -144,7 +147,7 @@ export function useItineraryScheduling({
       intent: {
         attractionId: attraction.attractionId,
         date: day.date,
-        ...suggestedStart(day)
+        ...(suggestion ?? suggestedStart(day))
       },
       inputs
     });
@@ -156,6 +159,7 @@ export function useItineraryScheduling({
       ...draft,
       intent: {
         ...draft.intent,
+        ...(field === "startTime" ? { startOffset: undefined } : {}),
         [field]: value || undefined
       },
       message: undefined

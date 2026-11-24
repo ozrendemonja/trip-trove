@@ -24,7 +24,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
                                    ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck,
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
-                                   Boolean fixedStartChangedSinceCheck) {
+                                   Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
+                                   Boolean followingStartsPushedSinceCheck, String removedSubject, LocalDate removedDate,
+                                   Boolean removedEntryPushedFollowingStarts) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -51,7 +53,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     }
 
     ChangeNoticeSummary toChangeNotice() {
-        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(4);
+        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(6);
         if (!entryIncludedInLastCheck) {
             reasons.add(ATTRACTION_ADDED);
         }
@@ -64,6 +66,18 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (fixedStartChangedSinceCheck) {
             reasons.add(FIXED_START_CHANGED);
         }
+        if (movedSinceCheck) {
+            reasons.add(ENTRY_MOVED);
+        }
+        if (followingStartsPushedSinceCheck) {
+            reasons.add(FOLLOWING_STARTS_PUSHED);
+        }
         return new ChangeNoticeSummary(entryId, attractionName, entryDate, List.copyOf(reasons));
+    }
+
+    ChangeNoticeSummary toRemovalNotice() {
+        var reasons = removedEntryPushedFollowingStarts ? List.of(ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED)
+                : List.of(ENTRY_REMOVED);
+        return new ChangeNoticeSummary(null, removedSubject, removedDate, reasons);
     }
 }

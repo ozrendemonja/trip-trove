@@ -40,6 +40,13 @@ public class ItineraryEntry {
     @Column(name = "fixed_start_changed_since_check", nullable = false)
     private boolean fixedStartChangedSinceCheck;
 
+    @Column(name = "moved_since_check", nullable = false)
+    private boolean movedSinceCheck;
+
+    @Column(name = "following_starts_pushed_since_check", nullable = false)
+    @Getter
+    private boolean followingStartsPushedSinceCheck;
+
     protected ItineraryEntry() {
     }
 
@@ -55,6 +62,23 @@ public class ItineraryEntry {
             fixedStart = fixed;
             fixedStartChangedSinceCheck = true;
         }
+    }
+
+    public void moveTo(ItineraryTiming replacement, boolean pushedFollowingStarts) {
+        retimeForMove(replacement);
+        movedSinceCheck = true;
+        followingStartsPushedSinceCheck |= pushedFollowingStarts;
+    }
+
+    public void retimeForMove(ItineraryTiming replacement) {
+        if (replacement.plannedMinutes() != timing.plannedMinutes()) {
+            throw new IllegalArgumentException("A move must keep the entry's planned length");
+        }
+        timing = replacement;
+    }
+
+    public void setPathPosition(int position) {
+        this.position = position;
     }
 
     public void changeTiming(ItineraryTiming replacement) {

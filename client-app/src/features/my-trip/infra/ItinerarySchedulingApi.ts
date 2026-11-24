@@ -1,10 +1,13 @@
 import {
+  moveItineraryEntry,
+  removeItineraryEntry,
   scheduleAttraction,
   updateItineraryEntryEnd,
   updateItineraryEntryFixedStart,
   updateItineraryEntryPlannedLength,
   updateItineraryEntryStart,
   type ErrorResponse,
+  type MoveItineraryEntryRequest,
   type ScheduleAttractionRequest,
   type UpdateItineraryEntryEndRequest,
   type UpdateItineraryEntryFixedStartRequest,
@@ -32,30 +35,51 @@ export type TimingEdit =
   | UpdateItineraryEntryPlannedLengthRequest
   | UpdateItineraryEntryFixedStartRequest;
 
-export async function saveTimingEdit(
+export type EntryEdit =
+  | TimingEdit
+  | { action: "move"; position: MoveItineraryEntryRequest }
+  | { action: "remove" };
+
+export class EntryEditError extends PlanningSaveError {
+  constructor(
+    message: string,
+    unconfirmed: boolean,
+    readonly moveOffsets?: string[]
+  ) {
+    super(message, unconfirmed);
+  }
+}
+
+export async function saveEntryEdit(
   tripId: number,
   entryId: number,
-  body: TimingEdit
+  edit: EntryEdit
 ): Promise<void> {
   const options = {
     path: { id: tripId, entryId },
     headers: itineraryHeaders,
     signal: AbortSignal.timeout(requestTimeoutMs)
   };
-  const result =
-    "startTime" in body
-      ? updateItineraryEntryStart({ ...options, body })
-      : "endTime" in body
-        ? updateItineraryEntryEnd({ ...options, body })
-        : "plannedMinutes" in body
-          ? updateItineraryEntryPlannedLength({ ...options, body })
-          : updateItineraryEntryFixedStart({ ...options, body });
+  const result = (() => {
+    if ("action" in edit) {
+      return edit.action === "move"
+        ? moveItineraryEntry({ ...options, body: edit.position })
+        : removeItineraryEntry(options);
+    }
+    if ("startTime" in edit)
+      return updateItineraryEntryStart({ ...options, body: edit });
+    if ("endTime" in edit)
+      return updateItineraryEntryEnd({ ...options, body: edit });
+    if ("plannedMinutes" in edit)
+      return updateItineraryEntryPlannedLength({ ...options, body: edit });
+    return updateItineraryEntryFixedStart({ ...options, body: edit });
+  })();
   const { response, error } = await result;
   if (!response?.ok) {
-    throw new PlanningSaveError(
+    throw new EntryEditError(
       error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
       !response || response.status >= 500,
-      { cause: error }
+      error?.moveStartChoices?.offsets
     );
   }
 }

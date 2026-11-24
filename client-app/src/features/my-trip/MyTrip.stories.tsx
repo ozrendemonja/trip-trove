@@ -83,6 +83,7 @@ const boardMoves = fn();
 const schedulingPosts = fn();
 const checkPosts = fn();
 const timingPuts = fn();
+const compositionWrites = fn();
 const itineraryUrl = "http://localhost:8080/trips/1/itinerary";
 const schedulingUrl = "http://localhost:8080/trips/1/itinerary/attractions";
 const entryUrl = `${itineraryUrl}/entries/:entryId`;
@@ -507,6 +508,654 @@ function savedTimeline(start: string, end: string): GetItineraryResponse {
   });
   return saved;
 }
+
+function compositionTimeline(): GetItineraryResponse {
+  const saved = savedTimeline(
+    "2099-06-10T09:00+02:00",
+    "2099-06-10T09:30+02:00"
+  );
+  saved.days[0].entries.push({
+    entryId: 43,
+    attractionId: 6,
+    name: "Garden",
+    attractionGroup: "SECONDARY",
+    category: "PARK",
+    fixedStart: true,
+    mustVisit: false,
+    timing: {
+      start: "2099-06-10T11:00+02:00",
+      end: "2099-06-10T11:30+02:00",
+      zone: "Europe/Rome"
+    }
+  });
+  saved.unscheduledAttractions.push({
+    attractionId: 8,
+    name: "Luna Cafe",
+    place: "Rome",
+    attractionGroup: "SECONDARY",
+    category: "EATERY",
+    mustVisit: false,
+    visitDuration: "30m"
+  });
+  return saved;
+}
+
+function timelineWithScheduledLunaCafe(
+  timeline: GetItineraryResponse,
+  { start, end, index }: { start: string; end: string; index: number }
+): GetItineraryResponse {
+  const saved = structuredClone(timeline);
+  const [day] = saved.days;
+  const [cafe] = saved.unscheduledAttractions;
+  const entry = {
+    entryId: 44,
+    attractionId: cafe.attractionId,
+    name: cafe.name,
+    category: cafe.category,
+    attractionGroup: cafe.attractionGroup,
+    mustVisit: cafe.mustVisit,
+    fixedStart: false,
+    timing: {
+      start: `${day.date}T${start}+02:00`,
+      end: `${day.date}T${end}+02:00`,
+      zone: "Europe/Rome"
+    }
+  };
+  day.entries.splice(index, 0, entry);
+  saved.unscheduledAttractions = [];
+  saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+  saved.changeNotices = [
+    {
+      entryId: entry.entryId,
+      subject: entry.name,
+      date: day.date,
+      reasons: ["ATTRACTION_ADDED"]
+    }
+  ];
+  return saved;
+}
+
+function dropItineraryItem(
+  source: HTMLElement,
+  destination: HTMLElement
+): void {
+  const dataTransfer = new DataTransfer();
+  fireEvent.dragStart(source, { dataTransfer });
+  fireEvent.dragOver(destination, { dataTransfer });
+  fireEvent.drop(destination, { dataTransfer });
+  fireEvent.dragEnd(source, { dataTransfer });
+}
+
+async function dropItineraryItemOnNextDay(
+  source: HTMLElement,
+  pager: HTMLElement,
+  target: () => Promise<HTMLElement>
+): Promise<void> {
+  const dataTransfer = new DataTransfer();
+  fireEvent.dragStart(source, { dataTransfer });
+  fireEvent.dragOver(pager, { dataTransfer });
+  const destination = await target();
+  fireEvent.dragOver(destination, { dataTransfer });
+  fireEvent.drop(destination, { dataTransfer });
+  fireEvent.dragEnd(source, { dataTransfer });
+}
+
+async function expectLunaCafeScheduled(
+  canvas: ReturnType<typeof within>,
+  startTime: string
+): Promise<void> {
+  const day = within(canvas.getByRole("article", { name: /Jun 10, 2099/ }));
+  const cafe = await day.findByRole("listitem", { name: "Luna Cafe" });
+  await expect(cafe).toBeVisible();
+  await expect(
+    within(cafe).getByRole("textbox", { name: "Start clock for Luna Cafe" })
+  ).toHaveValue(startTime);
+  const unscheduled = within(
+    canvas.getByRole("region", { name: "Unscheduled attractions" })
+  );
+  await expect(
+    unscheduled.queryByRole("article", { name: "Luna Cafe" })
+  ).not.toBeInTheDocument();
+}
+
+export const PoolDropOpensTheGapClockAndOnlySavesOnBlur: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      let saved = compositionTimeline();
+      const scheduled = timelineWithScheduledLunaCafe(saved, {
+        start: "09:30",
+        end: "10:00",
+        index: 1
+      });
+      server.get(itineraryUrl, () => saved);
+      server.post(schedulingUrl, (_schema, request) => {
+        compositionWrites(JSON.parse(request.requestBody));
+        saved = scheduled;
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const drag = await canvas.findByTitle("Drag Luna Cafe");
+
+    dropItineraryItem(drag, canvas.getByText("Unscheduled attractions"));
+    await expect(
+      canvas.queryByRole("form", { name: "Add Luna Cafe" })
+    ).not.toBeInTheDocument();
+    await expect(compositionWrites).not.toHaveBeenCalled();
+
+    dropItineraryItem(drag, canvas.getByText("1h 30m free"));
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    const clock = draft.getByLabelText("Start clock");
+    await expect(clock).toHaveFocus();
+    await expect(clock).toHaveValue("09:30");
+    await expect(compositionWrites).not.toHaveBeenCalled();
+
+    await user.tab();
+    await waitFor(() =>
+      expect(compositionWrites).toHaveBeenNthCalledWith(1, {
+        attractionId: 8,
+        date: "2099-06-10",
+        startTime: "09:30"
+      })
+    );
+
+    await expectLunaCafeScheduled(canvas, "09:30");
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const PoolDropCollectsMissingDurationAndKeepsTheEditedClock: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      let saved = compositionTimeline();
+      saved.unscheduledAttractions[0].visitDuration = undefined;
+      const scheduled = timelineWithScheduledLunaCafe(saved, {
+        start: "08:00",
+        end: "08:30",
+        index: 0
+      });
+      server.get(itineraryUrl, () => saved);
+      server.post(schedulingUrl, (_schema, request) => {
+        compositionWrites(JSON.parse(request.requestBody));
+        saved = scheduled;
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const drag = await canvas.findByTitle("Drag Luna Cafe");
+    const gap = canvas.getByText("1h 30m free");
+    dropItineraryItem(drag, gap);
+    const firstDraft = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    await expect(firstDraft.getByLabelText("Start clock")).toHaveFocus();
+    await expect(firstDraft.getByLabelText("Visit duration")).toHaveValue("");
+    await user.click(firstDraft.getByRole("button", { name: "Cancel" }));
+    await expect(
+      canvas.queryByRole("form", { name: "Add Luna Cafe" })
+    ).not.toBeInTheDocument();
+    await expect(compositionWrites).not.toHaveBeenCalled();
+
+    dropItineraryItem(drag, gap);
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    await user.type(draft.getByLabelText("Visit duration"), "30m");
+    const clock = draft.getByLabelText("Start clock");
+    await user.click(clock);
+    fireEvent.change(clock, { target: { value: "08:00" } });
+    await user.click(draft.getByRole("button", { name: "Add to day" }));
+    await waitFor(() =>
+      expect(compositionWrites).toHaveBeenNthCalledWith(1, {
+        attractionId: 8,
+        date: "2099-06-10",
+        startTime: "08:00",
+        visitDuration: "30m"
+      })
+    );
+    await expectLunaCafeScheduled(canvas, "08:00");
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const PoolDropKeepsAnOverlapDraftAndBlursTheCorrectedClock: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      let saved = compositionTimeline();
+      const scheduled = timelineWithScheduledLunaCafe(saved, {
+        start: "08:00",
+        end: "08:30",
+        index: 0
+      });
+      const rejected = new MirageResponse(
+        400,
+        {},
+        {
+          errorCode: "BAD_REQUEST",
+          errorMessage: "The chosen time overlaps another itinerary entry."
+        }
+      );
+      const responses = new Map([
+        ["09:15", () => rejected],
+        [
+          "08:00",
+          () => {
+            saved = scheduled;
+            return new MirageResponse(204);
+          }
+        ]
+      ]);
+      server.get(itineraryUrl, () => saved);
+      server.post(schedulingUrl, (_schema, request) => {
+        const body: { startTime: string } = JSON.parse(request.requestBody);
+        compositionWrites(body.startTime);
+        return responses.get(body.startTime)?.() ?? new MirageResponse(500);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    dropItineraryItem(
+      await canvas.findByTitle("Drag Luna Cafe"),
+      canvas.getByText("1h 30m free")
+    );
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    const clock = draft.getByLabelText("Start clock");
+    await expect(clock).toHaveFocus();
+    fireEvent.change(clock, { target: { value: "09:15" } });
+    await user.tab();
+    await expect(
+      await draft.findByText(
+        "The chosen time overlaps another itinerary entry."
+      )
+    ).toBeVisible();
+    await expect(clock).toHaveValue("09:15");
+    await expect(
+      canvas.getByRole("textbox", { name: "Start clock for Museum" })
+    ).toHaveValue("09:00");
+    await user.click(clock);
+    fireEvent.change(clock, { target: { value: "08:00" } });
+    await user.tab();
+    await waitFor(() =>
+      expect(compositionWrites).toHaveBeenNthCalledWith(2, "08:00")
+    );
+    await expect(compositionWrites).toHaveBeenNthCalledWith(1, "09:15");
+    await expectLunaCafeScheduled(canvas, "08:00");
+  }
+};
+
+export const ReordersByKeyboardAndDragsToAnotherDayWithFocus: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = compositionTimeline();
+      const [museum, garden] = saved.days[0].entries;
+      const reordered = {
+        ...museum,
+        timing: {
+          ...museum.timing,
+          start: "2099-06-10T11:30+02:00",
+          end: "2099-06-10T12:00+02:00"
+        }
+      };
+      const updates = {
+        "2099-06-10": [[garden, reordered], []],
+        "2099-06-11": [
+          [garden],
+          [
+            {
+              ...museum,
+              timing: {
+                ...museum.timing,
+                start: "2099-06-11T11:30+02:00",
+                end: "2099-06-11T12:00+02:00"
+              }
+            }
+          ]
+        ]
+      };
+      server.get(itineraryUrl, () => saved);
+      server.put(`${entryUrl}/position`, (_schema, request) => {
+        const body: { date: keyof typeof updates; beforeEntryId?: number } =
+          JSON.parse(request.requestBody);
+        compositionWrites(request.params.entryId, body);
+        [saved.days[0].entries, saved.days[1].entries] = updates[body.date];
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const menu = await canvas.findByRole("button", {
+      name: "Actions for Museum"
+    });
+    menu.focus();
+    await user.keyboard("{Enter}");
+    const choices = overlay(canvasElement);
+    const moveDown = await choices.findByRole("menuitem", {
+      name: "Move down"
+    });
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(moveDown).toHaveFocus());
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(compositionWrites).toHaveBeenNthCalledWith(1, "42", {
+        date: "2099-06-10"
+      })
+    );
+    const museum = await canvas.findByRole("listitem", { name: "Museum" });
+    await waitFor(() => expect(museum).toHaveFocus());
+    const day = canvas.getByRole("article", { name: /Jun 10, 2099/ });
+    await expect(
+      within(day).getAllByRole("listitem", { name: /Garden|Museum/ })
+    ).toEqual([within(day).getByRole("listitem", { name: "Garden" }), museum]);
+
+    await dropItineraryItemOnNextDay(
+      canvas.getByTitle("Drag Museum"),
+      canvas.getByRole("button", { name: "Next day" }),
+      () =>
+        canvas.findByRole(
+          "article",
+          { name: /Jun 11, 2099/ },
+          { timeout: 4000 }
+        )
+    );
+    await waitFor(() =>
+      expect(compositionWrites).toHaveBeenNthCalledWith(2, "42", {
+        date: "2099-06-11"
+      })
+    );
+    const moved = await canvas.findByRole("listitem", { name: "Museum" });
+    await waitFor(() => expect(moved).toHaveFocus());
+    await expect(
+      await canvas.findByText(/Museum moved to .*Jun 11, 2099/)
+    ).toHaveAttribute("role", "status");
+  }
+};
+
+export const MenuAndDragReportTheSameMoveConflict: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: "470px", maxWidth: "100%" }}>
+        <Story />
+      </div>
+    )
+  ],
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = compositionTimeline();
+      const [, garden] = saved.days[0].entries;
+      saved.days[0].entries = saved.days[0].entries.slice(0, 1);
+      saved.days[1].entries = [
+        {
+          ...garden,
+          timing: {
+            zone: "Europe/Rome",
+            start: "2099-06-11T11:00+02:00",
+            end: "2099-06-11T11:30+02:00"
+          }
+        }
+      ];
+      server.get(itineraryUrl, () => saved);
+      server.put(`${entryUrl}/position`, (_schema, request) => {
+        compositionWrites(
+          request.params.entryId,
+          JSON.parse(request.requestBody)
+        );
+        return new MirageResponse(
+          400,
+          {},
+          {
+            errorCode: "BAD_REQUEST",
+            errorMessage:
+              "The move conflicts with the fixed start of Garden. Choose another position or day."
+          }
+        );
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Actions for Museum" })
+    );
+    const body = overlay(canvasElement);
+    await user.click(
+      await body.findByRole("menuitem", { name: "Move to day..." })
+    );
+    const dialog = within(
+      await body.findByRole("dialog", { name: "Move Museum to day" })
+    );
+    await user.selectOptions(dialog.getByLabelText("Position"), "43");
+    await user.click(dialog.getByRole("button", { name: "Move entry" }));
+    const conflict =
+      "The move conflicts with the fixed start of Garden. Choose another position or day.";
+    await expect(await canvas.findByText(conflict)).toBeVisible();
+    const request = { date: "2099-06-11", beforeEntryId: 43 };
+    await expect(compositionWrites).toHaveBeenNthCalledWith(1, "42", request);
+
+    await user.click(canvas.getByRole("button", { name: "Dismiss" }));
+    await dropItineraryItemOnNextDay(
+      canvas.getByTitle("Drag Museum"),
+      canvas.getByRole("button", { name: "Next day" }),
+      () => canvas.findByRole("listitem", { name: "Garden" }, { timeout: 4000 })
+    );
+    await expect(await canvas.findByText(conflict)).toBeVisible();
+    await expect(compositionWrites).toHaveBeenNthCalledWith(2, "42", request);
+    const source = within(
+      canvas.getByRole("article", { name: /Jun 10, 2099/ })
+    );
+    const museum = source.getByRole("listitem", { name: "Museum" });
+    await expect(museum).toBeVisible();
+    await waitFor(() => expect(museum).toHaveFocus());
+  }
+};
+
+export const CancelsRemovalThenFindsTheSavedRemovalAfterALostResponse: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      server.get(itineraryUrl, () => saved);
+      server.delete(entryUrl, (_schema, request) => {
+        compositionWrites(request.params.entryId);
+        saved.days[0].entries = [];
+        saved.unscheduledAttractions = [
+          {
+            attractionId: 5,
+            attractionGroup: "PRIMARY",
+            category: "ART_MUSEUM",
+            mustVisit: true,
+            name: "Museum",
+            place: "Rome"
+          }
+        ];
+        saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+        saved.changeNotices = [
+          { subject: "Museum", date: "2099-06-10", reasons: ["ENTRY_REMOVED"] }
+        ];
+        return new MirageResponse(500);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const parent = overlay(canvasElement);
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const menu = await canvas.findByRole("button", {
+      name: "Actions for Museum"
+    });
+    const openRemoval = async (): Promise<HTMLElement> => {
+      await user.click(menu);
+      await user.click(
+        await parent.findByRole("menuitem", { name: "Remove from itinerary" })
+      );
+      return parent.findByRole("dialog", { name: "Remove Museum?" });
+    };
+    const cancelled = await openRemoval();
+    await user.click(within(cancelled).getByRole("button", { name: "Cancel" }));
+    await expect(compositionWrites).not.toHaveBeenCalled();
+    const confirmed = await openRemoval();
+    await user.click(
+      within(confirmed).getByRole("button", { name: "Remove entry" })
+    );
+
+    await user.click(
+      await canvas.findByRole("button", { name: "Inspect saved itinerary" })
+    );
+    await expect(
+      await canvas.findByText("Museum removed from the itinerary.")
+    ).toHaveAttribute("role", "status");
+    await expect(
+      await canvas.findByRole("button", { name: "Add Museum" })
+    ).toBeVisible();
+    await expect(compositionWrites).toHaveBeenNthCalledWith(1, "42");
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(
+      canvas.queryByRole("listitem", { name: "Museum" })
+    ).not.toBeInTheDocument();
+    await user.click(
+      await canvas.findByRole("button", { name: "1 change to check" })
+    );
+    const changes = within(
+      await parent.findByRole("dialog", { name: "Itinerary changes" })
+    );
+    await waitFor(() => expect(changes.getByText("Museum")).toBeVisible());
+    await expect(changes.getByText("Removed from the itinerary")).toBeVisible();
+    await expect(
+      changes.getByRole("button", { name: "Go to day" })
+    ).toBeVisible();
+    await expect(
+      changes.queryByRole("button", { name: "Go to entry" })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const ChoosesBetweenRepeatedStartsBeforeMoving: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T02:00+02:00",
+        "2099-06-10T02:30+02:00"
+      );
+      server.get(itineraryUrl, () => saved);
+      const chosenOccurrences = new Map([
+        [
+          "+01:00",
+          () => {
+            const [museum] = saved.days[0].entries.splice(0);
+            saved.days[1].entries = [
+              {
+                ...museum,
+                timing: {
+                  zone: "Europe/Rome",
+                  start: "2099-06-11T02:00+01:00",
+                  end: "2099-06-11T02:30+01:00",
+                  repeatedStart: true,
+                  repeatedEnd: true
+                }
+              }
+            ];
+            return new MirageResponse(204);
+          }
+        ]
+      ]);
+      const requireChoice = (): MirageResponse =>
+        new MirageResponse(
+          400,
+          {},
+          {
+            errorCode: "BAD_REQUEST",
+            errorMessage:
+              "This start clock occurs twice. Choose which occurrence to use.",
+            moveStartChoices: { offsets: ["+02:00", "+01:00"] }
+          }
+        );
+      server.put(`${entryUrl}/position`, (_schema, request) => {
+        const body: { date: string; startOffset?: string } = JSON.parse(
+          request.requestBody
+        );
+        compositionWrites(body);
+        return (
+          chosenOccurrences.get(body.startOffset ?? "") ?? requireChoice
+        )();
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Actions for Museum" })
+    );
+    await user.click(
+      await body.findByRole("menuitem", { name: "Move to day..." })
+    );
+    const move = within(
+      await body.findByRole("dialog", { name: "Move Museum to day" })
+    );
+    await user.click(move.getByRole("button", { name: "Move entry" }));
+
+    const choice = within(
+      await body.findByRole("dialog", { name: "Choose a start for Museum" })
+    );
+    await expect(compositionWrites).toHaveBeenNthCalledWith(1, {
+      date: "2099-06-11"
+    });
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(
+      choice.getByRole("button", { name: "02:00 UTC+02:00" })
+    ).toBeEnabled();
+    await user.click(choice.getByRole("button", { name: "02:00 UTC+01:00" }));
+    const destination = within(
+      await canvas.findByRole("article", { name: /Jun 11, 2099/ })
+    );
+    const museum = within(
+      await destination.findByRole("listitem", { name: "Museum" })
+    );
+    await expect(museum.getAllByText("UTC+01:00")[0]).toBeVisible();
+    await expect(compositionWrites).toHaveBeenNthCalledWith(2, {
+      date: "2099-06-11",
+      startOffset: "+01:00"
+    });
+  }
+};
 
 export const LocksAndUnlocksTheStartFromTheKeyboard: Story = {
   parameters: {

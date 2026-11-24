@@ -37,6 +37,9 @@ public class ItineraryEntry {
     @Column(name = "planned_length_changed_since_check", nullable = false)
     private boolean plannedLengthChangedSinceCheck;
 
+    @Column(name = "fixed_start_changed_since_check", nullable = false)
+    private boolean fixedStartChangedSinceCheck;
+
     protected ItineraryEntry() {
     }
 
@@ -45,6 +48,13 @@ public class ItineraryEntry {
         this.attractionId = attractionId;
         this.position = position;
         this.timing = timing;
+    }
+
+    public void changeFixedStart(boolean fixed) {
+        if (fixedStart != fixed) {
+            fixedStart = fixed;
+            fixedStartChangedSinceCheck = true;
+        }
     }
 
     public void changeTiming(ItineraryTiming replacement) {

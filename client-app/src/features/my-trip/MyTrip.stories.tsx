@@ -508,6 +508,93 @@ function savedTimeline(start: string, end: string): GetItineraryResponse {
   return saved;
 }
 
+export const LocksAndUnlocksTheStartFromTheKeyboard: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      timingPuts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      const day = saved.days[0];
+      const [museum] = day.entries;
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${entryUrl}/fixed-start`,
+        (_schema, request) => {
+          const body: { fixedStart: boolean } = JSON.parse(request.requestBody);
+          timingPuts(request.params.entryId, body);
+          museum.fixedStart = body.fixedStart;
+          saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+          saved.changeNotices = [
+            {
+              entryId: museum.entryId,
+              subject: museum.name,
+              date: day.date,
+              reasons: ["FIXED_START_CHANGED"]
+            }
+          ];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const museum = within(
+      await canvas.findByRole("listitem", { name: "Museum" })
+    );
+    const start = museum.getByRole("textbox", {
+      name: "Start clock for Museum"
+    });
+    const end = museum.getByRole("textbox", { name: "End clock for Museum" });
+    const lock = museum.getByRole("button", { name: "Lock start for Museum" });
+    await expect(lock).toHaveAttribute("aria-pressed", "false");
+    await expect(museum.queryByText("Fixed start")).not.toBeInTheDocument();
+
+    await user.click(end);
+    await user.tab();
+    await expect(lock).toHaveFocus();
+    await user.keyboard(" ");
+
+    await expect(await museum.findByText("Fixed start")).toBeVisible();
+    await expect(lock).toHaveAttribute("aria-pressed", "true");
+    await expect(start).toHaveValue("09:00");
+    await expect(end).toHaveValue("09:30");
+
+    await waitFor(() =>
+      expect(lock).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await expect(lock).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(lock).toHaveAttribute("aria-pressed", "false"));
+    await expect(museum.queryByText("Fixed start")).not.toBeInTheDocument();
+    await expect(start).toHaveValue("09:00");
+    await expect(end).toHaveValue("09:30");
+    await expect(timingPuts).toHaveBeenCalledTimes(2);
+    await expect(timingPuts).toHaveBeenNthCalledWith(1, "42", {
+      fixedStart: true
+    });
+    await expect(timingPuts).toHaveBeenNthCalledWith(2, "42", {
+      fixedStart: false
+    });
+
+    await user.click(canvas.getByRole("button", { name: "1 change to check" }));
+    const changes = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Itinerary changes"
+      })
+    );
+    await waitFor(() =>
+      expect(changes.getByText("Start lock changed")).toBeVisible()
+    );
+  }
+};
+
 export const EditsSavedTimingAndShowsUpdatedFreeTime: Story = {
   parameters: {
     savedAttractions: SAVED_ATTRACTIONS,

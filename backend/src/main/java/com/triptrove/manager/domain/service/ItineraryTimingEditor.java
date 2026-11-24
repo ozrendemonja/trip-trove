@@ -26,6 +26,12 @@ import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.*;
 public class ItineraryTimingEditor {
     private final ItineraryEntryRepo entries;
 
+    public void updateItineraryEntryFixedStart(long tripId, long entryId, boolean fixed) {
+        entries.findByIdAndTripId(entryId, tripId)
+                .orElseThrow(() -> entryNotFound(tripId, entryId))
+                .changeFixedStart(fixed);
+    }
+
     public void updateItineraryEntryStart(long tripId, long entryId, LocalTime clock) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
         var editedEntry = findEntry(itinerary, tripId, entryId);
@@ -64,7 +70,11 @@ public class ItineraryTimingEditor {
     private static ItineraryTimingEditSummary findEntry(List<ItineraryTimingEditSummary> itinerary, long tripId,
                                                         long entryId) {
         return itinerary.stream().filter(entry -> entry.entry().getId() == entryId).findFirst()
-                .orElseThrow(() -> new BaseApiException("Entry not found in trip", RESOURCE_NOT_FOUND, entryId, tripId));
+                .orElseThrow(() -> entryNotFound(tripId, entryId));
+    }
+
+    private static BaseApiException entryNotFound(long tripId, long entryId) {
+        return new BaseApiException("Entry not found in trip", RESOURCE_NOT_FOUND, entryId, tripId);
     }
 
     private static void validatePlannedLengthWithinVisitDuration(ItineraryTimingEditSummary entry,

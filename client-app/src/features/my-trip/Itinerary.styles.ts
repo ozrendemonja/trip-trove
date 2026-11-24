@@ -163,6 +163,12 @@ export const useClasses = makeStyles({
   entryCard: {
     minWidth: 0
   },
+  entryHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: tokens.spacingHorizontalXS
+  },
   plannedLength: {
     display: "flex",
     alignItems: "baseline",

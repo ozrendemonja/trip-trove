@@ -14,6 +14,9 @@ For frontend UI:
 
 For test and fixture changes, including Storybook:
 
+- Do not handwrite JSON request bodies in tests. Serialize typed request DTOs
+  with the configured mapper, or serialize structured data when testing an
+  invalid payload that a DTO cannot represent.
 - Prefer readable scenarios over deduplication; do not flag small repetition alone.
 - Keep important setup, inputs, actions and expectations ordered and visible in
   the test or nearby case data.

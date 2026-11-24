@@ -33,7 +33,8 @@ const stateLabels: Record<GetItineraryResponse["checkState"], string> = {
 const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   ATTRACTION_ADDED: "Added to the itinerary",
   START_CHANGED: "Start clock changed",
-  PLANNED_LENGTH_CHANGED: "Planned length changed"
+  PLANNED_LENGTH_CHANGED: "Planned length changed",
+  FIXED_START_CHANGED: "Start lock changed"
 };
 
 const useStyles = makeStyles({

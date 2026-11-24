@@ -3,9 +3,11 @@ import {
   Card,
   Input,
   Text,
+  ToggleButton,
   mergeClasses,
   type InputProps
 } from "@fluentui/react-components";
+import { LockClosed16Regular, LockOpen16Regular } from "@fluentui/react-icons";
 import { useEffect, useId, useState, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import { useClasses } from "./Itinerary.styles";
@@ -41,6 +43,7 @@ export function TimelineEntry({
 }): ReactElement {
   const classes = useClasses();
   const errorId = useId();
+  const lockErrorId = useId();
   const lengthId = useId();
   const [draft, setDraft] = useState<{ field: TimingField; value: string }>();
   const [endFocused, setEndFocused] = useState(false);
@@ -49,6 +52,7 @@ export function TimelineEntry({
     field: TimingField;
     message: string;
   }>();
+  const [lockError, setLockError] = useState<string>();
   const { Icon, tone, label } = attractionImportance(entry);
   const { start, end, zone } = entry.timing;
   const minutes = elapsedMinutes(start, end);
@@ -60,8 +64,8 @@ export function TimelineEntry({
   const status =
     editing.pending?.entryId === entry.entryId && editing.pending.activity
       ? editing.pending.activity === "saving"
-        ? "Saving timing..."
-        : "Loading saved timing..."
+        ? "Saving entry change..."
+        : "Loading saved entry..."
       : editing.feedback?.entryId === entry.entryId
         ? editing.feedback.text
         : undefined;
@@ -152,6 +156,7 @@ export function TimelineEntry({
         {showOffsets && (
           <Caption1>UTC{startOffset === "Z" ? "+00:00" : startOffset}</Caption1>
         )}
+        {entry.fixedStart && <Caption1>Fixed start</Caption1>}
         {!isBriefStop && (
           <>
             <Input
@@ -175,10 +180,30 @@ export function TimelineEntry({
         )}
       </div>
       <Card size="small" appearance="outline" className={classes.entryCard}>
-        <div className={classes.iconLabel}>
-          <Icon aria-hidden className={classes[tone]} />
-          <Text weight="semibold">{entry.name}</Text>
-          <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
+        <div className={classes.entryHeader}>
+          <div className={classes.iconLabel}>
+            <Icon aria-hidden className={classes[tone]} />
+            <Text weight="semibold">{entry.name}</Text>
+            <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
+          </div>
+          <ToggleButton
+            size="small"
+            appearance="subtle"
+            icon={
+              entry.fixedStart ? <LockClosed16Regular /> : <LockOpen16Regular />
+            }
+            checked={entry.fixedStart}
+            aria-label={`Lock start for ${entry.name}`}
+            title={entry.fixedStart ? "Unlock start" : "Lock start"}
+            aria-describedby={lockError ? lockErrorId : undefined}
+            disabledFocusable={blocked}
+            onClick={() => {
+              setLockError(undefined);
+              void editing
+                .save(entry.entryId, { fixedStart: !entry.fixedStart })
+                .then(setLockError);
+            }}
+          />
         </div>
         {isBriefStop && <Caption1>Brief stop</Caption1>}
         <label htmlFor={lengthId} className={classes.plannedLength}>
@@ -202,6 +227,15 @@ export function TimelineEntry({
           className={mergeClasses(classes.entryMessage, classes.entryError)}
         >
           {error.message}
+        </Caption1>
+      )}
+      {lockError && (
+        <Caption1
+          id={lockErrorId}
+          role="alert"
+          className={mergeClasses(classes.entryMessage, classes.entryError)}
+        >
+          {lockError}
         </Caption1>
       )}
       {status && (

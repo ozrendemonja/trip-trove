@@ -8,14 +8,19 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> {
+    Optional<ItineraryEntry> findByIdAndTripId(Long id, Long tripId);
+
     @Modifying
     @Query("""
             UPDATE ItineraryEntry entry SET entry.includedInLastCheck = true,
-                entry.startChangedSinceCheck = false, entry.plannedLengthChangedSinceCheck = false
+                entry.startChangedSinceCheck = false, entry.plannedLengthChangedSinceCheck = false,
+                entry.fixedStartChangedSinceCheck = false
             WHERE entry.tripId = :tripId AND (entry.includedInLastCheck = false
-                OR entry.startChangedSinceCheck = true OR entry.plannedLengthChangedSinceCheck = true)
+                OR entry.startChangedSinceCheck = true OR entry.plannedLengthChangedSinceCheck = true
+                OR entry.fixedStartChangedSinceCheck = true)
             """)
     void markEntriesChecked(Long tripId);
 

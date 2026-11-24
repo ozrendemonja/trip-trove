@@ -1,9 +1,16 @@
 package com.triptrove.manager;
 
+import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryEntryStartRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -11,6 +18,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,14 +40,96 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     private static final String ITINERARY = "/trips/1/itinerary";
     private static final String DAY = "2027-03-29";
     private static final String TOMORROW = "2027-03-30";
+    private static final String SPRING_CLOCK_CHANGE = "2027-03-28";
+    private static final String AUTUMN_CLOCK_CHANGE = "2027-10-31";
 
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private JsonMapper mapper;
+
+    @Test
+    void lockingStart_savesLockWithoutMovingVisit() throws Exception {
+        seedTrip(DAY, DAY);
+        var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, "30m");
+
+        putFixedStart(museum, true).andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost" + ITINERARY))
+                .andExpect(content().string(""));
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value(DAY + "T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:30+02:00"))
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    @Test
+    void extendingAnEntryCanUseFreeTimeButCannotPushTheNextFixedStart() throws Exception {
+        seedTrip(DAY, DAY);
+        var museum = entry(1, "Museum", DAY, 1, "07:00", 30, false, "30m-3h");
+        var garden = entry(2, "Garden", DAY, 2, "09:30", 30, false, "30-45m");
+        putFixedStart(garden, true).andExpect(status().isNoContent());
+
+        putEnd(museum, DAY, "09:25").andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:25+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value(DAY + "T09:30+02:00"));
+
+        rejected(putEnd(museum, DAY, "09:45"),
+                "That timing conflicts with the fixed start of Garden. Choose another clock or length.");
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:25+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value(DAY + "T09:30+02:00"));
+
+        putEnd(garden, DAY, "10:15").andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[1].timing.end").value(DAY + "T10:15+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[*].fixedStart", contains(false, true)));
+
+        putFixedStart(garden, false).andExpect(status().isNoContent());
+        putEnd(museum, DAY, "09:45").andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[*].fixedStart", contains(false, false)))
+                .andExpect(jsonPath("$.days[0].entries[*].timing.start",
+                        contains(DAY + "T07:00+02:00", DAY + "T09:45+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.end").value(DAY + "T10:30+02:00"));
+    }
+
+    @Test
+    void insertingFromThePoolNamesTheFixedStartItConflictsWith() throws Exception {
+        seedTrip(DAY, DAY);
+        var garden = entry(1, "Garden", DAY, 1, "09:30", 30, false, "30m");
+        putFixedStart(garden, true).andExpect(status().isNoContent());
+        entityManager.createNativeQuery("UPDATE trip_attraction SET visit_time = '30m' WHERE id = 2").executeUpdate();
+
+        var request = new ScheduleAttractionRequest(2L, LocalDate.parse(DAY), "09:15", null, null);
+        rejected(mockMvc.perform(post(ITINERARY + "/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request))),
+                "The chosen time conflicts with the fixed start of Garden. Choose another start or day.");
+
+        saved().andExpect(jsonPath("$.days[0].entries.length()").value(1))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value(DAY + "T09:30+02:00"));
+    }
+
+    @Test
+    void aTripCannotLockAnEntryBelongingToAnotherTrip() throws Exception {
+        seedTrip(DAY, DAY);
+        var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, "30m");
+
+        mockMvc.perform(put("/trips/2/itinerary/entries/{entryId}/fixed-start", museum)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new UpdateItineraryEntryFixedStartRequest(true))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("OBJECT_NOT_FOUND"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The requested resource '%d' could not be found. Please refresh and try again.".formatted(museum)));
+        saved().andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(false));
+    }
+
     @Test
     void movingFixedStartWithoutBoardDuration_keepsLockAndLength() throws Exception {
         seedTrip(DAY, DAY);
-        var museum = entry(1, "Museum", DAY, 1, "09:00", 30, true, null);
+        var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, null);
+        putFixedStart(museum, true).andExpect(status().isNoContent());
 
         putStart(museum, "09:30").andExpect(status().isNoContent())
                 .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost" + ITINERARY))
@@ -120,17 +215,21 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            planned-length | {"plannedMinutes":44}
-            end            | {"endDate":"2027-03-29","endTime":"10:01"}
-            """)
-    void lengthOutsideBoardDuration_isRejectedWithoutChangingEnd(String field, String request) throws Exception {
+    @MethodSource("editsOutsideBoardDuration")
+    void lengthOutsideBoardDuration_isRejectedWithoutChangingEnd(String field, Object request) throws Exception {
         seedTrip(DAY, DAY);
         var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, "45m-1h");
 
         rejected(putTiming(museum, field, request),
                 "The planned length for Museum must be within its current visit duration (45m-1h).");
         saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:30+02:00"));
+    }
+
+    private static Stream<Arguments> editsOutsideBoardDuration() {
+        return Stream.of(
+                Arguments.of("planned-length", new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(44))),
+                Arguments.of("end", new UpdateItineraryEntryEndRequest(LocalDate.parse(DAY), "10:01"))
+        );
     }
 
     @Test
@@ -143,11 +242,8 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            start          | {"startTime":"08:45"} | That timing conflicts with Market. Choose another clock or length.
-            planned-length | {"plannedMinutes":90} | That timing conflicts with the fixed start of Gallery. Choose another clock or length.
-            """)
-    void conflictWithPreviousVisitOrFixedStart_leavesCheckedItineraryUnchanged(String field, String request, String message)
+    @MethodSource("conflictingTimingEdits")
+    void conflictWithPreviousVisitOrFixedStart_leavesCheckedItineraryUnchanged(String field, Object request, String message)
             throws Exception {
         seedTrip(DAY, DAY);
         entry(1, "Market", DAY, 1, "08:30", 30, false, "30m");
@@ -162,6 +258,15 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[0].entries[1].timing.end").value(DAY + "T09:30+02:00"))
                 .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
                 .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    private static Stream<Arguments> conflictingTimingEdits() {
+        return Stream.of(
+                Arguments.of("start", new UpdateItineraryEntryStartRequest("08:45"),
+                        "That timing conflicts with Market. Choose another clock or length."),
+                Arguments.of("planned-length", new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(90)),
+                        "That timing conflicts with the fixed start of Gallery. Choose another clock or length.")
+        );
     }
 
     @Test
@@ -232,10 +337,9 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
         entityManager.createNativeQuery("UPDATE trip_attraction SET visit_time = '0m' WHERE attraction_id = 2")
                 .executeUpdate();
 
+        var request = new ScheduleAttractionRequest(2L, LocalDate.parse(TOMORROW), "00:00", null, null);
         rejected(mockMvc.perform(post(ITINERARY + "/attractions").header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"attractionId":2,"date":"2027-03-30","startTime":"00:00"}
-                                """)),
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request))),
                 "There is no itinerary day for 2027-03-30. Choose another day.");
         saved().andExpect(jsonPath("$.days[0].entries.length()").value(1))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value(TOMORROW + "T00:00+02:00"));
@@ -268,17 +372,21 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            start | {"startTime":"02:30"}
-            end   | {"endDate":"2027-03-28","endTime":"02:30"}
-            """)
-    void enteredTimeInSpringClockGap_isRejected(String field, String request) throws Exception {
-        var date = "2027-03-28";
+    @MethodSource("springClockGapEdits")
+    void enteredTimeInSpringClockGap_isRejected(String field, Object request) throws Exception {
+        var date = SPRING_CLOCK_CHANGE;
         seedTrip(date, date);
         var museum = entry(1, "Museum", date, 1, "01:30", 30, false, "15-60m");
 
         rejected(putTiming(museum, field, request),
                 "That " + field + " clock does not occur in Europe/Belgrade on this date. Choose another time.");
+    }
+
+    private static Stream<Arguments> springClockGapEdits() {
+        return Stream.of(
+                Arguments.of("start", new UpdateItineraryEntryStartRequest("02:30")),
+                Arguments.of("end", new UpdateItineraryEntryEndRequest(LocalDate.parse(SPRING_CLOCK_CHANGE), "02:30"))
+        );
     }
 
     @Test
@@ -293,18 +401,23 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            start | 03:00 | {"startTime":"02:30"}                      | 02:30
-            end   | 01:50 | {"endDate":"2027-10-31","endTime":"02:25"} | 02:25
-            """)
-    void enteredTimeInRepeatedHour_usesFirstOccurrence(String field, String originalStart, String request, String expectedClock)
+    @MethodSource("repeatedHourTimingEdits")
+    void enteredTimeInRepeatedHour_usesFirstOccurrence(String field, String originalStart, Object request, String expectedClock)
             throws Exception {
-        var date = "2027-10-31";
+        var date = AUTUMN_CLOCK_CHANGE;
         seedTrip(date, date);
         var museum = entry(1, "Museum", date, 1, originalStart, 10, false, "10m-2h");
 
         putTiming(museum, field, request).andExpect(status().isNoContent());
         saved().andExpect(jsonPath("$.days[0].entries[0].timing." + field).value(date + "T" + expectedClock + "+02:00"));
+    }
+
+    private static Stream<Arguments> repeatedHourTimingEdits() {
+        return Stream.of(
+                Arguments.of("start", "03:00", new UpdateItineraryEntryStartRequest("02:30"), "02:30"),
+                Arguments.of("end", "01:50",
+                        new UpdateItineraryEntryEndRequest(LocalDate.parse(AUTUMN_CLOCK_CHANGE), "02:25"), "02:25")
+        );
     }
 
     @Test
@@ -331,6 +444,44 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
 
         putStart(museum, "10:00").andExpect(status().isNoContent());
         saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    @Test
+    void lockChangesStayOnOneEntryNoticeUntilTheNextCheck() throws Exception {
+        var museum = checkedMuseumAt("10:00", 30);
+        putFixedStart(museum, false).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        putFixedStart(museum, true).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].entryId").value(museum))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("FIXED_START_CHANGED")));
+
+        putStart(museum, "10:15").andExpect(status().isNoContent());
+        putFixedStart(museum, false).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("START_CHANGED", "FIXED_START_CHANGED")));
+
+        putFixedStart(museum, true).andExpect(status().isNoContent());
+        checkItinerary();
+        saved().andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        putFixedStart(museum, false).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(false))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value(DAY + "T10:15+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T10:45+02:00"))
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("FIXED_START_CHANGED")));
+
+        checkItinerary();
+        saved().andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(false))
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
                 .andExpect(jsonPath("$.changeNotices").isEmpty());
     }
 
@@ -387,12 +538,8 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            start          | {"startTime":"09:30"}                     | START_CHANGED
-            end            | {"endDate":"2027-03-29","endTime":"10:00"} | PLANNED_LENGTH_CHANGED
-            planned-length | {"plannedMinutes":60}                     | PLANNED_LENGTH_CHANGED
-            """)
-    void repeatingSameTimingEdit_leavesPushedVisitAndNoticesUnchanged(String field, String request, String reason)
+    @MethodSource("repeatableTimingEdits")
+    void repeatingSameTimingEdit_leavesPushedVisitAndNoticesUnchanged(String field, Object request, String reason)
             throws Exception {
         seedTrip(DAY, DAY);
         var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, "30-60m");
@@ -414,49 +561,72 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
         saved().andExpect(content().json(afterFirstPut, JsonCompareMode.STRICT));
     }
 
+    private static Stream<Arguments> repeatableTimingEdits() {
+        return Stream.of(
+                Arguments.of("start", new UpdateItineraryEntryStartRequest("09:30"), "START_CHANGED"),
+                Arguments.of("end", new UpdateItineraryEntryEndRequest(LocalDate.parse(DAY), "10:00"),
+                        "PLANNED_LENGTH_CHANGED"),
+                Arguments.of("planned-length", new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(60)),
+                        "PLANNED_LENGTH_CHANGED")
+        );
+    }
+
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            start          | {}                                        | {startTime = must not be null}
-            start          | {"startTime":"24:00"}                     | {startTime = enter a local clock as HH:mm or HH:mm:ss}
-            start          | {"startTime":"09:30","plannedMinutes":30} | Request body must contain valid JSON with the expected field types.
-            end            | {"endTime":"09:30"}                       | {endDate = must not be null}
-            end            | {"endDate":"2027-03-29"}                  | {endTime = must not be null}
-            planned-length | {}                                        | {plannedMinutes = must not be null}
-            planned-length | {"plannedMinutes":30.5}                   | {wholePlannedLength = enter a non-negative whole length in minutes}
-            planned-length | {"plannedMinutes":-1}                     | {wholePlannedLength = enter a non-negative whole length in minutes}
-            planned-length | {"plannedMinutes":2147483648}             | {wholePlannedLength = enter a non-negative whole length in minutes}
-            """)
-    void malformedTimingRequest_isRejectedWithoutChangingSavedInterval(String field, String request, String message)
+    @MethodSource("malformedTimingRequests")
+    void malformedTimingRequest_isRejectedWithoutChangingSavedInterval(String field, Object request, String message)
             throws Exception {
         seedTrip(DAY, DAY);
         var museum = entry(1, "Museum", DAY, 1, "09:00", 30, false, "30-60m");
 
         rejected(putTiming(museum, field, request), message);
         saved().andExpect(jsonPath("$.days[0].entries[0].timing.start").value(DAY + "T09:00+02:00"))
-                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:30+02:00"));
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value(DAY + "T09:30+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(false));
+    }
+
+    private static Stream<Arguments> malformedTimingRequests() {
+        var invalidFields = "Request body must contain valid JSON with the expected field types.";
+        var invalidLength = "{wholePlannedLength = enter a non-negative whole length in minutes}";
+        return Stream.of(
+                Arguments.of("start", Map.of(), "{startTime = must not be null}"),
+                Arguments.of("start", new UpdateItineraryEntryStartRequest("24:00"),
+                        "{startTime = enter a local clock as HH:mm or HH:mm:ss}"),
+                Arguments.of("start", Map.of("startTime", "09:30", "plannedMinutes", 30), invalidFields),
+                Arguments.of("end", Map.of("endTime", "09:30"), "{endDate = must not be null}"),
+                Arguments.of("end", Map.of("endDate", LocalDate.parse(DAY)), "{endTime = must not be null}"),
+                Arguments.of("fixed-start", Map.of(), "{fixedStart = must not be null}"),
+                Arguments.of("fixed-start", Map.of("fixedStart", true, "startTime", "09:30"), invalidFields),
+                Arguments.of("planned-length", Map.of(), "{plannedMinutes = must not be null}"),
+                Arguments.of("planned-length",
+                        new UpdateItineraryEntryPlannedLengthRequest(new BigDecimal("30.5")), invalidLength),
+                Arguments.of("planned-length",
+                        new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(-1)), invalidLength),
+                Arguments.of("planned-length",
+                        new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(2_147_483_648L)), invalidLength)
+        );
     }
 
     private ResultActions putStart(long entryId, String clock) throws Exception {
-        return putTiming(entryId, "start", """
-                {"startTime":"%s"}
-                """.formatted(clock));
+        return putTiming(entryId, "start", new UpdateItineraryEntryStartRequest(clock));
     }
 
     private ResultActions putEnd(long entryId, String date, String clock) throws Exception {
-        return putTiming(entryId, "end", """
-                {"endDate":"%s","endTime":"%s"}
-                """.formatted(date, clock));
+        return putTiming(entryId, "end", new UpdateItineraryEntryEndRequest(LocalDate.parse(date), clock));
     }
 
     private ResultActions putPlannedLength(long entryId, int minutes) throws Exception {
-        return putTiming(entryId, "planned-length", """
-                {"plannedMinutes":%d}
-                """.formatted(minutes));
+        return putTiming(entryId, "planned-length",
+                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(minutes)));
     }
 
-    private ResultActions putTiming(long entryId, String field, String request) throws Exception {
+    private ResultActions putFixedStart(long entryId, boolean fixed) throws Exception {
+        return putTiming(entryId, "fixed-start", new UpdateItineraryEntryFixedStartRequest(fixed));
+    }
+
+    private ResultActions putTiming(long entryId, String field, Object request) throws Exception {
         return mockMvc.perform(put(ITINERARY + "/entries/{entryId}/{field}", entryId, field)
-                .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON).content(request));
+                .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(request)));
     }
 
     private static void rejected(ResultActions result, String message) throws Exception {

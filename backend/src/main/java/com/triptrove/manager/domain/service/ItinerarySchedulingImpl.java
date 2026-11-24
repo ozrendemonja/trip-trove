@@ -112,9 +112,13 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
             throw new BaseApiException("Proposed interval would extend past the trip", ITINERARY_END_OUTSIDE_TRIP,
                     itinerary.tripEnd());
         }
-        if (itinerary.hasOverlap(proposedInterval)) {
+        itinerary.findOverlap(proposedInterval).ifPresent(entry -> {
+            if (entry.fixedStart()) {
+                throw new BaseApiException("Proposed interval overlaps a fixed entry", ITINERARY_ENTRY_OVERLAP,
+                        ItineraryTimingIssue.SCHEDULING_FIXED_START, entry.name());
+            }
             throw new BaseApiException("Proposed interval overlaps a saved entry", ITINERARY_ENTRY_OVERLAP);
-        }
+        });
     }
 
     private int prepareInsertionPosition(Long tripId, ItineraryDaySummary day, ItineraryTiming proposedInterval) {

@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0015-track-fixed-start-changes
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary_entry
+            columns:
+              - column:
+                  name: fixed_start_changed_since_check
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

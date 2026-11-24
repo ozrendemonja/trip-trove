@@ -22,6 +22,7 @@ import java.util.List;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_CLOCK_GAP;
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_INVALID_END_CLOCK;
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_START_OFFSET_NOT_AVAILABLE;
 
 @Embeddable
 @Getter
@@ -47,6 +48,18 @@ public final class ItineraryTiming {
 
     public ItineraryTiming(LocalDate date, LocalTime startTime, ZoneId zone, int minutes) {
         this(resolveStart(date, startTime, zone, null), minutes);
+    }
+
+    public static ItineraryTiming atLocalStart(LocalDate date, LocalTime time, ZoneId zone, int minutes, String offset) {
+        var first = new ItineraryTiming(date, time, zone, minutes);
+        if (offset == null || first.hasStartOffset(offset)) return first;
+        return first.localStartCandidates(date, zone).stream().filter(start -> start.hasStartOffset(offset))
+                .findFirst().orElseThrow(() -> new BaseApiException("Offset does not resolve the local start",
+                        ITINERARY_START_OFFSET_NOT_AVAILABLE, offset));
+    }
+
+    public boolean hasStartOffset(String offset) {
+        return start().getOffset().getId().equals(offset);
     }
 
     @Instantiator({"zone", "date", "startTime", "secondStartOccurrence", "plannedMinutes"})
@@ -97,7 +110,25 @@ public final class ItineraryTiming {
     }
 
     public ItineraryTiming withStartAt(Instant instant) {
-        return new ItineraryTiming(instant.atZone(ZoneId.of(zone)), plannedMinutes);
+        return withStartAt(instant, ZoneId.of(zone));
+    }
+
+    public ItineraryTiming withStartAt(Instant instant, ZoneId destinationZone) {
+        return new ItineraryTiming(instant.atZone(destinationZone), plannedMinutes);
+    }
+
+    public List<ItineraryTiming> localStartsOn(LocalDate destinationDate, ZoneId destinationZone) {
+        if (date.equals(destinationDate) && zone.equals(destinationZone.getId())) {
+            return List.of(this);
+        }
+        return localStartCandidates(destinationDate, destinationZone);
+    }
+
+    private List<ItineraryTiming> localStartCandidates(LocalDate destinationDate, ZoneId destinationZone) {
+        var first = new ItineraryTiming(destinationDate, startTime, destinationZone, plannedMinutes);
+        return Boolean.FALSE.equals(first.secondStartOccurrence)
+                ? List.of(first, new ItineraryTiming(destinationZone.getId(), destinationDate, startTime, true, plannedMinutes))
+                : List.of(first);
     }
 
     public ItineraryTiming withPlannedMinutes(int minutes) {

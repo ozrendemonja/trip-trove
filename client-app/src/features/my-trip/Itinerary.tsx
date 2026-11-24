@@ -12,7 +12,8 @@ import {
   MessageBarActions,
   MessageBarBody,
   Spinner,
-  Text
+  Text,
+  mergeClasses
 } from "@fluentui/react-components";
 import {
   ArrowClockwise20Regular,
@@ -25,12 +26,27 @@ import {
   useEffect,
   useRef,
   useState,
+  type DragEvent,
   type ReactElement,
   type RefCallback
 } from "react";
-import type { ChangeNotice, GetItineraryResponse } from "../../clients/manager";
+import type {
+  ChangeNotice,
+  GetItineraryResponse,
+  MoveItineraryEntryRequest
+} from "../../clients/manager";
 import { UnscheduledAttractions } from "./UnscheduledAttractions";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
+import {
+  ItineraryEntryActions,
+  MoveStartChoice
+} from "./ItineraryEntryActions";
+import {
+  dropSlot,
+  gapSuggestion,
+  ItineraryDragHandle,
+  type DraggedItineraryItem
+} from "./ItineraryDrag";
 import {
   useItineraryScheduling,
   type ItineraryScheduling
@@ -56,6 +72,8 @@ type LoadState = {
 };
 
 type NoticeTarget = Pick<ChangeNotice, "date" | "entryId">;
+type Day = GetItineraryResponse["days"][number];
+type Entry = Day["entries"][number];
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
 
 interface ItineraryView {
@@ -71,6 +89,8 @@ interface ItineraryView {
   visibleDays: GetItineraryResponse["days"];
   showDate: (date: string) => void;
   focusNoticeTarget: (target: NoticeTarget) => void;
+  dragged?: DraggedItineraryItem;
+  setDragged: (item?: DraggedItineraryItem) => void;
   scheduling: ItineraryScheduling;
   timingEditing: ItineraryTimingEditing;
 }
@@ -178,7 +198,7 @@ export const useItinerary = (
   }>();
   const focusNoticeTarget = ({ date, entryId }: NoticeTarget): void => {
     if (tripId === undefined) return;
-    showDate(date);
+    if (!visibleDays.some((day) => day.date === date)) showDate(date);
     setFocusTarget({
       tripId,
       id: entryId === undefined ? dayTargetId(date) : entryTargetId(entryId)
@@ -202,6 +222,7 @@ export const useItinerary = (
     onDurationCorrected
   });
   const timingEditing = useItineraryTimingEdit(tripId, refresh);
+  const [dragged, setDragged] = useState<DraggedItineraryItem>();
   return {
     saved: current?.data,
     days,
@@ -215,6 +236,8 @@ export const useItinerary = (
     visibleDays,
     showDate,
     focusNoticeTarget,
+    dragged,
+    setDragged,
     scheduling,
     timingEditing
   };
@@ -228,22 +251,53 @@ export const ItineraryDayPager = ({
   refreshBlocked: boolean;
 }): ReactElement | null => {
   const classes = useClasses();
-  const { days, loading, refresh, start, lastStart, visibleDays, showDate } =
-    itinerary;
+  const {
+    days,
+    loading,
+    refresh,
+    start,
+    lastStart,
+    visibleDays,
+    showDate,
+    dragged
+  } = itinerary;
+  const hoverTimer = useRef<number | undefined>(undefined);
+  const stopHover = useCallback(() => {
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = undefined;
+  }, []);
+  useEffect(() => {
+    window.addEventListener("dragend", stopHover);
+    return () => {
+      window.removeEventListener("dragend", stopHover);
+      stopHover();
+    };
+  }, [stopHover]);
+  const pageDuringDrag = (event: DragEvent, date?: string): void => {
+    if (!date || !dragged) return;
+    event.preventDefault();
+    hoverTimer.current ??= window.setTimeout(() => showDate(date), 350);
+  };
 
   if (!days.length) return null;
 
   return (
     <nav aria-label="Itinerary day navigation" className={classes.pager}>
-      <Button
-        appearance="subtle"
-        size="small"
-        icon={<ChevronLeft20Regular />}
-        aria-label="Previous day"
-        title="Previous day"
-        disabled={start === 0}
-        onClick={() => showDate(days[start - 1].date)}
-      />
+      <span
+        onDragOver={(event) => pageDuringDrag(event, days[start - 1]?.date)}
+        onDragLeave={stopHover}
+        onDrop={stopHover}
+      >
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<ChevronLeft20Regular />}
+          aria-label="Previous day"
+          title="Previous day"
+          disabled={start === 0}
+          onClick={() => showDate(days[start - 1].date)}
+        />
+      </span>
       <Menu>
         <MenuTrigger disableButtonEnhancement>
           <Button appearance="subtle" size="small">
@@ -262,15 +316,26 @@ export const ItineraryDayPager = ({
           </MenuList>
         </MenuPopover>
       </Menu>
-      <Button
-        appearance="subtle"
-        size="small"
-        icon={<ChevronRight20Regular />}
-        aria-label="Next day"
-        title="Next day"
-        disabled={start >= lastStart}
-        onClick={() => showDate(days[start + 1].date)}
-      />
+      <span
+        onDragOver={(event) =>
+          pageDuringDrag(
+            event,
+            start < lastStart ? days[start + 1]?.date : undefined
+          )
+        }
+        onDragLeave={stopHover}
+        onDrop={stopHover}
+      >
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<ChevronRight20Regular />}
+          aria-label="Next day"
+          title="Next day"
+          disabled={start >= lastStart}
+          onClick={() => showDate(days[start + 1].date)}
+        />
+      </span>
       <Button
         appearance="subtle"
         size="small"
@@ -310,12 +375,159 @@ export const ItineraryContent = ({
     visibleDays,
     measureDayRow,
     scheduling,
-    timingEditing
+    timingEditing,
+    focusNoticeTarget,
+    dragged,
+    setDragged
   } = itinerary;
   const { draft, feedback } = scheduling;
   const { pending } = timingEditing;
   const writeBlocked =
     prepareBlocked || loading || failed || !!draft || !!pending;
+  const [hovered, setHovered] = useState<{ date: string; slot: number }>();
+  const [actionStatus, setActionStatus] = useState("");
+  const [actionError, setActionError] = useState<string>();
+  const [moveChoice, setMoveChoice] = useState<{
+    entry: Entry;
+    sourceDate: string;
+    position: MoveItineraryEntryRequest;
+    offsets: string[];
+  }>();
+  const cancelMoveChoice = (): void => {
+    if (!moveChoice) return;
+    focusNoticeTarget({
+      date: moveChoice.sourceDate,
+      entryId: moveChoice.entry.entryId
+    });
+    setMoveChoice(undefined);
+  };
+  const move = (entry: Entry, position: MoveItineraryEntryRequest): void => {
+    if (writeBlocked || (moveChoice && position.startOffset === undefined))
+      return;
+    const { entryId, name } = entry;
+    const source = days.find((day) =>
+      day.entries.some((item) => item.entryId === entryId)
+    );
+    if (!source) return;
+    const index = source.entries.findIndex((item) => item.entryId === entryId);
+    const next = source.entries[index + 1];
+    setActionError(undefined);
+    if (
+      source.date === position.date &&
+      next?.entryId === position.beforeEntryId
+    ) {
+      focusNoticeTarget({ date: source.date, entryId });
+      setActionStatus(`${name} is already in that position.`);
+      return;
+    }
+
+    setActionStatus("");
+    void timingEditing
+      .save(entryId, { action: "move", position }, (saved, outcome) => {
+        const destination = saved.days.find((day) =>
+          day.entries.some((item) => item.entryId === entryId)
+        );
+        if (!destination) {
+          focusNoticeTarget({ date: source.date });
+          setActionStatus(
+            `Saved itinerary reloaded. ${name} is no longer in the itinerary.`
+          );
+          return;
+        }
+        focusNoticeTarget({ date: destination.date, entryId });
+        setActionStatus(
+          outcome === "unconfirmed"
+            ? `Saved itinerary reloaded. ${name} is on ${formatItineraryDate(destination.date)}.`
+            : `${name} moved to ${formatItineraryDate(destination.date)}.`
+        );
+      })
+      .then((error) => {
+        if (!error) return;
+        if (error.moveOffsets?.length === 2) {
+          setMoveChoice({
+            entry,
+            position,
+            sourceDate: source.date,
+            offsets: error.moveOffsets
+          });
+          return;
+        }
+        focusNoticeTarget({ date: source.date, entryId });
+        setActionError(error.message);
+      });
+  };
+  const remove = (entry: Entry, day: Day): void => {
+    if (writeBlocked) return;
+    setActionError(undefined);
+    setActionStatus("");
+    void timingEditing
+      .save(entry.entryId, { action: "remove" }, (saved) => {
+        const present = saved.days.find((candidate) =>
+          candidate.entries.some((item) => item.entryId === entry.entryId)
+        );
+        if (present) {
+          focusNoticeTarget({ date: present.date, entryId: entry.entryId });
+          setActionStatus(
+            `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
+          );
+          return;
+        }
+        focusNoticeTarget({ date: day.date });
+        setActionStatus(`${entry.name} removed from the itinerary.`);
+      })
+      .then((error) => {
+        if (!error) return;
+        focusNoticeTarget({ date: day.date, entryId: entry.entryId });
+        setActionError(error.message);
+      });
+  };
+  const endDrag = useCallback((): void => {
+    setDragged(undefined);
+    setHovered(undefined);
+  }, [setDragged]);
+  useEffect(() => {
+    window.addEventListener("dragend", endDrag);
+    return () => window.removeEventListener("dragend", endDrag);
+  }, [endDrag]);
+  const dragSourceDate =
+    dragged?.kind === "entry"
+      ? dragged.entry.timing.start.slice(0, 10)
+      : undefined;
+  // Keep the source mounted when hovering the pager reveals a different day.
+  const renderedDays = days.filter(
+    (day) => day.date === dragSourceDate || visibleDays.includes(day)
+  );
+  const dragOver = (event: DragEvent<HTMLElement>, day: Day): void => {
+    if (writeBlocked || moveChoice || !dragged) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = dragged.kind === "pool" ? "copy" : "move";
+    const slot = dropSlot(event, day);
+    if (hovered?.date !== day.date || hovered.slot !== slot) {
+      setHovered({ date: day.date, slot });
+    }
+  };
+  const drop = (event: DragEvent<HTMLElement>, day: Day): void => {
+    if (writeBlocked || moveChoice || !dragged) return;
+    event.preventDefault();
+    const slot = dropSlot(event, day);
+    if (dragged.kind === "pool") {
+      const button = event.currentTarget.ownerDocument.getElementById(
+        `itinerary-add-${dragged.attraction.attractionId}`
+      );
+      scheduling.choose(
+        dragged.attraction,
+        day,
+        button instanceof HTMLButtonElement ? button : null,
+        gapSuggestion(days, day, slot)
+      );
+    } else {
+      const before = day.entries
+        .slice(slot)
+        .find((entry) => entry.entryId !== dragged.entry.entryId);
+      move(dragged.entry, { date: day.date, beforeEntryId: before?.entryId });
+    }
+    endDrag();
+  };
   const activeDraft = draft && (
     <ItineraryEntryDraft
       draft={draft}
@@ -345,7 +557,34 @@ export const ItineraryContent = ({
 
   return (
     <div className={classes.itinerary}>
+      {moveChoice && (
+        <MoveStartChoice
+          entry={moveChoice.entry}
+          offsets={moveChoice.offsets}
+          onCancel={cancelMoveChoice}
+          onChoose={(startOffset) => {
+            setMoveChoice(undefined);
+            move(moveChoice.entry, { ...moveChoice.position, startOffset });
+          }}
+        />
+      )}
       {feedback && <Text role="status">{feedback}</Text>}
+      <Text
+        role="status"
+        className={actionStatus ? undefined : classes.visuallyHidden}
+      >
+        {actionStatus}
+      </Text>
+      {actionError && (
+        <MessageBar intent="error">
+          <MessageBarBody>{actionError}</MessageBarBody>
+          <MessageBarActions>
+            <Button size="small" onClick={() => setActionError(undefined)}>
+              Dismiss
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      )}
       {pending?.recovery && (
         <MessageBar intent="warning">
           <MessageBarBody>
@@ -388,6 +627,8 @@ export const ItineraryContent = ({
           formatDate={formatItineraryDate}
           scheduleBlocked={writeBlocked}
           onSchedule={scheduling.choose}
+          onGrab={setDragged}
+          onRelease={endDrag}
         />
         <section
           ref={measureDayRow}
@@ -397,10 +638,43 @@ export const ItineraryContent = ({
             gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))`
           }}
         >
-          {visibleDays.map((day) => {
+          {renderedDays.map((day) => {
             const date = new Date(day.date);
+            const hidden = !visibleDays.includes(day);
+            const activeSlot =
+              hovered?.date === day.date ? hovered.slot : undefined;
+            const slotClass = (slot: number, gap = false): string =>
+              mergeClasses(
+                classes.dropSlot,
+                gap && classes.freeTime,
+                slot === activeSlot && classes.activeDropSlot
+              );
             return (
-              <Card key={day.id} role="article" className={classes.day}>
+              <Card
+                key={day.id}
+                role="article"
+                aria-label={dateLabel.format(date)}
+                inert={hidden}
+                className={mergeClasses(
+                  classes.day,
+                  hidden && classes.hiddenDragSource,
+                  activeSlot !== undefined &&
+                    day.entries.length === 0 &&
+                    classes.dropOnEmptyDay
+                )}
+                onDragOver={(event) => dragOver(event, day)}
+                onDragLeave={(event) => {
+                  if (
+                    !(event.relatedTarget instanceof Node) ||
+                    !event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    setHovered((target) =>
+                      target?.date === day.date ? undefined : target
+                    );
+                  }
+                }}
+                onDrop={(event) => drop(event, day)}
+              >
                 <Text
                   as="h2"
                   className={classes.dayHeading}
@@ -429,19 +703,49 @@ export const ItineraryContent = ({
                         : 0;
                       return (
                         <Fragment key={entry.entryId}>
-                          {gap > 0 && (
-                            <li className={classes.freeTime}>
+                          <li
+                            data-itinerary-slot={index}
+                            aria-hidden={gap <= 0 || undefined}
+                            className={slotClass(index, gap > 0)}
+                          >
+                            {gap > 0 && (
                               <Caption1>{freeTimeLabel(gap)}</Caption1>
-                            </li>
-                          )}
+                            )}
+                          </li>
                           <TimelineEntry
                             entry={entry}
+                            index={index}
                             editing={timingEditing}
                             blocked={writeBlocked}
+                            dragHandle={
+                              <ItineraryDragHandle
+                                item={{ kind: "entry", entry }}
+                                blocked={writeBlocked}
+                                onGrab={setDragged}
+                                onRelease={endDrag}
+                              />
+                            }
+                            actions={
+                              <ItineraryEntryActions
+                                entry={entry}
+                                day={day}
+                                index={index}
+                                days={days}
+                                blocked={writeBlocked}
+                                formatDate={formatItineraryDate}
+                                onMove={(position) => move(entry, position)}
+                                onRemove={() => remove(entry, day)}
+                              />
+                            }
                           />
                         </Fragment>
                       );
                     })}
+                    <li
+                      data-itinerary-slot={day.entries.length}
+                      aria-hidden="true"
+                      className={slotClass(day.entries.length)}
+                    />
                   </ol>
                 )}
                 {draft?.intent.date === day.date && activeDraft}

@@ -1,5 +1,6 @@
 package com.triptrove.manager.application.controller;
 
+import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
@@ -7,7 +8,7 @@ import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRe
 import com.triptrove.manager.application.dto.UpdateItineraryEntryStartRequest;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.ItineraryScheduling;
-import com.triptrove.manager.domain.service.ItineraryTimingEditor;
+import com.triptrove.manager.domain.service.ItineraryEntryEditor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,7 +34,7 @@ import java.time.LocalTime;
 @Tag(name = "Trips")
 public class ItineraryEntryController {
     private final ItineraryScheduling scheduling;
-    private final ItineraryTimingEditor timingEditor;
+    private final ItineraryEntryEditor entryEditor;
 
     @PostMapping("/attractions")
     @Operation(summary = "Schedule an attraction on an itinerary day")
@@ -55,7 +56,7 @@ public class ItineraryEntryController {
     @TimingUpdateResponses
     public ResponseEntity<Void> updateItineraryEntryStart(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid UpdateItineraryEntryStartRequest request) {
-        timingEditor.updateItineraryEntryStart(id, entryId, LocalTime.parse(request.startTime()));
+        entryEditor.updateItineraryEntryStart(id, entryId, LocalTime.parse(request.startTime()));
         return itineraryUpdated(id);
     }
 
@@ -64,7 +65,7 @@ public class ItineraryEntryController {
     @TimingUpdateResponses
     public ResponseEntity<Void> updateItineraryEntryEnd(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid UpdateItineraryEntryEndRequest request) {
-        timingEditor.updateItineraryEntryEnd(id, entryId, request.endDate(), LocalTime.parse(request.endTime()));
+        entryEditor.updateItineraryEntryEnd(id, entryId, request.endDate(), LocalTime.parse(request.endTime()));
         return itineraryUpdated(id);
     }
 
@@ -73,7 +74,7 @@ public class ItineraryEntryController {
     @TimingUpdateResponses
     public ResponseEntity<Void> updateItineraryEntryPlannedLength(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid UpdateItineraryEntryPlannedLengthRequest request) {
-        timingEditor.updateItineraryEntryPlannedLength(id, entryId, request.plannedMinutes().intValueExact());
+        entryEditor.updateItineraryEntryPlannedLength(id, entryId, request.plannedMinutes().intValueExact());
         return itineraryUpdated(id);
     }
 
@@ -82,7 +83,24 @@ public class ItineraryEntryController {
     @TimingUpdateResponses
     public ResponseEntity<Void> updateItineraryEntryFixedStart(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid UpdateItineraryEntryFixedStartRequest request) {
-        timingEditor.updateItineraryEntryFixedStart(id, entryId, request.fixedStart());
+        entryEditor.updateItineraryEntryFixedStart(id, entryId, request.fixedStart());
+        return itineraryUpdated(id);
+    }
+
+    @PutMapping("/entries/{entryId:\\d+}/position")
+    @Operation(summary = "Move an itinerary entry before another entry on a day, or to the end")
+    @EntryUpdateResponses
+    public ResponseEntity<Void> moveItineraryEntry(@PathVariable Long id, @PathVariable Long entryId,
+            @RequestBody @Valid MoveItineraryEntryRequest request) {
+        entryEditor.moveEntry(id, entryId, request.date(), request.beforeEntryId(), request.startOffset());
+        return itineraryUpdated(id);
+    }
+
+    @DeleteMapping("/entries/{entryId:\\d+}")
+    @Operation(summary = "Remove an itinerary entry without removing its attraction from the trip")
+    @EntryUpdateResponses
+    public ResponseEntity<Void> removeItineraryEntry(@PathVariable Long id, @PathVariable Long entryId) {
+        entryEditor.removeEntry(id, entryId);
         return itineraryUpdated(id);
     }
 
@@ -104,4 +122,15 @@ public class ItineraryEntryController {
     @ApiResponse(responseCode = "404", description = "Entry not found in the trip",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     private @interface TimingUpdateResponses {}
+
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "204", description = "Itinerary entry updated",
+            headers = @Header(name = "Location", description = "URI of the updated itinerary",
+                    schema = @Schema(type = "string", format = "uri")))
+    @ApiResponse(responseCode = "400", description = "Invalid position or conflict with the itinerary",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Entry or destination entry not found in the trip",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    private @interface EntryUpdateResponses {}
 }

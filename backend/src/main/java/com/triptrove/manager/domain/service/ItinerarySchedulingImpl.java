@@ -53,7 +53,8 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         validateStartAndTimeZone(attraction.start(), itineraryTimeZone);
 
         var zone = requireNamedTimeZone(itineraryTimeZone);
-        var proposedInterval = new ItineraryTiming(date, attraction.start(), zone, visitDurationMinutes);
+        var proposedInterval = ItineraryTiming.atLocalStart(date, attraction.start(), zone, visitDurationMinutes,
+                attraction.startOffset());
         validateProposedIntervalFitsItinerary(proposedInterval, itinerary);
 
         if (itinerary.timeZone() == null) {

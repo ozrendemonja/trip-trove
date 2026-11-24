@@ -22,7 +22,8 @@ public record GetItineraryResponse(
         List<ChangeNotice> changeNotices) {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ChangeNotice(
-            @Schema(description = "Entry referenced by the change; absent for day-level changes.") Long entryId,
+            @Schema(description = "Entry referenced by the change; absent for removed entries and day-level changes.")
+            Long entryId,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String subject,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED)

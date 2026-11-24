@@ -1,22 +1,29 @@
 import { useRef, useState } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import {
-  saveTimingEdit,
-  type TimingEdit
+  EntryEditError,
+  saveEntryEdit,
+  type EntryEdit
 } from "./infra/ItinerarySchedulingApi";
-import { PlanningSaveError } from "./infra/PlanningApi";
+
+type ReloadOutcome = "unconfirmed" | "refresh";
 
 interface PendingEdit {
   tripId: number;
   entryId: number;
+  onReload?: (saved: GetItineraryResponse, recovery: ReloadOutcome) => void;
   activity?: "saving" | "loading";
-  recovery?: "unconfirmed" | "refresh";
+  recovery?: ReloadOutcome;
 }
 
 export interface ItineraryTimingEditing {
   pending?: PendingEdit;
   feedback?: { entryId: number; text: string };
-  save: (entryId: number, edit: TimingEdit) => Promise<string | undefined>;
+  save: (
+    entryId: number,
+    edit: EntryEdit,
+    onReload?: PendingEdit["onReload"]
+  ) => Promise<EntryEditError | undefined>;
   inspect: () => Promise<void>;
 }
 
@@ -35,38 +42,50 @@ export function useItineraryTimingEdit(
 
   const reload = async (
     edit: PendingEdit,
-    recovery: NonNullable<PendingEdit["recovery"]>
+    recovery: ReloadOutcome
   ): Promise<void> => {
     setState({ ...edit, activity: "loading" });
-    if (await refresh()) {
+    const saved = await refresh();
+    if (saved) {
       setState(undefined);
-      setFeedback({
-        ...edit,
-        text:
-          recovery === "unconfirmed"
-            ? "Saved entry reloaded. Inspect the entry before editing again."
-            : "Itinerary entry updated."
-      });
+      if (edit.onReload) {
+        edit.onReload(saved, recovery);
+      } else {
+        setFeedback({
+          ...edit,
+          text:
+            recovery === "unconfirmed"
+              ? "Saved entry reloaded. Inspect the entry before editing again."
+              : "Itinerary entry updated."
+        });
+      }
     } else {
       setState({ ...edit, activity: undefined, recovery });
     }
   };
 
-  const save: ItineraryTimingEditing["save"] = async (entryId, edit) => {
+  const save: ItineraryTimingEditing["save"] = async (
+    entryId,
+    edit,
+    onReload
+  ) => {
     if (tripId === undefined || inFlight.current || pending) {
-      return "Wait for the pending itinerary change before editing again.";
+      return new EntryEditError(
+        "Wait for the pending itinerary change before editing again.",
+        false
+      );
     }
-    const target = { tripId, entryId };
+    const target = { tripId, entryId, onReload };
     inFlight.current = true;
     setState({ ...target, activity: "saving" });
     setFeedback(undefined);
     try {
       try {
-        await saveTimingEdit(tripId, entryId, edit);
+        await saveEntryEdit(tripId, entryId, edit);
       } catch (error) {
-        if (error instanceof PlanningSaveError && !error.unconfirmed) {
+        if (error instanceof EntryEditError && !error.unconfirmed) {
           setState(undefined);
-          return error.message;
+          return error;
         }
         setState({ ...target, recovery: "unconfirmed" });
         return;

@@ -82,6 +82,29 @@ export const useClasses = makeStyles({
     columnGap: tokens.spacingHorizontalXS,
     "& svg": { flexShrink: 0, alignSelf: "center" }
   },
+  dragHandle: {
+    display: "inline-flex",
+    flexShrink: 0,
+    alignSelf: "center",
+    padding: tokens.spacingHorizontalXXS,
+    touchAction: "none",
+    "&[draggable='true']": { cursor: "grab" }
+  },
+  dragPreview: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    zIndex: 1,
+    pointerEvents: "none",
+    maxWidth: "min(240px, 90vw)",
+    backgroundColor: tokens.colorNeutralBackground1,
+    color: tokens.colorNeutralForeground1,
+    boxShadow: tokens.shadow8,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase200,
+    overflowWrap: "anywhere"
+  },
   unscheduledFacts: {
     display: "flex",
     flexDirection: "column",
@@ -109,6 +132,15 @@ export const useClasses = makeStyles({
     minWidth: 0,
     overflowWrap: "anywhere"
   },
+  hiddenDragSource: {
+    position: "absolute",
+    opacity: 0,
+    pointerEvents: "none",
+    width: 0,
+    height: 0,
+    overflow: "hidden"
+  },
+  dropOnEmptyDay: { outline: `2px solid ${tokens.colorBrandStroke1}` },
   dayHeading: {
     margin: 0,
     textAlign: "center"
@@ -132,12 +164,16 @@ export const useClasses = makeStyles({
     margin: 0,
     padding: 0,
     listStyleType: "none",
-    rowGap: tokens.spacingVerticalS
+    rowGap: tokens.spacingVerticalXXS
   },
   entry: {
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr)",
-    columnGap: tokens.spacingHorizontalS
+    columnGap: tokens.spacingHorizontalS,
+    ":focus-visible": {
+      outline: `2px solid ${tokens.colorStrokeFocus2}`,
+      outlineOffset: "2px"
+    }
   },
   clocks: {
     display: "grid",
@@ -165,9 +201,19 @@ export const useClasses = makeStyles({
   },
   entryHeader: {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: tokens.spacingHorizontalXS
+  },
+  entryActions: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center"
+  },
+  positionFields: {
+    display: "grid",
+    rowGap: tokens.spacingVerticalM
   },
   plannedLength: {
     display: "flex",
@@ -189,6 +235,16 @@ export const useClasses = makeStyles({
     borderInlineStartStyle: "solid",
     borderInlineStartWidth: "1px",
     paddingInlineStart: tokens.spacingHorizontalS
+  },
+  dropSlot: {
+    minHeight: "6px",
+    borderBlockStartWidth: "2px",
+    borderBlockStartStyle: "solid",
+    borderBlockStartColor: "transparent"
+  },
+  activeDropSlot: {
+    borderBlockStartColor: tokens.colorBrandStroke1,
+    backgroundColor: tokens.colorBrandBackground2
   },
   entryDraft: {
     display: "grid",

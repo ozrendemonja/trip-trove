@@ -28,6 +28,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -82,6 +83,9 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @Autowired
     private ItineraryRepo itineraryRepo;
+
+    @Autowired
+    private JsonMapper mapper;
 
     @Autowired
     private SearchService searchService;
@@ -1026,7 +1030,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, 2, 30})
-    void recordingACheckUsesTwoUpdatesAndNoSelects(int entryCount) throws Exception {
+    void recordingACheckUsesTwoUpdatesOneDeleteAndNoSelects(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
         resetSqlStatementCounts();
 
@@ -1036,7 +1040,67 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertSelectCount(0);
         assertInsertCount(0);
         assertUpdateCount(2);
-        assertDeleteCount(0);
+        assertDeleteCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void movingAnEntryAndReadingTheOutcomeUseOneSelectEach(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var firstEntryId = entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = 1
+                """).getSingleResult();
+        var destination = new MoveItineraryEntryRequest(LocalDate.parse("2026-09-03"), null, null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/position", firstEntryId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(destination)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[2].entries.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void removingACheckedEntryAndReadingMultipleRemovalSummariesUseOneSelectEach(int size) throws Exception {
+        seedItineraryWithEntries(size);
+        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        entityManager.createNativeQuery("""
+                INSERT INTO itinerary_entry_removal (trip_id, date, subject)
+                SELECT 1, DATE '2026-09-01', 'Former attraction ' || ordinal
+                FROM generate_series(1, :count) AS notices(ordinal);
+                """).setParameter("count", size - 1).executeUpdate();
+        var firstEntryId = entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = 1
+                """).getSingleResult();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(delete("/trips/1/itinerary/entries/{entryId}", firstEntryId)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(1);
+        assertUpdateCount(0);
+        assertDeleteCount(1);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(size - 1))
+                .andExpect(jsonPath("$.changeNotices.length()").value(size));
+
+        assertReadOnlySelectCount(1);
     }
 
     @ParameterizedTest

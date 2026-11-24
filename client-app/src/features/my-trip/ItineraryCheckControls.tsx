@@ -34,7 +34,10 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   ATTRACTION_ADDED: "Added to the itinerary",
   START_CHANGED: "Start clock changed",
   PLANNED_LENGTH_CHANGED: "Planned length changed",
-  FIXED_START_CHANGED: "Start lock changed"
+  FIXED_START_CHANGED: "Start lock changed",
+  ENTRY_MOVED: "Moved in the itinerary",
+  ENTRY_REMOVED: "Removed from the itinerary",
+  FOLLOWING_STARTS_PUSHED: "Following entries moved later"
 };
 
 const useStyles = makeStyles({
@@ -170,9 +173,12 @@ export function ItineraryCheckControls({
                 </TabList>
                 <div role="tabpanel" id={panelId} aria-labelledby={tabId}>
                   <ul className={classes.notices}>
-                    {notices.map((notice) => (
+                    {notices.map((notice, index) => (
                       <li
-                        key={`${notice.date}:${notice.entryId ?? "day"}`}
+                        key={
+                          notice.entryId ??
+                          `${notice.date}:${notice.subject}:${index}`
+                        }
                         className={classes.notice}
                       >
                         <Text weight="semibold">{notice.subject}</Text>

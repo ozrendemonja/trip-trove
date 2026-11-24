@@ -14,10 +14,13 @@ import {
   type UpdateItineraryEntryPlannedLengthRequest,
   type UpdateItineraryEntryStartRequest
 } from "../../../clients/manager";
-import { PlanningSaveError } from "./PlanningApi";
+import {
+  isUnconfirmedSave,
+  PLANNING_REQUEST_TIMEOUT_MS,
+  PlanningSaveError
+} from "./PlanningApi";
 
 const itineraryHeaders = { "x-api-version": "1" } as const;
-const requestTimeoutMs = 15_000;
 
 export class EntrySaveError extends PlanningSaveError {
   constructor(
@@ -58,7 +61,7 @@ export async function saveEntryEdit(
   const options = {
     path: { id: tripId, entryId },
     headers: itineraryHeaders,
-    signal: AbortSignal.timeout(requestTimeoutMs)
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
   };
   const result = (() => {
     if ("action" in edit) {
@@ -78,7 +81,7 @@ export async function saveEntryEdit(
   if (!response?.ok) {
     throw new EntryEditError(
       error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
-      !response || response.status >= 500,
+      isUnconfirmedSave(response),
       error?.moveStartChoices?.offsets
     );
   }
@@ -92,13 +95,13 @@ export async function saveEntry(
     path: { id: tripId },
     body: intent,
     headers: itineraryHeaders,
-    signal: AbortSignal.timeout(requestTimeoutMs)
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
   });
   if (!response?.ok) {
     const inputs = error?.schedulingInputs;
     throw new EntrySaveError(
       error?.errorMessage ?? "The attraction couldn't be added.",
-      !response || response.status >= 500,
+      isUnconfirmedSave(response),
       response?.status === 400 && Array.isArray(inputs?.requiredInputs)
         ? inputs
         : undefined

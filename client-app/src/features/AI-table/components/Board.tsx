@@ -3,6 +3,8 @@ import React, {
   useCallback,
   useRef,
   useEffect,
+  useLayoutEffect,
+  useContext,
   useId,
   useMemo,
   useImperativeHandle
@@ -22,7 +24,10 @@ import {
   Spinner,
   Text
 } from "@fluentui/react-components";
-import { Filter20Regular } from "@fluentui/react-icons";
+import {
+  ArrowClockwise20Regular,
+  Filter20Regular
+} from "@fluentui/react-icons";
 import AttractionList from "./AttractionList";
 import type { Attraction } from "./AttractionList.types";
 import "../styles/Board.css";
@@ -30,15 +35,19 @@ import {
   updateTripAttraction,
   clearTripAttractionReview,
   fetchTripBoard,
-  updateTripAttractionWouldVisitAgain
+  updateTripAttractionWouldVisitAgain,
+  type TripAttractionFromServer
 } from "../../my-trip/infra/TripApi";
 import type { TripPlanningChange } from "../../my-trip/domain/TripPlanning.types";
 import { useTripPlanningSave } from "../../my-trip/useTripPlanningSave";
+import {
+  TripPlanningWorkspace,
+  usePlanningReads
+} from "../../my-trip/useTripPlanningWorkspace";
 import { MarkedPlanningChange } from "../../my-trip/MarkedPlanningChange";
 import { Rating } from "../../my-trip/domain/Trip.types";
 import type { TouristDestination, BoardProps } from "./Board.types";
 import {
-  applyVisitHistoryToCities,
   mapSavedTripAttractionsToBoard,
   setPermanentClosureInCities
 } from "../utils/Mapper";
@@ -54,6 +63,43 @@ import {
 } from "../utils/PrepareDraft";
 
 export type { Column, TouristDestination } from "./Board.types";
+
+function savedBoardIncludes(
+  board: TripAttractionFromServer[],
+  change: TripPlanningChange
+): boolean {
+  if (change.type === "dates" || change.type === "arrange") return false;
+  const item = board.find(
+    ({ attractionId }) => attractionId === change.attractionId
+  );
+  if (change.type === "remove") return !item;
+  if (!item) return false;
+  switch (change.type) {
+    case "attach":
+      return item.attractionGroup === change.attractionGroup;
+    case "must-visit":
+      return item.mustVisit === change.mustVisit;
+    case "note":
+      return (item.note ?? "") === (change.note ?? "");
+    case "visit-time":
+      return (item.visitTime ?? "") === (change.visitTime ?? "");
+    case "working-hours":
+      return (item.workingHours ?? "") === (change.workingHours ?? "");
+    case "move": {
+      const placement = indexBoard(mapSavedTripAttractionsToBoard(board)).get(
+        change.attractionId
+      );
+      if (!placement || item.attractionGroup !== change.targetGroup)
+        return false;
+      const { tasks } = placement.column;
+      const index = tasks.findIndex(({ id }) => id === change.attractionId);
+      return (
+        (tasks[index - 1]?.id ?? null) === change.previousAttractionId &&
+        (tasks[index + 1]?.id ?? null) === change.nextAttractionId
+      );
+    }
+  }
+}
 
 function restorationIndex(
   removed: BoardPlacement,
@@ -103,13 +149,15 @@ const Board: React.FC<BoardProps> = ({
   tripId,
   initialReviewData,
   initialSavedAttractionIds,
-  onPlanningBlockedChange,
+  onPlanningChange,
   onReloadSavedPlanning,
   onPlaceOrderChange,
   onPrepareDraftChange,
   visitHistory,
   mode: boardMode
 }) => {
+  const workspace = useContext(TripPlanningWorkspace);
+  const { start: startRead } = usePlanningReads(tripId, workspace);
   const [cities, setCities] = useState<TouristDestination[]>(
     initialCities ?? []
   );
@@ -138,8 +186,11 @@ const Board: React.FC<BoardProps> = ({
   const savedPrepareCount = saveNotice?.count ?? 0;
   const activePrepareSave = useRef<Promise<boolean> | null>(null);
   const [inspectionOpen, setInspectionOpen] = useState(false);
+  const inspecting = useRef(false);
   const [inspectionLoading, setInspectionLoading] = useState(false);
   const [inspectionError, setInspectionError] = useState<string>();
+  const [refreshingBoard, setRefreshingBoard] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<"stale" | "newer">();
   const [inspectedCities, setInspectedCities] =
     useState<TouristDestination[]>();
   // Board moves made in prepare mode, ordered by their latest move.
@@ -168,26 +219,90 @@ const Board: React.FC<BoardProps> = ({
       { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }
     >
   >(initialReviewData ?? {});
-  const refreshPlanning = useCallback(async () => {
-    if (tripId === undefined) {
-      throw new Error("A trip is required to refresh planning.");
+  const replaceSavedCities = useCallback((next: TouristDestination[]): void => {
+    savedCitiesRef.current = next;
+    setCities(next);
+  }, []);
+  const acceptSavedBoard = useCallback(
+    (board: TripAttractionFromServer[], next: TouristDestination[]): void => {
+      replaceSavedCities(next);
+      prepareCityOrderRef.current = next.map((city) => city.name);
+      savedAttractionIdsRef.current = new Set(
+        board.map((item) => item.attractionId)
+      );
+      pendingBoardMovesRef.current = [];
+      removedPlacementsRef.current.clear();
+      setRefreshStatus(undefined);
+    },
+    [replaceSavedCities]
+  );
+  const refreshBoard = useCallback(async (): Promise<void> => {
+    if (
+      tripId === undefined ||
+      reviewMode ||
+      inspecting.current ||
+      inspectionOpen ||
+      workspace?.isWriting()
+    )
+      return;
+    const request = startRead();
+    setRefreshingBoard(true);
+    try {
+      const board = await fetchTripBoard(tripId, request.signal);
+      if (!request.isCurrent()) return;
+      const next = mapSavedTripAttractionsToBoard(board);
+      if (workspace?.hasLocalWork()) {
+        setRefreshStatus(
+          JSON.stringify(next) === JSON.stringify(savedCitiesRef.current)
+            ? undefined
+            : "newer"
+        );
+        return;
+      }
+      acceptSavedBoard(board, next);
+    } catch {
+      if (request.isCurrent()) setRefreshStatus("stale");
+    } finally {
+      if (request.isLatest()) setRefreshingBoard(false);
     }
-    const board = await fetchTripBoard(tripId);
-    await onReloadSavedPlanning?.();
-    const currentCities = applyVisitHistoryToCities(
-      mapSavedTripAttractionsToBoard(board),
-      visitHistory
-    );
-    setCities(currentCities);
-    savedCitiesRef.current = currentCities;
-    prepareCityOrderRef.current = currentCities.map((city) => city.name);
-    savedAttractionIdsRef.current = new Set(
-      board.map((item) => item.attractionId)
-    );
-    pendingBoardMovesRef.current = [];
-    setCommitVersion((version) => version + 1);
-  }, [onReloadSavedPlanning, tripId, visitHistory]);
-  const planning = useTripPlanningSave(tripId, refreshPlanning);
+  }, [
+    tripId,
+    reviewMode,
+    inspectionOpen,
+    workspace,
+    startRead,
+    acceptSavedBoard
+  ]);
+  const inspectPlanning = useCallback(
+    async (change: TripPlanningChange): Promise<boolean> => {
+      if (tripId === undefined)
+        throw new Error("A trip is required to inspect saved planning.");
+      inspecting.current = true;
+      setRefreshingBoard(false);
+      const request = startRead();
+      try {
+        const board = await fetchTripBoard(tripId, request.signal);
+        if (!request.isCurrent())
+          throw new Error(
+            "The inspection was superseded. Try inspecting again."
+          );
+        await onReloadSavedPlanning?.();
+        if (!request.isCurrent())
+          throw new Error(
+            "The inspection was superseded. Try inspecting again."
+          );
+        acceptSavedBoard(board, mapSavedTripAttractionsToBoard(board));
+        return savedBoardIncludes(board, change);
+      } catch (error) {
+        if (request.isCurrent()) setRefreshStatus("stale");
+        throw error;
+      } finally {
+        inspecting.current = false;
+      }
+    },
+    [onReloadSavedPlanning, tripId, startRead, acceptSavedBoard]
+  );
+  const planning = useTripPlanningSave(tripId, inspectPlanning, workspace);
   const {
     submit: submitPlanning,
     save: savePlanning,
@@ -195,7 +310,7 @@ const Board: React.FC<BoardProps> = ({
     clearSaveError
   } = planning;
   const rejectedChange =
-    planning.feedback?.state === "error"
+    planning.feedback?.state === "error" && !planning.feedback.unconfirmed
       ? planning.feedback.failedChange
       : undefined;
   const correction = useMemo(
@@ -206,25 +321,44 @@ const Board: React.FC<BoardProps> = ({
         rejectedChange.type === "visit-time")
         ? {
             attractionId: rejectedChange.attractionId,
-            field: rejectedChange.type
+            field: rejectedChange.type,
+            value:
+              (rejectedChange.type === "note"
+                ? rejectedChange.note
+                : rejectedChange.type === "working-hours"
+                  ? rejectedChange.workingHours
+                  : rejectedChange.visitTime) ?? ""
           }
         : undefined,
     [rejectedChange]
   );
-  const onPlanningCommitted = useCallback((change: TripPlanningChange) => {
-    if (change.type === "attach") {
-      savedAttractionIdsRef.current.add(change.attractionId);
-    } else if (change.type === "remove") {
-      savedAttractionIdsRef.current.delete(change.attractionId);
-    } else if (change.type === "arrange") {
-      pendingBoardMovesRef.current = [];
-    }
-    setCommitVersion((version) => version + 1);
-  }, []);
+  const commitRemoval = useCallback(
+    (change: TripPlanningChange) => {
+      if (change.type === "remove") {
+        savedAttractionIdsRef.current.delete(change.attractionId);
+        replaceSavedCities(
+          savedCitiesRef.current
+            .map((city) => ({
+              ...city,
+              columns: city.columns.map((column) => ({
+                ...column,
+                tasks: column.tasks.filter(
+                  (task) => task.id !== change.attractionId
+                )
+              }))
+            }))
+            .filter((city) =>
+              city.columns.some((column) => column.tasks.length)
+            )
+        );
+      }
+    },
+    [replaceSavedCities]
+  );
 
-  useEffect(() => {
-    onPlanningBlockedChange?.(planning.blocked);
-  }, [onPlanningBlockedChange, planning.blocked]);
+  useLayoutEffect(() => {
+    onPlanningChange?.(planning.feedback);
+  }, [onPlanningChange, planning.feedback]);
   useEffect(() => {
     onPlaceOrderChange?.(cities.map((city) => city.name));
   }, [cities, onPlaceOrderChange]);
@@ -358,7 +492,7 @@ const Board: React.FC<BoardProps> = ({
   );
 
   const onDragLeaveColumn = useCallback(
-    (colId: string) => (e: React.DragEvent<HTMLDivElement>) => {
+    (e: React.DragEvent<HTMLDivElement>) => {
       if (!dragState || isPlanningBlocked()) return;
       if (e.currentTarget.contains(e.relatedTarget as Node)) return;
       setDragUI({ overColumnId: null, insertionIndex: -1 });
@@ -463,12 +597,13 @@ const Board: React.FC<BoardProps> = ({
           sourceColumn !== targetColumn || insertionIndex !== sourceTaskIndex;
         if (placementChanged) {
           const attractionGroup = COLUMN_TO_GROUP[targetColumn.title];
-          let accepted = true;
+          let stageLocally = true;
           if (tripId && attractionGroup) {
             if (persistImmediately || isPlanMode) {
               const previousAttraction = targetColumn.tasks[insertionIndex - 1];
               const nextAttraction = targetColumn.tasks[insertionIndex + 1];
-              accepted = submitPlanning({
+              stageLocally = false;
+              submitPlanning({
                 subjectIds: [attraction.id],
                 subjectName: attraction.name,
                 description: `Move to ${targetColumn.title}`,
@@ -480,7 +615,8 @@ const Board: React.FC<BoardProps> = ({
                     previousAttractionId: previousAttraction?.id ?? null,
                     nextAttractionId: nextAttraction?.id ?? null
                   }
-                ]
+                ],
+                onCommitted: () => replaceSavedCities(nextCities)
               });
             } else if (isPrepare) {
               pendingBoardMovesRef.current = [
@@ -491,7 +627,10 @@ const Board: React.FC<BoardProps> = ({
               ];
             }
           }
-          if (accepted) setCities(nextCities);
+          if (stageLocally) {
+            if (isPrepare) setCities(nextCities);
+            else replaceSavedCities(nextCities);
+          }
         }
         setDragState(null);
         setDragUI({ overColumnId: null, insertionIndex: -1 });
@@ -506,7 +645,8 @@ const Board: React.FC<BoardProps> = ({
       isPlanMode,
       isPrepare,
       submitPlanning,
-      isPlanningBlocked
+      isPlanningBlocked,
+      replaceSavedCities
     ]
   );
 
@@ -524,28 +664,27 @@ const Board: React.FC<BoardProps> = ({
       ) {
         clearSaveError();
       }
-      if (
-        !submitPlanning({
-          subjectIds: [task.id],
-          subjectName: task.name,
-          description,
-          changes: [change]
-        })
-      )
-        return;
-      setCities((prev) =>
-        prev.map((city) => ({
-          ...city,
-          columns: city.columns.map((column) => ({
-            ...column,
-            tasks: column.tasks.map((item) =>
-              item.id === task.id ? { ...item, ...partial } : item
-            )
-          }))
-        }))
-      );
+      submitPlanning({
+        subjectIds: [task.id],
+        subjectName: task.name,
+        description,
+        changes: [change],
+        onCommitted: () => {
+          replaceSavedCities(
+            savedCitiesRef.current.map((city) => ({
+              ...city,
+              columns: city.columns.map((column) => ({
+                ...column,
+                tasks: column.tasks.map((item) =>
+                  item.id === task.id ? { ...item, ...partial } : item
+                )
+              }))
+            }))
+          );
+        }
+      });
     },
-    [readOnly, submitPlanning, correction, clearSaveError]
+    [readOnly, submitPlanning, correction, clearSaveError, replaceSavedCities]
   );
 
   const toggleAttractionPermanentlyClosed = useCallback(
@@ -553,6 +692,7 @@ const Board: React.FC<BoardProps> = ({
       if (!isPrepare) return;
       void setAttractionPermanentlyClosed(attractionId, isClosed)
         .then(() => {
+          workspace?.invalidateReads();
           pendingBoardMovesRef.current = [
             ...pendingBoardMovesRef.current.filter((id) => id !== attractionId),
             attractionId
@@ -574,7 +714,7 @@ const Board: React.FC<BoardProps> = ({
           )
         );
     },
-    [isPrepare, visitHistory]
+    [isPrepare, visitHistory, workspace]
   );
 
   // Generic update by attraction id (hidden internal id).
@@ -852,7 +992,12 @@ const Board: React.FC<BoardProps> = ({
   }, [highlightedAttractionIds]);
 
   const discardPreparedChanges = useCallback((): void => {
-    if (planning.feedback?.state === "saving") return;
+    if (planning.feedback?.state === "saving" || planning.feedback?.unconfirmed)
+      return;
+    if (!isPrepare) {
+      clearSaveError();
+      return;
+    }
     setCities(
       savedCitiesRef.current
         .map((city) => ({
@@ -875,28 +1020,38 @@ const Board: React.FC<BoardProps> = ({
     );
     setSaveNotice(undefined);
     clearSaveError();
-  }, [clearSaveError, planning.feedback?.state]);
+  }, [
+    clearSaveError,
+    isPrepare,
+    planning.feedback?.state,
+    planning.feedback?.unconfirmed
+  ]);
 
   const inspectSavedPlanning = useCallback(async (): Promise<void> => {
-    if (tripId === undefined) return;
+    if (tripId === undefined || inspecting.current) return;
+    inspecting.current = true;
+    setRefreshingBoard(false);
     setInspectionOpen(true);
-    if (inspectionLoading) return;
     setInspectionLoading(true);
     setInspectionError(undefined);
     setInspectedCities(undefined);
+    const request = startRead();
     try {
-      const saved = await fetchTripBoard(tripId);
-      setInspectedCities(mapSavedTripAttractionsToBoard(saved));
+      const saved = await fetchTripBoard(tripId, request.signal);
+      if (request.isCurrent())
+        setInspectedCities(mapSavedTripAttractionsToBoard(saved));
     } catch (error) {
+      if (!request.isCurrent()) return;
       setInspectionError(
         error instanceof Error
           ? error.message
           : "Saved planning couldn't be loaded. Your draft is still here."
       );
     } finally {
+      inspecting.current = false;
       setInspectionLoading(false);
     }
-  }, [inspectionLoading, tripId]);
+  }, [startRead, tripId]);
 
   const acceptInspectedPlanning = (keepDraft: boolean): void => {
     if (!inspectedCities) return;
@@ -926,6 +1081,7 @@ const Board: React.FC<BoardProps> = ({
     }
     setCommitVersion((version) => version + 1);
     clearSaveError();
+    setRefreshStatus(undefined);
     setInspectionOpen(false);
   };
 
@@ -936,6 +1092,7 @@ const Board: React.FC<BoardProps> = ({
       save: commitPreparedChanges,
       discard: discardPreparedChanges,
       inspect: inspectSavedPlanning,
+      refresh: refreshBoard,
       reflectSavedVisitDuration: (attractionId, duration) => {
         const apply = (current: TouristDestination[]): TouristDestination[] =>
           current.map((city) => ({
@@ -957,11 +1114,12 @@ const Board: React.FC<BoardProps> = ({
       addPreparedAttractions,
       commitPreparedChanges,
       discardPreparedChanges,
-      inspectSavedPlanning
+      inspectSavedPlanning,
+      refreshBoard
     ]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     onPrepareDraftChange?.({
       count: pendingCommitCount,
       saving: isPrepare && planning.feedback?.state === "saving",
@@ -1009,17 +1167,16 @@ const Board: React.FC<BoardProps> = ({
           removedPlacementsRef.current.set(attractionId, placement);
         }
       }
-      if (
-        persistImmediately &&
-        !submitPlanning({
+      if (persistImmediately) {
+        submitPlanning({
           subjectIds: [attractionId],
           subjectName: task?.name ?? "removed attraction",
           description: `Remove ${task?.name ?? "attraction"} from trip`,
           changes: [{ type: "remove", attractionId }],
-          onCommitted: onPlanningCommitted
-        })
-      )
+          onCommitted: commitRemoval
+        });
         return;
+      }
       setCities((prev) =>
         prev
           .map((city) => ({
@@ -1039,7 +1196,7 @@ const Board: React.FC<BoardProps> = ({
       isPrepare,
       cities,
       submitPlanning,
-      onPlanningCommitted
+      commitRemoval
     ]
   );
 
@@ -1061,9 +1218,8 @@ const Board: React.FC<BoardProps> = ({
           }
         }
       }
-      if (
-        persistImmediately &&
-        !submitPlanning({
+      if (persistImmediately) {
+        submitPlanning({
           subjectIds: attractionIds,
           subjectName: cityName,
           description: `Remove all attractions from ${cityName}`,
@@ -1071,10 +1227,10 @@ const Board: React.FC<BoardProps> = ({
             type: "remove",
             attractionId
           })),
-          onCommitted: onPlanningCommitted
-        })
-      )
+          onCommitted: commitRemoval
+        });
         return;
+      }
       setCities((prev) => prev.filter((c) => c.name !== cityName));
     },
     [
@@ -1083,7 +1239,7 @@ const Board: React.FC<BoardProps> = ({
       isPrepare,
       cities,
       submitPlanning,
-      onPlanningCommitted
+      commitRemoval
     ]
   );
 
@@ -1150,6 +1306,7 @@ const Board: React.FC<BoardProps> = ({
       onReload={() =>
         void (isPrepare ? inspectSavedPlanning() : planning.reload())
       }
+      onDiscard={isPrepare ? undefined : discardPreparedChanges}
     />
   ) : null;
   const hasFeedbackHost = cities.some(
@@ -1234,6 +1391,22 @@ const Board: React.FC<BoardProps> = ({
         </DialogSurface>
       </Dialog>
       <div className="board-toolbar">
+        {workspace && !reviewMode && (
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={<ArrowClockwise20Regular />}
+            aria-label="Refresh trip board"
+            title="Refresh trip board"
+            aria-busy={refreshingBoard}
+            disabledFocusable={
+              planning.feedback?.state === "saving" ||
+              !!planning.feedback?.refreshing
+            }
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => void refreshBoard()}
+          />
+        )}
         {planning.blocked && (
           <Text size={200}>
             {planning.feedback?.state === "saving"
@@ -1251,6 +1424,15 @@ const Board: React.FC<BoardProps> = ({
         >
           Filters on demand
         </Button>
+        {refreshStatus && (
+          <MessageBar intent={refreshStatus === "stale" ? "warning" : "info"}>
+            <MessageBarBody>
+              {refreshStatus === "stale"
+                ? "The trip board couldn't be refreshed. Shown attractions may be out of date."
+                : "Newer board data is available. Finish or cancel your change, then refresh to see it."}
+            </MessageBarBody>
+          </MessageBar>
+        )}
         {filtersOpen && (
           <div className="filters-row" id={filtersId}>
             <Field label="Countrywide" size="small">
@@ -1376,7 +1558,7 @@ const Board: React.FC<BoardProps> = ({
                       key={col.id}
                       className="attraction-board-column"
                       onDragOver={onDragOverColumn(col.id)}
-                      onDragLeave={onDragLeaveColumn(col.id)}
+                      onDragLeave={onDragLeaveColumn}
                       onDrop={onDrop(
                         col.id,
                         filteredTasks.map((task) => task.id)

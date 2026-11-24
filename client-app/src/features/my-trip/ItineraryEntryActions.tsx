@@ -22,6 +22,7 @@ import type {
 } from "../../clients/manager";
 import { useClasses } from "./Itinerary.styles";
 import { localClock } from "./itineraryClocks";
+import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
 type Day = GetItineraryResponse["days"][number];
 type Entry = Day["entries"][number];
@@ -63,6 +64,7 @@ export function ItineraryEntryActions({
     setDialog(undefined);
     menuButton.current?.focus();
   };
+  usePlanningDraft(dialog !== undefined, close);
 
   return (
     <>

@@ -6,6 +6,7 @@ import type {
 } from "../../clients/manager";
 import { EntrySaveError, saveEntry } from "./infra/ItinerarySchedulingApi";
 import { clockOffset, localClock } from "./itineraryClocks";
+import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
 type Day = GetItineraryResponse["days"][number];
@@ -44,6 +45,7 @@ interface Context {
   loadSaved: () => Promise<GetItineraryResponse | undefined>;
   showDate: (date: string) => void;
   onDurationCorrected: (attractionId: number, duration: string) => void;
+  workspace: PlanningWorkspace;
 }
 
 export interface ItineraryScheduling {
@@ -66,7 +68,8 @@ export function useItineraryScheduling({
   timeZone,
   loadSaved,
   showDate,
-  onDurationCorrected
+  onDurationCorrected,
+  workspace
 }: Context): ItineraryScheduling {
   const [state, setDraft] = useState<EntryDraft>();
   const draft = state?.tripId === tripId ? state : undefined;
@@ -98,32 +101,37 @@ export function useItineraryScheduling({
 
   const save = async (entryDraft: EntryDraft): Promise<void> => {
     if (inFlight.current) return;
+    const release = workspace.beginWrite();
+    if (!release) return;
     inFlight.current = true;
     setDraft({ ...entryDraft, activity: "saving", message: undefined });
     try {
-      await saveEntry(entryDraft.tripId, entryDraft.intent);
-    } catch (error) {
-      const failure = error instanceof EntrySaveError ? error : undefined;
-      const unconfirmed = failure?.unconfirmed ?? true;
-      const required = failure?.schedulingInputs?.requiredInputs ?? [];
-      setDraft({
-        ...entryDraft,
-        activity: undefined,
-        unconfirmed,
-        inputs: [...new Set([...entryDraft.inputs, ...required])],
-        message: unconfirmed
-          ? "The save couldn't be confirmed. Inspect the saved itinerary before trying again."
-          : required.includes("VISIT_DURATION") &&
-              entryDraft.intent.visitDuration
-            ? "Enter a valid visit duration or range in whole hours and minutes."
-            : failure?.message
-      });
-      return;
+      try {
+        await saveEntry(entryDraft.tripId, entryDraft.intent);
+      } catch (error) {
+        const failure = error instanceof EntrySaveError ? error : undefined;
+        const unconfirmed = failure?.unconfirmed ?? true;
+        const required = failure?.schedulingInputs?.requiredInputs ?? [];
+        setDraft({
+          ...entryDraft,
+          activity: undefined,
+          unconfirmed,
+          inputs: [...new Set([...entryDraft.inputs, ...required])],
+          message: unconfirmed
+            ? "The save couldn't be confirmed. Inspect the saved itinerary before trying again."
+            : required.includes("VISIT_DURATION") &&
+                entryDraft.intent.visitDuration
+              ? "Enter a valid visit duration or range in whole hours and minutes."
+              : failure?.message
+        });
+        return;
+      }
+      await loadSaved();
+      finish(entryDraft, entryDraft.intent.date);
     } finally {
       inFlight.current = false;
+      release();
     }
-    finish(entryDraft, entryDraft.intent.date);
-    await loadSaved();
   };
 
   const choose = (

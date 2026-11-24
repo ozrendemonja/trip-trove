@@ -14,12 +14,16 @@ import { useClasses } from "./Itinerary.styles";
 import { attractionImportance } from "./UnscheduledAttractions";
 import {
   clockOffset,
+  clockEditInput,
   elapsedMinutes,
   localClock,
   parseTimingEdit,
   type TimingField
 } from "./itineraryClocks";
-import type { ItineraryTimingEditing } from "./useItineraryTimingEdit";
+import {
+  editKind,
+  type ItineraryTimingEditing
+} from "./useItineraryTimingEdit";
 
 type Entry = GetItineraryResponse["days"][number]["entries"][number];
 const endDateLabel = new Intl.DateTimeFormat("en-GB", {
@@ -51,7 +55,8 @@ export function TimelineEntry({
   const errorId = useId();
   const lockErrorId = useId();
   const lengthId = useId();
-  const [draft, setDraft] = useState<{ field: TimingField; value: string }>();
+  type ClockInput = { field: TimingField; value: string };
+  const [draft, setDraft] = useState<ClockInput & { changed: boolean }>();
   const [endFocused, setEndFocused] = useState(false);
   const [error, setError] = useState<{
     input: HTMLInputElement;
@@ -67,6 +72,18 @@ export function TimelineEntry({
   const startOffset = clockOffset(start);
   const endOffset = clockOffset(end);
   const showOffsets = startOffset !== endOffset;
+  const proposedClock = (field: TimingField): string | undefined => {
+    const text = editing.getClockInput(entry.entryId, field);
+    if (text !== undefined) return text;
+    const rejected = editing.rejections.find(
+      (item) => item.entryId === entry.entryId && editKind(item.edit) === field
+    );
+    const input = rejected && clockEditInput(rejected.edit);
+    if (input?.field === "length") return String(input.minutes);
+    if (input?.field === "end" && input.date !== endDate)
+      return `${input.date} ${input.clock}`;
+    return input?.clock;
+  };
   const status =
     editing.pending?.entryId === entry.entryId && editing.pending.activity
       ? editing.pending.activity === "saving"
@@ -118,11 +135,24 @@ export function TimelineEntry({
     appearance: "underline",
     readOnly: blocked,
     value: draft?.field === field ? draft.value : accepted,
-    onChange: (_event, { value }) => setDraft({ field, value }),
+    onFocus: () => {
+      if (field === "end") setEndFocused(true);
+      const proposal = proposedClock(field);
+      if (!blocked && proposal !== undefined) {
+        setDraft({ field, value: proposal, changed: false });
+      }
+    },
+    onChange: (_event, { value }) => {
+      setDraft({ field, value, changed: true });
+      editing.setClockInput(entry.entryId, field, value);
+    },
     onKeyDown: (event) => {
       if (event.key === "Escape" && draft?.field === field) {
         event.preventDefault();
         setDraft(undefined);
+        editing.setClockInput(entry.entryId, field);
+        editing.discardRejection(entry.entryId, field);
+        setError(undefined);
       }
       if (event.key === "Enter") {
         event.preventDefault();
@@ -133,15 +163,19 @@ export function TimelineEntry({
       if (field === "end") setEndFocused(false);
       if (draft?.field !== field) return;
       setDraft(undefined);
-      if (blocked) return;
-      const edit = parseTimingEdit(field, input.value, endDate);
+      if (!draft.changed) return;
+      const edit = blocked
+        ? "Wait for the current planning change before saving this clock."
+        : parseTimingEdit(field, draft.value, endDate);
       if (typeof edit === "string") {
         setError({ input, field, message: edit });
         return;
       }
       setError(undefined);
       void editing.save(entry.entryId, edit).then((failure) => {
-        if (failure) setError({ input, field, message: failure.message });
+        if (failure) {
+          setError({ input, field, message: failure.message });
+        }
       });
     }
   });
@@ -171,7 +205,6 @@ export function TimelineEntry({
               className={mergeClasses(classes.clockInput, classes.endClock)}
               title={`${end} (${zone}). ${endHint}`}
               aria-description={`End date: ${endDate}. ${endHint}`}
-              onFocus={() => setEndFocused(true)}
             />
             {endDate !== start.slice(0, 10) && (
               <Caption1>

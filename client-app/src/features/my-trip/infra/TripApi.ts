@@ -15,7 +15,11 @@ import { LastReadTrip, Rating, Trip, TripStatus } from "../domain/Trip.types";
 import { AttractionVisitHistory } from "../domain/VisitHistory.types";
 import { chunk } from "../../../shared/utils/chunk";
 import type { TripAttractionGroup } from "../domain/TripPlanning.types";
-import { PlanningSaveError } from "./PlanningApi";
+import {
+  isUnconfirmedSave,
+  PLANNING_REQUEST_TIMEOUT_MS,
+  PlanningSaveError
+} from "./PlanningApi";
 
 export type {
   TripAttractionGroup,
@@ -40,6 +44,7 @@ export interface TripAttractionFromServer {
   infoFrom: string;
   infoRecorded?: string;
   optimalVisitPeriod?: { fromDate: string; toDate: string };
+  permanentlyClosedAt?: string;
   status: TripAttractionStatus;
   rating?: string;
   note?: string;
@@ -237,7 +242,10 @@ export const fetchTripItinerary = async (
   const { data, error } = await getItinerary({
     path: { id },
     headers: { "x-api-version": "1" },
-    signal,
+    signal: AbortSignal.any([
+      signal,
+      AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
+    ]),
     cache: "no-store"
   });
   if (error || !isSavedItinerary(data, id)) {
@@ -250,12 +258,12 @@ export const saveItineraryCheck = async (id: number): Promise<void> => {
   const { response, error } = await checkItinerary({
     path: { id },
     headers: { "x-api-version": "1" },
-    signal: AbortSignal.timeout(15_000)
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
   });
   if (!response?.ok) {
     throw new PlanningSaveError(
       error?.errorMessage ?? "The itinerary couldn't be checked.",
-      !response || response.status >= 500
+      isUnconfirmedSave(response)
     );
   }
 };
@@ -323,13 +331,17 @@ export const updateTripAttractionWouldVisitAgain = async (
 };
 
 export const fetchTripBoard = async (
-  tripId: number
+  tripId: number,
+  signal?: AbortSignal
 ): Promise<TripAttractionFromServer[]> => {
+  const timeout = AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS);
   const { data, error } = await client.get<TripAttractionFromServer[]>({
     url: `/trips/${tripId}/attractions`,
-    headers: { "x-api-version": "1" }
+    headers: { "x-api-version": "1" },
+    cache: "no-store",
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout
   });
-  if (error || !data) {
+  if (error || !Array.isArray(data)) {
     throw new Error("The trip's current planning couldn't be loaded.", {
       cause: error
     });

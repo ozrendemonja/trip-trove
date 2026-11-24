@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import type { TripPlanningChange } from "./domain/TripPlanning.types";
-import { PlanningSaveError, savePlanningChange } from "./infra/PlanningApi";
+import {
+  PLANNING_REQUEST_TIMEOUT_MS,
+  PlanningSaveError,
+  savePlanningChange
+} from "./infra/PlanningApi";
+import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 
 interface PlanningProposal {
   subjectIds: number[];
@@ -32,7 +37,8 @@ interface TripPlanningSave {
 
 export const useTripPlanningSave = (
   tripId: number | undefined,
-  refresh: () => Promise<void>
+  inspect: (change: TripPlanningChange) => Promise<boolean>,
+  workspace?: PlanningWorkspace
 ): TripPlanningSave => {
   const pending = useRef(false);
   const working = useRef(false);
@@ -41,14 +47,23 @@ export const useTripPlanningSave = (
   const save = useCallback(
     async (proposal: PlanningProposal): Promise<boolean> => {
       if (pending.current) return false;
-      if (tripId === undefined || proposal.changes.length === 0) return true;
+      if (tripId === undefined || proposal.changes.length === 0) {
+        for (const change of proposal.changes) proposal.onCommitted?.(change);
+        return true;
+      }
+      const release = workspace?.beginWrite();
+      if (workspace && !release) return false;
       pending.current = true;
       working.current = true;
       setFeedback({ proposal, state: "saving" });
       let completed = 0;
       try {
         for (const change of proposal.changes) {
-          await savePlanningChange(tripId, change);
+          await savePlanningChange(
+            tripId,
+            change,
+            AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
+          );
           proposal.onCommitted?.(change);
           completed++;
         }
@@ -61,11 +76,11 @@ export const useTripPlanningSave = (
           !(error instanceof PlanningSaveError) || error.unconfirmed;
         pending.current = unconfirmed || !proposal.allowRetryAfterRejection;
         const reason =
-          error instanceof Error
+          error instanceof PlanningSaveError
             ? error.message
             : "The save couldn't be confirmed. Reload saved planning before trying again.";
         setFeedback({
-          proposal,
+          proposal: { ...proposal, changes: proposal.changes.slice(completed) },
           state: "error",
           failedChange,
           unconfirmed,
@@ -77,18 +92,19 @@ export const useTripPlanningSave = (
         return false;
       } finally {
         working.current = false;
+        release?.();
       }
     },
-    [tripId]
+    [tripId, workspace]
   );
 
   const submit = useCallback(
     (proposal: PlanningProposal): boolean => {
-      if (pending.current) return false;
+      if (pending.current || workspace?.isWriting()) return false;
       void save(proposal);
       return true;
     },
-    [save]
+    [save, workspace]
   );
 
   const clearSaveError = useCallback(() => {
@@ -98,15 +114,29 @@ export const useTripPlanningSave = (
   }, []);
 
   const reload = useCallback(async (): Promise<void> => {
-    if (working.current) return;
+    if (working.current || !feedback?.unconfirmed || !feedback.failedChange)
+      return;
     working.current = true;
     setFeedback((previous) =>
       previous ? { ...previous, refreshing: true } : previous
     );
     try {
-      await refresh();
-      pending.current = false;
-      setFeedback(undefined);
+      const committed = await inspect(feedback.failedChange);
+      const changes = committed
+        ? feedback.proposal.changes.slice(1)
+        : feedback.proposal.changes;
+      pending.current = changes.length > 0;
+      setFeedback(
+        changes.length === 0
+          ? { proposal: feedback.proposal, state: "saved" }
+          : {
+              proposal: { ...feedback.proposal, changes },
+              state: "error",
+              failedChange: changes[0],
+              message:
+                "Saved planning is loaded. This change is not reflected in the saved board."
+            }
+      );
     } catch (error) {
       setFeedback((previous) =>
         previous
@@ -120,7 +150,7 @@ export const useTripPlanningSave = (
     } finally {
       working.current = false;
     }
-  }, [refresh]);
+  }, [feedback, inspect]);
 
   return {
     feedback,
@@ -132,7 +162,10 @@ export const useTripPlanningSave = (
         feedback.proposal.allowRetryAfterRejection &&
         !feedback.unconfirmed
       ),
-    isBlocked: useCallback(() => pending.current, []),
+    isBlocked: useCallback(
+      () => pending.current || !!workspace?.isWriting(),
+      [workspace]
+    ),
     submit,
     save,
     clearSaveError,

@@ -2,11 +2,13 @@ import { useRef, useState } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import { saveItineraryCheck } from "./infra/TripApi";
 import { PlanningSaveError } from "./infra/PlanningApi";
+import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 
 type Attempt = {
   tripId: number;
   activity?: "saving" | "inspecting";
   unconfirmed?: boolean;
+  rejected?: boolean;
   lastCheckedAt?: string;
   message?: string;
 };
@@ -14,15 +16,18 @@ type Attempt = {
 interface ItineraryCheck {
   activity: Attempt["activity"];
   unconfirmed: boolean;
+  rejected: boolean;
   locked: boolean;
   message?: string;
   submit: (saved: GetItineraryResponse) => Promise<void>;
   inspect: () => Promise<void>;
+  discardRejection: () => void;
 }
 
 export function useItineraryCheck(
   tripId: number | undefined,
-  refresh: () => Promise<GetItineraryResponse | undefined>
+  refresh: () => Promise<GetItineraryResponse | undefined>,
+  workspace: PlanningWorkspace
 ): ItineraryCheck {
   const [attempt, setAttempt] = useState<Attempt>();
   const current = attempt?.tripId === tripId ? attempt : undefined;
@@ -31,33 +36,38 @@ export function useItineraryCheck(
 
   const submit = async (saved: GetItineraryResponse): Promise<void> => {
     if (inFlight.current || unconfirmed || saved.tripId !== tripId) return;
+    const release = workspace.beginWrite();
+    if (!release) return;
     inFlight.current = true;
     const previous = { tripId, lastCheckedAt: saved.lastCheckedAt };
     setAttempt({ ...previous, activity: "saving" });
     try {
-      await saveItineraryCheck(tripId);
-    } catch (error) {
-      const failure = error instanceof PlanningSaveError ? error : undefined;
-      const uncertain = failure?.unconfirmed ?? true;
+      try {
+        await saveItineraryCheck(tripId);
+      } catch (error) {
+        const failure = error instanceof PlanningSaveError ? error : undefined;
+        const uncertain = failure?.unconfirmed ?? true;
+        setAttempt({
+          ...previous,
+          unconfirmed: uncertain,
+          rejected: !uncertain,
+          message: uncertain
+            ? "The check couldn't be confirmed. Inspect the saved check state before trying again."
+            : failure?.message
+        });
+        return;
+      }
+      const latest = await refresh();
       setAttempt({
-        ...previous,
-        unconfirmed: uncertain,
-        message: uncertain
-          ? "The check couldn't be confirmed. Inspect the saved check state before trying again."
-          : failure?.message
+        tripId,
+        message: latest
+          ? undefined
+          : "The check was saved, but the itinerary couldn't be refreshed."
       });
+    } finally {
       inFlight.current = false;
-      return;
+      release();
     }
-
-    const latest = await refresh();
-    setAttempt({
-      tripId,
-      message: latest
-        ? undefined
-        : "The check was saved, but the itinerary couldn't be refreshed."
-    });
-    inFlight.current = false;
   };
 
   const inspect = async (): Promise<void> => {
@@ -81,9 +91,13 @@ export function useItineraryCheck(
   return {
     activity: current?.activity,
     unconfirmed,
+    rejected: !!current?.rejected,
     locked: unconfirmed || !!current?.activity,
     message: current?.message,
     submit,
-    inspect
+    inspect,
+    discardRejection: () => {
+      if (current?.rejected) setAttempt(undefined);
+    }
   };
 }

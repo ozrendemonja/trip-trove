@@ -24,6 +24,7 @@ const useStyles = makeStyles({
 interface Props {
   feedback: PlanningFeedback;
   onReload: () => void;
+  onDiscard?: () => void;
 }
 
 const labels = {
@@ -34,10 +35,11 @@ const labels = {
 
 export const MarkedPlanningChange = ({
   feedback,
-  onReload
+  onReload,
+  onDiscard
 }: Props): ReactElement => {
   const classes = useStyles();
-  const { state, proposal, message, refreshing } = feedback;
+  const { state, proposal, message, refreshing, unconfirmed } = feedback;
   const problem = state !== "saving" && state !== "saved";
   return (
     <div
@@ -53,11 +55,11 @@ export const MarkedPlanningChange = ({
           tabIndex={0}
           className={problem ? classes.problem : undefined}
         >
-          {labels[state]}
+          {unconfirmed ? "Unconfirmed" : labels[state]}
         </Text>
       </Tooltip>
       <Text size={200}>{message ?? proposal.description}</Text>
-      {state === "error" && (
+      {unconfirmed && (
         <Tooltip content="Reload saved planning" relationship="label">
           <Button
             size="small"
@@ -67,6 +69,11 @@ export const MarkedPlanningChange = ({
             onClick={onReload}
           />
         </Tooltip>
+      )}
+      {state === "error" && !unconfirmed && onDiscard && (
+        <Button size="small" appearance="subtle" onClick={onDiscard}>
+          Discard change
+        </Button>
       )}
     </div>
   );

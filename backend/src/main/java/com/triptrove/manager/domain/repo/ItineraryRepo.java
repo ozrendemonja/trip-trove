@@ -7,6 +7,7 @@ import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummar
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntrySummary;
+import com.triptrove.manager.domain.model.ItinerarySchedulingEntrySummary;
 import com.triptrove.manager.domain.model.ItinerarySummary;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
@@ -44,19 +45,17 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     Optional<Itinerary> findWithDaysByTripId(Long tripId);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.repo.ItineraryRepo$ItinerarySummaryRow(
-                trip.from, trip.to, itinerary.timeZone, day.date, entry.attractionId, entry.position, entry.timing)
+            SELECT new com.triptrove.manager.domain.repo.ItinerarySummaryRow(
+                trip.from, trip.to, itinerary.timeZone, day.date, entry.attractionId, attraction.name,
+                entry.position, entry.fixedStart, entry.timing)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN itinerary.days day
             LEFT JOIN ItineraryEntry entry ON entry.tripId = itinerary.tripId AND entry.timing.date = day.date
+            LEFT JOIN Attraction attraction ON attraction.id = entry.attractionId
             WHERE itinerary.tripId = :tripId
             """)
     List<ItinerarySummaryRow> findSummaryRowsByTripId(Long tripId);
-
-    record ItinerarySummaryRow(LocalDate tripStart, LocalDate tripEnd, String timeZone, LocalDate itineraryDate,
-                               Long attractionId, Integer position, ItineraryTiming timing) {
-    }
 
     default Optional<ItinerarySummary> findSummaryByTripId(Long tripId) {
         var rows = findSummaryRowsByTripId(tripId);
@@ -64,13 +63,13 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             return Optional.empty();
         }
 
-        var entriesByDate = new HashMap<LocalDate, List<ItineraryEntrySummary>>();
+        var entriesByDate = new HashMap<LocalDate, List<ItinerarySchedulingEntrySummary>>();
         for (var row : rows) {
             if (row.itineraryDate() != null) {
                 var entries = entriesByDate.computeIfAbsent(row.itineraryDate(), ignored -> new ArrayList<>());
                 if (row.attractionId() != null) {
-                    entries.add(new ItineraryEntrySummary(row.attractionId(), row.itineraryDate(),
-                            row.position(), row.timing()));
+                    entries.add(new ItinerarySchedulingEntrySummary(row.attractionId(), row.attractionName(),
+                            row.position(), row.fixedStart(), row.timing()));
                 }
             }
         }
@@ -103,7 +102,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
-                entry.plannedLengthChangedSinceCheck)
+                entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
@@ -140,7 +139,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
         }
         return rows.stream()
                 .filter(row -> row.entryId() != null && (!row.entryIncludedInLastCheck()
-                        || row.startChangedSinceCheck() || row.plannedLengthChangedSinceCheck()))
+                        || row.startChangedSinceCheck() || row.plannedLengthChangedSinceCheck()
+                        || row.fixedStartChangedSinceCheck()))
                 .sorted(Comparator.comparing(ItineraryAndBoardRow::entryDate)
                         .thenComparing(ItineraryAndBoardRow::entryPosition))
                 .map(ItineraryAndBoardRow::toChangeNotice)

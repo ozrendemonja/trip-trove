@@ -23,7 +23,8 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    String workingHours, String visitDuration, LocalDateTime permanentlyClosedAt,
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
                                    ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck,
-                                   Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck) {
+                                   Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
+                                   Boolean fixedStartChangedSinceCheck) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -50,7 +51,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     }
 
     ChangeNoticeSummary toChangeNotice() {
-        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(3);
+        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(4);
         if (!entryIncludedInLastCheck) {
             reasons.add(ATTRACTION_ADDED);
         }
@@ -59,6 +60,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         }
         if (plannedLengthChangedSinceCheck) {
             reasons.add(PLANNED_LENGTH_CHANGED);
+        }
+        if (fixedStartChangedSinceCheck) {
+            reasons.add(FIXED_START_CHANGED);
         }
         return new ChangeNoticeSummary(entryId, attractionName, entryDate, List.copyOf(reasons));
     }

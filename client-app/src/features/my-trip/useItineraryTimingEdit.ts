@@ -44,8 +44,8 @@ export function useItineraryTimingEdit(
         ...edit,
         text:
           recovery === "unconfirmed"
-            ? "Saved timing reloaded. Inspect the entry before editing again."
-            : "Timing saved."
+            ? "Saved entry reloaded. Inspect the entry before editing again."
+            : "Itinerary entry updated."
       });
     } else {
       setState({ ...edit, activity: undefined, recovery });

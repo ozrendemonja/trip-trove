@@ -67,11 +67,17 @@ whole itinerary, including an empty one. It saves the check time and renews
 the reference for which entries were checked in one transaction. It returns
 `204` with a `Location` pointing to the itinerary; GET supplies the check
 state and the change notices grouped by entry. After a check, a notice shows
-if an entry was added, its start moved, or its planned length changed. A
-timing change stays on the notice even if the user puts the old value back;
+if an entry was added or its start, planned length or fixed-start state
+changed. A change stays on the notice even if the user puts the old value back;
 only the next manual check clears it. Previous timing values are not stored.
 There are no notices before the first check. An unconfirmed check must be
 inspected with GET before the user confirms again.
+
+`PUT /trips/{id}/itinerary/entries/{entryId}/fixed-start` takes
+`{"fixedStart":true}` to lock or `{"fixedStart":false}` to unlock a start.
+It returns `204` with the itinerary `Location` and does not change the
+interval. A fixed start blocks automatic propagation but can still be
+edited deliberately without losing its lock.
 
 ## Location-grouped Attraction Search
 

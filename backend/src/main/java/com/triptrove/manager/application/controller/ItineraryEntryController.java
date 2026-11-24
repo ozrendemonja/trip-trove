@@ -2,6 +2,7 @@ package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryStartRequest;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
@@ -73,6 +74,15 @@ public class ItineraryEntryController {
     public ResponseEntity<Void> updateItineraryEntryPlannedLength(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid UpdateItineraryEntryPlannedLengthRequest request) {
         timingEditor.updateItineraryEntryPlannedLength(id, entryId, request.plannedMinutes().intValueExact());
+        return itineraryUpdated(id);
+    }
+
+    @PutMapping("/entries/{entryId:\\d+}/fixed-start")
+    @Operation(summary = "Lock or unlock an itinerary entry's start without changing its interval")
+    @TimingUpdateResponses
+    public ResponseEntity<Void> updateItineraryEntryFixedStart(@PathVariable Long id, @PathVariable Long entryId,
+            @RequestBody @Valid UpdateItineraryEntryFixedStartRequest request) {
+        timingEditor.updateItineraryEntryFixedStart(id, entryId, request.fixedStart());
         return itineraryUpdated(id);
     }
 

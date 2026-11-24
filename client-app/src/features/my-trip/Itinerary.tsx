@@ -350,8 +350,8 @@ export const ItineraryContent = ({
         <MessageBar intent="warning">
           <MessageBarBody>
             {pending.recovery === "unconfirmed"
-              ? "The timing save couldn't be confirmed. Inspect the saved itinerary before editing again."
-              : "Timing was saved, but the itinerary couldn't be refreshed."}
+              ? "The entry save couldn't be confirmed. Inspect the saved itinerary before editing again."
+              : "The entry change was saved, but the itinerary couldn't be refreshed."}
           </MessageBarBody>
           <MessageBarActions>
             <Button

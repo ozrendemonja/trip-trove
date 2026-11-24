@@ -973,6 +973,58 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void lockingAStartAndReadingItsChangeNoticeUseOneSelectEach(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var firstEntryId = entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = 1
+                """).getSingleResult();
+        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/fixed-start", firstEntryId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fixedStart":true}
+                                """))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void rejectingAnAdditionAtAFixedStartUsesTwoSelects(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_entry SET fixed_start = true WHERE trip_id = 1 AND path_position = 1
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/attractions").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"attractionId":%d,"date":"2026-09-02","startTime":"07:00"}
+                                """.formatted(entryCount + 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").exists());
+
+        assertReadOnlySelectCount(2);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {0, 2, 30})
     void recordingACheckUsesTwoUpdatesAndNoSelects(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);

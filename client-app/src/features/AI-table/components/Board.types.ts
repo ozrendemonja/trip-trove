@@ -1,7 +1,7 @@
 import type { Attraction } from "./AttractionList.types";
 import type { Rating } from "../../my-trip/domain/Trip.types";
 import type { VisitHistoryMap } from "../utils/Mapper";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import type { PlanningFeedback } from "../../my-trip/useTripPlanningSave";
 
 export interface Column {
@@ -42,8 +42,10 @@ export interface BoardProps {
   tripId?: number; // needed to persist board changes and attraction reviews
   onPlanningChange?: (feedback: PlanningFeedback | undefined) => void;
   onReloadSavedPlanning?: () => Promise<void>;
+  onRefreshScheduledStatus?: () => Promise<unknown>;
   onPlaceOrderChange?: (places: string[]) => void;
   onPrepareDraftChange?: (draft: PrepareDraftState) => void;
+  renderScheduledStatus?: (attractionId: number) => ReactNode;
   initialReviewData?: Record<
     number,
     { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }

@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import { Rating } from "../../my-trip/domain/Trip.types";
 import { Attraction, type PlanningTextField } from "./AttractionList.types";
 import type { VisitHistoryEntry } from "../../my-trip/domain/VisitHistory.types";
 
 export interface AttractionItemProps {
   attraction: Attraction;
+  scheduledStatus?: ReactNode;
   placeholderHeight?: number;
   columnId?: string; // not used directly but reserved
   index?: number; // not used directly but reserved

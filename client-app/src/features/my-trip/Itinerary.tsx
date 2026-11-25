@@ -24,6 +24,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -31,7 +32,6 @@ import {
   type RefCallback
 } from "react";
 import type {
-  ChangeNotice,
   GetItineraryResponse,
   MoveItineraryEntryRequest
 } from "../../clients/manager";
@@ -78,7 +78,16 @@ type LoadState = {
   newer?: boolean;
 };
 
-type NoticeTarget = Pick<ChangeNotice, "date" | "entryId">;
+export interface ItineraryTarget {
+  date: string;
+  entryId?: number;
+}
+
+type ScheduledEntryTarget = ItineraryTarget & {
+  entryId: number;
+  dayNumber: number;
+};
+
 type Day = GetItineraryResponse["days"][number];
 type Entry = Day["entries"][number];
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
@@ -90,6 +99,7 @@ interface ItineraryView {
   loading: boolean;
   failed: boolean;
   newer: boolean;
+  scheduledEntries: ReadonlyMap<number, ScheduledEntryTarget>;
   refresh: () => Promise<GetItineraryResponse | undefined>;
   checkForUpdates: () => Promise<GetItineraryResponse | undefined>;
   measureDayRow: RefCallback<HTMLElement>;
@@ -97,7 +107,7 @@ interface ItineraryView {
   lastStart: number;
   visibleDays: GetItineraryResponse["days"];
   showDate: (date: string) => void;
-  focusNoticeTarget: (target: NoticeTarget) => void;
+  focusItineraryTarget: (target: ItineraryTarget) => void;
   dragged?: DraggedItineraryItem;
   setDragged: (item?: DraggedItineraryItem) => void;
   scheduling: ItineraryScheduling;
@@ -208,7 +218,17 @@ export const useItinerary = (
   }, [open, hasRequested, checkForUpdates]);
 
   const current = load?.tripId === tripId ? load : undefined;
-  const days = current?.data?.days ?? [];
+  const savedDays = current?.data?.days;
+  const days = savedDays ?? [];
+  const scheduledEntries = useMemo(() => {
+    const byAttraction = new Map<number, ScheduledEntryTarget>();
+    savedDays?.forEach(({ date, entries }, index) => {
+      for (const { attractionId, entryId } of entries) {
+        byAttraction.set(attractionId, { date, entryId, dayNumber: index + 1 });
+      }
+    });
+    return byAttraction;
+  }, [savedDays]);
   const [anchor, setAnchor] = useState<{ tripId: number; date: string }>();
   const [columns, setColumns] = useState(1);
   const measureDayRow = useCallback((element: HTMLElement | null) => {
@@ -243,9 +263,9 @@ export const useItinerary = (
     tripId: number;
     id: string;
   }>();
-  const focusNoticeTarget = ({ date, entryId }: NoticeTarget): void => {
+  const focusItineraryTarget = ({ date, entryId }: ItineraryTarget): void => {
     if (tripId === undefined) return;
-    if (!visibleDays.some((day) => day.date === date)) showDate(date);
+    if (!open || !visibleDays.some((day) => day.date === date)) showDate(date);
     setFocusTarget({
       tripId,
       id: entryId === undefined ? dayTargetId(date) : entryTargetId(entryId)
@@ -278,6 +298,7 @@ export const useItinerary = (
     loading: current?.loading ?? true,
     failed: current?.failed ?? false,
     newer: current?.newer ?? false,
+    scheduledEntries,
     refresh,
     checkForUpdates,
     measureDayRow,
@@ -285,12 +306,33 @@ export const useItinerary = (
     lastStart,
     visibleDays,
     showDate,
-    focusNoticeTarget,
+    focusItineraryTarget,
     dragged,
     setDragged,
     scheduling,
     timingEditing
   };
+};
+
+export const ItineraryRefreshNotice = ({
+  failed,
+  newer,
+  staleMessage
+}: {
+  failed: boolean;
+  newer: boolean;
+  staleMessage: string;
+}): ReactElement | null => {
+  if (!failed && !newer) return null;
+  return (
+    <MessageBar intent={failed ? "warning" : "info"}>
+      <MessageBarBody>
+        {failed
+          ? `The itinerary couldn't be refreshed. ${staleMessage}`
+          : "Newer itinerary data is available. Finish or resolve your change, then refresh to see it."}
+      </MessageBarBody>
+    </MessageBar>
+  );
 };
 
 export const ItineraryDayPager = ({
@@ -422,7 +464,7 @@ export const ItineraryContent = ({
     measureDayRow,
     scheduling,
     timingEditing,
-    focusNoticeTarget,
+    focusItineraryTarget,
     dragged,
     setDragged
   } = itinerary;
@@ -444,7 +486,7 @@ export const ItineraryContent = ({
   }>();
   const cancelMoveChoice = (): void => {
     if (!moveChoice) return;
-    focusNoticeTarget({
+    focusItineraryTarget({
       date: moveChoice.sourceDate,
       entryId: moveChoice.entry.entryId
     });
@@ -466,7 +508,7 @@ export const ItineraryContent = ({
       source.date === position.date &&
       next?.entryId === position.beforeEntryId
     ) {
-      focusNoticeTarget({ date: source.date, entryId });
+      focusItineraryTarget({ date: source.date, entryId });
       setActionStatus(`${name} is already in that position.`);
       return;
     }
@@ -478,13 +520,13 @@ export const ItineraryContent = ({
           day.entries.some((item) => item.entryId === entryId)
         );
         if (!destination) {
-          focusNoticeTarget({ date: source.date });
+          focusItineraryTarget({ date: source.date });
           setActionStatus(
             `Saved itinerary reloaded. ${name} is no longer in the itinerary.`
           );
           return;
         }
-        focusNoticeTarget({ date: destination.date, entryId });
+        focusItineraryTarget({ date: destination.date, entryId });
         setActionStatus(
           outcome === "unconfirmed"
             ? `Saved itinerary reloaded. ${name} is on ${formatItineraryDate(destination.date)}.`
@@ -502,7 +544,7 @@ export const ItineraryContent = ({
           });
           return;
         }
-        focusNoticeTarget({ date: source.date, entryId });
+        focusItineraryTarget({ date: source.date, entryId });
       });
   };
   const remove = (entry: Entry, day: Day): void => {
@@ -514,18 +556,18 @@ export const ItineraryContent = ({
           candidate.entries.some((item) => item.entryId === entry.entryId)
         );
         if (present) {
-          focusNoticeTarget({ date: present.date, entryId: entry.entryId });
+          focusItineraryTarget({ date: present.date, entryId: entry.entryId });
           setActionStatus(
             `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
           );
           return;
         }
-        focusNoticeTarget({ date: day.date });
+        focusItineraryTarget({ date: day.date });
         setActionStatus(`${entry.name} removed from the itinerary.`);
       })
       .then((error) => {
         if (!error) return;
-        focusNoticeTarget({ date: day.date, entryId: entry.entryId });
+        focusItineraryTarget({ date: day.date, entryId: entry.entryId });
       });
   };
   const endDrag = useCallback((): void => {
@@ -672,22 +714,11 @@ export const ItineraryContent = ({
           {activeDraft}
         </Card>
       )}
-      {failed && !pending?.recovery && (
-        <MessageBar intent="warning">
-          <MessageBarBody>
-            The itinerary couldn&apos;t be refreshed. Days and unscheduled
-            attractions may be out of date.
-          </MessageBarBody>
-        </MessageBar>
-      )}
-      {newer && !failed && (
-        <MessageBar intent="info">
-          <MessageBarBody>
-            Newer itinerary data is available. Finish or resolve your change,
-            then refresh to see it.
-          </MessageBarBody>
-        </MessageBar>
-      )}
+      <ItineraryRefreshNotice
+        failed={failed && !pending?.recovery}
+        newer={newer && !failed}
+        staleMessage="Days and unscheduled attractions may be out of date."
+      />
       <div className={classes.itineraryColumns} aria-busy={loading}>
         <UnscheduledAttractions
           attractions={unscheduledAttractions}

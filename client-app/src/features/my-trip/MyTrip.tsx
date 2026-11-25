@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogSurface,
   DialogTitle,
+  Link,
   MessageBar,
   MessageBarBody,
   Spinner,
@@ -60,7 +61,14 @@ import { toLastReadAttraction } from "../continent/pages/list-attraction/ListAtt
 import SearchAttractionsModal, { SearchTarget } from "./SearchAttractionsModal";
 import { useClasses } from "./MyTrip.styles";
 import { TripHeader } from "./TripHeader";
-import { ItineraryContent, ItineraryDayPager, useItinerary } from "./Itinerary";
+import {
+  ItineraryContent,
+  ItineraryDayPager,
+  ItineraryRefreshNotice,
+  useItinerary,
+  type ItineraryTarget
+} from "./Itinerary";
+import { entryTargetId } from "./TimelineEntry";
 import { ItineraryCheckControls } from "./ItineraryCheckControls";
 import { useItineraryCheck } from "./useItineraryCheck";
 import type { PlanningFeedback } from "./useTripPlanningSave";
@@ -143,7 +151,9 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
     tripId: string | undefined;
     mode: BoardMode;
   }>();
-  const [requestedMode, setRequestedMode] = useState<typeof selectedMode>();
+  const [requestedMode, setRequestedMode] = useState<
+    NonNullable<typeof selectedMode> & { itineraryTarget?: ItineraryTarget }
+  >();
 
   useEffect(() => {
     if (!tripId) return;
@@ -298,6 +308,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   }, [boardMode]);
   const itineraryOpen =
     tripDataReady && !loadError && boardMode === "itinerary";
+  const planOpen = tripDataReady && !loadError && boardMode === "readOnly";
   const itinerary = useItinerary(
     tripDataReady && !loadError ? currentTripId : undefined,
     itineraryOpen,
@@ -402,15 +413,32 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
       blocker.proceed();
     }
   }, [blocker, hasPlanningChanges, workspace]);
+  const focusRequestedTarget = useEffectEvent((target: ItineraryTarget): void =>
+    itinerary.focusItineraryTarget(target)
+  );
   useEffect(() => {
-    if (!nextMode || leavingTrip || hasPlanningChanges) return;
-    setSelectedMode(nextMode);
+    if (
+      !nextMode ||
+      leavingTrip ||
+      hasPlanningChanges ||
+      workspace.hasLocalWork()
+    )
+      return;
+    if (nextMode.itineraryTarget)
+      focusRequestedTarget(nextMode.itineraryTarget);
+    setSelectedMode({ tripId: nextMode.tripId, mode: nextMode.mode });
     setRequestedMode(undefined);
-  }, [nextMode, leavingTrip, hasPlanningChanges]);
+  }, [nextMode, leavingTrip, hasPlanningChanges, workspace]);
 
-  const changeMode = async (mode: BoardMode): Promise<void> => {
-    if (mode === boardMode) return;
-    const target = { tripId, mode };
+  const changeMode = async (
+    mode: BoardMode,
+    itineraryTarget?: ItineraryTarget
+  ): Promise<void> => {
+    if (mode === boardMode) {
+      if (itineraryTarget) itinerary.focusItineraryTarget(itineraryTarget);
+      return;
+    }
+    const target = { tripId, mode, itineraryTarget };
     const generation = ++modeChangeGeneration.current;
     if (
       boardMode === "prepare" &&
@@ -427,11 +455,28 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
       }
       return;
     }
-    if (workspace.hasLocalWork()) {
+    if (workspace.hasLocalWork() || itineraryTarget) {
       setRequestedMode(target);
     } else {
       setSelectedMode(target);
     }
+  };
+
+  const renderScheduledStatus = (attractionId: number): React.ReactNode => {
+    const target = itinerary.scheduledEntries.get(attractionId);
+    if (!target) return null;
+    return (
+      <Link
+        inline
+        href={`#${entryTargetId(target.entryId)}`}
+        onClick={(event) => {
+          event.preventDefault();
+          void changeMode("itinerary", target);
+        }}
+      >
+        {`Scheduled \u00b7 Day ${target.dayNumber}`}
+      </Link>
+    );
   };
 
   const stay = (): void => {
@@ -482,10 +527,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
                   unavailableReason={checkUnavailableReason}
                   jumpBlocked={hasPlanningChanges || planningBlocked}
                   check={check}
-                  onJump={(notice) => {
-                    itinerary.focusNoticeTarget(notice);
-                    void changeMode("itinerary");
-                  }}
+                  onJump={(notice) => void changeMode("itinerary", notice)}
                   onRetry={() => void checkForUpdates()}
                 />
               }
@@ -531,6 +573,21 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
                 </>
               }
             />
+            {planOpen &&
+              (itinerary.failed && !itinerary.saved ? (
+                <MessageBar intent="error">
+                  <MessageBarBody>
+                    The itinerary couldn&apos;t be loaded. Scheduled status is
+                    unavailable.
+                  </MessageBarBody>
+                </MessageBar>
+              ) : (
+                <ItineraryRefreshNotice
+                  failed={itinerary.failed}
+                  newer={itinerary.newer}
+                  staleMessage="Scheduled status may be out of date."
+                />
+              ))}
             <Board
               key={tripId}
               ref={boardRef}
@@ -540,8 +597,12 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
               initialSavedAttractionIds={savedAttractionIds}
               onPlanningChange={setBoardSave}
               onReloadSavedPlanning={reloadSavedItinerary}
+              onRefreshScheduledStatus={planOpen ? checkForUpdates : undefined}
               onPlaceOrderChange={setBoardPlaceOrder}
               onPrepareDraftChange={setPrepareDraft}
+              renderScheduledStatus={
+                planOpen ? renderScheduledStatus : undefined
+              }
               visitHistory={visitHistoryMap}
               mode={boardMode}
             />

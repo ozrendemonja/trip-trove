@@ -3193,6 +3193,235 @@ export const SaveToTripButtonIsAbsentInEditMode: Story = {
   }
 };
 
+export const PlanLinksToSavedEntriesAndKeepsTheBoardFilters: Story = {
+  parameters: {
+    trip: { ...ITINERARY_TRIP, hasItineraryEntries: true },
+    savedAttractions: [
+      ...SAVED_ATTRACTIONS,
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 5,
+        attractionName: "Garden"
+      },
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 6,
+        attractionName: "Unscheduled Museum",
+        mustVisit: false
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture("2025-06-10", "2025-06-24");
+      saved.timeZone = "Europe/Rome";
+      saved.days[0].entries.push({
+        entryId: 21,
+        attractionId: 0,
+        name: "Casino of Monte-Carlo",
+        category: "POINT_OF_INTEREST_AND_LANDMARK",
+        attractionGroup: "PRIMARY",
+        mustVisit: true,
+        fixedStart: false,
+        timing: {
+          start: "2025-06-10T09:00+02:00",
+          end: "2025-06-10T09:45+02:00",
+          zone: "Europe/Rome"
+        }
+      });
+      saved.days[10].entries.push({
+        entryId: 42,
+        attractionId: 5,
+        name: "Garden",
+        category: "PARK",
+        attractionGroup: "PRIMARY",
+        mustVisit: true,
+        fixedStart: false,
+        timing: {
+          start: "2025-06-20T09:00+02:00",
+          end: "2025-06-20T09:45+02:00",
+          zone: "Europe/Rome"
+        }
+      });
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const scheduledStatus = /^Scheduled \u00b7 Day /;
+    await canvas.findByRole("link", { name: "Garden" });
+    await canvas.findByText("Not yet checked");
+    await expect(
+      canvas.getByRole("button", { name: "Review" })
+    ).toHaveAttribute("aria-current", "step");
+    await expect(canvas.queryByText(scheduledStatus)).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await expect(canvas.queryByText(scheduledStatus)).not.toBeInTheDocument();
+    const plan = canvas.getByRole("button", { name: "Plan" });
+    await user.click(plan);
+
+    const casino = canvas.getByRole("link", { name: "Casino of Monte-Carlo" });
+    await expect(
+      await within(casino.closest("li")!).findByRole("link", {
+        name: "Scheduled \u00b7 Day 1"
+      })
+    ).toBeVisible();
+    const garden = canvas.getByRole("link", { name: "Garden" });
+    const status = within(garden.closest("li")!).getByRole("link", {
+      name: "Scheduled \u00b7 Day 11"
+    });
+    const museum = canvas.getByRole("link", { name: "Unscheduled Museum" });
+    await expect(
+      within(museum.closest("li")!).queryByText(scheduledStatus)
+    ).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Filters on demand" }));
+    await user.selectOptions(
+      canvas.getByRole("combobox", { name: "Must Visit" }),
+      "true"
+    );
+    status.focus();
+    await user.keyboard("{Enter}");
+    await expect(
+      await canvas.findByRole("heading", { name: "Friday, Jun 20, 2025" })
+    ).toBeVisible();
+    const entry = canvas.getByRole("listitem", { name: "Garden" });
+    await waitFor(() => expect(entry).toHaveFocus());
+
+    await user.click(plan);
+    await expect(
+      canvas.getByRole("combobox", { name: "Must Visit" })
+    ).toHaveValue("true");
+    await expect(
+      canvas.queryByRole("link", { name: "Unscheduled Museum" })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("link", { name: "Scheduled \u00b7 Day 11" })
+    ).toBeVisible();
+  }
+};
+
+const planStatusTrip = {
+  ...ITINERARY_TRIP,
+  fromDate: "2099-06-10",
+  toDate: "2099-06-11"
+};
+
+const planStatusUnscheduled: GetItineraryResponse["unscheduledAttractions"] = [
+  {
+    attractionId: 42,
+    name: "Market steps",
+    place: "Florence",
+    attractionGroup: "SECONDARY",
+    mustVisit: false,
+    category: "HISTORIC_SITE",
+    visitDuration: "45m"
+  }
+];
+
+export const PlanUpdatesStatusAfterSchedulingAndRefresh: Story = {
+  parameters: {
+    trip: planStatusTrip,
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 42,
+        attractionName: "Market steps",
+        attractionCategory: "HISTORIC_SITE",
+        attractionGroup: "SECONDARY",
+        mustVisit: false
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture(
+        planStatusTrip.fromDate,
+        planStatusTrip.toDate,
+        planStatusUnscheduled
+      );
+      saved.timeZone = "Europe/Rome";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        schedulingUrl,
+        () => {
+          saved.days[0].entries.push({
+            entryId: 51,
+            attractionId: 42,
+            name: "Market steps",
+            category: "HISTORIC_SITE",
+            attractionGroup: "SECONDARY",
+            mustVisit: false,
+            fixedStart: false,
+            timing: {
+              start: "2099-06-10T09:00+02:00",
+              end: "2099-06-10T09:45+02:00",
+              zone: "Europe/Rome"
+            }
+          });
+          saved.unscheduledAttractions = [];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const plan = await canvas.findByRole("button", { name: "Plan" });
+    await user.click(plan);
+    await expect(
+      canvas.getByRole("link", { name: "Market steps" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText(/^Scheduled \u00b7 Day /)
+    ).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Add Market steps" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("menuitem", {
+        name: /Jun 10, 2099/
+      })
+    );
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Market steps" })
+    );
+    await user.type(draft.getByLabelText("Start clock"), "09:00");
+    await user.tab();
+    await canvas.findByRole("listitem", { name: "Market steps" });
+    await user.click(plan);
+    const status = "Scheduled \u00b7 Day 1";
+    await expect(
+      await canvas.findByRole("link", { name: status })
+    ).toBeVisible();
+
+    server.get(itineraryUrl, () => new MirageResponse(503), { timing: 0 });
+    const refresh = canvas.getByRole("button", { name: "Refresh trip board" });
+    await user.click(refresh);
+    await expect(
+      await canvas.findByText(/Scheduled status may be out of date/)
+    ).toBeVisible();
+    await expect(canvas.getByRole("link", { name: status })).toBeVisible();
+
+    const updated = itineraryFixture(
+      planStatusTrip.fromDate,
+      planStatusTrip.toDate,
+      planStatusUnscheduled
+    );
+    updated.timeZone = "Europe/Rome";
+    server.get(itineraryUrl, () => updated, { timing: 0 });
+    canvasElement.ownerDocument.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() =>
+      expect(canvas.queryByText(status)).not.toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByRole("link", { name: "Market steps" })
+    ).toBeVisible();
+  }
+};
+
 export const PlanModePersistsMovesBetweenColumns: Story = {
   parameters: {
     savedAttractions: [

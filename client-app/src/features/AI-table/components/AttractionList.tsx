@@ -23,6 +23,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
   readOnly,
   planningDisabled,
   correction,
+  renderScheduledStatus,
   renderPlanningFeedback,
   canManageAttractions,
   reviewMode,
@@ -54,6 +55,7 @@ const AttractionList: React.FC<AttractionListProps> = ({
           >
             <AttractionItem
               attraction={attraction}
+              scheduledStatus={renderScheduledStatus?.(attraction.id)}
               locationHint={locationHint}
               columnId={columnId}
               index={idx}

@@ -325,6 +325,9 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
       throw new Error("The itinerary couldn't be refreshed.");
     }
   }, [refreshItinerary]);
+  const refreshAfterBoardRemoval = useCallback(() => {
+    void refreshItinerary();
+  }, [refreshItinerary]);
   const headerTrip = trip && {
     ...trip,
     startDate: itinerary.days[0]?.date ?? trip.startDate,
@@ -598,6 +601,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
               onPlanningChange={setBoardSave}
               onReloadSavedPlanning={reloadSavedItinerary}
               onRefreshScheduledStatus={planOpen ? checkForUpdates : undefined}
+              onItineraryEntriesRemoved={refreshAfterBoardRemoval}
               onPlaceOrderChange={setBoardPlaceOrder}
               onPrepareDraftChange={setPrepareDraft}
               renderScheduledStatus={

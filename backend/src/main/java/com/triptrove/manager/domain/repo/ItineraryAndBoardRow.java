@@ -4,6 +4,7 @@ import com.triptrove.manager.domain.model.AttractionCategory;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
+import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
@@ -26,7 +27,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
                                    Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
                                    Boolean followingStartsPushedSinceCheck, String removedSubject, LocalDate removedDate,
-                                   Boolean removedEntryPushedFollowingStarts) {
+                                   Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -76,8 +77,16 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     }
 
     ChangeNoticeSummary toRemovalNotice() {
-        var reasons = removedEntryPushedFollowingStarts ? List.of(ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED)
-                : List.of(ENTRY_REMOVED);
-        return new ChangeNoticeSummary(null, removedSubject, removedDate, reasons);
+        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(3);
+        reasons.add(ENTRY_REMOVED);
+        switch (removalCause) {
+            case ITINERARY -> { }
+            case ATTRACTION_EXCLUDED -> reasons.add(ATTRACTION_EXCLUDED);
+            case REMOVED_FROM_TRIP -> reasons.add(REMOVED_FROM_TRIP);
+        }
+        if (removedEntryPushedFollowingStarts) {
+            reasons.add(FOLLOWING_STARTS_PUSHED);
+        }
+        return new ChangeNoticeSummary(null, removedSubject, removedDate, List.copyOf(reasons));
     }
 }

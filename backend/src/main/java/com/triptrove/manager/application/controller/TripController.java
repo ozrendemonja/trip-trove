@@ -2,6 +2,7 @@ package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
+import com.triptrove.manager.domain.model.ItineraryRemovalConfirmation;
 import com.triptrove.manager.domain.model.TripBoardItem;
 import com.triptrove.manager.domain.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -187,12 +188,13 @@ public class TripController {
             @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                     {@Content(mediaType = "application/json", schema =
                     @Schema(implementation = ErrorResponse.class))}),
-            @ApiResponse(description = "A scheduled attraction cannot be excluded", responseCode = "409",
+            @ApiResponse(description = "The itinerary removal was not confirmed or the confirmation has changed", responseCode = "409",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void updateAttractionGroup(@PathVariable Long id, @PathVariable Long attractionId,
             @RequestBody @Valid UpdateAttractionGroupRequest request) {
-        tripService.updateAttractionGroup(id, attractionId, request.attractionGroup().toGroup());
+        tripService.updateAttractionGroup(id, attractionId, request.attractionGroup().toGroup(),
+                request.removalConfirmation());
     }
 
         @PutMapping("/{id:\\d+}/board/attractions/{attractionId:\\d+}")
@@ -205,13 +207,14 @@ public class TripController {
                     @ApiResponse(description = "Attraction not found under trip", responseCode = "404", content =
                             {@Content(mediaType = "application/json", schema =
                             @Schema(implementation = ErrorResponse.class))}),
-                    @ApiResponse(description = "A scheduled attraction cannot be excluded", responseCode = "409",
+                    @ApiResponse(description = "The itinerary removal was not confirmed or the confirmation has changed", responseCode = "409",
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
             })
     public void moveAttractionOnBoard(@PathVariable Long id, @PathVariable Long attractionId,
             @RequestBody @Valid MoveAttractionOnBoardRequest request) {
         tripService.moveAttractionOnBoard(id, attractionId, request.targetGroup().toGroup(),
-                request.previousAttractionId(), request.nextAttractionId());
+                request.previousAttractionId(), request.nextAttractionId(),
+                request.removalConfirmation());
     }
 
         @PutMapping("/{id:\\d+}/board")
@@ -299,11 +302,13 @@ public class TripController {
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Remove attraction from trip", responses = {
             @ApiResponse(description = "Attraction removed from trip", responseCode = "204"),
-            @ApiResponse(description = "A scheduled attraction cannot be removed", responseCode = "409",
+            @ApiResponse(description = "The itinerary removal was not confirmed or the confirmation has changed", responseCode = "409",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public void detachAttraction(@PathVariable Long id, @PathVariable Long attractionId) {
-        tripService.detachAttraction(id, attractionId);
+    public void detachAttraction(@PathVariable Long id, @PathVariable Long attractionId,
+            @RequestBody(required = false) @Valid ConfirmItineraryEntryRemovalRequest confirmedRemoval) {
+        tripService.detachAttraction(id, attractionId,
+                confirmedRemoval == null ? null : new ItineraryRemovalConfirmation(confirmedRemoval.entryId()));
     }
 
     @GetMapping("/{id:\\d+}/attractions")

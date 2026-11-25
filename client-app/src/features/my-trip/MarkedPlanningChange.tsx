@@ -25,6 +25,7 @@ interface Props {
   feedback: PlanningFeedback;
   onReload: () => void;
   onDiscard?: () => void;
+  onReviewRemoval?: () => void;
 }
 
 const labels = {
@@ -36,7 +37,8 @@ const labels = {
 export const MarkedPlanningChange = ({
   feedback,
   onReload,
-  onDiscard
+  onDiscard,
+  onReviewRemoval
 }: Props): ReactElement => {
   const classes = useStyles();
   const { state, proposal, message, refreshing, unconfirmed } = feedback;
@@ -73,6 +75,11 @@ export const MarkedPlanningChange = ({
       {state === "error" && !unconfirmed && onDiscard && (
         <Button size="small" appearance="subtle" onClick={onDiscard}>
           Discard change
+        </Button>
+      )}
+      {onReviewRemoval && (
+        <Button size="small" appearance="subtle" onClick={onReviewRemoval}>
+          Review itinerary consequences
         </Button>
       )}
     </div>

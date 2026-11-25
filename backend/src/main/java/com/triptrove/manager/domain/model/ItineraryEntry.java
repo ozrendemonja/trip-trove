@@ -15,6 +15,7 @@ public class ItineraryEntry {
     private Long tripId;
 
     @Column(name = "attraction_id", nullable = false)
+    @Getter
     private Long attractionId;
 
     @Column(name = "path_position", nullable = false)

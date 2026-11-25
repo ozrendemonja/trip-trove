@@ -30,6 +30,7 @@ public class TripServiceImpl implements TripService {
     private final TripAttractionRepo tripAttractionRepo;
     private final ItineraryRepo itineraryRepo;
     private final ItineraryEntryRepo itineraryEntryRepo;
+    private final ItineraryEntryEditor itineraryEntryEditor;
 
     @Override
     @Transactional
@@ -172,11 +173,12 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup) {
+    public void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup,
+                                     ItineraryRemovalConfirmation confirmedRemoval) {
         log.atInfo().log("Updating attraction group for attraction '{}' under trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         if (attractionGroup == TripAttractionGroup.EXCLUDED) {
-            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
+            applyItineraryExclusion(tripId, attractionId, confirmedRemoval);
         }
         attraction.setAttractionGroup(attractionGroup);
         tripAttractionRepo.save(attraction);
@@ -186,14 +188,15 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup, Long previousAttractionId, Long nextAttractionId) {
+    public void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup, Long previousAttractionId,
+                                      Long nextAttractionId, ItineraryRemovalConfirmation confirmedRemoval) {
         log.atInfo().log("Moving attraction '{}' on board for trip '{}'", attractionId, tripId);
         var attraction = tripAttractionRepo.findByTripIdAndAttractionId(tripId, attractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId));
         var previousAttraction = previousAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, previousAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, previousAttractionId, tripId));
         var nextAttraction = nextAttractionId == null ? null : tripAttractionRepo.findByTripIdAndAttractionId(tripId, nextAttractionId).orElseThrow(() -> new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, nextAttractionId, tripId));
         var previousGroup = attraction.getAttractionGroup();
         if (targetGroup == TripAttractionGroup.EXCLUDED) {
-            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
+            applyItineraryExclusion(tripId, attractionId, confirmedRemoval);
         }
         TripBoard.moveAttraction(attraction, targetGroup, previousAttraction, nextAttraction);
         tripAttractionRepo.save(attraction);
@@ -275,8 +278,12 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public void detachAttraction(Long tripId, Long attractionId) {
+    public void detachAttraction(Long tripId, Long attractionId, ItineraryRemovalConfirmation confirmedRemoval) {
         log.atInfo().log("Removing attraction from trip");
+        if (confirmedRemoval != null) {
+            itineraryEntryEditor.unscheduleAttraction(tripId, attractionId, confirmedRemoval,
+                    ItineraryEntryRemoval.Cause.REMOVED_FROM_TRIP);
+        }
         if (tripRepo.deleteUnscheduledTripAttraction(tripId, attractionId) < 1) {
             refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
             throw new BaseApiException("Attraction not found in trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, attractionId, tripId);
@@ -284,6 +291,15 @@ public class TripServiceImpl implements TripService {
         tripRepo.recomputeArchived(tripId);
 
         log.atInfo().log("Attraction '{}' removed from trip '{}'", attractionId, tripId);
+    }
+
+    private void applyItineraryExclusion(Long tripId, Long attractionId, ItineraryRemovalConfirmation confirmedRemoval) {
+        if (confirmedRemoval == null) {
+            refuseDroppingScheduledAttractions(tripId, List.of(attractionId));
+        } else {
+            itineraryEntryEditor.unscheduleAttraction(tripId, attractionId, confirmedRemoval,
+                    ItineraryEntryRemoval.Cause.ATTRACTION_EXCLUDED);
+        }
     }
 
     private void refuseDroppingScheduledAttractions(Long tripId, List<Long> attractionIds) {

@@ -85,6 +85,7 @@ export function usePlanningReads(
   workspace?: PlanningWorkspace
 ): {
   hasRequested: () => boolean;
+  cancel: () => void;
   start: () => {
     signal: AbortSignal;
     isLatest: () => boolean;
@@ -92,13 +93,11 @@ export function usePlanningReads(
   };
 } {
   const request = useRef<AbortController>(null);
-  useEffect(
-    () => () => {
-      request.current?.abort();
-      request.current = null;
-    },
-    [tripId]
-  );
+  const cancel = useCallback(() => {
+    request.current?.abort();
+    request.current = null;
+  }, []);
+  useEffect(() => cancel, [tripId, cancel]);
   const start = useCallback(() => {
     request.current?.abort();
     const controller = new AbortController();
@@ -113,5 +112,5 @@ export function usePlanningReads(
     };
   }, [workspace]);
   const hasRequested = useCallback(() => request.current !== null, []);
-  return { start, hasRequested };
+  return { start, hasRequested, cancel };
 }

@@ -21,7 +21,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
     public record ChangeNoticeSummary(Long entryId, String subject, LocalDate date, List<Reason> reasons) {
         public enum Reason {
             ATTRACTION_ADDED, START_CHANGED, PLANNED_LENGTH_CHANGED, FIXED_START_CHANGED,
-            ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED
+            ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED, ATTRACTION_EXCLUDED, REMOVED_FROM_TRIP
         }
     }
 

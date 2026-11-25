@@ -43,6 +43,7 @@ export interface BoardProps {
   onPlanningChange?: (feedback: PlanningFeedback | undefined) => void;
   onReloadSavedPlanning?: () => Promise<void>;
   onRefreshScheduledStatus?: () => Promise<unknown>;
+  onItineraryEntriesRemoved?: () => void;
   onPlaceOrderChange?: (places: string[]) => void;
   onPrepareDraftChange?: (draft: PrepareDraftState) => void;
   renderScheduledStatus?: (attractionId: number) => ReactNode;

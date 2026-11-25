@@ -80,6 +80,21 @@ It returns `204` with the itinerary `Location` and does not change the
 interval. A fixed start blocks automatic propagation but can still be
 edited deliberately without losing its lock.
 
+For board removal or a move to Excluded Attractions, preview the scheduled
+entry and its affected dates using `GET /trips/{id}/itinerary`. After
+confirmation, send `{"entryId":21}` as the optional JSON body of
+`DELETE /trips/{id}/attractions/{attractionId}`, or as `confirmedRemoval` on
+the board move or group update. An attraction has at most one entry, so the
+request removes that entry wherever it is, even if it moved after the
+preview. A missing confirmation, or one naming an entry the attraction no
+longer has, returns `409` with no changes; load the itinerary and confirm the
+current consequences before submitting again. For unscheduled
+attractions, omit the confirmation. Each request applies the board and
+itinerary effects in one transaction, leaves other entries' timings alone,
+and returns `204`. After a check, the removal notice includes whether the
+attraction was excluded or removed from the trip. Moving it back from
+Excluded never recreates the entry.
+
 `PUT /trips/{id}/itinerary/entries/{entryId}/position` takes the destination
 `date` and, optionally, `beforeEntryId`. Omit the latter to move to the end
 of the day. If two occurrences of the saved clock fit that position, no

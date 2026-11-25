@@ -1,6 +1,9 @@
 import { client, type ErrorResponse } from "../../../clients/manager";
 import managerClient from "../../../config/ClientsApiConfig";
-import type { TripPlanningChange } from "../domain/TripPlanning.types";
+import {
+  isBoardRemoval,
+  type TripPlanningChange
+} from "../domain/TripPlanning.types";
 
 managerClient();
 
@@ -18,6 +21,8 @@ export class PlanningSaveError extends Error {
     super(message, options);
   }
 }
+
+export class BoardRemovalConfirmationError extends PlanningSaveError {}
 
 const requestFor = (
   tripId: number,
@@ -43,7 +48,8 @@ const requestFor = (
     case "remove":
       return {
         method: "DELETE",
-        url: `${trip}/attractions/${change.attractionId}`
+        url: `${trip}/attractions/${change.attractionId}`,
+        body: change.confirmedRemoval
       };
     case "arrange":
       return {
@@ -58,7 +64,8 @@ const requestFor = (
         body: {
           targetGroup: change.targetGroup,
           previousAttractionId: change.previousAttractionId,
-          nextAttractionId: change.nextAttractionId
+          nextAttractionId: change.nextAttractionId,
+          confirmedRemoval: change.confirmedRemoval
         }
       };
     default: {
@@ -89,6 +96,23 @@ export const savePlanningChange = async (
     }
   });
   if (!response || !response.ok) {
+    if (
+      response?.status === 409 &&
+      error?.errorCode === "RESOURCE_HAS_DEPENDENCIES" &&
+      isBoardRemoval(change)
+    ) {
+      if (change.type === "remove" && change.unscheduledOnly) {
+        throw new PlanningSaveError(
+          "An attraction is now scheduled and was not removed. Keep it in the trip or review the unscheduled attractions again.",
+          false
+        );
+      }
+      throw new BoardRemovalConfirmationError(
+        error.errorMessage ??
+          "Review the itinerary consequences before confirming the board change.",
+        false
+      );
+    }
     const unconfirmed = isUnconfirmedSave(response);
     throw new PlanningSaveError(
       error?.errorMessage ??

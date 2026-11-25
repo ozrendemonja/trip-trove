@@ -135,7 +135,7 @@ export const KeepsRejectedTextAvailableForCorrection: Story = {
     await first.findByText("The note is too long.");
     await expect(second.getByTitle("Mark must visit")).toBeDisabled();
 
-    await user.click(first.getByTitle("Edit note"));
+    await user.click(first.getByRole("button", { name: "+ Add note" }));
     await expect(first.getByRole("textbox")).toHaveValue(invalidNote);
     await user.clear(first.getByRole("textbox"));
     await user.type(first.getByRole("textbox"), "Corrected trip note");
@@ -206,6 +206,11 @@ export const ReloadsSavedPlanningAfterAnUnconfirmedSave: Story = {
     await expect(
       canvas.queryByText("Unconfirmed note")
     ).not.toBeInTheDocument();
+    const reloaded = within(findAttractionCard(canvasElement, "Casino Square"));
+    await user.click(reloaded.getByTitle("Edit note"));
+    await expect(reloaded.getByRole("textbox")).toHaveValue("Unconfirmed note");
+    await user.click(reloaded.getByRole("button", { name: "Cancel" }));
+    await user.click(reloaded.getByRole("button", { name: "Discard change" }));
     await expect(
       within(findAttractionCard(canvasElement, "Casino Square")).getByTitle(
         "Mark must visit"

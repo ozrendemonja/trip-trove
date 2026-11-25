@@ -49,7 +49,11 @@ export interface AttractionListProps {
   upsertAttractions?: (columnId: string, newAttractions: Attraction[]) => void; // optional batch merge
   readOnly?: boolean;
   planningDisabled?: boolean;
-  correction?: { attractionId: number; field: PlanningTextField };
+  correction?: {
+    attractionId: number;
+    field: PlanningTextField;
+    value: string;
+  };
   renderPlanningFeedback?: (attractionId: number) => ReactNode;
   // Whether add/remove/move of attraction cards is allowed even when per-item
   // detail edits are disabled (true in edit and prepare modes).

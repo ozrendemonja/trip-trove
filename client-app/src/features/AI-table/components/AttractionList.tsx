@@ -92,9 +92,9 @@ const AttractionList: React.FC<AttractionListProps> = ({
               }
               readOnly={readOnly}
               planningDisabled={planningDisabled}
-              correctionField={
+              correction={
                 correction && correction.attractionId === attraction.id
-                  ? correction.field
+                  ? correction
                   : undefined
               }
               canManageAttractions={canManageAttractions}

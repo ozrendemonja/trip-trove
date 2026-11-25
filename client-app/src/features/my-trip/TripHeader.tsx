@@ -31,10 +31,6 @@ interface TripHeaderProps {
   onModeChange: (mode: BoardMode) => void;
   onBack: () => void;
   onSavePrepare?: () => void;
-  hasEntryDraft?: boolean;
-  planningBlocked?: boolean;
-  checkBlocked?: boolean;
-  timingEditBlocked?: boolean;
   check?: ReactNode;
   actions?: ReactNode;
 }
@@ -85,10 +81,6 @@ export const TripHeader = ({
   onModeChange,
   onBack,
   onSavePrepare,
-  hasEntryDraft,
-  planningBlocked,
-  checkBlocked,
-  timingEditBlocked,
   check,
   actions
 }: TripHeaderProps): ReactElement => {
@@ -99,35 +91,18 @@ export const TripHeader = ({
       STEPS.map((step) => ({
         ...step,
         unavailableReason:
-          step.mode !== "itinerary" && checkBlocked
-            ? "Finish the itinerary check"
-            : step.mode !== "itinerary" && timingEditBlocked
-              ? "Finish the timing edit"
-              : hasEntryDraft && step.mode !== "itinerary"
-                ? "Finish or cancel adding the attraction"
-                : step.mode === "prepare" &&
-                    mode !== "prepare" &&
-                    planningBlocked
-                  ? "Finish pending change"
-                  : mode === "prepare" &&
-                      (step.mode === "itinerary" ||
-                        step.mode === "readOnly" ||
-                        step.mode === "review")
-                    ? "After Edit"
-                    : step.mode === "review" &&
-                        trip?.status !== "past" &&
-                        trip?.status !== "archived"
-                      ? "After the trip"
-                      : undefined
+          mode === "prepare" &&
+          (step.mode === "itinerary" ||
+            step.mode === "readOnly" ||
+            step.mode === "review")
+            ? "After Edit"
+            : step.mode === "review" &&
+                trip?.status !== "past" &&
+                trip?.status !== "archived"
+              ? "After the trip"
+              : undefined
       })),
-    [
-      mode,
-      planningBlocked,
-      trip?.status,
-      hasEntryDraft,
-      checkBlocked,
-      timingEditBlocked
-    ]
+    [mode, trip?.status]
   );
   const dates = trip?.startDate
     ? trip.endDate

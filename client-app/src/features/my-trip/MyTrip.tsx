@@ -17,6 +17,7 @@ import React, {
   useState,
   useMemo,
   useEffect,
+  useEffectEvent,
   useRef,
   useCallback,
   useLayoutEffect
@@ -62,6 +63,11 @@ import { TripHeader } from "./TripHeader";
 import { ItineraryContent, ItineraryDayPager, useItinerary } from "./Itinerary";
 import { ItineraryCheckControls } from "./ItineraryCheckControls";
 import { useItineraryCheck } from "./useItineraryCheck";
+import type { PlanningFeedback } from "./useTripPlanningSave";
+import {
+  TripPlanningWorkspace,
+  useTripPlanningWorkspace
+} from "./useTripPlanningWorkspace";
 
 const unavailableCheckReason = (
   itinerary: ReturnType<typeof useItinerary>,
@@ -87,15 +93,28 @@ const unavailableCheckReason = (
     return itinerary.saved
       ? "Refresh the itinerary before checking it."
       : "Retry loading the itinerary before checking it.";
+  if (itinerary.newer)
+    return "Refresh the itinerary to review the newer data before checking it.";
   return undefined;
 };
 
 export const MyTrip: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
+  return <TripWorkspace key={tripId} tripId={tripId} />;
+};
+
+const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   const navigate = useNavigate();
   const classes = useClasses();
+  const planningGuard = useRef(false);
+  const { workspace, hasDrafts } = useTripPlanningWorkspace(planningGuard);
   const [trip, setTrip] = useState<Trip & { hasItineraryEntries: boolean }>();
-  const [planningBlocked, setPlanningBlocked] = useState(false);
+  const [boardSave, setBoardSave] = useState<PlanningFeedback>();
+  const planningBlocked =
+    boardSave?.state === "saving" ||
+    (boardSave?.state === "error" &&
+      (!!boardSave.unconfirmed ||
+        !boardSave.proposal.allowRetryAfterRejection));
   const [boardPlaceOrder, setBoardPlaceOrder] = useState<string[]>([]);
   const boardRef = useRef<PrepareBoardHandle>(null);
   const addAttractionsButton = useRef<HTMLButtonElement>(null);
@@ -124,6 +143,7 @@ export const MyTrip: React.FC = () => {
     tripId: string | undefined;
     mode: BoardMode;
   }>();
+  const [requestedMode, setRequestedMode] = useState<typeof selectedMode>();
 
   useEffect(() => {
     if (!tripId) return;
@@ -281,14 +301,15 @@ export const MyTrip: React.FC = () => {
   const itinerary = useItinerary(
     tripDataReady && !loadError ? currentTripId : undefined,
     itineraryOpen,
+    workspace,
     (attractionId, duration) =>
       boardRef.current?.reflectSavedVisitDuration(attractionId, duration)
   );
   const entryDraft = itinerary.scheduling.draft;
   const pendingTimingEdit = itinerary.timingEditing.pending;
-  const { refresh: refreshItinerary } = itinerary;
-  const check = useItineraryCheck(currentTripId, refreshItinerary);
-  const reloadOpenItinerary = useCallback(async (): Promise<void> => {
+  const { refresh: refreshItinerary, checkForUpdates } = itinerary;
+  const check = useItineraryCheck(currentTripId, refreshItinerary, workspace);
+  const reloadSavedItinerary = useCallback(async (): Promise<void> => {
     if (!(await refreshItinerary())) {
       throw new Error("The itinerary couldn't be refreshed.");
     }
@@ -298,97 +319,140 @@ export const MyTrip: React.FC = () => {
     startDate: itinerary.days[0]?.date ?? trip.startDate,
     endDate: itinerary.days.at(-1)?.date ?? trip.endDate
   };
-  const hasPrepareChanges =
-    boardMode === "prepare" &&
-    (prepareDraft.count > 0 || prepareDraft.saving || planningBlocked);
   const checkUnavailableReason = unavailableCheckReason(
     itinerary,
     check,
     planningBlocked
   );
-  useEffect(() => {
+  const refreshWhenVisible = useEffectEvent((): void => {
     if (
-      !itineraryOpen ||
-      check.locked ||
-      entryDraft ||
-      pendingTimingEdit ||
-      planningBlocked
+      document.visibilityState !== "visible" ||
+      saving ||
+      !tripDataReady ||
+      loadError
     )
       return;
-    const refreshWhenVisible = (): void => {
-      if (document.visibilityState === "visible") void refreshItinerary();
-    };
+    if (itineraryOpen) {
+      void checkForUpdates();
+    } else {
+      void boardRef.current?.refresh();
+    }
+  });
+  useEffect(() => {
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () =>
       document.removeEventListener("visibilitychange", refreshWhenVisible);
-  }, [
-    itineraryOpen,
-    check.locked,
-    entryDraft,
-    pendingTimingEdit,
-    planningBlocked,
-    refreshItinerary
-  ]);
+  }, []);
 
+  const saving =
+    boardSave?.state === "saving" ||
+    !!boardSave?.refreshing ||
+    !!entryDraft?.activity ||
+    !!check.activity ||
+    !!pendingTimingEdit?.activity;
+  const unconfirmed =
+    !!boardSave?.unconfirmed ||
+    !!entryDraft?.unconfirmed ||
+    check.unconfirmed ||
+    pendingTimingEdit?.recovery === "unconfirmed";
+  const hasPrepareChanges =
+    boardMode === "prepare" && (prepareDraft.count > 0 || !!prepareDraft.error);
   const hasPlanningChanges =
-    hasPrepareChanges || !!entryDraft || check.locked || !!pendingTimingEdit;
-  const planningGuard = useRef(hasPlanningChanges);
+    saving ||
+    unconfirmed ||
+    hasPrepareChanges ||
+    hasDrafts ||
+    check.rejected ||
+    itinerary.timingEditing.rejections.length > 0 ||
+    itinerary.timingEditing.hasClockInputs ||
+    boardSave?.state === "error" ||
+    !!entryDraft;
   useLayoutEffect(() => {
     planningGuard.current = hasPlanningChanges;
   }, [hasPlanningChanges]);
   const blocker = useBlocker(
     useCallback<BlockerFunction>(
       ({ currentLocation, nextLocation }) =>
-        planningGuard.current &&
+        workspace.hasLocalWork() &&
         currentLocation.pathname !== nextLocation.pathname,
-      []
+      [workspace]
     )
   );
+  const leavingTrip = blocker.state === "blocked";
+  const nextMode = requestedMode?.tripId === tripId ? requestedMode : undefined;
+  const waitingToLeave = leavingTrip || !!nextMode;
   const resumingNavigation = useRef(false);
   useBeforeUnload(
-    useCallback((event: BeforeUnloadEvent) => {
-      if (!planningGuard.current) return;
-      event.preventDefault();
-      event.returnValue = "";
-    }, [])
+    useCallback(
+      (event: BeforeUnloadEvent) => {
+        if (!workspace.hasLocalWork()) return;
+        event.preventDefault();
+        event.returnValue = "";
+      },
+      [workspace]
+    )
   );
   useEffect(() => {
     if (blocker.state !== "blocked") {
       resumingNavigation.current = false;
       return;
     }
-    if (!hasPlanningChanges && !resumingNavigation.current) {
+    if (!workspace.hasLocalWork() && !resumingNavigation.current) {
       resumingNavigation.current = true;
       blocker.proceed();
     }
-  }, [blocker, hasPlanningChanges]);
+  }, [blocker, hasPlanningChanges, workspace]);
+  useEffect(() => {
+    if (!nextMode || leavingTrip || hasPlanningChanges) return;
+    setSelectedMode(nextMode);
+    setRequestedMode(undefined);
+  }, [nextMode, leavingTrip, hasPlanningChanges]);
 
   const changeMode = async (mode: BoardMode): Promise<void> => {
-    if (
-      (entryDraft || check.locked || pendingTimingEdit) &&
-      mode !== "itinerary"
-    )
-      return;
-    if (mode === "prepare" && boardMode !== "prepare" && planningBlocked)
-      return;
+    if (mode === boardMode) return;
+    const target = { tripId, mode };
     const generation = ++modeChangeGeneration.current;
     if (
       boardMode === "prepare" &&
       mode === "edit" &&
-      (prepareDraft.count > 0 || planningBlocked) &&
-      !(await boardRef.current?.save())
-    )
+      hasPrepareChanges &&
+      !unconfirmed
+    ) {
+      if (
+        (await boardRef.current?.save()) &&
+        generation === modeChangeGeneration.current &&
+        activeTripId.current === tripId
+      ) {
+        setRequestedMode(target);
+      }
       return;
-    if (
-      generation !== modeChangeGeneration.current ||
-      activeTripId.current !== tripId
-    )
-      return;
-    setSelectedMode({ tripId, mode });
+    }
+    if (workspace.hasLocalWork()) {
+      setRequestedMode(target);
+    } else {
+      setSelectedMode(target);
+    }
+  };
+
+  const stay = (): void => {
+    focusPrepareAction.current = false;
+    setRequestedMode(undefined);
+    if (blocker.state === "blocked") blocker.reset();
+  };
+
+  const discard = (): void => {
+    if (saving || unconfirmed) return;
+    workspace.discardDrafts();
+    check.discardRejection();
+    itinerary.timingEditing.discardDrafts();
+    if (entryDraft) itinerary.scheduling.cancel();
+    if (boardSave?.state === "error" || hasPrepareChanges) {
+      boardRef.current?.discard();
+    }
   };
 
   return (
-    <>
+    <TripPlanningWorkspace value={workspace}>
       <Navigation className={classes.tripNavigation} />
       <main
         className={mergeClasses(
@@ -405,10 +469,6 @@ export const MyTrip: React.FC = () => {
             <TripHeader
               trip={headerTrip}
               mode={boardMode}
-              planningBlocked={planningBlocked}
-              hasEntryDraft={!!entryDraft}
-              checkBlocked={check.locked}
-              timingEditBlocked={!!pendingTimingEdit}
               onModeChange={changeMode}
               onSavePrepare={() => void boardRef.current?.save()}
               onBack={() => navigate("/my-trips")}
@@ -426,7 +486,7 @@ export const MyTrip: React.FC = () => {
                     itinerary.focusNoticeTarget(notice);
                     void changeMode("itinerary");
                   }}
-                  onRetry={() => void refreshItinerary()}
+                  onRetry={() => void checkForUpdates()}
                 />
               }
               actions={
@@ -434,7 +494,7 @@ export const MyTrip: React.FC = () => {
                   {itineraryOpen && (
                     <ItineraryDayPager
                       itinerary={itinerary}
-                      refreshBlocked={check.locked}
+                      refreshBlocked={saving}
                     />
                   )}
                   {boardMode === "prepare" && (
@@ -478,10 +538,8 @@ export const MyTrip: React.FC = () => {
               tripId={currentTripId}
               initialReviewData={savedReviewData}
               initialSavedAttractionIds={savedAttractionIds}
-              onPlanningBlockedChange={setPlanningBlocked}
-              onReloadSavedPlanning={
-                itineraryOpen ? reloadOpenItinerary : undefined
-              }
+              onPlanningChange={setBoardSave}
+              onReloadSavedPlanning={reloadSavedItinerary}
               onPlaceOrderChange={setBoardPlaceOrder}
               onPrepareDraftChange={setPrepareDraft}
               visitHistory={visitHistoryMap}
@@ -506,144 +564,66 @@ export const MyTrip: React.FC = () => {
         )}
       </main>
       <Dialog
-        open={blocker.state === "blocked"}
+        open={
+          waitingToLeave &&
+          (hasPrepareChanges || (!saving && hasPlanningChanges))
+        }
         onOpenChange={(_event, data) => {
-          if (
-            !data.open &&
-            !prepareDraft.saving &&
-            !entryDraft?.activity &&
-            blocker.state === "blocked"
-          ) {
-            blocker.reset();
-          }
+          if (!data.open && !saving) stay();
         }}
       >
         <DialogSurface>
           <DialogBody>
-            {check.locked ? (
-              <>
-                <DialogTitle>Finish the itinerary check?</DialogTitle>
-                <DialogContent>
-                  {check.activity
-                    ? "Wait for the itinerary check to finish."
-                    : "Stay to inspect the saved check state before continuing."}
-                </DialogContent>
-                <DialogActions>
-                  <Button
-                    appearance="primary"
-                    onClick={() => {
-                      if (blocker.state === "blocked") blocker.reset();
-                    }}
-                  >
-                    Stay
-                  </Button>
-                </DialogActions>
-              </>
-            ) : pendingTimingEdit ? (
-              <>
-                <DialogTitle>Finish the timing edit?</DialogTitle>
-                <DialogContent>
-                  {pendingTimingEdit.activity
-                    ? "Wait until the saved itinerary is ready."
-                    : "Stay to inspect the saved itinerary before continuing."}
-                </DialogContent>
-                <DialogActions>
-                  <Button
-                    appearance="primary"
-                    onClick={() => {
-                      if (blocker.state === "blocked") blocker.reset();
-                    }}
-                  >
-                    Stay
-                  </Button>
-                </DialogActions>
-              </>
-            ) : entryDraft ? (
-              <>
-                <DialogTitle>Finish adding to the itinerary?</DialogTitle>
-                <DialogContent>
-                  {entryDraft.activity
-                    ? "The itinerary is still processing this attraction."
-                    : entryDraft.unconfirmed
-                      ? "Return to the itinerary to check whether this attraction was saved before continuing."
-                      : "Leaving now discards the draft."}
-                </DialogContent>
-                <DialogActions>
-                  {!entryDraft.activity && !entryDraft.unconfirmed && (
-                    <Button onClick={itinerary.scheduling.cancel}>
-                      Leave without saving
-                    </Button>
-                  )}
-                  <Button
-                    appearance="primary"
-                    onClick={() => {
-                      if (blocker.state === "blocked") blocker.reset();
-                    }}
-                  >
-                    Stay
-                  </Button>
-                </DialogActions>
-              </>
-            ) : (
-              <>
-                <DialogTitle>Save your Prepare changes?</DialogTitle>
-                <DialogContent>
-                  Your remaining additions, removals and board moves have not
-                  been saved. Changes already saved will stay in the trip.
-                  {prepareDraft.unconfirmed && (
-                    <p>
-                      An unconfirmed save may already have reached the trip.
-                      Leaving discards the local draft, not a save already
-                      committed.
-                    </p>
-                  )}
-                  {prepareDraft.error && (
-                    <MessageBar intent="error">
-                      <MessageBarBody>{prepareDraft.error}</MessageBarBody>
-                    </MessageBar>
-                  )}
-                </DialogContent>
-                <DialogActions>
-                  {prepareDraft.unconfirmed && (
-                    <Button
-                      onClick={() => {
-                        if (blocker.state === "blocked") blocker.reset();
-                        void boardRef.current?.inspect();
-                      }}
-                    >
-                      Inspect saved trip
-                    </Button>
-                  )}
-                  <Button
-                    appearance="primary"
-                    disabled={planningBlocked}
-                    onClick={() => void boardRef.current?.save()}
-                  >
-                    {prepareDraft.saving ? "Saving..." : "Save to trip"}
-                  </Button>
-                  <Button
-                    disabled={prepareDraft.saving}
-                    onClick={() => {
-                      boardRef.current?.discard();
-                    }}
-                  >
-                    Leave without saving
-                  </Button>
-                  <Button
-                    disabled={prepareDraft.saving}
-                    onClick={() => {
-                      if (blocker.state === "blocked") blocker.reset();
-                    }}
-                  >
-                    Stay
-                  </Button>
-                </DialogActions>
-              </>
-            )}
+            <DialogTitle>
+              {hasPrepareChanges
+                ? "Save your Prepare changes?"
+                : "Leave the current planning change?"}
+            </DialogTitle>
+            <DialogContent>
+              {unconfirmed
+                ? "This save may have reached the trip. Stay to inspect saved planning before leaving."
+                : hasPrepareChanges
+                  ? "Your remaining additions, removals and board moves have not been saved. Changes already saved will stay in the trip."
+                  : "This change has not been saved. Stay to keep your input."}
+              {prepareDraft.error && (
+                <MessageBar intent="error">
+                  <MessageBarBody>{prepareDraft.error}</MessageBarBody>
+                </MessageBar>
+              )}
+            </DialogContent>
+            <DialogActions>
+              {hasPrepareChanges && unconfirmed && (
+                <Button
+                  onClick={() => {
+                    stay();
+                    void boardRef.current?.inspect();
+                  }}
+                >
+                  Inspect saved trip
+                </Button>
+              )}
+              {hasPrepareChanges && !unconfirmed && (
+                <Button
+                  appearance="primary"
+                  disabled={planningBlocked}
+                  onClick={() => void boardRef.current?.save()}
+                >
+                  {prepareDraft.saving ? "Saving..." : "Save to trip"}
+                </Button>
+              )}
+              {!unconfirmed && (
+                <Button disabled={saving} onClick={discard}>
+                  Leave without saving
+                </Button>
+              )}
+              <Button disabled={saving} onClick={stay}>
+                Stay
+              </Button>
+            </DialogActions>
           </DialogBody>
         </DialogSurface>
       </Dialog>
-    </>
+    </TripPlanningWorkspace>
   );
 };
 

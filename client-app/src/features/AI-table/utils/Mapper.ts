@@ -36,6 +36,7 @@ export function mapSavedTripAttractionsToBoard(
       stable: item.attractionType === "STABLE",
       isTraditional: item.isTraditional,
       isCountrywide: item.isCountrywide,
+      permanentlyClosedAt: item.permanentlyClosedAt ?? undefined,
       name: item.attractionName,
       address: item.attractionAddress || "",
       category: item.attractionCategory || "",

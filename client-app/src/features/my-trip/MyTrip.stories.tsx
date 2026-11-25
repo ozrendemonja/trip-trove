@@ -16,6 +16,7 @@ import type {
   GetSearchAttractionResponse
 } from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
+import type { TripAttractionFromServer } from "./infra/TripApi";
 
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
@@ -57,7 +58,7 @@ const itineraryFixture = (
 
 // A saved-attractions payload (shape of GET /trips/:id/attractions) used to put a
 // trip into the "already has attractions" state so the Board lands in edit mode.
-const SAVED_ATTRACTIONS = [
+const SAVED_ATTRACTIONS: TripAttractionFromServer[] = [
   {
     attractionId: 0,
     attractionName: "Casino of Monte-Carlo",
@@ -80,6 +81,7 @@ const SAVED_ATTRACTIONS = [
 type Server = ReturnType<typeof makeServer>;
 let server: Server;
 const boardMoves = fn();
+const boardNotes = fn();
 const schedulingPosts = fn();
 const checkPosts = fn();
 const timingPuts = fn();
@@ -954,6 +956,10 @@ export const MenuAndDragReportTheSameMoveConflict: Story = {
       await body.findByRole("dialog", { name: "Move Museum to day" })
     );
     await user.selectOptions(dialog.getByLabelText("Position"), "43");
+    const unsavedMove = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(unsavedMove);
+    await expect(unsavedMove.defaultPrevented).toBe(true);
+    await expect(compositionWrites).not.toHaveBeenCalled();
     await user.click(dialog.getByRole("button", { name: "Move entry" }));
     const conflict =
       "The move conflicts with the fixed start of Garden. Choose another position or day.";
@@ -1397,6 +1403,10 @@ export const RejectsASavedClockThenAcceptsAnExplicitOvernightEnd: Story = {
         "2099-06-10T23:00+02:00",
         "2099-06-10T23:30+02:00"
       );
+      server.put(`${entryUrl}/fixed-start`, () => {
+        saved.days[0].entries[0].fixedStart = true;
+        return new MirageResponse(204);
+      });
       const replies = [
         () =>
           new MirageResponse(
@@ -1457,6 +1467,7 @@ export const RejectsASavedClockThenAcceptsAnExplicitOvernightEnd: Story = {
 
     await user.click(end);
     await expect(museum.getByRole("alert")).toBeVisible();
+    await expect(end).toHaveValue("01:00");
     await user.click(canvas.getByRole("button", { name: "Check itinerary" }));
     const dialog = await overlay(canvasElement).findByRole("dialog", {
       name: "Check itinerary"
@@ -1465,6 +1476,14 @@ export const RejectsASavedClockThenAcceptsAnExplicitOvernightEnd: Story = {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
     await expect(museum.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(
+      museum.getByRole("button", { name: "Lock start for Museum" })
+    );
+    await museum.findByText("Fixed start");
+    await user.click(end);
+    await expect(end).toHaveValue("01:00");
+    await expect(timingPuts).toHaveBeenCalledTimes(1);
 
     await user.clear(end);
     await user.type(end, "2099-06-11 01:00{Enter}");
@@ -1499,7 +1518,7 @@ export const ChecksAnEmptyItineraryExplicitly: Story = {
           saved.lastCheckedAt = "2026-11-23T16:00:00Z";
           return new MirageResponse(204);
         },
-        { timing: 200 }
+        { timing: 500 }
       );
     }
   },
@@ -1537,10 +1556,13 @@ export const ChecksAnEmptyItineraryExplicitly: Story = {
       await body.findByRole("button", { name: "Mark empty itinerary checked" })
     );
     await expect(await canvas.findByText("Saving check...")).toBeVisible();
-    await expect(plan).toBeDisabled();
+    await user.click(plan);
+    await expect(
+      canvas.getByRole("button", { name: "Itinerary" })
+    ).toHaveAttribute("aria-current", "step");
     await expect(await canvas.findByText("Manually checked")).toBeVisible();
     await expect(checkPosts).toHaveBeenCalledTimes(1);
-    await user.click(await canvas.findByRole("button", { name: /^Plan$/ }));
+    await waitFor(() => expect(plan).toHaveAttribute("aria-current", "step"));
     await expect(canvas.getByText("Manually checked")).toBeVisible();
   }
 };
@@ -1656,6 +1678,13 @@ export const ShowsGroupedChangesAndFocusesTheExistingEntry: Story = {
       canvas.getByText("Changed since last check")
     ).toBeInTheDocument();
     await expect(canvas.getByText("2 changes to check")).toBeInTheDocument();
+    await expect(
+      within(entry).getByRole("button", { name: "Lock start for Garden" })
+    ).toHaveAttribute("aria-disabled", "true");
+    await user.click(canvas.getByRole("button", { name: "Refresh itinerary" }));
+    await canvas.findByText(/Newer itinerary data is available/);
+    await expect(inspect).toBeVisible();
+    await expect(canvas.getByText("Changed since last check")).toBeVisible();
     await user.click(inspect);
     await expect(
       await canvas.findByText("The saved itinerary has a newer manual check.")
@@ -1737,6 +1766,70 @@ export const InspectsAnUnconfirmedCheckBeforeConfirmingAgain: Story = {
     );
     await expect(await canvas.findByText("Manually checked")).toBeVisible();
     await expect(checkPosts).toHaveBeenCalledTimes(2);
+  }
+};
+
+export const NewerDataRequiresAFreshCheckConfirmation: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      server.get(itineraryUrl, () =>
+        savedTimeline("2099-06-10T09:00+02:00", "2099-06-10T09:30+02:00")
+      );
+      server.post(`${itineraryUrl}/check`, () => {
+        checkPosts();
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await canvas.findByRole("listitem", { name: "Museum" });
+    const check = canvas.getByRole("button", { name: "Check itinerary" });
+    await waitFor(() =>
+      expect(check).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(check);
+    const dialog = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Check itinerary"
+      })
+    );
+    const confirm = dialog.getByRole("button", { name: "Mark as checked" });
+    const newer = savedTimeline(
+      "2099-06-10T10:00+02:00",
+      "2099-06-10T10:30+02:00"
+    );
+    newer.days[0].entries[0].name = "Renamed Museum";
+    server.get(itineraryUrl, () => newer);
+    const document = canvasElement.ownerDocument;
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible"
+    });
+    try {
+      fireEvent(document, new Event("visibilitychange"));
+      await dialog.findByText(
+        "Refresh the itinerary to review the newer data before checking it."
+      );
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState");
+    }
+    await expect(confirm).toHaveAttribute("aria-disabled", "true");
+    await user.click(confirm);
+    await expect(checkPosts).not.toHaveBeenCalled();
+
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Refresh itinerary" })
+    );
+    await expect(
+      await canvas.findByRole("listitem", { name: "Renamed Museum" })
+    ).toBeVisible();
+    await expect(check).not.toHaveAttribute("aria-disabled", "true");
   }
 };
 
@@ -1904,10 +1997,10 @@ export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
           }
         }
       ];
-      const reads = [saved, new MirageResponse(503)];
+      const refreshFailures: MirageResponse[] = [];
       server.get(
         "http://localhost:8080/trips/1/itinerary",
-        () => reads.shift() ?? saved
+        () => refreshFailures.shift() ?? saved
       );
       server.post(schedulingUrl, (_schema, request) => {
         schedulingPosts(JSON.parse(request.requestBody));
@@ -1926,6 +2019,7 @@ export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
           }
         });
         saved.unscheduledAttractions = [];
+        refreshFailures.push(new MirageResponse(503));
         return new MirageResponse(204);
       });
     }
@@ -2044,26 +2138,36 @@ export const InspectsSavedItineraryBeforeRetryingAnUnconfirmedEntry: Story = {
           timing
         }
       ];
-      const reads = [original, new MirageResponse(503), original];
+      let current = original;
+      const inspectionFailures: MirageResponse[] = [];
       server.get(
         "http://localhost:8080/trips/1/itinerary",
-        () => reads.shift() ?? saved
+        () => inspectionFailures.shift() ?? current
       );
       const writes = [
-        new MirageResponse(
-          400,
-          {},
-          {
-            errorCode: "BAD_REQUEST",
-            errorMessage: "Enter the required details to add this attraction.",
-            schedulingInputs: { requiredInputs: ["VISIT_DURATION"] }
-          }
-        ),
-        new MirageResponse(503)
+        () =>
+          new MirageResponse(
+            400,
+            {},
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage:
+                "Enter the required details to add this attraction.",
+              schedulingInputs: { requiredInputs: ["VISIT_DURATION"] }
+            }
+          ),
+        () => {
+          inspectionFailures.push(new MirageResponse(503));
+          return new MirageResponse(503);
+        },
+        () => {
+          current = saved;
+          return new MirageResponse(204);
+        }
       ];
       server.post(schedulingUrl, (_schema, request) => {
         schedulingPosts(JSON.parse(request.requestBody));
-        return writes.shift() ?? new MirageResponse(204);
+        return writes.shift()?.() ?? new MirageResponse(500);
       });
     }
   },
@@ -2136,6 +2240,65 @@ export const InspectsSavedItineraryBeforeRetryingAnUnconfirmedEntry: Story = {
   }
 };
 
+export const InspectsALostSuccessfulAdditionWithoutSubmittingAgain: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      schedulingPosts.mockClear();
+      let saved = compositionTimeline();
+      const scheduled = timelineWithScheduledLunaCafe(saved, {
+        start: "08:00",
+        end: "08:30",
+        index: 0
+      });
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(schedulingUrl, (_schema, request) => {
+        schedulingPosts(JSON.parse(request.requestBody));
+        saved = scheduled;
+        return new MirageResponse(503);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Add Luna Cafe" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("menuitem", {
+        name: /Jun 10, 2099/
+      })
+    );
+    const draft = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    fireEvent.change(draft.getByLabelText("Start clock"), {
+      target: { value: "08:00" }
+    });
+    await user.click(draft.getByRole("button", { name: "Add to day" }));
+    const inspect = await draft.findByRole("button", {
+      name: "Inspect saved itinerary"
+    });
+    await expect(
+      canvas.getByRole("button", { name: "Check itinerary" })
+    ).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(canvas.getByRole("button", { name: "Refresh itinerary" }));
+    await canvas.findByText(/Newer itinerary data is available/);
+    await expect(inspect).toBeVisible();
+    await expect(draft.getByLabelText("Start clock")).toHaveValue("08:00");
+    await expect(
+      canvas.queryByRole("listitem", { name: "Luna Cafe" })
+    ).not.toBeInTheDocument();
+
+    await user.click(inspect);
+    await expectLunaCafeScheduled(canvas, "08:00");
+    await expect(schedulingPosts).toHaveBeenCalledTimes(1);
+  }
+};
+
 export const ATripWithSavedEntriesStillOpensInReviewAfterTheTrip: Story = {
   parameters: {
     savedAttractions: SAVED_ATTRACTIONS,
@@ -2186,26 +2349,27 @@ export const KeepsAnInvalidSpringClockAndSavesTheFirstFallOccurrenceWithoutAProm
             end: "2027-10-31T02:00+01:00"
           }
         });
-        const reads = [original, saved];
-        server.get(
-          "http://localhost:8080/trips/1/itinerary",
-          () => reads.shift() ?? saved
-        );
+        let current = original;
+        server.get(itineraryUrl, () => current);
         const writes = [
-          new MirageResponse(
-            400,
-            {},
-            {
-              errorCode: "BAD_REQUEST",
-              errorMessage:
-                "That start clock does not occur in Europe/Belgrade on this date. Choose another time."
-            }
-          ),
-          new MirageResponse(204)
+          () =>
+            new MirageResponse(
+              400,
+              {},
+              {
+                errorCode: "BAD_REQUEST",
+                errorMessage:
+                  "That start clock does not occur in Europe/Belgrade on this date. Choose another time."
+              }
+            ),
+          () => {
+            current = saved;
+            return new MirageResponse(204);
+          }
         ];
         server.post(schedulingUrl, (_schema, request) => {
           schedulingPosts(JSON.parse(request.requestBody));
-          return writes.shift() ?? new MirageResponse(500);
+          return writes.shift()?.() ?? new MirageResponse(500);
         });
       }
     },
@@ -2502,11 +2666,13 @@ export const CardMoveKeepsPlacesInOpenBoardOrder: Story = {
         nextAttractionId: null
       })
     );
-    await expect(
-      within(top)
-        .getAllByRole("link")
-        .map((card) => card.textContent)
-    ).toEqual(["Pantheon", "Colosseum"]);
+    await waitFor(() =>
+      expect(
+        within(top)
+          .getAllByRole("link")
+          .map((card) => card.textContent)
+      ).toEqual(["Pantheon", "Colosseum"])
+    );
     await expect(
       canvas
         .getAllByRole("heading", { name: /^(Rome|Florence)$/ })
@@ -2670,20 +2836,188 @@ export const ReloadsTheItineraryAndKeepsStaleDaysVisible: Story = {
   }
 };
 
-export const ShowsBoardSaveRecoveryInItinerary: Story = {
+export const RefreshKeepsAnUnfinishedClockUntilItIsCancelled: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: "390px" }}>
+        <Story />
+      </div>
+    )
+  ],
   parameters: {
     savedAttractions: SAVED_ATTRACTIONS,
     configureTripServer: (server: Server) => {
+      server.get(itineraryUrl, () =>
+        savedTimeline("2099-06-10T09:00+02:00", "2099-06-10T09:30+02:00")
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const museum = await canvas.findByRole("listitem", { name: "Museum" });
+    const start = within(museum).getByRole("textbox", {
+      name: "Start clock for Museum"
+    });
+    await user.clear(start);
+    await user.type(start, "09:2");
+
+    const unsavedUnload = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(unsavedUnload);
+    await expect(unsavedUnload.defaultPrevented).toBe(true);
+
+    server.get(itineraryUrl, () =>
+      savedTimeline("2099-06-10T10:00+02:00", "2099-06-10T10:45+02:00")
+    );
+    const refresh = canvas.getByRole("button", { name: "Refresh itinerary" });
+    await user.click(refresh);
+    await expect(
+      await canvas.findByText(/Newer itinerary data is available/)
+    ).toBeVisible();
+    await expect(start).toHaveValue("09:2");
+    await expect(start).toHaveFocus();
+    await expect(
+      within(museum).getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveValue("09:30");
+
+    await user.click(canvas.getByRole("button", { name: "Next day" }));
+    await expect(
+      canvas.queryByRole("listitem", { name: "Museum" })
+    ).not.toBeInTheDocument();
+    const pagedAway = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(pagedAway);
+    await expect(pagedAway.defaultPrevented).toBe(true);
+    await user.click(canvas.getByRole("button", { name: "Previous day" }));
+    const restored = await canvas.findByRole("textbox", {
+      name: "Start clock for Museum"
+    });
+    await expect(restored).toHaveValue("09:00");
+    await user.click(restored);
+    await expect(restored).toHaveValue("09:2");
+
+    await user.keyboard("{Escape}");
+    await user.click(refresh);
+    await waitFor(() => expect(restored).toHaveValue("10:00"));
+    await expect(
+      canvas.queryByText(/Newer itinerary data is available/)
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const RefreshKeepsAnOpenBoardNoteAndTabReturnUpdatesTheIdleBoard: Story =
+  {
+    parameters: {
+      savedAttractions: [{ ...SAVED_ATTRACTIONS[0], note: "Original note" }]
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = setupUser();
+      await user.click(await canvas.findByTitle("Edit note"));
+      const note = canvas.getByRole("textbox");
+      await user.clear(note);
+      await user.type(note, "My unfinished note");
+
+      const newerBoard = [
+        {
+          ...SAVED_ATTRACTIONS[0],
+          note: "New saved note",
+          permanentlyClosedAt: "2026-11-20T10:00:00"
+        }
+      ];
+      server.get("http://localhost:8080/trips/1/attractions", () => newerBoard);
+      await user.click(
+        canvas.getByRole("button", { name: "Refresh trip board" })
+      );
+      await expect(
+        await canvas.findByText(/Newer board data is available/)
+      ).toBeVisible();
+      await expect(note).toHaveValue("My unfinished note");
+      await expect(note).toHaveFocus();
+
+      await user.click(canvas.getByRole("button", { name: "Cancel" }));
+      await expect(canvas.getByText("Original note")).toBeVisible();
+      const ownerDocument = canvasElement.ownerDocument;
+      Object.defineProperty(ownerDocument, "visibilityState", {
+        configurable: true,
+        value: "visible"
+      });
+      try {
+        fireEvent(ownerDocument, new Event("visibilitychange"));
+        await expect(await canvas.findByText("New saved note")).toBeVisible();
+        await expect(
+          canvas.getByText(/Permanently closed since/)
+        ).toBeVisible();
+      } finally {
+        Reflect.deleteProperty(ownerDocument, "visibilityState");
+      }
+      await expect(
+        canvas.queryByText(/Newer board data is available/)
+      ).not.toBeInTheDocument();
+    }
+  };
+
+export const ADelayedBoardRefreshCannotUndoAConfirmedEdit: Story = {
+  parameters: {
+    savedAttractions: [{ ...SAVED_ATTRACTIONS[0], note: "Earlier note" }]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const editNote = await canvas.findByTitle("Edit note");
+    let saved = [{ ...SAVED_ATTRACTIONS[0], note: "Earlier note" }];
+    server.get("http://localhost:8080/trips/1/attractions", () => saved, {
+      timing: 1400
+    });
+    server.put(
+      "http://localhost:8080/trips/1/attractions/0/note",
+      (_schema, request) => {
+        const body: { note: string } = JSON.parse(request.requestBody);
+        saved = [{ ...SAVED_ATTRACTIONS[0], note: body.note }];
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+
+    const refresh = canvas.getByRole("button", { name: "Refresh trip board" });
+    await user.click(refresh);
+    await expect(refresh).toHaveAttribute("aria-busy", "true");
+    await user.click(editNote);
+    const note = canvas.getByRole("textbox");
+    await user.clear(note);
+    await user.type(note, "Confirmed newer note");
+    await user.click(canvas.getByRole("button", { name: "Save" }));
+    await expect(await canvas.findByText("Confirmed newer note")).toBeVisible();
+    await expect(refresh).toHaveAttribute("aria-busy", "true");
+
+    await waitFor(() => expect(refresh).toHaveAttribute("aria-busy", "false"), {
+      timeout: 3000
+    });
+    await expect(canvas.getByText("Confirmed newer note")).toBeVisible();
+    await expect(canvas.queryByText("Earlier note")).not.toBeInTheDocument();
+  }
+};
+
+export const InspectsAnUnconfirmedBoardEditBeforeLeavingTheStep: Story = {
+  parameters: {
+    configureTripServer: (server: Server) => {
+      let saved = SAVED_ATTRACTIONS;
+      boardNotes.mockClear();
+      server.get("http://localhost:8080/trips/1/attractions", () => saved);
       server.put(
         "http://localhost:8080/trips/1/attractions/0/note",
-        () =>
-          new MirageResponse(
+        (_schema, request) => {
+          const body: { note: string } = JSON.parse(request.requestBody);
+          boardNotes(body);
+          saved = [{ ...SAVED_ATTRACTIONS[0], note: body.note }];
+          return new MirageResponse(
             503,
             {},
             {
               errorMessage: "The save couldn't be confirmed."
             }
-          ),
+          );
+        },
         { timing: 800 }
       );
     }
@@ -2697,23 +3031,45 @@ export const ShowsBoardSaveRecoveryInItinerary: Story = {
     await canvas.findByText("Saving");
 
     await user.click(canvas.getByRole("button", { name: "Itinerary" }));
-    await canvas.findByRole("region", { name: "Itinerary days" });
+    const departure = await overlay(canvasElement).findByRole("dialog", {
+      name: "Leave the current planning change?"
+    });
+    await waitFor(() =>
+      expect(
+        within(departure).getByText(/may have reached the trip/)
+      ).toBeVisible()
+    );
+    await expect(
+      within(departure).queryByRole("button", { name: "Leave without saving" })
+    ).not.toBeInTheDocument();
+    await user.click(within(departure).getByRole("button", { name: "Stay" }));
     const feedback = within(
       canvas.getByRole("status", {
         name: "Marked change for Casino of Monte-Carlo"
       })
     );
     await feedback.findByText("The save couldn't be confirmed.");
+    await expect(canvas.getByTitle("Unmark must visit")).toBeDisabled();
     await expect(
+      canvas.queryByText("Arrive before lunch")
+    ).not.toBeInTheDocument();
+    const unconfirmedUnload = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(unconfirmedUnload);
+    await expect(unconfirmedUnload.defaultPrevented).toBe(true);
+    await user.click(
       feedback.getByRole("button", { name: "Reload saved planning" })
-    ).toBeVisible();
+    );
+    await expect(await canvas.findByText("Arrive before lunch")).toBeVisible();
+    await expect(await feedback.findByText("Saved")).toBeVisible();
+    await expect(boardNotes).toHaveBeenCalledTimes(1);
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await canvas.findByRole("region", { name: "Itinerary days" });
   }
 };
 
 export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
   {
     parameters: {
-      savedAttractions: [{ ...SAVED_ATTRACTIONS[0], mustVisit: false }],
       configureTripServer: (server: Server) => {
         const casino = {
           attractionId: 0,
@@ -2726,8 +3082,9 @@ export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
         const saved = itineraryFixture("2099-06-10", "2099-06-24", [
           { ...casino, mustVisit: true }
         ]);
+        saved.lastCheckedAt = "2026-11-20T10:00:00Z";
+        saved.checkState = "CHANGED_SINCE_LAST_CHECK";
         const responses = [
-          itineraryFixture("2099-06-10", "2099-06-24", [casino]),
           itineraryFixture("2099-06-10", "2099-06-24", [casino]),
           new MirageResponse(503),
           saved
@@ -2737,11 +3094,20 @@ export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
           () => responses.shift() ?? saved,
           { timing: 0 }
         );
+        let mustVisit = false;
+        server.get("http://localhost:8080/trips/1/attractions", () => [
+          { ...SAVED_ATTRACTIONS[0], mustVisit }
+        ]);
         server.put(
           "http://localhost:8080/trips/1/attractions/0/must-visit",
-          () =>
-            new MirageResponse(503, {}, { errorMessage: "Save unconfirmed." }),
-          { timing: 800 }
+          () => {
+            mustVisit = true;
+            return new MirageResponse(
+              503,
+              {},
+              { errorMessage: "Save unconfirmed." }
+            );
+          }
         );
       }
     },
@@ -2750,26 +3116,26 @@ export const ReloadingSavedPlanningAlsoRefreshesUnscheduledAttractions: Story =
       const user = setupUser();
       await canvas.findByText("Not yet checked");
       await user.click(await canvas.findByTitle("Mark must visit"));
-      await canvas.findByText("Saving");
-      await user.click(canvas.getByRole("button", { name: "Itinerary" }));
-      const card = await canvas.findByRole("article", {
-        name: "Casino of Monte-Carlo"
-      });
-      await expect(card).toHaveAccessibleDescription(/Worth seeing/);
       await canvas.findByText("Save unconfirmed.");
 
       await user.click(
         canvas.getByRole("button", { name: "Reload saved planning" })
       );
       await canvas.findByText(/Saved planning couldn't be loaded/);
-      await expect(card).toHaveAccessibleDescription(/Worth seeing/);
+      await expect(canvas.getByTitle("Mark must visit")).toBeDisabled();
 
       await user.click(
         canvas.getByRole("button", { name: "Reload saved planning" })
       );
-      await waitFor(async () => {
-        await expect(card).toHaveAccessibleDescription(/Must see/);
+      await canvas.findByTitle("Unmark must visit");
+      await expect(
+        await canvas.findByText("Changed since last check")
+      ).toBeVisible();
+      await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+      const card = await canvas.findByRole("article", {
+        name: "Casino of Monte-Carlo"
       });
+      await expect(card).toHaveAccessibleDescription(/Must see/);
       await expect(
         canvas.queryByRole("button", { name: "Reload saved planning" })
       ).not.toBeInTheDocument();
@@ -3573,6 +3939,9 @@ export const FormSaveShortcutAndPendingEditUseOnePrepareSave: Story = {
     const modal = within(await openSearchForAttraction(canvasElement, user));
     await user.type(modal.getByRole("textbox"), "Lith");
     await user.click(await modal.findByRole("menuitem", { name: "Lithuania" }));
+    const update = modal.getByRole("button", { name: "Update" });
+    await waitFor(() => expect(update).toBeEnabled());
+    update.focus();
     await user.keyboard("{Control>}s{/Control}");
     await canvas.findByRole("button", { name: "Save to trip (4)" });
     await expect(saves).not.toHaveBeenCalled();
@@ -3746,7 +4115,7 @@ export const ReaddingACollectionRestoresSavedPlaceAndCardOrder: Story = {
   }
 };
 
-export const PrepareWaitsForAnExistingPlanningChange: Story = {
+export const ChangingStepsWaitsForAnExistingPlanningChange: Story = {
   parameters: { savedAttractions: SAVED_ATTRACTIONS },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -3762,18 +4131,77 @@ export const PrepareWaitsForAnExistingPlanningChange: Story = {
       ).closest("li.attraction") as HTMLElement
     );
     await user.click(card.getByRole("button", { name: "+ Add note" }));
+    await user.type(card.getByRole("textbox"), "Save before switching steps");
+    await user.click(card.getByRole("button", { name: "Save" }));
+    await card.findByText("Saving");
+    const pendingUnload = new Event("beforeunload", { cancelable: true });
+    canvasElement.ownerDocument.defaultView?.dispatchEvent(pendingUnload);
+    await expect(pendingUnload.defaultPrevented).toBe(true);
+
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    const plan = canvas.getByRole("button", { name: "Plan" });
+    await user.click(plan);
+    await expect(edit).toHaveAttribute("aria-current", "step");
+    await waitFor(() => expect(plan).toHaveAttribute("aria-current", "step"));
+    await expect(card.getByText("Save before switching steps")).toBeVisible();
+
+    await user.click(edit);
+    await user.click(card.getByTitle("Edit note"));
+    await user.clear(card.getByRole("textbox"));
     await user.type(card.getByRole("textbox"), "Save before preparing");
     await user.click(card.getByRole("button", { name: "Save" }));
+    await card.findByText("Saving");
     const prepare = canvas.getByRole("button", { name: "Prepare" });
-    await waitFor(() => expect(prepare).toBeDisabled());
-    await expect(prepare).toHaveAccessibleDescription("Finish pending change");
-    await user.click(canvas.getByRole("button", { name: "Plan" }));
-    await expect(canvas.getByRole("button", { name: "Plan" })).toHaveAttribute(
-      "aria-current",
-      "step"
+    await user.click(prepare);
+    await expect(edit).toHaveAttribute("aria-current", "step");
+    await waitFor(() =>
+      expect(prepare).toHaveAttribute("aria-current", "step")
     );
-    await card.findByText("Saved");
-    await waitFor(() => expect(prepare).toBeEnabled());
+    await expect(card.getByText("Save before preparing")).toBeVisible();
+  }
+};
+
+export const LeavingWaitsForRejectionAndKeepsTheBoardProposal: Story = {
+  parameters: {
+    savedAttractions: [{ ...SAVED_ATTRACTIONS[0], note: "Saved trip note" }],
+    configureTripServer: (server: Server) => {
+      server.put(
+        "http://localhost:8080/trips/1/attractions/0/note",
+        () => new MirageResponse(400, {}, { errorMessage: "Revise the note." }),
+        { timing: 500 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const user = setupUser();
+    const canvas = within(canvasElement);
+    await user.click(await canvas.findByTitle("Edit note"));
+    await user.clear(canvas.getByRole("textbox"));
+    await user.type(canvas.getByRole("textbox"), "Keep this proposal");
+    await user.click(canvas.getByRole("button", { name: "Save" }));
+    await canvas.findByText("Saving");
+    await user.click(canvas.getByRole("button", { name: "My Trips" }));
+    await expect(canvas.getByText("Saved trip note")).toBeVisible();
+    await expect(
+      canvas.queryByText("My Trips list page")
+    ).not.toBeInTheDocument();
+
+    const dialog = await overlay(canvasElement).findByRole("dialog", {
+      name: "Leave the current planning change?"
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Stay" }));
+    await expect(await canvas.findByText("Revise the note.")).toBeVisible();
+    await expect(canvas.getByText("Saved trip note")).toBeVisible();
+    await user.click(canvas.getByTitle("Edit note"));
+    await expect(canvas.getByRole("textbox")).toHaveValue("Keep this proposal");
+
+    await user.click(canvas.getByRole("button", { name: "My Trips" }));
+    await user.click(
+      await overlay(canvasElement).findByRole("button", {
+        name: "Leave without saving"
+      })
+    );
+    await expect(await canvas.findByText("My Trips list page")).toBeVisible();
   }
 };
 

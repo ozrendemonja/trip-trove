@@ -16,7 +16,7 @@ export interface AttractionItemProps {
   onDelete?: () => void;
   readOnly?: boolean;
   planningDisabled?: boolean;
-  correctionField?: PlanningTextField;
+  correction?: { field: PlanningTextField; value: string };
   canManageAttractions?: boolean;
   reviewMode?: boolean;
   reviewData?: { rating: Rating; reviewNote: string; wouldVisitAgain: boolean };

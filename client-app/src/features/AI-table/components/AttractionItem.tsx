@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button, mergeClasses, Text } from "@fluentui/react-components";
 import "../styles/AttractionItem.css";
 import { Rating } from "../../my-trip/domain/Trip.types";
+import { usePlanningDraft } from "../../my-trip/useTripPlanningWorkspace";
 import { Spinner } from "@fluentui/react-components";
 import { InputField } from "../../../shared/ui/forms/InputField";
 import { Dismiss24Regular } from "@fluentui/react-icons";
@@ -30,7 +31,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   onDelete,
   readOnly,
   planningDisabled,
-  correctionField,
+  correction,
   canManageAttractions,
   reviewMode,
   reviewData,
@@ -40,9 +41,10 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   visitHistory
 }) => {
   const review = useReviewStyles();
-  const noteDisabled = planningDisabled && correctionField !== "note";
-  const hoursDisabled = planningDisabled && correctionField !== "working-hours";
-  const visitDisabled = planningDisabled && correctionField !== "visit-time";
+  const noteDisabled = planningDisabled && correction?.field !== "note";
+  const hoursDisabled =
+    planningDisabled && correction?.field !== "working-hours";
+  const visitDisabled = planningDisabled && correction?.field !== "visit-time";
   // Attractions in the "Excluded Attractions" column were deliberately dropped
   // from the trip, so they are not part of the review flow and offer no
   // "add to trip" form. Every excluded column id contains "_excluded".
@@ -65,6 +67,11 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   const [editingVisit, setEditingVisit] = useState(false);
   const [visitDraft, setVisitDraft] = useState(attraction.VisitTime || "");
   const visitInputRef = useRef<HTMLInputElement | null>(null);
+  usePlanningDraft(editing || editingHours || editingVisit, () => {
+    setEditing(false);
+    setEditingHours(false);
+    setEditingVisit(false);
+  });
   useEffect(() => {
     if (editing && textareaRef.current) {
       textareaRef.current.focus();
@@ -88,12 +95,12 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
 
   const startAdd = () => {
     if (readOnly) return;
-    setDraft("");
+    setDraft(correction?.field === "note" ? correction.value : "");
     setEditing(true);
   };
   const startEdit = () => {
     if (readOnly) return;
-    setDraft(attraction.note);
+    setDraft(correction?.field === "note" ? correction.value : attraction.note);
     setEditing(true);
   };
   const cancelEdit = () => {
@@ -107,12 +114,18 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
 
   const startEditHours = () => {
     if (readOnly) return;
-    setHoursDraft(attraction.workingHours || "");
+    setHoursDraft(
+      correction?.field === "working-hours"
+        ? correction.value
+        : attraction.workingHours || ""
+    );
     setEditingHours(true);
   };
   const startAddHours = () => {
     if (readOnly) return;
-    setHoursDraft("");
+    setHoursDraft(
+      correction?.field === "working-hours" ? correction.value : ""
+    );
     setEditingHours(true);
   };
   const cancelEditHours = () => {
@@ -125,12 +138,16 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
   };
   const startEditVisit = () => {
     if (readOnly) return;
-    setVisitDraft(attraction.VisitTime || "");
+    setVisitDraft(
+      correction?.field === "visit-time"
+        ? correction.value
+        : attraction.VisitTime || ""
+    );
     setEditingVisit(true);
   };
   const startAddVisit = () => {
     if (readOnly) return;
-    setVisitDraft("");
+    setVisitDraft(correction?.field === "visit-time" ? correction.value : "");
     setEditingVisit(true);
   };
   const cancelEditVisit = () => {

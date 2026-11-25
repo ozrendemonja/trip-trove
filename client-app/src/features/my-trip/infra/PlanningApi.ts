@@ -4,6 +4,11 @@ import type { TripPlanningChange } from "../domain/TripPlanning.types";
 
 managerClient();
 
+export const PLANNING_REQUEST_TIMEOUT_MS = 15_000;
+
+export const isUnconfirmedSave = (response?: Response): boolean =>
+  !response || response.status === 408 || response.status >= 500;
+
 export class PlanningSaveError extends Error {
   constructor(
     message: string,
@@ -69,23 +74,28 @@ const requestFor = (
 
 export const savePlanningChange = async (
   tripId: number,
-  change: TripPlanningChange
+  change: TripPlanningChange,
+  signal?: AbortSignal
 ): Promise<void> => {
   const { response, error } = await client.request<
     unknown,
     { error: ErrorResponse }
   >({
     ...requestFor(tripId, change),
+    signal,
     headers: {
       "x-api-version": "1",
       "Content-Type": "application/json"
     }
   });
   if (!response || !response.ok) {
+    const unconfirmed = isUnconfirmedSave(response);
     throw new PlanningSaveError(
       error?.errorMessage ??
-        "The save couldn't be confirmed. Reload saved planning before trying again.",
-      !response || response.status >= 500,
+        (unconfirmed
+          ? "The save couldn't be confirmed. Reload saved planning before trying again."
+          : "The planning change was rejected. Review it before trying again."),
+      unconfirmed,
       { cause: error }
     );
   }

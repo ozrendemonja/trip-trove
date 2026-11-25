@@ -24,6 +24,7 @@ import { useState, type ReactElement } from "react";
 import type { ChangeNotice, GetItineraryResponse } from "../../clients/manager";
 import { formatItineraryDate } from "./Itinerary";
 import type { useItineraryCheck } from "./useItineraryCheck";
+import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
 const stateLabels: Record<GetItineraryResponse["checkState"], string> = {
   NOT_YET_CHECKED: "Not yet checked",
@@ -109,6 +110,7 @@ export function ItineraryCheckControls({
   const tabId = useId("check-changes");
   const panelId = useId("check-change-notices");
   const [confirmation, setConfirmation] = useState<GetItineraryResponse>();
+  usePlanningDraft(!!confirmation, () => setConfirmation(undefined));
   const notices = saved?.changeNotices ?? [];
   const empty = confirmation?.days.every((day) => day.entries.length === 0);
   const confirmationProblem =
@@ -313,6 +315,15 @@ export function ItineraryCheckControls({
                   ? "Loading saved check state..."
                   : check.message}
             </Caption1>
+          )}
+          {check.rejected && (
+            <Button
+              size="small"
+              appearance="subtle"
+              onClick={check.discardRejection}
+            >
+              Dismiss check error
+            </Button>
           )}
         </>
       )}

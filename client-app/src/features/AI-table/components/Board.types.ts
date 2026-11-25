@@ -2,6 +2,7 @@ import type { Attraction } from "./AttractionList.types";
 import type { Rating } from "../../my-trip/domain/Trip.types";
 import type { VisitHistoryMap } from "../utils/Mapper";
 import type { Ref } from "react";
+import type { PlanningFeedback } from "../../my-trip/useTripPlanningSave";
 
 export interface Column {
   id: string;
@@ -30,6 +31,7 @@ export interface PrepareBoardHandle {
   save: () => Promise<boolean>;
   discard: () => void;
   inspect: () => Promise<void>;
+  refresh: () => Promise<void>;
   reflectSavedVisitDuration: (attractionId: number, duration: string) => void;
 }
 
@@ -38,7 +40,7 @@ export interface BoardProps {
   mode: BoardMode;
   initialCities?: TouristDestination[]; // optional; defaults to empty
   tripId?: number; // needed to persist board changes and attraction reviews
-  onPlanningBlockedChange?: (blocked: boolean) => void;
+  onPlanningChange?: (feedback: PlanningFeedback | undefined) => void;
   onReloadSavedPlanning?: () => Promise<void>;
   onPlaceOrderChange?: (places: string[]) => void;
   onPrepareDraftChange?: (draft: PrepareDraftState) => void;

@@ -52,12 +52,18 @@ import {
   type ItineraryScheduling
 } from "./useItineraryScheduling";
 import {
+  editKind,
   useItineraryTimingEdit,
   type ItineraryTimingEditing
 } from "./useItineraryTimingEdit";
 import { entryTargetId, TimelineEntry } from "./TimelineEntry";
 import { elapsedMinutes, freeTimeLabel } from "./itineraryClocks";
 import { fetchTripItinerary } from "./infra/TripApi";
+import {
+  usePlanningDraft,
+  usePlanningReads,
+  type PlanningWorkspace
+} from "./useTripPlanningWorkspace";
 import {
   DAY_COLUMN_GAP,
   DAY_COLUMN_MIN_WIDTH,
@@ -69,6 +75,7 @@ type LoadState = {
   data?: GetItineraryResponse;
   loading: boolean;
   failed: boolean;
+  newer?: boolean;
 };
 
 type NoticeTarget = Pick<ChangeNotice, "date" | "entryId">;
@@ -82,7 +89,9 @@ interface ItineraryView {
   unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"];
   loading: boolean;
   failed: boolean;
+  newer: boolean;
   refresh: () => Promise<GetItineraryResponse | undefined>;
+  checkForUpdates: () => Promise<GetItineraryResponse | undefined>;
   measureDayRow: RefCallback<HTMLElement>;
   start: number;
   lastStart: number;
@@ -116,49 +125,87 @@ export const formatItineraryDate = (date: string): string =>
 export const useItinerary = (
   tripId: number | undefined,
   open: boolean,
+  workspace: PlanningWorkspace,
   onDurationCorrected: (attractionId: number, duration: string) => void
 ): ItineraryView => {
   const [load, setLoad] = useState<LoadState>();
-  const request = useRef<AbortController | null>(null);
-  const refresh = useCallback(async () => {
-    if (tripId === undefined) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    setLoad((previous) => ({
-      tripId,
-      data: previous?.tripId === tripId ? previous.data : undefined,
-      loading: true,
-      failed: previous?.tripId === tripId && previous.failed
-    }));
-    try {
-      const data = await fetchTripItinerary(tripId, controller.signal);
-      if (!controller.signal.aborted) {
-        setLoad({ tripId, data, loading: false, failed: false });
-        return data;
-      }
-    } catch {
-      if (!controller.signal.aborted) {
-        setLoad((previous) => ({
-          tripId,
-          data: previous?.tripId === tripId ? previous.data : undefined,
-          loading: false,
-          failed: true
-        }));
-      }
-    }
-  }, [tripId]);
-
-  useEffect(
-    () => () => {
-      request.current?.abort();
-      request.current = null;
-    },
-    [refresh]
+  const accepted = useRef<GetItineraryResponse>(undefined);
+  const reconciling = useRef<AbortSignal>(undefined);
+  const { start: startRead, hasRequested } = usePlanningReads(
+    tripId,
+    workspace
   );
+  const read = useCallback(
+    async (protectDrafts: boolean) => {
+      if (
+        tripId === undefined ||
+        (protectDrafts && (workspace.isWriting() || reconciling.current))
+      )
+        return;
+      const request = startRead();
+      if (!protectDrafts) reconciling.current = request.signal;
+      const previousData =
+        accepted.current?.tripId === tripId ? accepted.current : undefined;
+      setLoad((previous) => ({
+        tripId,
+        data: previousData,
+        loading: true,
+        failed: previous?.tripId === tripId && previous.failed,
+        newer: previous?.tripId === tripId && previous.newer
+      }));
+      try {
+        const data = await fetchTripItinerary(tripId, request.signal);
+        if (!request.isCurrent()) return;
+        const unchanged =
+          previousData && JSON.stringify(previousData) === JSON.stringify(data);
+        if (previousData && protectDrafts && workspace.hasLocalWork()) {
+          setLoad({
+            tripId,
+            data: previousData,
+            loading: false,
+            failed: false,
+            newer: !unchanged
+          });
+          return;
+        }
+        const next = unchanged ? previousData : data;
+        accepted.current = next;
+        setLoad({ tripId, data: next, loading: false, failed: false });
+        return next;
+      } catch {
+        if (request.isCurrent()) {
+          setLoad((previous) => ({
+            tripId,
+            data: previousData,
+            loading: false,
+            failed: true,
+            newer: previous?.newer
+          }));
+        }
+      } finally {
+        if (reconciling.current === request.signal)
+          reconciling.current = undefined;
+        if (request.isLatest() && !request.isCurrent()) {
+          setLoad((previous) =>
+            previous?.tripId === tripId
+              ? {
+                  ...previous,
+                  loading: false,
+                  failed: !previous.data || previous.failed
+                }
+              : previous
+          );
+        }
+      }
+    },
+    [startRead, tripId, workspace]
+  );
+
+  const refresh = useCallback(() => read(false), [read]);
+  const checkForUpdates = useCallback(() => read(true), [read]);
   useEffect(() => {
-    if (open || !request.current) void refresh();
-  }, [open, refresh]);
+    if (open || !hasRequested()) void checkForUpdates();
+  }, [open, hasRequested, checkForUpdates]);
 
   const current = load?.tripId === tripId ? load : undefined;
   const days = current?.data?.days ?? [];
@@ -219,9 +266,10 @@ export const useItinerary = (
     timeZone: current?.data?.timeZone,
     loadSaved: refresh,
     showDate,
-    onDurationCorrected
+    onDurationCorrected,
+    workspace
   });
-  const timingEditing = useItineraryTimingEdit(tripId, refresh);
+  const timingEditing = useItineraryTimingEdit(tripId, refresh, workspace);
   const [dragged, setDragged] = useState<DraggedItineraryItem>();
   return {
     saved: current?.data,
@@ -229,7 +277,9 @@ export const useItinerary = (
     unscheduledAttractions: current?.data?.unscheduledAttractions ?? [],
     loading: current?.loading ?? true,
     failed: current?.failed ?? false,
+    newer: current?.newer ?? false,
     refresh,
+    checkForUpdates,
     measureDayRow,
     start,
     lastStart,
@@ -253,8 +303,7 @@ export const ItineraryDayPager = ({
   const classes = useClasses();
   const {
     days,
-    loading,
-    refresh,
+    checkForUpdates,
     start,
     lastStart,
     visibleDays,
@@ -342,13 +391,9 @@ export const ItineraryDayPager = ({
         icon={<ArrowClockwise20Regular />}
         aria-label="Refresh itinerary"
         title="Refresh itinerary"
-        disabledFocusable={
-          refreshBlocked ||
-          loading ||
-          !!itinerary.scheduling.draft ||
-          !!itinerary.timingEditing.pending
-        }
-        onClick={() => void refresh()}
+        disabledFocusable={refreshBlocked}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => void checkForUpdates()}
       />
     </nav>
   );
@@ -370,8 +415,9 @@ export const ItineraryContent = ({
     days,
     unscheduledAttractions,
     failed,
+    newer,
     loading,
-    refresh,
+    checkForUpdates,
     visibleDays,
     measureDayRow,
     scheduling,
@@ -381,12 +427,15 @@ export const ItineraryContent = ({
     setDragged
   } = itinerary;
   const { draft, feedback } = scheduling;
-  const { pending } = timingEditing;
+  const { pending, rejections } = timingEditing;
   const writeBlocked =
-    prepareBlocked || loading || failed || !!draft || !!pending;
+    prepareBlocked ||
+    (loading && !days.length) ||
+    failed ||
+    !!draft ||
+    !!pending;
   const [hovered, setHovered] = useState<{ date: string; slot: number }>();
   const [actionStatus, setActionStatus] = useState("");
-  const [actionError, setActionError] = useState<string>();
   const [moveChoice, setMoveChoice] = useState<{
     entry: Entry;
     sourceDate: string;
@@ -400,7 +449,9 @@ export const ItineraryContent = ({
       entryId: moveChoice.entry.entryId
     });
     setMoveChoice(undefined);
+    timingEditing.discardRejection(moveChoice.entry.entryId, "move");
   };
+  usePlanningDraft(!!moveChoice, cancelMoveChoice);
   const move = (entry: Entry, position: MoveItineraryEntryRequest): void => {
     if (writeBlocked || (moveChoice && position.startOffset === undefined))
       return;
@@ -411,7 +462,6 @@ export const ItineraryContent = ({
     if (!source) return;
     const index = source.entries.findIndex((item) => item.entryId === entryId);
     const next = source.entries[index + 1];
-    setActionError(undefined);
     if (
       source.date === position.date &&
       next?.entryId === position.beforeEntryId
@@ -453,12 +503,10 @@ export const ItineraryContent = ({
           return;
         }
         focusNoticeTarget({ date: source.date, entryId });
-        setActionError(error.message);
       });
   };
   const remove = (entry: Entry, day: Day): void => {
     if (writeBlocked) return;
-    setActionError(undefined);
     setActionStatus("");
     void timingEditing
       .save(entry.entryId, { action: "remove" }, (saved) => {
@@ -478,7 +526,6 @@ export const ItineraryContent = ({
       .then((error) => {
         if (!error) return;
         focusNoticeTarget({ date: day.date, entryId: entry.entryId });
-        setActionError(error.message);
       });
   };
   const endDrag = useCallback((): void => {
@@ -544,7 +591,7 @@ export const ItineraryContent = ({
           <Button
             size="small"
             disabledFocusable={loading}
-            onClick={() => void refresh()}
+            onClick={() => void checkForUpdates()}
           >
             Retry
           </Button>
@@ -575,16 +622,32 @@ export const ItineraryContent = ({
       >
         {actionStatus}
       </Text>
-      {actionError && (
-        <MessageBar intent="error">
-          <MessageBarBody>{actionError}</MessageBarBody>
-          <MessageBarActions>
-            <Button size="small" onClick={() => setActionError(undefined)}>
-              Dismiss
-            </Button>
-          </MessageBarActions>
-        </MessageBar>
-      )}
+      {rejections.map(({ entryId, edit, message, inspected }) => {
+        const kind = editKind(edit);
+        if (kind === "move" && moveChoice?.entry.entryId === entryId)
+          return null;
+        const composition = kind === "move" || kind === "remove";
+        const visible = visibleDays.some((day) =>
+          day.entries.some((entry) => entry.entryId === entryId)
+        );
+        return (
+          <MessageBar intent="error" key={`${entryId}:${kind}`}>
+            <MessageBarBody>
+              {composition || inspected || !visible
+                ? message
+                : "An entry change is still unsaved."}
+            </MessageBarBody>
+            <MessageBarActions>
+              <Button
+                size="small"
+                onClick={() => timingEditing.discardRejection(entryId, kind)}
+              >
+                {composition ? "Dismiss" : "Discard entry change"}
+              </Button>
+            </MessageBarActions>
+          </MessageBar>
+        );
+      })}
       {pending?.recovery && (
         <MessageBar intent="warning">
           <MessageBarBody>
@@ -614,6 +677,14 @@ export const ItineraryContent = ({
           <MessageBarBody>
             The itinerary couldn&apos;t be refreshed. Days and unscheduled
             attractions may be out of date.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+      {newer && !failed && (
+        <MessageBar intent="info">
+          <MessageBarBody>
+            Newer itinerary data is available. Finish or resolve your change,
+            then refresh to see it.
           </MessageBarBody>
         </MessageBar>
       )}

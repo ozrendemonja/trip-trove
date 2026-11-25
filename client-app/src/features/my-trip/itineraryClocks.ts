@@ -1,6 +1,19 @@
-import type { TimingEdit } from "./infra/ItinerarySchedulingApi";
+import type { EntryEdit, TimingEdit } from "./infra/ItinerarySchedulingApi";
 
 export type TimingField = "start" | "end" | "length";
+
+type ClockEdit =
+  | { field: "start"; clock: string }
+  | { field: "end"; clock: string; date: string }
+  | { field: "length"; minutes: number };
+
+export function clockEditInput(edit: EntryEdit): ClockEdit | undefined {
+  if ("startTime" in edit) return { field: "start", clock: edit.startTime };
+  if ("endTime" in edit)
+    return { field: "end", clock: edit.endTime, date: edit.endDate };
+  if ("plannedMinutes" in edit)
+    return { field: "length", minutes: edit.plannedMinutes };
+}
 
 const offsetPattern = /([+-]\d\d:\d\d(?::\d\d)?|Z)$/;
 const clockPattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;

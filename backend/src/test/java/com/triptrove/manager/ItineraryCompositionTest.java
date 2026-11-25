@@ -1,9 +1,14 @@
 package com.triptrove.manager;
 
+import com.triptrove.manager.application.dto.ConfirmItineraryEntryRemovalRequest;
 import com.triptrove.manager.application.dto.GetItineraryResponse;
+import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
+import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
+import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -224,6 +229,134 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
         saved().andExpect(jsonPath("$.days[0].entries[0].entryId").value(garden))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T13:00+02:00"))
                 .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(3, 4, 5)));
+    }
+
+    @Test
+    void removingAScheduledAttractionFromTheTripKeepsOneRemovalSummary() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TOMORROW, "09:00");
+        var garden = schedule(2L, TOMORROW, "13:00");
+        checkItinerary();
+        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
+
+        mockMvc.perform(delete("/trips/1/attractions/1").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(confirmation)))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].attractionId", contains(2, 3, 4, 5)));
+        saved().andExpect(jsonPath("$.days[1].entries[*].entryId", contains(garden.intValue())))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.start").value("2027-03-30T13:00+02:00"))
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(3, 4, 5)))
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].entryId").doesNotExist())
+                .andExpect(jsonPath("$.changeNotices[0].subject").value("Market"))
+                .andExpect(jsonPath("$.changeNotices[0].date").value(TOMORROW.toString()))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_REMOVED", "REMOVED_FROM_TRIP")));
+    }
+
+    @Test
+    void boardExclusionWithPreMoveConfirmationRemovesTheVisitAndReinclusionRestoresOnlyThePoolEntry() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        checkItinerary();
+        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        move(market, TOMORROW, null).andExpect(status().isNoContent());
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, confirmation))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attractionId == 1)].attractionGroup", contains("EXCLUDED")));
+        saved().andExpect(jsonPath("$.days[1].entries").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 3, 4, 5)))
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].date").value(TOMORROW.toString()))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_REMOVED", "ATTRACTION_EXCLUDED")));
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.SECONDARY, null, null))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[*].entries[*]").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 3, 4, 5, 1)));
+    }
+
+    @Test
+    void excludingWithAConfirmationOfAReplacedEntryRequiresANewConfirmation() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var oldConfirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        remove(market).andExpect(status().isNoContent());
+        var rescheduledMarket = schedule(1L, TODAY, "09:00");
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, oldConfirmation))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The itinerary consequences changed. Review them and confirm the board change again."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        var newConfirmation = new ConfirmItineraryEntryRemovalRequest(rescheduledMarket);
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, newConfirmation))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attractionId == 1)].attractionGroup", contains("EXCLUDED")));
+        saved().andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 3, 4, 5)));
+    }
+
+    @Test
+    void confirmedGroupUpdateToExcludedBeforeTheFirstCheckRemovesTheVisitWithoutAPoolEntryOrChangeNotice() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, confirmation);
+
+        mockMvc.perform(put("/trips/1/attractions/1/group").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attractionId == 1)].attractionGroup", contains("EXCLUDED")));
+        saved().andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 3, 4, 5)))
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    @Test
+    void movingBetweenEligibleColumnsAndChangingMustVisitKeepTheExistingEntryOrderAndInterval() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        lock(market);
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.SECONDARY, null, null))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/trips/1/attractions/1/must-visit").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new UpdateTripAttractionMustVisitRequest(false))))
+                .andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[*].entryId", contains(market.intValue(), garden.intValue())))
+                .andExpect(jsonPath("$.days[0].entries[0].attractionGroup").value("SECONDARY"))
+                .andExpect(jsonPath("$.days[0].entries[0].mustVisit").value(false))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
+    }
+
+    private ResultActions moveOnBoard(MoveAttractionOnBoardRequest move) throws Exception {
+        return mockMvc.perform(put("/trips/1/board/attractions/1").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(move)));
     }
 
     private ResultActions remove(long entryId) throws Exception {

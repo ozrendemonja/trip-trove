@@ -36,13 +36,15 @@ class TripServiceImplTest {
     private ItineraryRepo itineraryRepo;
     @Mock
     private ItineraryEntryRepo itineraryEntryRepo;
+    @Mock
+    private ItineraryEntryEditor itineraryEntryEditor;
 
     private TripServiceImpl tripService;
 
     @BeforeEach
     void setUp() {
         tripService = new TripServiceImpl(managerProperties, tripRepo, attractionRepo, tripAttractionRepo,
-                itineraryRepo, itineraryEntryRepo);
+                itineraryRepo, itineraryEntryRepo, itineraryEntryEditor);
     }
 
     @Test
@@ -55,7 +57,7 @@ class TripServiceImplTest {
         when(tripAttractionRepo.findByTripIdAndAttractionId(10L, 3L)).thenReturn(Optional.of(next));
 
         tripService.moveAttractionOnBoard(
-                10L, 2L, TripAttractionGroup.PRIMARY, 1L, 3L);
+                10L, 2L, TripAttractionGroup.PRIMARY, 1L, 3L, null);
 
         assertThat(moved.getBoardPosition()).isEqualByComparingTo("1.5");
         assertThat(previous.getBoardPosition()).isEqualByComparingTo("1");
@@ -75,7 +77,7 @@ class TripServiceImplTest {
         when(tripAttractionRepo.findByTripIdAndAttractionId(10L, 3L)).thenReturn(Optional.of(next));
 
         tripService.moveAttractionOnBoard(
-                10L, 2L, TripAttractionGroup.PRIMARY, null, 3L);
+                10L, 2L, TripAttractionGroup.PRIMARY, null, 3L, null);
 
         assertThat(moved.getBoardPosition()).isEqualByComparingTo("1");
         verify(tripAttractionRepo).save(moved);
@@ -90,7 +92,7 @@ class TripServiceImplTest {
         when(tripAttractionRepo.findByTripIdAndAttractionId(10L, 1L)).thenReturn(Optional.of(previous));
 
         tripService.moveAttractionOnBoard(
-                10L, 2L, TripAttractionGroup.PRIMARY, 1L, null);
+                10L, 2L, TripAttractionGroup.PRIMARY, 1L, null, null);
 
         assertThat(moved.getBoardPosition()).isEqualByComparingTo("3");
         verify(tripAttractionRepo).save(moved);
@@ -103,7 +105,7 @@ class TripServiceImplTest {
         when(tripAttractionRepo.findByTripIdAndAttractionId(10L, 2L)).thenReturn(Optional.of(moved));
 
         tripService.moveAttractionOnBoard(
-                10L, 2L, TripAttractionGroup.SECONDARY, null, null);
+                10L, 2L, TripAttractionGroup.SECONDARY, null, null, null);
 
         assertThat(moved.getAttractionGroup()).isEqualTo(TripAttractionGroup.SECONDARY);
         assertThat(moved.getBoardPosition()).isEqualByComparingTo("4");
@@ -120,7 +122,7 @@ class TripServiceImplTest {
 
         var exception = assertThrows(BaseApiException.class, () ->
                 tripService.moveAttractionOnBoard(
-                        10L, 2L, TripAttractionGroup.PRIMARY, null, 99L));
+                        10L, 2L, TripAttractionGroup.PRIMARY, null, 99L, null));
 
         assertThat(exception.getErrorCode()).isEqualTo(BaseApiException.ErrorCode.RESOURCE_NOT_FOUND);
         assertThat(exception.getContext()).containsExactly(99L, 10L);

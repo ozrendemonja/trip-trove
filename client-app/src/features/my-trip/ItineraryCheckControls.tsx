@@ -38,7 +38,9 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   FIXED_START_CHANGED: "Start lock changed",
   ENTRY_MOVED: "Moved in the itinerary",
   ENTRY_REMOVED: "Removed from the itinerary",
-  FOLLOWING_STARTS_PUSHED: "Following entries moved later"
+  FOLLOWING_STARTS_PUSHED: "Following entries moved later",
+  ATTRACTION_EXCLUDED: "Moved to Excluded Attractions on the board",
+  REMOVED_FROM_TRIP: "Removed from the trip"
 };
 
 const useStyles = makeStyles({

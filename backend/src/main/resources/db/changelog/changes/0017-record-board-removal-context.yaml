@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0017-record-board-removal-context
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary_entry_removal
+            columns:
+              - column:
+                  name: cause
+                  type: varchar(32)
+                  defaultValue: ITINERARY
+                  constraints:
+                    nullable: false

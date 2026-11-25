@@ -28,12 +28,13 @@ public interface TripService {
 
     void updateAttractionWouldVisitAgain(Long tripId, Long attractionId, boolean wouldVisitAgain);
 
-    void detachAttraction(Long tripId, Long attractionId);
+    void detachAttraction(Long tripId, Long attractionId, ItineraryRemovalConfirmation confirmedRemoval);
 
-    void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup);
+    void updateAttractionGroup(Long tripId, Long attractionId, TripAttractionGroup attractionGroup,
+                               ItineraryRemovalConfirmation confirmedRemoval);
 
     void moveAttractionOnBoard(Long tripId, Long attractionId, TripAttractionGroup targetGroup,
-                               Long previousAttractionId, Long nextAttractionId);
+                               Long previousAttractionId, Long nextAttractionId, ItineraryRemovalConfirmation confirmedRemoval);
 
     void arrangeTripBoard(Long tripId, List<TripBoardItem> boardItems);
 

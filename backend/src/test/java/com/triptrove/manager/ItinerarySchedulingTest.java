@@ -4,7 +4,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.triptrove.manager.application.dto.ArrangeTripBoardRequest;
+import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
+import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
+import com.triptrove.manager.application.dto.TripBoardItemRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -84,7 +89,7 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("boardChangesThatWouldDropAScheduledAttraction")
-    void theBoardCannotExcludeOrRemoveAScheduledAttraction(MockHttpServletRequestBuilder change) throws Exception {
+    void theBoardCannotExcludeOrRemoveAScheduledAttractionWithoutConfirmation(MockHttpServletRequestBuilder change) throws Exception {
         seedBoard("2027-03-28", "2027-03-29");
         schedule(new ScheduleAttractionRequest(
                 1L, LocalDate.of(2027, 3, 28), "09:00", "Europe/Belgrade", null))
@@ -94,23 +99,22 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
                 .andExpect(jsonPath("$.errorMessage")
-                        .value("Scheduled attractions cannot be removed or excluded while they are in the itinerary."));
+                        .value("Confirm the itinerary consequences before removing or excluding a scheduled attraction."));
         itinerary().andExpect(jsonPath("$.days[0].entries[0].attractionId").value(1))
                 .andExpect(jsonPath("$.days[0].entries[0].attractionGroup").value("PRIMARY"));
     }
 
-    static List<MockHttpServletRequestBuilder> boardChangesThatWouldDropAScheduledAttraction() {
+    static List<MockHttpServletRequestBuilder> boardChangesThatWouldDropAScheduledAttraction() throws Exception {
         return List.of(
                 delete("/trips/1/attractions/1"),
-                put("/trips/1/attractions/1/group").content("""
-                        {"attractionGroup":"EXCLUDED"}
-                        """),
-                put("/trips/1/board/attractions/1").content("""
-                        {"targetGroup":"EXCLUDED"}
-                        """),
-                put("/trips/1/board").content("""
-                        {"attractions":[{"attractionId":1,"group":"EXCLUDED"}]}
-                        """));
+                put("/trips/1/attractions/1/group").content(mapper.writeValueAsString(
+                        new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED))),
+                put("/trips/1/board/attractions/1").content(mapper.writeValueAsString(
+                        new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null))),
+                put("/trips/1/board").content(mapper.writeValueAsString(new ArrangeTripBoardRequest(List.of(
+                        new TripBoardItemRequest(1L, TripAttractionGroupDTO.EXCLUDED),
+                        new TripBoardItemRequest(2L, TripAttractionGroupDTO.PRIMARY),
+                        new TripBoardItemRequest(3L, TripAttractionGroupDTO.PRIMARY))))));
     }
 
     @ParameterizedTest

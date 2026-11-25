@@ -38,7 +38,12 @@ import {
   updateTripAttractionWouldVisitAgain,
   type TripAttractionFromServer
 } from "../../my-trip/infra/TripApi";
-import type { TripPlanningChange } from "../../my-trip/domain/TripPlanning.types";
+import {
+  isBoardRemoval,
+  type BoardRemovalChange,
+  type ConfirmedItineraryRemoval,
+  type TripPlanningChange
+} from "../../my-trip/domain/TripPlanning.types";
 import { useTripPlanningSave } from "../../my-trip/useTripPlanningSave";
 import {
   TripPlanningWorkspace,
@@ -52,7 +57,11 @@ import {
   setPermanentClosureInCities
 } from "../utils/Mapper";
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
-import ConfirmDeleteDialog from "../../../shared/list-element/ui/delete-dialog/ConfirmDeleteDialog";
+import { BoardRemovalDialog } from "./BoardRemovalDialog";
+import {
+  confirmedRemoval,
+  useBoardRemovalPreview
+} from "./useBoardRemovalPreview";
 import {
   applyPrepareChanges,
   buildPrepareChanges,
@@ -63,6 +72,24 @@ import {
 } from "../utils/PrepareDraft";
 
 export type { Column, TouristDestination } from "./Board.types";
+
+type RemoveChange = Extract<TripPlanningChange, { type: "remove" }>;
+type MoveChange = Extract<TripPlanningChange, { type: "move" }>;
+
+function withoutAttractions(
+  cities: TouristDestination[],
+  ids: ReadonlySet<number>
+): TouristDestination[] {
+  return cities
+    .map((city) => ({
+      ...city,
+      columns: city.columns.map((column) => ({
+        ...column,
+        tasks: column.tasks.filter((task) => !ids.has(task.id))
+      }))
+    }))
+    .filter((city) => city.columns.some((column) => column.tasks.length > 0));
+}
 
 function savedBoardIncludes(
   board: TripAttractionFromServer[],
@@ -152,6 +179,7 @@ const Board: React.FC<BoardProps> = ({
   onPlanningChange,
   onReloadSavedPlanning,
   onRefreshScheduledStatus,
+  onItineraryEntriesRemoved,
   onPlaceOrderChange,
   onPrepareDraftChange,
   renderScheduledStatus,
@@ -199,6 +227,7 @@ const Board: React.FC<BoardProps> = ({
   const pendingBoardMovesRef = useRef<number[]>([]);
   // Later re-adds may need neighbours from an earlier removal snapshot.
   const removedPlacementsRef = useRef(new Map<number, BoardPlacement>());
+  const preparedRemovalsRef = useRef(new Map<number, BoardRemovalChange>());
   const prepareCityOrderRef = useRef(
     (initialCities ?? []).map((city) => city.name)
   );
@@ -209,12 +238,11 @@ const Board: React.FC<BoardProps> = ({
   const [collapsedByCity, setCollapsedByCity] = useState<
     Record<string, boolean>
   >({});
-  const [cityPendingRemoval, setCityPendingRemoval] = useState<string | null>(
-    null
-  );
-  const [attractionPendingRemovalId, setAttractionPendingRemovalId] = useState<
-    number | null
-  >(null);
+  const {
+    preview: removalPreview,
+    open: openRemovalPreview,
+    close: closeRemovalPreview
+  } = useBoardRemovalPreview(tripId);
   const [reviewSelection, setReviewSelection] = useState<
     Record<
       number,
@@ -234,6 +262,7 @@ const Board: React.FC<BoardProps> = ({
       );
       pendingBoardMovesRef.current = [];
       removedPlacementsRef.current.clear();
+      preparedRemovalsRef.current.clear();
       setRefreshStatus(undefined);
     },
     [replaceSavedCities]
@@ -319,6 +348,42 @@ const Board: React.FC<BoardProps> = ({
     planning.feedback?.state === "error" && !planning.feedback.unconfirmed
       ? planning.feedback.failedChange
       : undefined;
+  const removalRejection =
+    planning.feedback?.needsRemovalConfirmation &&
+    isBoardRemoval(rejectedChange)
+      ? rejectedChange
+      : undefined;
+  const reviewRejectedRemoval = useCallback(() => {
+    if (!removalRejection || !planning.feedback) return;
+    const { attractionId, type } = removalRejection;
+    const proposal = planning.feedback.proposal;
+    const task = indexBoard(savedCitiesRef.current).get(attractionId)?.task;
+    openRemovalPreview({
+      operation: type === "move" ? "exclude" : "remove",
+      name: task?.name ?? proposal.subjectName,
+      attractionIds: [attractionId],
+      reviewAgain: true,
+      apply: (selection) => {
+        const change = {
+          ...removalRejection,
+          confirmedRemoval: confirmedRemoval(selection)
+        };
+        clearSaveError();
+        if (isPrepare) {
+          preparedRemovalsRef.current.set(attractionId, change);
+        } else {
+          submitPlanning({ ...proposal, changes: [change] });
+        }
+      }
+    });
+  }, [
+    removalRejection,
+    planning.feedback,
+    openRemovalPreview,
+    clearSaveError,
+    isPrepare,
+    submitPlanning
+  ]);
   const correction = useMemo(
     () =>
       rejectedChange &&
@@ -343,23 +408,15 @@ const Board: React.FC<BoardProps> = ({
       if (change.type === "remove") {
         savedAttractionIdsRef.current.delete(change.attractionId);
         replaceSavedCities(
-          savedCitiesRef.current
-            .map((city) => ({
-              ...city,
-              columns: city.columns.map((column) => ({
-                ...column,
-                tasks: column.tasks.filter(
-                  (task) => task.id !== change.attractionId
-                )
-              }))
-            }))
-            .filter((city) =>
-              city.columns.some((column) => column.tasks.length)
-            )
+          withoutAttractions(
+            savedCitiesRef.current,
+            new Set([change.attractionId])
+          )
         );
+        if (change.confirmedRemoval) onItineraryEntriesRemoved?.();
       }
     },
-    [replaceSavedCities]
+    [replaceSavedCities, onItineraryEntriesRemoved]
   );
 
   useLayoutEffect(() => {
@@ -602,41 +659,77 @@ const Board: React.FC<BoardProps> = ({
         const placementChanged =
           sourceColumn !== targetColumn || insertionIndex !== sourceTaskIndex;
         if (placementChanged) {
-          const attractionGroup = COLUMN_TO_GROUP[targetColumn.title];
-          let stageLocally = true;
-          if (tripId && attractionGroup) {
-            if (persistImmediately || isPlanMode) {
-              const previousAttraction = targetColumn.tasks[insertionIndex - 1];
-              const nextAttraction = targetColumn.tasks[insertionIndex + 1];
-              stageLocally = false;
+          const targetGroup = COLUMN_TO_GROUP[targetColumn.title];
+          const change: MoveChange = {
+            type: "move",
+            attractionId: attraction.id,
+            targetGroup,
+            previousAttractionId:
+              targetColumn.tasks[insertionIndex - 1]?.id ?? null,
+            nextAttractionId: targetColumn.tasks[insertionIndex + 1]?.id ?? null
+          };
+          const isExclusion =
+            isBoardRemoval(change) && sourceColumn !== targetColumn;
+          const apply = (confirmation?: ConfirmedItineraryRemoval): void => {
+            if (isPlanningBlocked()) return;
+            if (
+              tripId !== undefined &&
+              targetGroup &&
+              (persistImmediately || isPlanMode)
+            ) {
               submitPlanning({
                 subjectIds: [attraction.id],
                 subjectName: attraction.name,
                 description: `Move to ${targetColumn.title}`,
-                changes: [
-                  {
-                    type: "move",
-                    attractionId: attraction.id,
-                    targetGroup: attractionGroup,
-                    previousAttractionId: previousAttraction?.id ?? null,
-                    nextAttractionId: nextAttraction?.id ?? null
+                changes: [{ ...change, confirmedRemoval: confirmation }],
+                onCommitted: (committed) => {
+                  replaceSavedCities(nextCities);
+                  if (committed.type === "move" && committed.confirmedRemoval) {
+                    onItineraryEntriesRemoved?.();
                   }
-                ],
-                onCommitted: () => replaceSavedCities(nextCities)
+                }
               });
             } else if (isPrepare) {
-              pendingBoardMovesRef.current = [
-                ...pendingBoardMovesRef.current.filter(
-                  (attractionId) => attractionId !== attraction.id
-                ),
-                attraction.id
-              ];
+              if (tripId !== undefined && targetGroup) {
+                pendingBoardMovesRef.current = [
+                  ...pendingBoardMovesRef.current.filter(
+                    (id) => id !== attraction.id
+                  ),
+                  attraction.id
+                ];
+                if (isExclusion) {
+                  preparedRemovalsRef.current.set(attraction.id, {
+                    ...change,
+                    confirmedRemoval: confirmation
+                  });
+                } else if (targetGroup !== "EXCLUDED") {
+                  preparedRemovalsRef.current.delete(attraction.id);
+                }
+                if (
+                  removalRejection?.type === "move" &&
+                  removalRejection.attractionId === attraction.id &&
+                  (isExclusion || targetGroup !== "EXCLUDED")
+                ) {
+                  clearSaveError();
+                }
+              }
+              setCities(nextCities);
+            } else {
+              replaceSavedCities(nextCities);
             }
-          }
-          if (stageLocally) {
-            if (isPrepare) setCities(nextCities);
-            else replaceSavedCities(nextCities);
-          }
+          };
+          if (
+            tripId !== undefined &&
+            isExclusion &&
+            (!isPrepare || savedAttractionIdsRef.current.has(attraction.id))
+          ) {
+            openRemovalPreview({
+              operation: "exclude",
+              name: attraction.name,
+              attractionIds: [attraction.id],
+              apply: (selection) => apply(confirmedRemoval(selection))
+            });
+          } else apply();
         }
         setDragState(null);
         setDragUI({ overColumnId: null, insertionIndex: -1 });
@@ -652,7 +745,11 @@ const Board: React.FC<BoardProps> = ({
       isPrepare,
       submitPlanning,
       isPlanningBlocked,
-      replaceSavedCities
+      replaceSavedCities,
+      openRemovalPreview,
+      onItineraryEntriesRemoved,
+      removalRejection,
+      clearSaveError
     ]
   );
 
@@ -798,6 +895,7 @@ const Board: React.FC<BoardProps> = ({
       prepareCityOrderRef.current = cities.map((city) => city.name);
       pendingBoardMovesRef.current = [];
       removedPlacementsRef.current.clear();
+      preparedRemovalsRef.current.clear();
     }
     previousModeRef.current = boardMode;
   }, [boardMode, cities, isPrepare]);
@@ -832,14 +930,36 @@ const Board: React.FC<BoardProps> = ({
   ).size;
   const commitPreparedChanges = useCallback((): Promise<boolean> => {
     if (activePrepareSave.current) return activePrepareSave.current;
-    if (isPlanningBlocked()) return Promise.resolve(false);
+    if (isPlanningBlocked() || removalPreview) return Promise.resolve(false);
     if (pendingCommitCount === 0) return Promise.resolve(true);
     const changes = buildPrepareChanges(
       savedCitiesRef.current,
       cities,
       savedAttractionIdsRef.current,
       pendingBoardMovesRef.current
-    );
+    ).map((change) => {
+      const staged = preparedRemovalsRef.current.get(change.attractionId);
+      if (change.type === "remove" && staged?.type === "remove") return staged;
+      if (
+        change.type === "move" &&
+        change.targetGroup === "EXCLUDED" &&
+        staged?.type === "move"
+      ) {
+        return { ...change, confirmedRemoval: staged.confirmedRemoval };
+      }
+      return change;
+    });
+    if (
+      removalRejection &&
+      changes.some(
+        (change) =>
+          change.attractionId === removalRejection.attractionId &&
+          isBoardRemoval(change)
+      )
+    ) {
+      reviewRejectedRemoval();
+      return Promise.resolve(false);
+    }
     // An attachment may succeed before its placement, including a lost reply.
     pendingBoardMovesRef.current = Array.from(
       new Set([
@@ -850,6 +970,7 @@ const Board: React.FC<BoardProps> = ({
       ])
     );
     let committedCount = 0;
+    let removedItineraryEntries = false;
     const savedIds = new Set<number>();
     const save = savePlanning({
       subjectIds: Array.from(
@@ -861,6 +982,15 @@ const Board: React.FC<BoardProps> = ({
       allowRetryAfterRejection: true,
       onCommitted: () => {
         const change = changes[committedCount];
+        if (isBoardRemoval(change) && change.confirmedRemoval) {
+          removedItineraryEntries = true;
+        }
+        if (
+          preparedRemovalsRef.current.get(change.attractionId)?.type ===
+          change.type
+        ) {
+          preparedRemovalsRef.current.delete(change.attractionId);
+        }
         savedCitiesRef.current = applyPrepareChanges(
           savedCitiesRef.current,
           cities,
@@ -884,13 +1014,23 @@ const Board: React.FC<BoardProps> = ({
         }
       }
     }).finally(() => {
+      if (removedItineraryEntries) onItineraryEntriesRemoved?.();
       if (savedIds.size > 0) setSaveNotice({ count: savedIds.size });
       setCommitVersion((version) => version + 1);
       activePrepareSave.current = null;
     });
     activePrepareSave.current = save;
     return save;
-  }, [cities, pendingCommitCount, isPlanningBlocked, savePlanning]);
+  }, [
+    cities,
+    pendingCommitCount,
+    isPlanningBlocked,
+    savePlanning,
+    removalPreview,
+    removalRejection,
+    reviewRejectedRemoval,
+    onItineraryEntriesRemoved
+  ]);
 
   const addPreparedAttractions = useCallback(
     (incomingCities: TouristDestination[]): void => {
@@ -958,6 +1098,7 @@ const Board: React.FC<BoardProps> = ({
                 )
               : column.tasks.length;
             column.tasks.splice(index, 0, task);
+            preparedRemovalsRef.current.delete(task.id);
             ids.add(task.id);
             addedIds.push(task.id);
           }
@@ -966,6 +1107,11 @@ const Board: React.FC<BoardProps> = ({
       setCities(next);
       if (addedIds.length === 0) return;
       const added = new Set(addedIds);
+      if (
+        removalRejection?.type === "remove" &&
+        added.has(removalRejection.attractionId)
+      )
+        clearSaveError();
       resetFilters();
       setCollapsedByCity((previous) => {
         const expanded = { ...previous };
@@ -982,7 +1128,14 @@ const Board: React.FC<BoardProps> = ({
       });
       setHighlightedAttractionIds(added);
     },
-    [cities, isPrepare, isPlanningBlocked, resetFilters]
+    [
+      cities,
+      isPrepare,
+      isPlanningBlocked,
+      resetFilters,
+      removalRejection,
+      clearSaveError
+    ]
   );
 
   useEffect(() => {
@@ -1021,6 +1174,7 @@ const Board: React.FC<BoardProps> = ({
     );
     pendingBoardMovesRef.current = [];
     removedPlacementsRef.current.clear();
+    preparedRemovalsRef.current.clear();
     prepareCityOrderRef.current = savedCitiesRef.current.map(
       (city) => city.name
     );
@@ -1033,6 +1187,9 @@ const Board: React.FC<BoardProps> = ({
     planning.feedback?.unconfirmed
   ]);
 
+  const failedChange = planning.feedback?.failedChange;
+  const inspectBoardRemoval =
+    isBoardRemoval(failedChange) && !!failedChange.confirmedRemoval;
   const inspectSavedPlanning = useCallback(async (): Promise<void> => {
     if (tripId === undefined || inspecting.current) return;
     inspecting.current = true;
@@ -1043,7 +1200,10 @@ const Board: React.FC<BoardProps> = ({
     setInspectedCities(undefined);
     const request = startRead();
     try {
-      const saved = await fetchTripBoard(tripId, request.signal);
+      const [saved] = await Promise.all([
+        fetchTripBoard(tripId, request.signal),
+        inspectBoardRemoval ? onReloadSavedPlanning?.() : undefined
+      ]);
       if (request.isCurrent())
         setInspectedCities(mapSavedTripAttractionsToBoard(saved));
     } catch (error) {
@@ -1057,7 +1217,7 @@ const Board: React.FC<BoardProps> = ({
       inspecting.current = false;
       setInspectionLoading(false);
     }
-  }, [startRead, tripId]);
+  }, [startRead, tripId, inspectBoardRemoval, onReloadSavedPlanning]);
 
   const acceptInspectedPlanning = (keepDraft: boolean): void => {
     if (!inspectedCities) return;
@@ -1069,13 +1229,16 @@ const Board: React.FC<BoardProps> = ({
       )
     );
     for (const id of previouslySaved) {
-      if (!savedAttractionIdsRef.current.has(id))
+      if (!savedAttractionIdsRef.current.has(id)) {
         removedPlacementsRef.current.delete(id);
+        preparedRemovalsRef.current.delete(id);
+      }
     }
     if (!keepDraft) {
       setCities(inspectedCities);
       pendingBoardMovesRef.current = [];
       removedPlacementsRef.current.clear();
+      preparedRemovalsRef.current.clear();
       prepareCityOrderRef.current = inspectedCities.map((city) => city.name);
     } else {
       const relevantCities = new Set(
@@ -1159,95 +1322,88 @@ const Board: React.FC<BoardProps> = ({
     setCollapsedByCity((prev) => ({ ...prev, [cityName]: !prev[cityName] }));
   }, []);
 
-  const removeAttraction = useCallback(
-    (attractionId: number) => {
-      if (!canManageAttractions) return;
-      const task = cities
-        .flatMap((city) => city.columns)
-        .flatMap((column) => column.tasks)
-        .find((task) => task.id === attractionId);
-      if (isPrepare) {
-        const placement = indexBoard(cities).get(attractionId);
-        if (placement) {
-          removedPlacementsRef.current.delete(attractionId);
-          removedPlacementsRef.current.set(attractionId, placement);
-        }
-      }
-      if (persistImmediately) {
-        submitPlanning({
-          subjectIds: [attractionId],
-          subjectName: task?.name ?? "removed attraction",
-          description: `Remove ${task?.name ?? "attraction"} from trip`,
-          changes: [{ type: "remove", attractionId }],
-          onCommitted: commitRemoval
-        });
-        return;
-      }
-      setCities((prev) =>
-        prev
-          .map((city) => ({
-            ...city,
-            columns: city.columns.map((col) => ({
-              ...col,
-              tasks: col.tasks.filter((t) => t.id !== attractionId)
-            }))
-          }))
-          .filter((city) => city.columns.some((col) => col.tasks.length > 0))
-      );
-      // In prepare mode the removal is staged locally and reconciled on commit.
-    },
-    [
-      canManageAttractions,
-      persistImmediately,
-      isPrepare,
-      cities,
-      submitPlanning,
-      commitRemoval
-    ]
-  );
+  const removeAttractions = (
+    changes: RemoveChange[],
+    subjectName: string,
+    description: string
+  ): void => {
+    if (!canManageAttractions || isPlanningBlocked()) return;
+    const attractionIds = changes.map((change) => change.attractionId);
+    if (persistImmediately) {
+      submitPlanning({
+        subjectIds: attractionIds,
+        subjectName,
+        description,
+        changes,
+        onCommitted: commitRemoval
+      });
+      return;
+    }
+    const placements = indexBoard(cities);
+    for (const change of changes) {
+      const id = change.attractionId;
+      const placement = placements.get(id);
+      if (!placement) continue;
+      removedPlacementsRef.current.delete(id);
+      removedPlacementsRef.current.set(id, placement);
+      preparedRemovalsRef.current.set(id, change);
+    }
+    if (
+      removalRejection?.type === "move" &&
+      attractionIds.includes(removalRejection.attractionId)
+    ) {
+      clearSaveError();
+    }
+    const ids = new Set(attractionIds);
+    setCities((previous) => withoutAttractions(previous, ids));
+  };
 
-  const removeAllFromCity = useCallback(
-    (cityName: string) => {
-      if (!canManageAttractions) return;
-      const city = cities.find((c) => c.name === cityName);
-      if (!city) return;
-      const attractionIds = city.columns.flatMap((col) =>
-        col.tasks.map((t) => t.id)
-      );
-      if (isPrepare) {
-        const placements = indexBoard(cities);
-        for (const id of attractionIds) {
-          const placement = placements.get(id);
-          if (placement) {
-            removedPlacementsRef.current.delete(id);
-            removedPlacementsRef.current.set(id, placement);
-          }
-        }
-      }
-      if (persistImmediately) {
-        submitPlanning({
-          subjectIds: attractionIds,
-          subjectName: cityName,
-          description: `Remove all attractions from ${cityName}`,
-          changes: attractionIds.map((attractionId) => ({
+  const previewAttractionRemoval = (attractionId: number): void => {
+    const task = indexBoard(cities).get(attractionId)?.task;
+    if (!task || isPlanningBlocked()) return;
+    openRemovalPreview({
+      operation: "remove",
+      name: task.name,
+      attractionIds: [attractionId],
+      draftOnly: isPrepare && !savedAttractionIdsRef.current.has(attractionId),
+      apply: (selection) =>
+        removeAttractions(
+          [
+            {
+              type: "remove",
+              attractionId,
+              confirmedRemoval: confirmedRemoval(selection)
+            }
+          ],
+          task.name,
+          `Remove ${task.name} from trip`
+        )
+    });
+  };
+
+  const previewCityRemoval = (city: TouristDestination): void => {
+    if (isPlanningBlocked()) return;
+    const ids = city.columns.flatMap((column) =>
+      column.tasks.map(({ id }) => id)
+    );
+    openRemovalPreview({
+      operation: "city",
+      name: city.name,
+      attractionIds: ids,
+      draftOnly:
+        isPrepare && ids.every((id) => !savedAttractionIdsRef.current.has(id)),
+      apply: ({ attractionIds }) =>
+        removeAttractions(
+          attractionIds.map((attractionId) => ({
             type: "remove",
-            attractionId
+            attractionId,
+            unscheduledOnly: true
           })),
-          onCommitted: commitRemoval
-        });
-        return;
-      }
-      setCities((prev) => prev.filter((c) => c.name !== cityName));
-    },
-    [
-      canManageAttractions,
-      persistImmediately,
-      isPrepare,
-      cities,
-      submitPlanning,
-      commitRemoval
-    ]
-  );
+          city.name,
+          `Remove all unscheduled attractions from ${city.name}`
+        )
+    });
+  };
 
   const handleAttachAttraction = useCallback(
     async (attractionId: number, ratingValue: Rating, reviewNote: string) => {
@@ -1313,6 +1469,7 @@ const Board: React.FC<BoardProps> = ({
         void (isPrepare ? inspectSavedPlanning() : planning.reload())
       }
       onDiscard={isPrepare ? undefined : discardPreparedChanges}
+      onReviewRemoval={removalRejection ? reviewRejectedRemoval : undefined}
     />
   ) : null;
   const hasFeedbackHost = cities.some(
@@ -1544,8 +1701,8 @@ const Board: React.FC<BoardProps> = ({
                   type="button"
                   className="city-remove-all-btn"
                   disabled={planning.blocked}
-                  onClick={() => setCityPendingRemoval(city.name)}
-                  title="Remove all attractions from this location"
+                  onClick={() => previewCityRemoval(city)}
+                  title="Remove all unscheduled attractions from this location"
                   aria-label={`Remove all attractions from ${city.name}`}
                 >
                   🗑 Remove all
@@ -1637,7 +1794,7 @@ const Board: React.FC<BoardProps> = ({
                             ? toggleAttractionPermanentlyClosed
                             : undefined
                         }
-                        onDeleteTask={setAttractionPendingRemovalId}
+                        onDeleteTask={previewAttractionRemoval}
                         updateById={updateAttractionById}
                         upsertAttractions={upsertAttractions}
                         readOnly={readOnly}
@@ -1667,33 +1824,14 @@ const Board: React.FC<BoardProps> = ({
           </div>
         );
       })}
-      <ConfirmDeleteDialog
-        name={
-          cities
-            .flatMap((city) => city.columns)
-            .flatMap((column) => column.tasks)
-            .find((task) => task.id === attractionPendingRemovalId)?.name ?? ""
-        }
-        hidden={attractionPendingRemovalId === null}
-        onConfirm={() => {
-          if (attractionPendingRemovalId !== null) {
-            removeAttraction(attractionPendingRemovalId);
-          }
-          setAttractionPendingRemovalId(null);
-        }}
-        onDismiss={() => setAttractionPendingRemovalId(null)}
-      />
-      <ConfirmDeleteDialog
-        name={
-          cityPendingRemoval ? `all attractions in ${cityPendingRemoval}` : ""
-        }
-        hidden={cityPendingRemoval === null}
-        onConfirm={() => {
-          if (cityPendingRemoval) removeAllFromCity(cityPendingRemoval);
-          setCityPendingRemoval(null);
-        }}
-        onDismiss={() => setCityPendingRemoval(null)}
-      />
+      {removalPreview && (
+        <BoardRemovalDialog
+          preview={removalPreview}
+          prepare={isPrepare}
+          onClose={closeRemovalPreview}
+          onRetry={() => openRemovalPreview(removalPreview.proposal)}
+        />
+      )}
     </div>
   );
 };

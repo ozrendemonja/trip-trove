@@ -104,7 +104,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
-                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed)
+                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed, removal.cause)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary

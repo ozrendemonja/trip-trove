@@ -3193,6 +3193,227 @@ export const SaveToTripButtonIsAbsentInEditMode: Story = {
   }
 };
 
+const savedCasinoEntry = {
+  entryId: 21,
+  attractionId: 0,
+  name: "Casino of Monte-Carlo",
+  category: "POINT_OF_INTEREST_AND_LANDMARK",
+  attractionGroup: "PRIMARY",
+  mustVisit: true,
+  fixedStart: true,
+  timing: {
+    start: "2099-06-11T09:00+02:00",
+    end: "2099-06-11T09:45+02:00",
+    zone: "Europe/Monaco"
+  }
+} satisfies GetItineraryResponse["days"][number]["entries"][number];
+
+export const RemovingAScheduledAttractionRequiresItsDayPreview: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      saved.days[1].entries.push(savedCasinoEntry);
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const removals = fn();
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/0",
+      (_schema, request) => {
+        removals(JSON.parse(request.requestBody || "null"));
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+
+    const remove = await canvas.findByRole("button", {
+      name: "Remove Casino of Monte-Carlo from trip"
+    });
+    await user.click(remove);
+    const dialog = within(
+      await overlay(canvasElement).findByRole("alertdialog")
+    );
+    await waitFor(() =>
+      expect(dialog.getByText(/Day 2.*09:00.*09:45/)).toBeVisible()
+    );
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+
+    await expect(remove).toBeVisible();
+    await expect(removals).not.toHaveBeenCalled();
+
+    await user.click(remove);
+    const reopened = within(
+      await overlay(canvasElement).findByRole("alertdialog")
+    );
+    await waitFor(() =>
+      expect(reopened.getByText(/Day 2.*09:00.*09:45/)).toBeVisible()
+    );
+    await user.click(reopened.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(remove).not.toBeInTheDocument());
+    await expect(removals).toHaveBeenCalledTimes(1);
+    await expect(removals).toHaveBeenCalledWith({ entryId: 21 });
+  }
+};
+
+export const ExcludingAScheduledAttractionRequiresAChangedPreviewToBeConfirmed: Story =
+  {
+    parameters: { savedAttractions: SAVED_ATTRACTIONS },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = setupUser();
+      const parent = overlay(canvasElement);
+      const exclusion = fn();
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      saved.days[1].entries = [savedCasinoEntry];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      const moveUrl = "http://localhost:8080/trips/1/board/attractions/0";
+      server.put(
+        moveUrl,
+        (_schema, request) => {
+          exclusion(JSON.parse(request.requestBody));
+          saved.days[1].entries = [];
+          saved.days[2].entries = [
+            {
+              ...savedCasinoEntry,
+              entryId: 22,
+              timing: {
+                ...savedCasinoEntry.timing,
+                start: "2099-06-12T09:00+02:00",
+                end: "2099-06-12T09:45+02:00"
+              }
+            }
+          ];
+          return new MirageResponse(
+            409,
+            {},
+            {
+              errorCode: "RESOURCE_HAS_DEPENDENCIES",
+              errorMessage: "The itinerary consequences changed."
+            }
+          );
+        },
+        { timing: 0 }
+      );
+
+      await canvas.findByRole("link", { name: "Casino of Monte-Carlo" });
+      const source = columnFor(canvasElement, "Top Attractions");
+      const excluded = columnFor(canvasElement, "Excluded Attractions");
+      const card = (
+        await within(source).findByRole("link", {
+          name: "Casino of Monte-Carlo"
+        })
+      ).closest("li.attraction") as HTMLElement;
+      const drag = new DataTransfer();
+      fireEvent.dragStart(card, { dataTransfer: drag });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fireEvent.drop(excluded, { dataTransfer: drag });
+      const dialog = within(await parent.findByRole("alertdialog"));
+      await dialog.findByText(/Day 2.*09:00.*09:45/);
+      await expect(exclusion).not.toHaveBeenCalled();
+      await user.click(
+        dialog.getByRole("button", { name: "Move to Excluded" })
+      );
+
+      await user.click(
+        await canvas.findByRole("button", {
+          name: "Review itinerary consequences"
+        })
+      );
+      const renewed = within(await parent.findByRole("alertdialog"));
+      await renewed.findByText(/Day 3.*09:00.*09:45/);
+      await expect(exclusion).toHaveBeenCalledTimes(1);
+      await expect(exclusion).toHaveBeenCalledWith({
+        targetGroup: "EXCLUDED",
+        previousAttractionId: null,
+        nextAttractionId: null,
+        confirmedRemoval: { entryId: 21 }
+      });
+      server.put(
+        moveUrl,
+        (_schema, request) => {
+          exclusion(JSON.parse(request.requestBody));
+          saved.days[2].entries = [];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+      await user.click(
+        renewed.getByRole("button", { name: "Move to Excluded" })
+      );
+
+      await within(excluded).findByRole("link", {
+        name: "Casino of Monte-Carlo"
+      });
+      await expect(exclusion).toHaveBeenNthCalledWith(2, {
+        targetGroup: "EXCLUDED",
+        previousAttractionId: null,
+        nextAttractionId: null,
+        confirmedRemoval: { entryId: 22 }
+      });
+    }
+  };
+
+const casinoAndGardenBoard = [
+  ...SAVED_ATTRACTIONS,
+  { ...SAVED_ATTRACTIONS[0], attractionId: 5, attractionName: "Garden" }
+];
+
+export const RemoveAllKeepsTheScheduledAttractionInTheCity: Story = {
+  parameters: {
+    savedAttractions: casinoAndGardenBoard,
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      saved.days[1].entries.push(savedCasinoEntry);
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const removals = fn();
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/:attractionId",
+      (_schema, request) => {
+        removals(request.params.attractionId, request.requestBody);
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove all attractions from Monaco"
+      })
+    );
+    const dialog = within(
+      await overlay(canvasElement).findByRole("alertdialog")
+    );
+    await waitFor(() =>
+      expect(
+        dialog.getByText(/Remove all unscheduled attractions from Monaco/)
+      ).toBeVisible()
+    );
+    await user.click(dialog.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("link", { name: "Garden" })
+      ).not.toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByRole("link", { name: "Casino of Monte-Carlo" })
+    ).toBeVisible();
+    await expect(removals).toHaveBeenCalledTimes(1);
+    await expect(removals.mock.calls[0][0]).toBe("5");
+    await expect(removals.mock.calls[0][1] || "").toBe("");
+  }
+};
+
 export const PlanLinksToSavedEntriesAndKeepsTheBoardFilters: Story = {
   parameters: {
     trip: { ...ITINERARY_TRIP, hasItineraryEntries: true },
@@ -4026,7 +4247,12 @@ export const ReaddingAStagedRemovalRestoresTripData: Story = {
         mustVisit: false,
         note: "Keep my trip note."
       }
-    ]
+    ],
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      saved.days[1].entries.push({ ...savedCasinoEntry, mustVisit: false });
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+    }
   },
   play: async ({ canvasElement }) => {
     const user = setupUser();
@@ -4037,9 +4263,11 @@ export const ReaddingAStagedRemovalRestoresTripData: Story = {
         name: "Remove Casino of Monte-Carlo from trip"
       })
     );
-    await user.click(
-      await overlay(canvasElement).findByRole("button", { name: "Delete" })
+    const removal = within(
+      await overlay(canvasElement).findByRole("alertdialog")
     );
+    await removal.findByText(/Day 2.*09:00.*09:45/);
+    await user.click(removal.getByRole("button", { name: "Delete" }));
     await searchAndAddCountry(canvasElement, user, "Mon", "Monaco");
 
     await expect(
@@ -4082,6 +4310,93 @@ export const ReaddingAStagedRemovalRestoresTripData: Story = {
       canvas.queryByRole("button", { name: /Save to trip/ })
     ).not.toBeInTheDocument();
     await expect(canvas.getByText("Keep my trip note.")).toBeVisible();
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await user.click(canvas.getByRole("button", { name: "Plan" }));
+    await expect(
+      await canvas.findByRole("link", { name: /Scheduled .*Day 2/ })
+    ).toBeVisible();
+  }
+};
+
+export const LeavesOnlyTheUnsavedPrepareRemovalBehind: Story = {
+  parameters: { savedAttractions: casinoAndGardenBoard },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const parent = overlay(canvasElement);
+    const saved = itineraryFixture("2099-06-10", "2099-06-24");
+    saved.days[1].entries = [savedCasinoEntry];
+    saved.days[2].entries = [
+      {
+        ...savedCasinoEntry,
+        entryId: 22,
+        attractionId: 5,
+        name: "Garden",
+        timing: {
+          ...savedCasinoEntry.timing,
+          start: "2099-06-12T11:00+02:00",
+          end: "2099-06-12T11:45+02:00"
+        }
+      }
+    ];
+    server.get(itineraryUrl, () => saved, { timing: 0 });
+    const removals = fn();
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/0",
+      (_schema, request) => {
+        removals("0", JSON.parse(request.requestBody || "null"));
+        saved.days[1].entries = [];
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/5",
+      (_schema, request) => {
+        removals("5", JSON.parse(request.requestBody || "null"));
+        return new MirageResponse(
+          400,
+          {},
+          { errorMessage: "Garden could not be removed." }
+        );
+      },
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove Casino of Monte-Carlo from trip"
+      })
+    );
+    const casino = within(await parent.findByRole("alertdialog"));
+    await casino.findByText(/Day 2.*09:00.*09:45/);
+    await user.click(casino.getByRole("button", { name: "Delete" }));
+    await user.click(
+      canvas.getByRole("button", { name: "Remove Garden from trip" })
+    );
+    const garden = within(await parent.findByRole("alertdialog"));
+    await garden.findByText(/Day 3.*11:00.*11:45/);
+    await user.click(garden.getByRole("button", { name: "Delete" }));
+    await expect(
+      await canvas.findByRole("button", { name: "Save to trip (2)" })
+    ).toBeVisible();
+    await expect(removals).not.toHaveBeenCalled();
+
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await canvas.findByRole("button", { name: "Save to trip (1)" });
+    await expect(removals).toHaveBeenNthCalledWith(1, "0", { entryId: 21 });
+    await expect(removals).toHaveBeenNthCalledWith(2, "5", { entryId: 22 });
+
+    await user.click(canvas.getByRole("button", { name: "My Trips" }));
+    const leave = within(
+      await parent.findByRole("dialog", { name: "Save your Prepare changes?" })
+    );
+    await user.click(
+      leave.getByRole("button", { name: "Leave without saving" })
+    );
+    await expect(await canvas.findByText("My Trips list page")).toBeVisible();
+    await expect(removals).toHaveBeenCalledTimes(2);
   }
 };
 

@@ -1,9 +1,12 @@
 package com.triptrove.manager.domain.service;
 
 import com.triptrove.manager.domain.model.BaseApiException;
+import com.triptrove.manager.domain.model.ItineraryDependency;
 import com.triptrove.manager.domain.model.ItineraryEntry;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryMoveStartChoices;
+import com.triptrove.manager.domain.model.ItineraryRemovalConfirmation;
+import com.triptrove.manager.domain.model.ItineraryRemovalSummary;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.ItineraryTimingEditSummary;
 import com.triptrove.manager.domain.model.ItineraryTimingIssue;
@@ -86,13 +89,26 @@ public class ItineraryEntryEditor {
     }
 
     public void removeEntry(long tripId, long entryId) {
-        var removed = entries.findRemovalSummaryByTripIdAndEntryId(tripId, entryId)
+        var entryForRemoval = entries.findRemovalSummaryByTripIdAndEntryId(tripId, entryId)
                 .orElseThrow(() -> entryNotFound(tripId, entryId));
-        if (removed.lastCheckedAt() != null) {
-            removals.save(new ItineraryEntryRemoval(tripId, removed.entry().getTiming().date(), removed.subject(),
-                    removed.entry().isFollowingStartsPushedSinceCheck()));
+        remove(tripId, entryForRemoval, ItineraryEntryRemoval.Cause.ITINERARY);
+    }
+
+    public void unscheduleAttraction(long tripId, long attractionId, ItineraryRemovalConfirmation confirmation,
+                                     ItineraryEntryRemoval.Cause cause) {
+        var entryForRemoval = entries.findRemovalSummaryByTripIdAndEntryId(tripId, confirmation.entryId())
+                .filter(current -> current.entry().getAttractionId() == attractionId)
+                .orElseThrow(() -> new BaseApiException("The board removal confirmation no longer matches the itinerary",
+                        RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.BOARD_REMOVAL_CHANGED, tripId, attractionId));
+        remove(tripId, entryForRemoval, cause);
+    }
+
+    private void remove(long tripId, ItineraryRemovalSummary entryForRemoval, ItineraryEntryRemoval.Cause cause) {
+        if (entryForRemoval.lastCheckedAt() != null) {
+            removals.save(new ItineraryEntryRemoval(tripId, entryForRemoval.entry().getTiming().date(),
+                    entryForRemoval.subject(), entryForRemoval.entry().isFollowingStartsPushedSinceCheck(), cause));
         }
-        entries.delete(removed.entry());
+        entries.delete(entryForRemoval.entry());
     }
 
     private static void validateDayInTrip(ItineraryTimingEditSummary entry, LocalDate date) {

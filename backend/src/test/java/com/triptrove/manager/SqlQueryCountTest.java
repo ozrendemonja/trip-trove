@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static com.triptrove.manager.KeysetTestFixtures.nextPageRequest;
@@ -1120,6 +1121,60 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertReadOnlySelectCount(1);
     }
 
+    @ParameterizedTest(name = "{0}, {1} entries")
+    @MethodSource("confirmedBoardRemovalWorkflows")
+    void previewAndReadAfterConfirmedBoardRemovalUseOneSelectEach(String action, int entryCount,
+            MockHttpServletRequestBuilder request, Function<ConfirmItineraryEntryRemovalRequest, Object> body,
+            int writeSelects, int writeUpdates, int writeDeletes) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        resetSqlStatementCounts();
+
+        var preview = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+
+        assertReadOnlySelectCount(1);
+        var entry = mapper.readValue(preview, GetItineraryResponse.class).days().get(1).entries().getFirst();
+        var confirmation = new ConfirmItineraryEntryRemovalRequest(entry.entryId());
+        resetSqlStatementCounts();
+
+        mockMvc.perform(request.header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body.apply(confirmation))))
+                .andExpect(status().isNoContent());
+
+        assertSelectCount(writeSelects);
+        assertInsertCount(1);
+        assertUpdateCount(writeUpdates);
+        assertDeleteCount(writeDeletes);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount - 1))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    private static Stream<Arguments> confirmedBoardRemovalWorkflows() {
+        return Stream.of(2, 30).flatMap(size -> Stream.of(
+                boardRemovalWorkflow("Remove from trip", size, delete("/trips/1/attractions/1"),
+                        confirmation -> confirmation, 1, 1, 2),
+                boardRemovalWorkflow("Move to Excluded", size, put("/trips/1/board/attractions/1"),
+                        confirmation -> new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, confirmation), 4, 2, 1),
+                boardRemovalWorkflow("Set group to Excluded", size, put("/trips/1/attractions/1/group"),
+                        confirmation -> new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, confirmation), 4, 2, 1)));
+    }
+
+    private static Arguments boardRemovalWorkflow(String action, int size, MockHttpServletRequestBuilder request,
+            Function<ConfirmItineraryEntryRemovalRequest, Object> body, int selects, int updates, int deletes) {
+        return Arguments.of(action, size, request, body, selects, updates, deletes);
+    }
+
     @ParameterizedTest
     @CsvSource({"2, false", "30, false", "2, true", "30, true"})
     void itineraryReadWithRepeatedClocksStillUsesOneSelect(int entryCount, boolean secondOccurrence) throws Exception {
@@ -1346,23 +1401,30 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertDeleteCount(1);
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = {1, 20})
-    void prepareGroupChangeUsesThreeSelectsRegardlessOfBoardSize(int boardSize) throws Exception {
+    @ParameterizedTest(name = "{0}, {1} attractions")
+    @MethodSource("groupChangesWithoutConfirmation")
+    void prepareGroupChangeUsesThreeSelectsRegardlessOfBoardSize(String action, int boardSize,
+            MockHttpServletRequestBuilder request, Object body) throws Exception {
         KeysetTestFixtures.clear(entityManager);
         KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
         resetSqlStatementCounts();
 
-        mockMvc.perform(put("/trips/1/board/attractions/1").header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"targetGroup": "SECONDARY"}
-                                """))
+        mockMvc.perform(request.header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(body)))
                 .andExpect(status().isNoContent());
 
         assertSelectCount(3);
         assertInsertCount(0);
         assertUpdateCount(2);
         assertDeleteCount(0);
+    }
+
+    private static Stream<Arguments> groupChangesWithoutConfirmation() {
+        return Stream.of(1, 20).flatMap(size -> Stream.of(
+                Arguments.of("Move to Secondary", size, put("/trips/1/board/attractions/1"),
+                        new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.SECONDARY, null, null)),
+                Arguments.of("Set group to Secondary", size, put("/trips/1/attractions/1/group"),
+                        new UpdateAttractionGroupRequest(TripAttractionGroupDTO.SECONDARY))));
     }
 
     @ParameterizedTest

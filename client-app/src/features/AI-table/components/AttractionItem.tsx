@@ -21,6 +21,7 @@ const isFormSubmit = (e: React.KeyboardEvent): boolean =>
 
 const AttractionItem: React.FC<AttractionItemProps> = ({
   attraction,
+  scheduledStatus,
   columnId,
   locationHint,
   onUpdateNote,
@@ -307,6 +308,7 @@ const AttractionItem: React.FC<AttractionItemProps> = ({
         ) : (
           attractionNameLink
         )}
+        {scheduledStatus}
         {onToggleMustVisit && !readOnly && !attraction.permanentlyClosedAt && (
           <button
             type="button"

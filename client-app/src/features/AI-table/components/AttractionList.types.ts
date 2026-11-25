@@ -54,6 +54,7 @@ export interface AttractionListProps {
     field: PlanningTextField;
     value: string;
   };
+  renderScheduledStatus?: (attractionId: number) => ReactNode;
   renderPlanningFeedback?: (attractionId: number) => ReactNode;
   // Whether add/remove/move of attraction cards is allowed even when per-item
   // detail edits are disabled (true in edit and prepare modes).

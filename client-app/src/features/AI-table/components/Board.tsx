@@ -151,8 +151,10 @@ const Board: React.FC<BoardProps> = ({
   initialSavedAttractionIds,
   onPlanningChange,
   onReloadSavedPlanning,
+  onRefreshScheduledStatus,
   onPlaceOrderChange,
   onPrepareDraftChange,
+  renderScheduledStatus,
   visitHistory,
   mode: boardMode
 }) => {
@@ -248,7 +250,10 @@ const Board: React.FC<BoardProps> = ({
     const request = startRead();
     setRefreshingBoard(true);
     try {
-      const board = await fetchTripBoard(tripId, request.signal);
+      const [board] = await Promise.all([
+        fetchTripBoard(tripId, request.signal),
+        onRefreshScheduledStatus?.()
+      ]);
       if (!request.isCurrent()) return;
       const next = mapSavedTripAttractionsToBoard(board);
       if (workspace?.hasLocalWork()) {
@@ -268,6 +273,7 @@ const Board: React.FC<BoardProps> = ({
   }, [
     tripId,
     reviewMode,
+    onRefreshScheduledStatus,
     inspectionOpen,
     workspace,
     startRead,
@@ -1637,6 +1643,7 @@ const Board: React.FC<BoardProps> = ({
                         readOnly={readOnly}
                         planningDisabled={planning.blocked}
                         correction={correction}
+                        renderScheduledStatus={renderScheduledStatus}
                         renderPlanningFeedback={(attractionId) =>
                           planning.feedback?.proposal.subjectIds.includes(
                             attractionId

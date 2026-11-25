@@ -843,6 +843,23 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {2, 29})
+    void planReadsBoardAndScheduledEntriesWithThreeSelects(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(entryCount + 1));
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1));
+
+        assertReadOnlySelectCount(3);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {1, 45})
     void itineraryReadUsesOneSelectRegardlessOfDayCount(int dayCount) throws Exception {
         var firstDate = LocalDate.of(2028, 2, 1);

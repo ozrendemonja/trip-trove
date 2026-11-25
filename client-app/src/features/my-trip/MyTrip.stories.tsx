@@ -3237,7 +3237,9 @@ export const RemovingAScheduledAttractionRequiresItsDayPreview: Story = {
     const dialog = within(
       await overlay(canvasElement).findByRole("alertdialog")
     );
-    await expect(await dialog.findByText(/Day 2.*09:00.*09:45/)).toBeVisible();
+    await waitFor(() =>
+      expect(dialog.getByText(/Day 2.*09:00.*09:45/)).toBeVisible()
+    );
     await user.click(dialog.getByRole("button", { name: "Cancel" }));
 
     await expect(remove).toBeVisible();
@@ -3247,7 +3249,9 @@ export const RemovingAScheduledAttractionRequiresItsDayPreview: Story = {
     const reopened = within(
       await overlay(canvasElement).findByRole("alertdialog")
     );
-    await reopened.findByText(/Day 2.*09:00.*09:45/);
+    await waitFor(() =>
+      expect(reopened.getByText(/Day 2.*09:00.*09:45/)).toBeVisible()
+    );
     await user.click(reopened.getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(remove).not.toBeInTheDocument());
@@ -3389,9 +3393,11 @@ export const RemoveAllKeepsTheScheduledAttractionInTheCity: Story = {
     const dialog = within(
       await overlay(canvasElement).findByRole("alertdialog")
     );
-    await expect(
-      await dialog.findByText(/Remove all unscheduled attractions from Monaco/)
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        dialog.getByText(/Remove all unscheduled attractions from Monaco/)
+      ).toBeVisible()
+    );
     await user.click(dialog.getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>

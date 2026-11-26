@@ -1,6 +1,7 @@
 package com.triptrove.manager;
 
 import com.jayway.jsonpath.JsonPath;
+import com.triptrove.manager.application.dto.CheckItineraryRequest;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.SaveTripRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
@@ -80,30 +81,37 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     void anExplicitCheckCanRecordAnEmptyItinerary() throws Exception {
-        var itinerary = createTrip("Checking an empty itinerary", "2028-02-01", "2028-02-01") + "/itinerary";
-        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
-                .andExpect(jsonPath("$.lastCheckedAt").doesNotExist());
+        var trip = createTrip("Checking an empty itinerary", "2028-02-01", "2028-02-01");
+        var itinerary = trip + "/itinerary";
+        try {
+            var displayed = mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                    .andExpect(jsonPath("$.lastCheckedAt").doesNotExist())
+                    .andReturn().getResponse().getContentAsString();
 
-        mockMvc.perform(post(itinerary + "/check").header("x-api-version", "1"))
-                .andExpect(status().isNoContent())
-                .andExpect(header().string(HttpHeaders.LOCATION, itinerary))
-                .andExpect(content().string(""));
+            submitCheck(itinerary, JsonPath.read(displayed, "$.checkContext"))
+                    .andExpect(status().isNoContent())
+                    .andExpect(header().string(HttpHeaders.LOCATION, itinerary))
+                    .andExpect(content().string(""));
 
-        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
-                .andExpect(jsonPath("$.lastCheckedAt").value(not(emptyOrNullString())))
-                .andExpect(jsonPath("$.days[0].entries").isEmpty())
-                .andExpect(jsonPath("$.timeZone").doesNotExist())
-                .andExpect(jsonPath("$.changeNotices").isEmpty());
+            mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                    .andExpect(jsonPath("$.lastCheckedAt").value(not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.days[0].entries").isEmpty())
+                    .andExpect(jsonPath("$.timeZone").doesNotExist())
+                    .andExpect(jsonPath("$.changeNotices").isEmpty());
+        } finally {
+            mockMvc.perform(delete(trip).header("x-api-version", "1")).andExpect(status().isNoContent());
+        }
     }
 
     @Test
     void checkingAnUnknownItineraryReturnsNotFound() throws Exception {
-        mockMvc.perform(post("/trips/9223372036854775807/itinerary/check").header("x-api-version", "1"))
+        submitCheck("/trips/9223372036854775807/itinerary", "unavailable")
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("OBJECT_NOT_FOUND"))
                 .andExpect(jsonPath("$.errorMessage").value(
@@ -121,13 +129,13 @@ class ItineraryTest extends AbstractIntegrationTest {
         schedule(new ScheduleAttractionRequest(
                 1L, LocalDate.of(2026, 9, 1), "09:00", "Europe/Belgrade", null))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+        var displayed = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
-                .andExpect(jsonPath("$.changeNotices").isEmpty());
+                .andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andReturn().getResponse().getContentAsString();
 
-        var check = post("/trips/1/itinerary/check").header("x-api-version", "1");
-        mockMvc.perform(check).andExpect(status().isNoContent());
+        submitCheck("/trips/1/itinerary", JsonPath.read(displayed, "$.checkContext")).andExpect(status().isNoContent());
         var checked = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
@@ -164,7 +172,7 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.changeNotices[*].entryId", contains(gardenEntryId, museumEntryId)));
 
-        mockMvc.perform(check).andExpect(status().isNoContent());
+        submitCheck("/trips/1/itinerary", JsonPath.read(changed, "$.checkContext")).andExpect(status().isNoContent());
         mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
@@ -172,6 +180,12 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.changeNotices").isEmpty())
                 .andExpect(jsonPath("$.days[0].entries[*].attractionId", contains(1, 3)))
                 .andExpect(jsonPath("$.days[1].entries[*].attractionId", contains(2)));
+    }
+
+    private ResultActions submitCheck(String itinerary, String context) throws Exception {
+        return mockMvc.perform(post(itinerary + "/check").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(new CheckItineraryRequest(context))));
     }
 
     @Test

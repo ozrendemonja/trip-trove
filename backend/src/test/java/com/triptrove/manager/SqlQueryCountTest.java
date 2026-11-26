@@ -955,6 +955,25 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 30})
+    void itineraryReadWithWatchedSourceNoticesUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE trip_attraction SET working_hours = '08:00-20:00'
+                WHERE trip_id = 1 AND attraction_id <= :entryCount;
+                UPDATE attraction SET tip = 'Updated tip ' || id WHERE id <= :entryCount;
+                """).setParameter("entryCount", entryCount).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeNotices.length()").value(entryCount))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges").isNotEmpty());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
     void itineraryReadWithPendingTimingChangesUsesOneSelect(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
         entityManager.createNativeQuery("""
@@ -1007,8 +1026,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         var firstEntryId = entityManager.createNativeQuery("""
                 SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = 1
                 """).getSingleResult();
-        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(itineraryCheckRequest()).andExpect(status().isNoContent());
         resetSqlStatementCounts();
 
         mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/fixed-start", firstEntryId)
@@ -1056,15 +1074,41 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     @ValueSource(ints = {0, 2, 30})
     void recordingACheckUsesTwoUpdatesOneDeleteAndNoSelects(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
+        var confirmation = itineraryCheckRequest();
         resetSqlStatementCounts();
 
-        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(confirmation).andExpect(status().isNoContent());
 
         assertSelectCount(0);
         assertInsertCount(0);
         assertUpdateCount(2);
         assertDeleteCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void rejectingAStaleCheckOnlySelectsWhetherTheItineraryStillExists(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var confirmation = itineraryCheckRequest();
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET tip = 'New tip' WHERE id = 1
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(confirmation).andExpect(status().isConflict());
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    private MockHttpServletRequestBuilder itineraryCheckRequest() throws Exception {
+        var snapshot = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var request = new CheckItineraryRequest(mapper.readValue(snapshot, GetItineraryResponse.class).checkContext());
+        return post("/trips/1/itinerary/check").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request));
     }
 
     @ParameterizedTest
@@ -1096,8 +1140,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     @ValueSource(ints = {2, 30})
     void removingACheckedEntryAndReadingMultipleRemovalSummariesUseOneSelectEach(int size) throws Exception {
         seedItineraryWithEntries(size);
-        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(itineraryCheckRequest()).andExpect(status().isNoContent());
         entityManager.createNativeQuery("""
                 INSERT INTO itinerary_entry_removal (trip_id, date, subject)
                 SELECT 1, DATE '2026-09-01', 'Former attraction ' || ordinal
@@ -1133,8 +1176,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
             MockHttpServletRequestBuilder request, Function<ConfirmItineraryEntryRemovalRequest, Object> body,
             int writeSelects, int writeUpdates, int writeDeletes) throws Exception {
         seedItineraryWithEntries(entryCount);
-        mockMvc.perform(post("/trips/1/itinerary/check").header("x-api-version", "1"))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(itineraryCheckRequest()).andExpect(status().isNoContent());
         resetSqlStatementCounts();
 
         var preview = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))

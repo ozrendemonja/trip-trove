@@ -31,12 +31,13 @@ import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
 
 public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
-    @Modifying
-    @Query("""
-            UPDATE Itinerary itinerary SET itinerary.lastCheckedAt = :checkedAt
-            WHERE itinerary.tripId = :tripId
-            """)
-    int recordCheck(Long tripId, Instant checkedAt);
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE itinerary SET last_checked_at = :checkedAt
+            WHERE trip_id = :tripId
+              AND itinerary_check_context(trip_id, time_zone, last_checked_at) = :checkContext
+            """, nativeQuery = true)
+    int recordCheck(Long tripId, Instant checkedAt, String checkContext);
 
     @Query("""
             SELECT itinerary FROM Itinerary itinerary
@@ -95,7 +96,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             """)
     boolean hasScheduledAttractions(Long tripId, List<Long> attractionIds);
 
-    // Attach each board card and each removal to the first day only, without multiplying either set of rows.
+    // Attach board cards and removals to the first day only. The uncorrelated subquery computes one check context per trip.
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date,
@@ -104,7 +105,10 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
-                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed, removal.cause)
+                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
+                entry.watchedSourceBaseline, source.snapshot,
+                (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt) AS String)
+                 FROM Itinerary saved WHERE saved.tripId = :tripId))
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
@@ -122,6 +126,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             LEFT JOIN attraction.region region
             LEFT JOIN attraction.country country
             LEFT JOIN ItineraryEntry entry ON entry.tripId = trip.id AND entry.attractionId = attraction.id
+            LEFT JOIN TripAttractionWatchedSource source ON source.tripId = :tripId
+                AND source.tripAttractionId = tripAttraction.id AND entry.id IS NOT NULL
             WHERE itinerary.tripId = :tripId
             ORDER BY day.date, tripAttraction.boardPosition, tripAttraction.id, removal.id
             """)
@@ -140,20 +146,18 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
 
         return Optional.of(new ItineraryDetails(firstRow.tripId(), firstRow.timeZone(), firstRow.lastCheckedAt(),
                 itineraryDaysInDateOrder(itineraryRows), unscheduledAttractionsInBoardOrder(itineraryRows),
-                changeNotices(itineraryRows, firstRow.lastCheckedAt())));
+                changeNotices(itineraryRows, firstRow.lastCheckedAt()), firstRow.checkContext()));
     }
 
     private static List<ChangeNoticeSummary> changeNotices(List<ItineraryAndBoardRow> rows, Instant lastCheckedAt) {
-        if (lastCheckedAt == null) {
-            return List.of();
-        }
+        var hasBeenChecked = lastCheckedAt != null;
         var entries = rows.stream()
-                .filter(row -> row.entryId() != null && (!row.entryIncludedInLastCheck()
-                        || row.startChangedSinceCheck() || row.plannedLengthChangedSinceCheck()
-                        || row.fixedStartChangedSinceCheck() || row.movedSinceCheck()))
+                .filter(row -> row.entryId() != null)
                 .sorted(Comparator.comparing(ItineraryAndBoardRow::entryPosition))
-                .map(ItineraryAndBoardRow::toChangeNotice);
-        var removals = rows.stream().filter(row -> row.removedSubject() != null).map(ItineraryAndBoardRow::toRemovalNotice);
+                .map(row -> row.toChangeNotice(hasBeenChecked))
+                .filter(notice -> !notice.reasons().isEmpty() || !notice.sourceChanges().isEmpty());
+        var removals = rows.stream().filter(row -> hasBeenChecked && row.removedSubject() != null)
+                .map(ItineraryAndBoardRow::toRemovalNotice);
         return Stream.concat(entries, removals)
                 .sorted(Comparator.comparing(ChangeNoticeSummary::date))
                 .toList();

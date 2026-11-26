@@ -1,6 +1,7 @@
 import {
   Button,
   Caption1,
+  Caption1Strong,
   Dialog,
   DialogActions,
   DialogBody,
@@ -21,8 +22,18 @@ import {
 } from "@fluentui/react-components";
 import { Alert16Regular, ArrowClockwise16Regular } from "@fluentui/react-icons";
 import { useState, type ReactElement } from "react";
-import type { ChangeNotice, GetItineraryResponse } from "../../clients/manager";
+import type {
+  ChangeNotice,
+  GetItineraryResponse,
+  SourceChange
+} from "../../clients/manager";
+import {
+  formatVisitPeriod,
+  readableFactValue,
+  recordedFactValue
+} from "./AttractionFactsDialog";
 import { formatItineraryDate } from "./Itinerary";
+import { useClasses as useItineraryStyles } from "./Itinerary.styles";
 import type { useItineraryCheck } from "./useItineraryCheck";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
@@ -41,6 +52,50 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   FOLLOWING_STARTS_PUSHED: "Following entries moved later",
   ATTRACTION_EXCLUDED: "Moved to Excluded Attractions on the board",
   REMOVED_FROM_TRIP: "Removed from the trip"
+};
+const sourceFieldLabels: Record<SourceChange["field"], string> = {
+  WORKING_HOURS: "Working hours",
+  VISIT_DURATION: "Visit duration",
+  MUST_VISIT: "Must-visit",
+  IMPORTANCE: "Importance",
+  TRIP_NOTE: "Trip note",
+  ADDRESS: "Address",
+  LOCATION: "Location",
+  GEOGRAPHY: "Geography",
+  MAIN_ATTRACTION: "Main attraction",
+  CATEGORY: "Category",
+  TYPE: "Type",
+  CATALOGUE_TIP: "Catalogue tip",
+  OPTIMAL_VISIT_PERIOD: "Optimal visit period",
+  PERMANENT_CLOSURE: "Permanent closure"
+};
+const baselineLabels: Record<
+  NonNullable<ChangeNotice["sourceBaseline"]>,
+  string
+> = {
+  WHEN_SCHEDULED: "When scheduled",
+  AT_LAST_CHECK: "At last check"
+};
+
+const sourceValue = (field: SourceChange["field"], value?: string): string => {
+  switch (field) {
+    case "MAIN_ATTRACTION":
+      return value ?? "None";
+    case "OPTIMAL_VISIT_PERIOD": {
+      const [from, to] = value?.split("/") ?? [];
+      return formatVisitPeriod(from, to);
+    }
+    case "CATEGORY":
+    case "TYPE":
+    case "MUST_VISIT":
+    case "IMPORTANCE":
+    case "PERMANENT_CLOSURE":
+      return value === undefined
+        ? recordedFactValue()
+        : readableFactValue(value);
+    default:
+      return recordedFactValue(value);
+  }
 };
 
 const useStyles = makeStyles({
@@ -81,7 +136,15 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalXXS,
     overflowWrap: "anywhere"
   },
-  reasons: { margin: 0, paddingInlineStart: tokens.spacingHorizontalL }
+  reasons: { margin: 0, paddingInlineStart: tokens.spacingHorizontalL },
+  sourceChanges: {
+    display: "grid",
+    gap: tokens.spacingVerticalS,
+    listStyleType: "none",
+    margin: 0,
+    padding: 0,
+    width: "100%"
+  }
 });
 
 interface Props {
@@ -108,6 +171,7 @@ export function ItineraryCheckControls({
   onRetry
 }: Props): ReactElement {
   const classes = useStyles();
+  const { factsList } = useItineraryStyles();
   const detailsId = useId("check-availability");
   const tabId = useId("check-changes");
   const panelId = useId("check-change-notices");
@@ -177,39 +241,90 @@ export function ItineraryCheckControls({
                 </TabList>
                 <div role="tabpanel" id={panelId} aria-labelledby={tabId}>
                   <ul className={classes.notices}>
-                    {notices.map((notice, index) => (
-                      <li
-                        key={
-                          notice.entryId ??
-                          `${notice.date}:${notice.subject}:${index}`
-                        }
-                        className={classes.notice}
-                      >
-                        <Text weight="semibold">{notice.subject}</Text>
-                        <Caption1>{formatItineraryDate(notice.date)}</Caption1>
-                        <ul className={classes.reasons}>
-                          {notice.reasons.map((reason) => (
-                            <li key={reason}>{reasonLabels[reason]}</li>
-                          ))}
-                        </ul>
-                        {hasTarget(notice) && (
-                          <DialogTrigger
-                            action="close"
-                            disableButtonEnhancement
-                          >
-                            <Button
-                              size="small"
-                              disabledFocusable={jumpBlocked}
-                              onClick={() => onJump(notice)}
+                    {notices.map((notice, index) => {
+                      const sourceBaseline = notice.sourceBaseline;
+                      return (
+                        <li
+                          key={
+                            notice.entryId ??
+                            `${notice.date}:${notice.subject}:${index}`
+                          }
+                          className={classes.notice}
+                        >
+                          <Text weight="semibold">{notice.subject}</Text>
+                          <Caption1>
+                            {formatItineraryDate(notice.date)}
+                          </Caption1>
+                          {notice.reasons.length > 0 && (
+                            <ul className={classes.reasons}>
+                              {notice.reasons.map((reason) => (
+                                <li key={reason}>{reasonLabels[reason]}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {sourceBaseline && notice.sourceChanges && (
+                            <ul className={classes.sourceChanges}>
+                              {notice.sourceChanges.map((change) => (
+                                <li key={change.field}>
+                                  <Caption1Strong block>
+                                    {sourceFieldLabels[change.field]}
+                                  </Caption1Strong>
+                                  <dl className={factsList}>
+                                    <dt>
+                                      <Caption1Strong>
+                                        {baselineLabels[sourceBaseline]}
+                                      </Caption1Strong>
+                                    </dt>
+                                    <dd>
+                                      <Caption1>
+                                        {sourceValue(
+                                          change.field,
+                                          change.baseline
+                                        )}
+                                      </Caption1>
+                                    </dd>
+                                    <dt>
+                                      <Caption1Strong>
+                                        Current value
+                                      </Caption1Strong>
+                                    </dt>
+                                    <dd>
+                                      <Caption1>
+                                        {sourceValue(
+                                          change.field,
+                                          change.current
+                                        )}
+                                      </Caption1>
+                                    </dd>
+                                  </dl>
+                                  {change.restored && (
+                                    <Caption1 block>
+                                      Changed in between and restored.
+                                    </Caption1>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {hasTarget(notice) && (
+                            <DialogTrigger
+                              action="close"
+                              disableButtonEnhancement
                             >
-                              {notice.entryId === undefined
-                                ? "Go to day"
-                                : "Go to entry"}
-                            </Button>
-                          </DialogTrigger>
-                        )}
-                      </li>
-                    ))}
+                              <Button
+                                size="small"
+                                disabledFocusable={jumpBlocked}
+                                onClick={() => onJump(notice)}
+                              >
+                                {notice.entryId === undefined
+                                  ? "Go to day"
+                                  : "Go to entry"}
+                              </Button>
+                            </DialogTrigger>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </DialogContent>
@@ -307,6 +422,17 @@ export function ItineraryCheckControls({
               onClick={() => void check.inspect()}
             >
               Inspect saved check state
+            </Button>
+          )}
+          {check.requiresRefresh && (
+            <Button
+              appearance="subtle"
+              size="small"
+              icon={<ArrowClockwise16Regular />}
+              disabledFocusable={loading}
+              onClick={onRetry}
+            >
+              Refresh before checking
             </Button>
           )}
           {(check.activity || check.message) && (

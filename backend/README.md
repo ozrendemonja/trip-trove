@@ -70,16 +70,23 @@ source trip dates before restarting. The migration does not guess replacements
 or reset any existing itinerary.
 
 `POST /trips/{id}/itinerary/check` records the user's manual assessment of the
-whole itinerary, including an empty one. It saves the check time and renews
-the reference for which entries were checked in one transaction. It returns
-`204` with a `Location` pointing to the itinerary; GET supplies the check
-state and the change notices grouped by entry. After a check, a notice shows
-if an entry was added, moved, or its start, planned length or fixed-start state
-changed. A removal keeps the entry's label and last day but no entry link.
-A change stays on the notice even if the user puts the old value back; only
-the next manual check clears it. Previous timing values are not stored.
-There are no notices before the first check. An unconfirmed check must be
-inspected with GET before the user confirms again.
+whole itinerary, including an empty one. Send `{"checkContext":"..."}` with the
+value from the displayed itinerary. If that context is stale, the
+server returns `409` without acknowledging changes. Reload and review the
+itinerary before confirming again. A successful check saves the check time
+and renews all entry and source-change baselines in one transaction. It returns
+`204` with an itinerary `Location`. After an unconfirmed reply, use GET to
+inspect the saved check and any later notices; do not replay the earlier request.
+
+GET supplies the check state and notices grouped by entry. Watched trip and
+catalogue values are compared with their values when scheduled or at the last
+check. Field-specific versions preserve changes that were restored between
+reads. Existing entries start tracking from the values present at migration;
+no earlier source history is inferred. Source notices can appear before the
+first check without changing the **Not yet checked** state. Manual addition,
+move, clock, length and start-lock notices appear only after a check. Removing
+an entry ends source tracking; after a check its removal keeps the label and
+last day but no entry link.
 
 `PUT /trips/{id}/itinerary/entries/{entryId}/fixed-start` takes
 `{"fixedStart":true}` to lock or `{"fixedStart":false}` to unlock a start.

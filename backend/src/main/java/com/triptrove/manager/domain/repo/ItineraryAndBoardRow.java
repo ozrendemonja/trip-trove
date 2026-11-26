@@ -3,11 +3,13 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.AttractionCategory;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
+import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.SourceBaseline;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
+import com.triptrove.manager.domain.model.WatchedSourceSnapshot;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,7 +29,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
                                    Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
                                    Boolean followingStartsPushedSinceCheck, String removedSubject, LocalDate removedDate,
-                                   Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause) {
+                                   Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause,
+                                   WatchedSourceSnapshot watchedSourceBaseline, WatchedSourceSnapshot currentWatchedSource,
+                                   String checkContext) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -53,7 +57,17 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                 category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote);
     }
 
-    ChangeNoticeSummary toChangeNotice() {
+    ChangeNoticeSummary toChangeNotice(boolean hasBeenChecked) {
+        var sourceChanges = currentWatchedSource.changesFrom(watchedSourceBaseline);
+        SourceBaseline sourceBaseline = null;
+        if (!sourceChanges.isEmpty()) {
+            sourceBaseline = entryIncludedInLastCheck ? SourceBaseline.AT_LAST_CHECK : SourceBaseline.WHEN_SCHEDULED;
+        }
+        return new ChangeNoticeSummary(entryId, attractionName, entryDate,
+                hasBeenChecked ? entryChangeReasons() : List.of(), sourceBaseline, sourceChanges);
+    }
+
+    private List<ChangeNoticeSummary.Reason> entryChangeReasons() {
         var reasons = new ArrayList<ChangeNoticeSummary.Reason>(6);
         if (!entryIncludedInLastCheck) {
             reasons.add(ATTRACTION_ADDED);
@@ -73,7 +87,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (followingStartsPushedSinceCheck) {
             reasons.add(FOLLOWING_STARTS_PUSHED);
         }
-        return new ChangeNoticeSummary(entryId, attractionName, entryDate, List.copyOf(reasons));
+        return List.copyOf(reasons);
     }
 
     ChangeNoticeSummary toRemovalNotice() {
@@ -87,6 +101,6 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (removedEntryPushedFollowingStarts) {
             reasons.add(FOLLOWING_STARTS_PUSHED);
         }
-        return new ChangeNoticeSummary(null, removedSubject, removedDate, List.copyOf(reasons));
+        return new ChangeNoticeSummary(null, removedSubject, removedDate, List.copyOf(reasons), null, List.of());
     }
 }

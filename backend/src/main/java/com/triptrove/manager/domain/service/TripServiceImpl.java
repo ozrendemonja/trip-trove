@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -68,11 +69,16 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    @Transactional
-    public void markItineraryChecked(Long tripId) {
-        if (itineraryRepo.recordCheck(tripId, Instant.now()) == 0) {
-            throw new BaseApiException("Itinerary not found for trip",
-                    BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public void markItineraryChecked(Long tripId, String checkContext) {
+        // The guard and baseline renewal must see the same sources, even if an edit commits between them.
+        if (itineraryRepo.recordCheck(tripId, Instant.now(), checkContext) == 0) {
+            if (!itineraryRepo.existsById(tripId)) {
+                throw new BaseApiException("Itinerary not found for trip",
+                        BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, tripId);
+            }
+            throw new BaseApiException("Itinerary check context no longer matches",
+                    BaseApiException.ErrorCode.ITINERARY_CHECK_STALE, tripId);
         }
         itineraryEntryRepo.markEntriesChecked(tripId);
         itineraryEntryRepo.clearRemovalNoticesByTripId(tripId);

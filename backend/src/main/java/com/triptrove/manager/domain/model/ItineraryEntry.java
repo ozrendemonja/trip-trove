@@ -2,6 +2,8 @@ package com.triptrove.manager.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "itinerary_entry")
@@ -31,6 +33,10 @@ public class ItineraryEntry {
 
     @Column(name = "included_in_last_check", nullable = false)
     private boolean includedInLastCheck;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "watched_source_baseline", insertable = false, updatable = false, nullable = false)
+    private WatchedSourceSnapshot watchedSourceBaseline;
 
     @Column(name = "start_changed_since_check", nullable = false)
     private boolean startChangedSinceCheck;

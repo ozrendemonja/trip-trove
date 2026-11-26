@@ -12,7 +12,7 @@ public interface TripService {
 
     ItineraryDetails getItinerary(Long tripId);
 
-    void markItineraryChecked(Long tripId);
+    void markItineraryChecked(Long tripId, String checkContext);
 
     void updateTripName(Long id, String newName);
 

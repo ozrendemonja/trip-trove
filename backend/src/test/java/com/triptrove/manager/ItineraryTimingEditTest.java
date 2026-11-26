@@ -1,5 +1,7 @@
 package com.triptrove.manager;
 
+import com.triptrove.manager.application.dto.CheckItineraryRequest;
+import com.triptrove.manager.application.dto.GetItineraryResponse;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
@@ -642,9 +644,11 @@ class ItineraryTimingEditTest extends AbstractIntegrationTest {
     }
 
     private void checkItinerary() throws Exception {
-        entityManager.flush();
-        entityManager.clear();
-        mockMvc.perform(post(ITINERARY + "/check").header("x-api-version", "1")).andExpect(status().isNoContent());
+        var itinerary = mapper.readValue(saved().andReturn().getResponse().getContentAsString(), GetItineraryResponse.class);
+        var check = new CheckItineraryRequest(itinerary.checkContext());
+        mockMvc.perform(post(ITINERARY + "/check").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(check)))
+                .andExpect(status().isNoContent());
     }
 
     private void seedTrip(String first, String last) {

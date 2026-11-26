@@ -29,7 +29,8 @@ public class BaseApiException extends RuntimeException {
         ITINERARY_ENTRY_OVERLAP,
         ITINERARY_START_DATE_CHANGE,
         ITINERARY_INVALID_END_CLOCK,
-        ITINERARY_PLANNED_LENGTH_NOT_ALLOWED
+        ITINERARY_PLANNED_LENGTH_NOT_ALLOWED,
+        ITINERARY_CHECK_STALE
     }
 
     private final ErrorCode errorCode;

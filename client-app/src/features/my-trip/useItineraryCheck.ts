@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
-import { saveItineraryCheck } from "./infra/TripApi";
+import { saveItineraryCheck, StaleItineraryCheckError } from "./infra/TripApi";
 import { PlanningSaveError } from "./infra/PlanningApi";
 import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 
@@ -9,6 +9,7 @@ type Attempt = {
   activity?: "saving" | "inspecting";
   unconfirmed?: boolean;
   rejected?: boolean;
+  staleContext?: string;
   lastCheckedAt?: string;
   message?: string;
 };
@@ -17,6 +18,7 @@ interface ItineraryCheck {
   activity: Attempt["activity"];
   unconfirmed: boolean;
   rejected: boolean;
+  requiresRefresh: boolean;
   locked: boolean;
   message?: string;
   submit: (saved: GetItineraryResponse) => Promise<void>;
@@ -26,6 +28,7 @@ interface ItineraryCheck {
 
 export function useItineraryCheck(
   tripId: number | undefined,
+  savedContext: string | undefined,
   refresh: () => Promise<GetItineraryResponse | undefined>,
   workspace: PlanningWorkspace
 ): ItineraryCheck {
@@ -33,9 +36,18 @@ export function useItineraryCheck(
   const current = attempt?.tripId === tripId ? attempt : undefined;
   const inFlight = useRef(false);
   const unconfirmed = current?.unconfirmed ?? false;
+  const requiresRefresh =
+    current?.staleContext !== undefined &&
+    current.staleContext === savedContext;
 
   const submit = async (saved: GetItineraryResponse): Promise<void> => {
-    if (inFlight.current || unconfirmed || saved.tripId !== tripId) return;
+    if (
+      inFlight.current ||
+      unconfirmed ||
+      requiresRefresh ||
+      saved.tripId !== tripId
+    )
+      return;
     const release = workspace.beginWrite();
     if (!release) return;
     inFlight.current = true;
@@ -43,8 +55,16 @@ export function useItineraryCheck(
     setAttempt({ ...previous, activity: "saving" });
     try {
       try {
-        await saveItineraryCheck(tripId);
+        await saveItineraryCheck(tripId, saved.checkContext);
       } catch (error) {
+        if (error instanceof StaleItineraryCheckError) {
+          setAttempt({
+            ...previous,
+            staleContext: saved.checkContext,
+            message: error.message
+          });
+          return;
+        }
         const failure = error instanceof PlanningSaveError ? error : undefined;
         const uncertain = failure?.unconfirmed ?? true;
         setAttempt({
@@ -92,8 +112,10 @@ export function useItineraryCheck(
     activity: current?.activity,
     unconfirmed,
     rejected: !!current?.rejected,
+    requiresRefresh,
     locked: unconfirmed || !!current?.activity,
-    message: current?.message,
+    message:
+      current?.staleContext && !requiresRefresh ? undefined : current?.message,
     submit,
     inspect,
     discardRejection: () => {

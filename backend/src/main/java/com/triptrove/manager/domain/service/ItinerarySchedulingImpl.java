@@ -62,6 +62,7 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         }
         if (attraction.visitDuration() != null) {
             tripAttractions.findById(tripAttraction.tripAttractionId()).orElseThrow().setVisitTime(attraction.visitDuration());
+            tripAttractions.flush(); // Include the corrected source duration in the insert-time baseline.
         }
         var position = prepareInsertionPosition(tripId, day, proposedInterval);
         entries.save(new ItineraryEntry(tripId, attractionId, position, proposedInterval));

@@ -2,6 +2,7 @@ package com.triptrove.manager.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.triptrove.manager.domain.model.ItineraryDetails;
+import com.triptrove.manager.domain.model.WatchedSourceChangeSummary;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -19,7 +20,9 @@ public record GetItineraryResponse(
         List<UnscheduledAttraction> unscheduledAttractions,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryDetails.CheckState checkState,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Pending grouped changes to check.")
-        List<ChangeNotice> changeNotices) {
+        List<ChangeNotice> changeNotices,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Context to send back when confirming a check.")
+        String checkContext) {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ChangeNotice(
             @Schema(description = "Entry referenced by the change; absent for removed entries and day-level changes.")
@@ -27,9 +30,26 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String subject,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
-            List<ItineraryDetails.ChangeNoticeSummary.Reason> reasons) {
+            List<ItineraryDetails.ChangeNoticeSummary.Reason> reasons,
+            ItineraryDetails.ChangeNoticeSummary.SourceBaseline sourceBaseline,
+            List<SourceChange> sourceChanges) {
         private static ChangeNotice from(ItineraryDetails.ChangeNoticeSummary notice) {
-            return new ChangeNotice(notice.entryId(), notice.subject(), notice.date(), notice.reasons());
+            var changes = notice.sourceChanges().stream().map(SourceChange::from).toList();
+            return new ChangeNotice(notice.entryId(), notice.subject(), notice.date(), notice.reasons(),
+                    notice.sourceBaseline(), changes.isEmpty() ? null : changes);
+        }
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public record SourceChange(
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) WatchedSourceChangeSummary.Field field,
+                @Schema(description = "Baseline value, if recorded. Visit periods use a start/end date range.")
+                String baseline,
+                @Schema(description = "Current value, if recorded. Visit periods use a start/end date range.")
+                String current,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean restored) {
+            private static SourceChange from(WatchedSourceChangeSummary change) {
+                return new SourceChange(change.field(), change.baseline(), change.current(), change.restored());
+            }
         }
     }
 
@@ -89,6 +109,6 @@ public record GetItineraryResponse(
         var unscheduled = itinerary.unscheduledAttractions().stream().map(UnscheduledAttraction::from).toList();
         var notices = itinerary.changeNotices().stream().map(ChangeNotice::from).toList();
         return new GetItineraryResponse(itinerary.tripId(), itinerary.timeZone(), itinerary.lastCheckedAt(), days,
-                unscheduled, itinerary.checkState(), notices);
+                unscheduled, itinerary.checkState(), notices, itinerary.checkContext());
     }
 }

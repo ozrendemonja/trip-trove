@@ -231,6 +231,8 @@ const isSavedItinerary = (
   data.days.every((day) => Array.isArray(day.entries)) &&
   Array.isArray(data.unscheduledAttractions) &&
   Array.isArray(data.changeNotices) &&
+  typeof data.checkContext === "string" &&
+  data.checkContext.length > 0 &&
   (data.checkState === "NOT_YET_CHECKED" ||
     data.checkState === "MANUALLY_CHECKED" ||
     data.checkState === "CHANGED_SINCE_LAST_CHECK");
@@ -254,12 +256,28 @@ export const fetchTripItinerary = async (
   return data;
 };
 
-export const saveItineraryCheck = async (id: number): Promise<void> => {
+export class StaleItineraryCheckError extends PlanningSaveError {}
+
+export const saveItineraryCheck = async (
+  id: number,
+  checkContext: string
+): Promise<void> => {
   const { response, error } = await checkItinerary({
     path: { id },
     headers: { "x-api-version": "1" },
+    body: { checkContext },
     signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
   });
+  if (
+    response?.status === 409 &&
+    error?.errorCode === "ITINERARY_CHECK_STALE"
+  ) {
+    throw new StaleItineraryCheckError(
+      error.errorMessage ??
+        "The itinerary changed. Refresh and review it before checking again.",
+      false
+    );
+  }
   if (!response?.ok) {
     throw new PlanningSaveError(
       error?.errorMessage ?? "The itinerary couldn't be checked.",

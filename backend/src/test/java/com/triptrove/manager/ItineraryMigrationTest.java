@@ -72,7 +72,9 @@ class ItineraryMigrationTest {
                     """, Integer.class)).isZero();
             assertThat(jdbc.queryForList("SELECT to_jsonb(t)::text FROM trip t ORDER BY t.id", String.class))
                     .containsExactlyElementsOf(tripRows);
-            assertThat(jdbc.queryForList("SELECT to_jsonb(ta)::text FROM trip_attraction ta ORDER BY ta.id", String.class))
+            assertThat(jdbc.queryForList("""
+                    SELECT (to_jsonb(ta) - 'watched_source_versions')::text FROM trip_attraction ta ORDER BY ta.id
+                    """, String.class))
                     .containsExactlyElementsOf(boardRows);
 
             jdbc.update("""

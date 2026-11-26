@@ -22,10 +22,10 @@ import { useClasses } from "./Itinerary.styles";
 import type { ItineraryAttraction } from "./ItineraryDrag";
 import { elapsedMinutes } from "./itineraryClocks";
 
-const recorded = (value?: string): string =>
+export const recordedFactValue = (value?: string): string =>
   value?.trim() ? value : "Not recorded";
 
-const readable = (value: string): string =>
+export const readableFactValue = (value: string): string =>
   value.charAt(0) + value.slice(1).toLowerCase().replaceAll("_", " ");
 
 const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -36,6 +36,13 @@ const dateLabel = new Intl.DateTimeFormat("en-US", {
 const formatDate = (date: string): string =>
   dateLabel.format(new Date(date.slice(0, 10)));
 
+export const formatVisitPeriod = (from?: string, to?: string): string => {
+  if (from && to) return `${formatDate(from)} to ${formatDate(to)}`;
+  if (from) return `From ${formatDate(from)}`;
+  if (to) return `Until ${formatDate(to)}`;
+  return "Not recorded";
+};
+
 type Fact = readonly [label: string, value: string];
 
 function catalogueFacts(attraction: Attraction): Fact[] {
@@ -44,7 +51,7 @@ function catalogueFacts(attraction: Attraction): Fact[] {
   const { countryName, regionName, cityName, isCountrywide } = destination;
   return [
     ["Name", attraction.name.name],
-    ["Address", recorded(address.streetAddress)],
+    ["Address", recordedFactValue(address.streetAddress)],
     [
       "Location",
       address.location
@@ -59,17 +66,18 @@ function catalogueFacts(attraction: Attraction): Fact[] {
             .filter(Boolean)
             .join(", ")
     ],
-    ["Category", readable(attraction.category)],
-    ["Type", readable(attraction.type)],
+    ["Category", readableFactValue(attraction.category)],
+    ["Type", readableFactValue(attraction.type)],
     ["Main attraction", attraction.name.mainAttractionName ?? "None"],
     ["Traditional", attraction.isTraditional ? "Yes" : "No"],
-    ["Catalogue tip", recorded(attraction.tip)],
+    ["Catalogue tip", recordedFactValue(attraction.tip)],
     ["Information source", attraction.infoFrom.source],
     [
       "Optimal visit period",
-      optimalVisitPeriod
-        ? `${formatDate(optimalVisitPeriod.fromDate)} to ${formatDate(optimalVisitPeriod.toDate)}`
-        : "Not recorded"
+      formatVisitPeriod(
+        optimalVisitPeriod?.fromDate,
+        optimalVisitPeriod?.toDate
+      )
     ],
     [
       "Permanent closure",
@@ -194,11 +202,11 @@ export function AttractionFactsDialog({
             <FactsSection
               title="Trip data"
               facts={[
-                ["Working hours", recorded(workingHours)],
-                ["Visit duration", recorded(visitDuration)],
+                ["Working hours", recordedFactValue(workingHours)],
+                ["Visit duration", recordedFactValue(visitDuration)],
                 ["Must-visit", mustVisit ? "Yes" : "No"],
                 ["Importance", importance],
-                ["Trip note", recorded(tripNote)]
+                ["Trip note", recordedFactValue(tripNote)]
               ]}
             />
             {"timing" in attraction && (

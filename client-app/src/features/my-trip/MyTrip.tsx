@@ -87,6 +87,8 @@ const unavailableCheckReason = (
   const { draft } = itinerary.scheduling;
   if (check.unconfirmed)
     return "Inspect the saved check state before confirming again.";
+  if (check.requiresRefresh)
+    return "Refresh the itinerary before confirming again.";
   if (check.activity) return "Wait for the check to finish saving.";
   if (draft?.unconfirmed)
     return "Inspect the saved itinerary to resolve the unconfirmed addition.";
@@ -325,7 +327,12 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   const entryDraft = itinerary.scheduling.draft;
   const pendingTimingEdit = itinerary.timingEditing.pending;
   const { refresh: refreshItinerary, checkForUpdates } = itinerary;
-  const check = useItineraryCheck(currentTripId, refreshItinerary, workspace);
+  const check = useItineraryCheck(
+    currentTripId,
+    itinerary.saved?.checkContext,
+    refreshItinerary,
+    workspace
+  );
   const reloadSavedItinerary = useCallback(async (): Promise<void> => {
     if (!(await refreshItinerary())) {
       throw new Error("The itinerary couldn't be refreshed.");

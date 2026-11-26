@@ -1,0 +1,125 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0018-track-itinerary-watched-sources
+      author: trip-trove
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE attraction ADD COLUMN watched_source_versions JSONB NOT NULL DEFAULT '{}';
+              ALTER TABLE trip_attraction ADD COLUMN watched_source_versions JSONB NOT NULL DEFAULT '{}';
+              ALTER TABLE itinerary_entry ADD COLUMN watched_source_baseline JSONB;
+
+              CREATE FUNCTION itinerary_watched_values(item attraction) RETURNS JSONB
+              LANGUAGE sql STABLE AS $$
+                  SELECT jsonb_build_object(
+                      'ADDRESS', item.address,
+                      'LOCATION', CASE WHEN item.latitude IS NOT NULL OR item.longitude IS NOT NULL
+                          THEN concat(item.latitude, ', ', item.longitude) END,
+                      'GEOGRAPHY', jsonb_build_array(item.country_id, item.region_id, item.city_id, item.is_countrywide)::text,
+                      'MAIN_ATTRACTION', item.main_attraction_id::text,
+                      'CATEGORY', item.category,
+                      'TYPE', item.type,
+                      'CATALOGUE_TIP', item.tip,
+                      'OPTIMAL_VISIT_PERIOD', CASE WHEN item.visit_period_from IS NOT NULL OR item.visit_period_to IS NOT NULL
+                          THEN concat(to_char(item.visit_period_from, 'YYYY-MM-DD'), '/', to_char(item.visit_period_to, 'YYYY-MM-DD')) END,
+                      'PERMANENT_CLOSURE', CASE WHEN item.permanently_closed_at IS NOT NULL
+                          THEN 'PERMANENTLY_CLOSED' ELSE 'NOT_PERMANENTLY_CLOSED' END
+                  )
+              $$;
+
+              CREATE FUNCTION itinerary_watched_values(item trip_attraction) RETURNS JSONB
+              LANGUAGE sql STABLE AS $$
+                  SELECT jsonb_build_object(
+                      'WORKING_HOURS', item.working_hours,
+                      'VISIT_DURATION', item.visit_time,
+                      'MUST_VISIT', CASE WHEN item.must_visit THEN 'YES' ELSE 'NO' END,
+                      'IMPORTANCE', CASE item.attraction_group
+                          WHEN 'PRIMARY' THEN CASE WHEN item.must_visit THEN 'MUST_SEE' ELSE 'WORTH_SEEING' END
+                          WHEN 'SECONDARY' THEN CASE WHEN item.must_visit THEN 'FIT_IN_NEARBY' ELSE 'IF_PASSING_BY' END
+                          ELSE item.attraction_group
+                      END,
+                      'TRIP_NOTE', item.note
+                  )
+              $$;
+
+              CREATE FUNCTION track_itinerary_watched_sources() RETURNS TRIGGER
+              LANGUAGE plpgsql AS $$
+              DECLARE
+                  previous_values JSONB := itinerary_watched_values(OLD);
+                  next_values JSONB := itinerary_watched_values(NEW);
+              BEGIN
+                  NEW.watched_source_versions := OLD.watched_source_versions || COALESCE((
+                      SELECT jsonb_object_agg(field, COALESCE((OLD.watched_source_versions ->> field)::bigint, 0) + 1)
+                      FROM jsonb_each(next_values) AS watched(field, value)
+                      WHERE value IS DISTINCT FROM (previous_values -> field)
+                  ), '{}'::jsonb);
+                  RETURN NEW;
+              END
+              $$;
+
+              CREATE TRIGGER track_itinerary_catalogue_sources BEFORE UPDATE ON attraction
+              FOR EACH ROW EXECUTE FUNCTION track_itinerary_watched_sources();
+              CREATE TRIGGER track_itinerary_trip_sources BEFORE UPDATE ON trip_attraction
+              FOR EACH ROW EXECUTE FUNCTION track_itinerary_watched_sources();
+
+              CREATE VIEW trip_attraction_watched_source AS
+              SELECT item.id AS trip_attraction_id, item.trip_id, item.attraction_id,
+                  jsonb_build_object(
+                      'values', itinerary_watched_values(a) || itinerary_watched_values(item),
+                      'labels', jsonb_build_object(
+                          'GEOGRAPHY', CASE WHEN a.is_countrywide THEN country.name || ' (countrywide)'
+                              ELSE concat_ws(', ', city.name,
+                                  CASE WHEN region.name IS DISTINCT FROM city.name THEN region.name END,
+                                  CASE WHEN country.name IS DISTINCT FROM city.name AND country.name IS DISTINCT FROM region.name
+                                      THEN country.name END) END,
+                          'MAIN_ATTRACTION', main.name
+                      ),
+                      'versions', a.watched_source_versions || item.watched_source_versions
+                  ) AS snapshot
+              FROM trip_attraction item
+              JOIN attraction a ON a.id = item.attraction_id
+              JOIN country ON country.id = a.country_id
+              JOIN region ON region.id = a.region_id
+              LEFT JOIN city ON city.id = a.city_id
+              LEFT JOIN attraction main ON main.id = a.main_attraction_id;
+
+              UPDATE itinerary_entry entry
+              SET watched_source_baseline = source.snapshot
+              FROM trip_attraction_watched_source source
+              WHERE source.trip_id = entry.trip_id AND source.attraction_id = entry.attraction_id;
+
+              ALTER TABLE itinerary_entry ALTER COLUMN watched_source_baseline SET NOT NULL;
+
+              CREATE FUNCTION initialize_itinerary_watched_baseline() RETURNS TRIGGER
+              LANGUAGE plpgsql AS $$
+              BEGIN
+                  SELECT source.snapshot INTO NEW.watched_source_baseline
+                  FROM trip_attraction_watched_source source
+                  WHERE source.trip_id = NEW.trip_id AND source.attraction_id = NEW.attraction_id;
+                  RETURN NEW;
+              END
+              $$;
+
+              CREATE TRIGGER initialize_itinerary_watched_baseline BEFORE INSERT ON itinerary_entry
+              FOR EACH ROW EXECUTE FUNCTION initialize_itinerary_watched_baseline();
+
+              CREATE FUNCTION itinerary_check_context(trip_id BIGINT, itinerary_zone TEXT, checked_at TIMESTAMPTZ)
+              RETURNS TEXT LANGUAGE sql STABLE AS $$
+                  SELECT encode(sha256(convert_to(jsonb_build_array(
+                      trip.id, trip.trip_start_date, trip.trip_end_date, itinerary_zone, checked_at AT TIME ZONE 'UTC',
+                      (SELECT jsonb_agg(jsonb_build_array(
+                          entry.id, entry.date, entry.path_position, entry.zone_id, entry.start_time,
+                          entry.second_start_occurrence, entry.planned_minutes, entry.fixed_start,
+                          entry.start_changed_since_check, entry.planned_length_changed_since_check,
+                          entry.fixed_start_changed_since_check, entry.moved_since_check, entry.following_starts_pushed_since_check,
+                          a.watched_source_versions, item.watched_source_versions
+                      ) ORDER BY entry.id)
+                      FROM itinerary_entry entry
+                      JOIN trip_attraction item ON item.trip_id = entry.trip_id AND item.attraction_id = entry.attraction_id
+                      JOIN attraction a ON a.id = entry.attraction_id
+                      WHERE entry.trip_id = trip.id),
+                      (SELECT max(removal.id) FROM itinerary_entry_removal removal WHERE removal.trip_id = trip.id)
+                  )::text, 'UTF8')), 'hex')
+                  FROM trip WHERE trip.id = $1
+              $$;

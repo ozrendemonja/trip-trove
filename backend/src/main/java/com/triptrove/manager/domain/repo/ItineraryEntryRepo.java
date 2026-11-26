@@ -15,15 +15,17 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
     Optional<ItineraryEntry> findByIdAndTripId(Long id, Long tripId);
 
     @Modifying
-    @Query("""
-            UPDATE ItineraryEntry entry SET entry.includedInLastCheck = true,
-                entry.startChangedSinceCheck = false, entry.plannedLengthChangedSinceCheck = false,
-                entry.fixedStartChangedSinceCheck = false, entry.movedSinceCheck = false,
-                entry.followingStartsPushedSinceCheck = false
-            WHERE entry.tripId = :tripId AND (entry.includedInLastCheck = false
-                OR entry.startChangedSinceCheck = true OR entry.plannedLengthChangedSinceCheck = true
-                OR entry.fixedStartChangedSinceCheck = true OR entry.movedSinceCheck = true)
-            """)
+    @Query(value = """
+            UPDATE itinerary_entry entry SET included_in_last_check = true,
+                start_changed_since_check = false, planned_length_changed_since_check = false,
+                fixed_start_changed_since_check = false, moved_since_check = false,
+                following_starts_pushed_since_check = false, watched_source_baseline = source.snapshot
+            FROM trip_attraction_watched_source source
+            WHERE entry.trip_id = :tripId AND source.trip_id = entry.trip_id AND source.attraction_id = entry.attraction_id
+                AND (NOT entry.included_in_last_check OR entry.start_changed_since_check OR entry.planned_length_changed_since_check
+                    OR entry.fixed_start_changed_since_check OR entry.moved_since_check
+                    OR entry.watched_source_baseline IS DISTINCT FROM source.snapshot)
+            """, nativeQuery = true)
     void markEntriesChecked(Long tripId);
 
     @Modifying

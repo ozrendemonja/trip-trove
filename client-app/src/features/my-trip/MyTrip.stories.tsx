@@ -55,7 +55,8 @@ const itineraryFixture = (
     days,
     unscheduledAttractions,
     checkState: "NOT_YET_CHECKED",
-    changeNotices: []
+    changeNotices: [],
+    checkContext: "displayed-itinerary"
   };
 };
 
@@ -1998,6 +1999,238 @@ export const InspectsAnUnconfirmedCheckBeforeConfirmingAgain: Story = {
     );
     await expect(await canvas.findByText("Manually checked")).toBeVisible();
     await expect(checkPosts).toHaveBeenCalledTimes(2);
+  }
+};
+
+export const ShowsWatchedSourceValuesAndKeepsLaterNotices: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      delete saved.lastCheckedAt;
+      saved.checkState = "NOT_YET_CHECKED";
+      const target = {
+        entryId: 42,
+        subject: "Museum",
+        date: "2099-06-10",
+        reasons: []
+      };
+      saved.changeNotices = [
+        {
+          ...target,
+          sourceBaseline: "WHEN_SCHEDULED",
+          sourceChanges: [
+            {
+              field: "WORKING_HOURS",
+              baseline: "09:00-17:00",
+              current: "09:00-17:00",
+              restored: true
+            },
+            {
+              field: "TRIP_NOTE",
+              current: "Enter from the courtyard",
+              restored: false
+            }
+          ]
+        }
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/check`,
+        (_schema, request) => {
+          checkPosts(JSON.parse(request.requestBody));
+          saved.lastCheckedAt = "2026-11-26T09:00:00Z";
+          saved.checkContext = "after-check-and-later-catalogue-edit";
+          saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+          saved.changeNotices = [
+            {
+              ...target,
+              sourceBaseline: "AT_LAST_CHECK",
+              sourceChanges: [
+                {
+                  field: "CATALOGUE_TIP",
+                  baseline: "Use the side gate",
+                  current: "Use the main gate",
+                  restored: false
+                },
+                {
+                  field: "OPTIMAL_VISIT_PERIOD",
+                  baseline: "2026-04-01/2026-10-01",
+                  current: "2026-05-01/2026-09-01",
+                  restored: false
+                }
+              ]
+            }
+          ];
+          return new MirageResponse(503);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "1 change to check" })
+    );
+    const notices = within(
+      await body.findByRole("dialog", { name: "Itinerary changes" })
+    );
+    await waitFor(() =>
+      expect(notices.getByText("Working hours")).toBeVisible()
+    );
+    await expect(notices.getAllByText("When scheduled")).toHaveLength(2);
+    await expect(notices.getAllByText("09:00-17:00")).toHaveLength(2);
+    await expect(
+      notices.getByText("Changed in between and restored.")
+    ).toBeVisible();
+    await expect(notices.getByText("Not recorded")).toBeVisible();
+    await expect(notices.getByText("Enter from the courtyard")).toBeVisible();
+    await user.click(notices.getByRole("button", { name: "Close" }));
+
+    const check = await canvas.findByRole("button", {
+      name: "Check itinerary"
+    });
+    await waitFor(() =>
+      expect(check).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(check);
+    await user.click(
+      await body.findByRole("button", { name: "Mark as checked" })
+    );
+    await user.click(
+      await canvas.findByRole("button", { name: "Inspect saved check state" })
+    );
+
+    await expect(
+      await canvas.findByText("The saved itinerary has a newer manual check.")
+    ).toBeVisible();
+    await expect(canvas.getByText("Changed since last check")).toBeVisible();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+    await expect(checkPosts).toHaveBeenCalledWith({
+      checkContext: "displayed-itinerary"
+    });
+    await user.click(canvas.getByRole("button", { name: "1 change to check" }));
+    const later = within(
+      await body.findByRole("dialog", { name: "Itinerary changes" })
+    );
+    await waitFor(() => expect(later.getByText("Catalogue tip")).toBeVisible());
+    await expect(later.getAllByText("At last check")).toHaveLength(2);
+    await expect(later.getByText("Use the side gate")).toBeVisible();
+    await expect(later.getByText("Use the main gate")).toBeVisible();
+    await expect(later.getByText("May 1, 2026 to Sep 1, 2026")).toBeVisible();
+    await expect(later.queryByText("Working hours")).not.toBeInTheDocument();
+  }
+};
+
+export const RefreshesAStaleCheckBeforeAllowingFreshConfirmation: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      delete saved.lastCheckedAt;
+      saved.checkState = "NOT_YET_CHECKED";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      const replies = [
+        () => {
+          saved.checkContext = "after-catalogue-edit";
+          saved.changeNotices = [
+            {
+              entryId: 42,
+              subject: "Museum",
+              date: "2099-06-10",
+              reasons: [],
+              sourceBaseline: "WHEN_SCHEDULED",
+              sourceChanges: [
+                {
+                  field: "CATALOGUE_TIP",
+                  current: "Use the east gate",
+                  restored: false
+                }
+              ]
+            }
+          ];
+          return new MirageResponse(
+            409,
+            {},
+            {
+              errorCode: "ITINERARY_CHECK_STALE",
+              errorMessage:
+                "The itinerary or its attraction sources changed. Refresh and review the itinerary before checking again."
+            }
+          );
+        },
+        () => {
+          saved.lastCheckedAt = "2026-11-26T09:00:00Z";
+          saved.checkContext = "after-check";
+          saved.changeNotices = [];
+          saved.checkState = "MANUALLY_CHECKED";
+          return new MirageResponse(204);
+        }
+      ];
+      server.post(
+        `${itineraryUrl}/check`,
+        (_schema, request) => {
+          checkPosts(JSON.parse(request.requestBody));
+          return replies.shift()?.() ?? new MirageResponse(500);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const check = canvas.getByRole("button", { name: "Check itinerary" });
+    await waitFor(() =>
+      expect(check).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(check);
+    await user.click(
+      await body.findByRole("button", { name: "Mark as checked" })
+    );
+
+    const refresh = await canvas.findByRole("button", {
+      name: "Refresh before checking"
+    });
+    await expect(check).toHaveAccessibleDescription(
+      "Refresh the itinerary before confirming again."
+    );
+    await expect(check).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      canvas.getByText(/The itinerary or its attraction sources changed/)
+    ).toBeVisible();
+    await user.click(refresh);
+
+    await expect(
+      await canvas.findByRole("button", { name: "1 change to check" })
+    ).toBeVisible();
+    await expect(canvas.getByText("Not yet checked")).toBeVisible();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+    await expect(checkPosts).toHaveBeenCalledWith({
+      checkContext: "displayed-itinerary"
+    });
+    await user.click(check);
+    await user.click(
+      await body.findByRole("button", { name: "Mark as checked" })
+    );
+    await expect(await canvas.findByText("Manually checked")).toBeVisible();
+    await expect(checkPosts).toHaveBeenNthCalledWith(2, {
+      checkContext: "after-catalogue-edit"
+    });
   }
 };
 

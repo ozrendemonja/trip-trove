@@ -1,13 +1,30 @@
 package com.triptrove.manager;
 
+import com.jayway.jsonpath.JsonPath;
+import com.triptrove.manager.application.dto.AttractionCategoryDTO;
+import com.triptrove.manager.application.dto.AttractionTypeDTO;
+import com.triptrove.manager.application.dto.CheckItineraryRequest;
 import com.triptrove.manager.application.dto.ConfirmItineraryEntryRemovalRequest;
+import com.triptrove.manager.application.dto.DateSpanDTO;
 import com.triptrove.manager.application.dto.GetItineraryResponse;
+import com.triptrove.manager.application.dto.GetItineraryResponse.ChangeNotice.SourceChange;
+import com.triptrove.manager.application.dto.LocationDTO;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
+import com.triptrove.manager.application.dto.UpdateAttractionCategoryRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionDestinationRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionDetailRequest;
 import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionInformationProviderRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionLocationRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionPermanentlyClosedRequest;
 import com.triptrove.manager.application.dto.UpdateAttractionTipRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionTraditionalRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionTypeRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionVisitPeriodRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionVisitRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
@@ -26,6 +43,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 
+import static com.triptrove.manager.domain.model.WatchedSourceChangeSummary.Field.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -345,6 +364,8 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
 
         moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.SECONDARY, null, null))
                 .andExpect(status().isNoContent());
+        assertSourceChanges(new SourceChange(IMPORTANCE, "MUST_SEE", "FIT_IN_NEARBY", false));
+
         mockMvc.perform(put("/trips/1/attractions/1/must-visit").header("x-api-version", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(new UpdateTripAttractionMustVisitRequest(false))))
@@ -356,6 +377,8 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
+        assertSourceChanges(new SourceChange(MUST_VISIT, "YES", "NO", false),
+                new SourceChange(IMPORTANCE, "MUST_SEE", "IF_PASSING_BY", false));
     }
 
     @Test
@@ -370,6 +393,149 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("2h"))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
+    }
+
+    @Test
+    void restoringWorkingHoursWhileTheItineraryIsClosedStillLeavesASourceNotice() throws Exception {
+        seedTrip(TODAY, TODAY, 1);
+        var workingHours = "/trips/1/attractions/1/working-hours";
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("09:00-17:00"));
+        var market = schedule(1L, TODAY, "09:00");
+        saved().andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("10:00-18:00"));
+        entityManager.flush();
+        entityManager.clear();
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("09:00-17:00"));
+
+        saved().andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].entryId").value(market))
+                .andExpect(jsonPath("$.changeNotices[0].sourceBaseline").value("WHEN_SCHEDULED"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].field").value("WORKING_HOURS"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].baseline").value("09:00-17:00"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].current").value("09:00-17:00"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].restored").value(true));
+    }
+
+    @Test
+    void aCheckCanOnlyAcknowledgeTheSourcesThatWereDisplayedForIt() throws Exception {
+        seedTrip(TODAY, TOMORROW, 1);
+        var workingHours = "/trips/1/attractions/1/working-hours";
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("09:00-17:00"));
+        var market = schedule(1L, TODAY, "09:00");
+        var firstDisplay = readCheckRequest();
+
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("10:00-18:00"));
+        submitCheck(firstDisplay).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ITINERARY_CHECK_STALE"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The itinerary or its attraction sources changed. Refresh and review the itinerary before checking again."));
+        saved().andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].baseline").value("09:00-17:00"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].current").value("10:00-18:00"));
+
+        var confirmedDisplay = readCheckRequest();
+        submitCheck(confirmedDisplay).andExpect(status().isNoContent());
+        var checked = saved().andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andReturn().getResponse().getContentAsString();
+        String checkedAt = JsonPath.read(checked, "$.lastCheckedAt");
+
+        putFact(workingHours, new UpdateTripAttractionWorkingHoursRequest("11:00-19:00"));
+        move(market, TOMORROW, null).andExpect(status().isNoContent());
+        var reopened = saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.lastCheckedAt").value(checkedAt))
+                .andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_MOVED")))
+                .andExpect(jsonPath("$.changeNotices[0].sourceBaseline").value("AT_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].baseline").value("10:00-18:00"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].current").value("11:00-19:00"))
+                .andReturn().getResponse().getContentAsString();
+
+        submitCheck(confirmedDisplay).andExpect(status().isConflict());
+        saved().andExpect(content().json(reopened, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void catalogueEditsGroupAllWatchedFieldsWithoutRetimingTheEntry() throws Exception {
+        seedTrip(TODAY, TODAY, 2);
+        var market = schedule(1L, TODAY, "09:00");
+
+        putFact("/attractions/1/location", new UpdateAttractionLocationRequest("Market Street", new LocationDTO(41.5, 12.5)));
+        putFact("/attractions/1/destination", new UpdateAttractionDestinationRequest(true, 2, null));
+        putFact("/attractions/1/detail", new UpdateAttractionDetailRequest("Market", null));
+        putFact("/attractions/1/category", new UpdateAttractionCategoryRequest(AttractionCategoryDTO.PARK));
+        putFact("/attractions/1/type", new UpdateAttractionTypeRequest(AttractionTypeDTO.POTENTIAL_CHANGE));
+        putFact("/attractions/1/tip", new UpdateAttractionTipRequest("Use the courtyard"));
+        putFact("/attractions/1/visitPeriod", new UpdateAttractionVisitPeriodRequest(
+                new DateSpanDTO(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-09-01"))));
+        putFact("/attractions/1/permanently-closed", new UpdateAttractionPermanentlyClosedRequest(true));
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].entryId").value(market))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
+        assertSourceChanges(
+                new SourceChange(ADDRESS, "Planning address", "Market Street", false),
+                new SourceChange(LOCATION, null, "41.5, 12.5", false),
+                new SourceChange(GEOGRAPHY, "Keyset city 1, Keyset region 1, Keyset country 1", "Keyset country 2 (countrywide)", false),
+                new SourceChange(MAIN_ATTRACTION, "Park", null, false),
+                new SourceChange(CATEGORY, "HISTORIC_SITE", "PARK", false),
+                new SourceChange(TYPE, "STABLE", "POTENTIAL_CHANGE", false),
+                new SourceChange(CATALOGUE_TIP, "Catalogue tip", "Use the courtyard", false),
+                new SourceChange(OPTIMAL_VISIT_PERIOD, "2026-04-01/2026-10-01", "2026-05-01/2026-09-01", false),
+                new SourceChange(PERMANENT_CLOSURE, "NOT_PERMANENTLY_CLOSED", "PERMANENTLY_CLOSED", false));
+    }
+
+    @Test
+    void unwatchedCatalogueEditsAndUnscheduledChangesDoNotInvalidateTheDisplayedContext() throws Exception {
+        seedTrip(TODAY, TODAY, 2);
+        putFact("/attractions/1/detail", new UpdateAttractionDetailRequest("Market", null));
+        schedule(1L, TODAY, "09:00");
+        var displayed = readCheckRequest();
+
+        putFact("/attractions/1/detail", new UpdateAttractionDetailRequest("Market Hall", null));
+        putFact("/attractions/1/traditional", new UpdateAttractionTraditionalRequest(false));
+        putFact("/attractions/1/informationProvider", new UpdateAttractionInformationProviderRequest(
+                "Planning provider 2", LocalDate.parse("2026-11-01")));
+        putFact("/attractions/1/visit", new UpdateAttractionVisitRequest(false));
+        putFact("/trips/1/attractions/2/note", new UpdateTripAttractionNoteRequest("An unscheduled attraction"));
+        putFact("/trips/1/attractions/1/working-hours", new UpdateTripAttractionWorkingHoursRequest("09:00-17:00"));
+
+        submitCheck(displayed).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andExpect(jsonPath("$.days[0].entries[0].name").value("Market Hall"))
+                .andExpect(jsonPath("$.days[0].entries[0].mustVisit").value(true));
+        mockMvc.perform(get("/attractions/1").header("x-api-version", "1")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.isTraditional").value(false))
+                .andExpect(jsonPath("$.infoFrom").value("Planning provider 2"))
+                .andExpect(jsonPath("$.mustVisit").value(false));
+    }
+
+    @Test
+    void removingAnEntryKeepsRemovalContextAndReschedulingStartsAFreshBaseline() throws Exception {
+        seedTrip(TODAY, TODAY, 1);
+        var market = schedule(1L, TODAY, "09:00");
+        checkItinerary();
+        putFact("/trips/1/attractions/1/note", new UpdateTripAttractionNoteRequest("Side gate"));
+        assertSourceChanges(new SourceChange(TRIP_NOTE, "Trip note", "Side gate", false));
+
+        remove(market).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andExpect(jsonPath("$.changeNotices[0].subject").value("Market"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_REMOVED")))
+                .andExpect(jsonPath("$.changeNotices[0].entryId").doesNotExist())
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges").doesNotExist());
+
+        var newMarket = schedule(1L, TODAY, "09:00");
+        assertThat(newMarket).isNotEqualTo(market);
+        putFact("/trips/1/attractions/1/note", new UpdateTripAttractionNoteRequest("Main gate"));
+        saved().andExpect(jsonPath("$.changeNotices[0].entryId").value(newMarket))
+                .andExpect(jsonPath("$.changeNotices[0].sourceBaseline").value("WHEN_SCHEDULED"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].baseline").value("Side gate"))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[0].current").value("Main gate"));
     }
 
     @Test
@@ -400,15 +566,27 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[0].entries[0].workingHours").value("10:00-16:00"))
                 .andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("2h"))
                 .andExpect(jsonPath("$.days[0].entries[0].tripNote").value("Try the bakery"));
+        assertSourceChanges(new SourceChange(WORKING_HOURS, "09:00-17:00", "10:00-16:00", false),
+                new SourceChange(VISIT_DURATION, "1h 30m", "2h", false),
+                new SourceChange(TRIP_NOTE, "Trip note", "Try the bakery", false),
+                new SourceChange(CATALOGUE_TIP, "Catalogue tip", "Enter from the square", false));
         mockMvc.perform(get("/trips/2/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unscheduledAttractions[0].attractionId").value(1))
                 .andExpect(jsonPath("$.unscheduledAttractions[0].workingHours").value("14:00-20:00"))
                 .andExpect(jsonPath("$.unscheduledAttractions[0].visitDuration").value("30m"))
-                .andExpect(jsonPath("$.unscheduledAttractions[0].tripNote").value("Evening market"));
+                .andExpect(jsonPath("$.unscheduledAttractions[0].tripNote").value("Evening market"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
         mockMvc.perform(get("/attractions/1").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tip").value("Enter from the square"));
+    }
+
+    private void assertSourceChanges(SourceChange... expected) throws Exception {
+        var response = saved().andExpect(jsonPath("$.changeNotices.length()").value(1))
+                .andReturn().getResponse().getContentAsString();
+        var notice = mapper.readValue(response, GetItineraryResponse.class).changeNotices().getFirst();
+        assertThat(notice.sourceChanges()).containsExactly(expected);
     }
 
     private void putFact(String path, Object request) throws Exception {
@@ -427,7 +605,16 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     private void checkItinerary() throws Exception {
-        mockMvc.perform(post(ITINERARY + "/check").header("x-api-version", "1")).andExpect(status().isNoContent());
+        submitCheck(readCheckRequest()).andExpect(status().isNoContent());
+    }
+
+    private CheckItineraryRequest readCheckRequest() throws Exception {
+        return new CheckItineraryRequest(JsonPath.read(saved().andReturn().getResponse().getContentAsString(), "$.checkContext"));
+    }
+
+    private ResultActions submitCheck(CheckItineraryRequest request) throws Exception {
+        return mockMvc.perform(post(ITINERARY + "/check").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
     }
 
     private void lock(long entryId) throws Exception {

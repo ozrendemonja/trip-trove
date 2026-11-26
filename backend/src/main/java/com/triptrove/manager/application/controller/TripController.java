@@ -104,8 +104,10 @@ public class TripController {
                     schema = @Schema(type = "string", format = "uri")))
     @ApiResponse(responseCode = "404", description = "Itinerary not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
-    public ResponseEntity<Void> checkItinerary(@PathVariable Long id) {
-        tripService.markItineraryChecked(id);
+    @ApiResponse(responseCode = "409", description = "Displayed check context is stale; reload before confirming again",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> checkItinerary(@PathVariable Long id, @Valid @RequestBody CheckItineraryRequest request) {
+        tripService.markItineraryChecked(id, request.checkContext());
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/trips/{id}/itinerary")
                 .buildAndExpand(id)

@@ -187,7 +187,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private HttpStatus httpStatus(ErrorCodeResponse errorCode) {
         return switch (errorCode) {
             case NAME_CONFLICT, ISO_CODE_CONFLICT, RESOURCE_HAS_DEPENDENCIES,
-                 ATTRACTION_ALREADY_ADDED_TO_TRIP -> HttpStatus.CONFLICT;
+                 ATTRACTION_ALREADY_ADDED_TO_TRIP, ITINERARY_CHECK_STALE -> HttpStatus.CONFLICT;
             case OBJECT_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
             case INTERNAL_SERVER_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;

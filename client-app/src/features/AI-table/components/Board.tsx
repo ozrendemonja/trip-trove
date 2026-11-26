@@ -183,6 +183,7 @@ const Board: React.FC<BoardProps> = ({
   onPlaceOrderChange,
   onPrepareDraftChange,
   renderScheduledStatus,
+  revealedAttractionId,
   visitHistory,
   mode: boardMode
 }) => {
@@ -238,6 +239,28 @@ const Board: React.FC<BoardProps> = ({
   const [collapsedByCity, setCollapsedByCity] = useState<
     Record<string, boolean>
   >({});
+  const revealPlace =
+    revealedAttractionId === undefined
+      ? undefined
+      : cities.find((city) =>
+          city.columns.some((column) =>
+            column.tasks.some((task) => task.id === revealedAttractionId)
+          )
+        )?.name;
+  useLayoutEffect(() => {
+    if (revealPlace === undefined) return;
+    setCollapsedByCity((current) =>
+      current[revealPlace] ? { ...current, [revealPlace]: false } : current
+    );
+    const frame = requestAnimationFrame(() => {
+      const card = boardElementRef.current?.querySelector<HTMLElement>(
+        '[data-revealed-attraction="true"]'
+      );
+      card?.scrollIntoView({ block: "center" });
+      card?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [revealedAttractionId, revealPlace]);
   const {
     preview: removalPreview,
     open: openRemovalPreview,
@@ -1715,7 +1738,10 @@ const Board: React.FC<BoardProps> = ({
                   const showPlaceholder =
                     dragState && dragUI.overColumnId === col.id;
                   // Apply filtering to tasks
-                  const filteredTasks = col.tasks.filter(matchesFilters);
+                  const filteredTasks = col.tasks.filter(
+                    (task) =>
+                      task.id === revealedAttractionId || matchesFilters(task)
+                  );
                   return (
                     <div
                       key={col.id}
@@ -1731,6 +1757,7 @@ const Board: React.FC<BoardProps> = ({
                       <AttractionList
                         attractions={filteredTasks}
                         highlightedAttractionIds={highlightedAttractionIds}
+                        revealedAttractionId={revealedAttractionId}
                         showPlaceholder={!!showPlaceholder}
                         insertionIndex={dragUI.insertionIndex}
                         placeholderHeight={dragState?.height}

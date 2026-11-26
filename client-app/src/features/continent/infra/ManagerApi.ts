@@ -880,11 +880,15 @@ export const searchInformationProvider = async (
   );
 };
 
-export const getAttractionById = async (id: number): Promise<Attraction> => {
+export const getAttractionById = async (
+  id: number,
+  signal?: AbortSignal
+): Promise<Attraction> => {
   const { data, error } = await getAttraction({
     path: {
       id: id
     },
+    signal,
     headers: {
       "x-api-version": "1"
     }

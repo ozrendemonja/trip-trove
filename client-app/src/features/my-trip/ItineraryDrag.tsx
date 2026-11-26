@@ -1,5 +1,6 @@
+import { Button, type CardProps } from "@fluentui/react-components";
 import { ReOrderDotsVertical20Regular } from "@fluentui/react-icons";
-import type { DragEvent, ReactElement } from "react";
+import { useRef, type DragEvent, type ReactElement } from "react";
 import type {
   GetItineraryResponse,
   ScheduleAttractionRequest
@@ -14,49 +15,128 @@ type Entry = Day["entries"][number];
 export type DraggedItineraryItem =
   { kind: "pool"; attraction: Attraction } | { kind: "entry"; entry: Entry };
 
-export function ItineraryDragHandle({
+export type ItineraryAttraction = Attraction | Entry;
+export type OpenAttractionFacts = (
+  attractionId: number,
+  trigger: HTMLButtonElement
+) => void;
+
+export const attractionNameId = (attractionId: number): string =>
+  `itinerary-attraction-${attractionId}`;
+
+const controlSelector =
+  "button, a[href], input, select, textarea, label, [contenteditable], [role='menuitem']";
+
+export function useItineraryAttractionCard({
   item,
   blocked,
   onGrab,
-  onRelease
+  onRelease,
+  onOpenFacts
 }: {
   item: DraggedItineraryItem;
   blocked: boolean;
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
-}): ReactElement {
+  onOpenFacts: OpenAttractionFacts;
+}): {
+  interaction: Pick<
+    CardProps,
+    | "draggable"
+    | "onPointerDown"
+    | "onPointerUp"
+    | "onClick"
+    | "onDragStart"
+    | "onDragEnd"
+  >;
+  nameButton: ReactElement;
+  dragHandle: ReactElement;
+} {
   const classes = useClasses();
   const subject = item.kind === "pool" ? item.attraction : item.entry;
-  const start = (event: DragEvent<HTMLSpanElement>): void => {
-    if (blocked) {
-      event.preventDefault();
-      return;
-    }
-    const { dataTransfer, currentTarget } = event;
-    const category = subject.category.toLowerCase().replaceAll("_", " ");
-    const preview = currentTarget.ownerDocument.createElement("div");
-    preview.className = classes.dragPreview;
-    preview.textContent = `${subject.name} · ${category}`;
-    currentTarget.ownerDocument.body.append(preview);
-    dataTransfer.effectAllowed = item.kind === "pool" ? "copy" : "move";
-    dataTransfer.setData("application/x-trip-trove-itinerary", subject.name);
-    dataTransfer.setDragImage(preview, 12, 12);
-    // Keep the element alive for the browser's drag snapshot, not as an overlay.
-    requestAnimationFrame(() => preview.remove());
-    onGrab(item);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const pressedControl = useRef(false);
+  const didDrag = useRef(false);
+  const isIndependentControl = (target: Element): boolean => {
+    const control = target.closest(controlSelector);
+    return control !== null && control !== trigger.current;
   };
-  return (
-    <span
-      aria-hidden="true"
-      title={`Drag ${subject.name}`}
-      className={classes.dragHandle}
-      draggable={!blocked}
-      onDragStart={start}
-      onDragEnd={onRelease}
-    >
-      <ReOrderDotsVertical20Regular />
-    </span>
-  );
+  return {
+    interaction: {
+      draggable: !blocked,
+      onPointerDown: ({ target }) => {
+        didDrag.current = false;
+        pressedControl.current =
+          target instanceof Element && isIndependentControl(target);
+      },
+      onPointerUp: () => {
+        pressedControl.current = false;
+      },
+      onClick: ({ currentTarget, target, detail, defaultPrevented }) => {
+        if (
+          defaultPrevented ||
+          (detail !== 0 && didDrag.current) ||
+          !(target instanceof Element) ||
+          !currentTarget.contains(target) ||
+          isIndependentControl(target) ||
+          !trigger.current
+        )
+          return;
+        onOpenFacts(subject.attractionId, trigger.current);
+      },
+      onDragStart: (event) => {
+        const { dataTransfer, currentTarget, target } = event;
+        if (
+          blocked ||
+          pressedControl.current ||
+          !(target instanceof Element) ||
+          !currentTarget.contains(target) ||
+          isIndependentControl(target)
+        ) {
+          event.preventDefault();
+          return;
+        }
+        didDrag.current = true;
+        const category = subject.category.toLowerCase().replaceAll("_", " ");
+        const preview = currentTarget.ownerDocument.createElement("div");
+        preview.className = classes.dragPreview;
+        preview.textContent = `${subject.name} · ${category}`;
+        currentTarget.ownerDocument.body.append(preview);
+        dataTransfer.effectAllowed = item.kind === "pool" ? "copy" : "move";
+        dataTransfer.setData(
+          "application/x-trip-trove-itinerary",
+          subject.name
+        );
+        dataTransfer.setDragImage(preview, 12, 12);
+        // Keep the element alive for the browser's drag snapshot, not as an overlay.
+        requestAnimationFrame(() => preview.remove());
+        onGrab(item);
+      },
+      onDragEnd: onRelease
+    },
+    nameButton: (
+      <Button
+        id={attractionNameId(subject.attractionId)}
+        ref={trigger}
+        type="button"
+        size="small"
+        appearance="transparent"
+        aria-haspopup="dialog"
+        className={classes.attractionName}
+      >
+        {subject.name}
+      </Button>
+    ),
+    dragHandle: (
+      <span
+        aria-hidden="true"
+        title={`Drag ${subject.name}`}
+        className={classes.dragHandle}
+      >
+        <ReOrderDotsVertical20Regular />
+      </span>
+    )
+  };
 }
 
 export function dropSlot(event: DragEvent<HTMLElement>, day: Day): number {

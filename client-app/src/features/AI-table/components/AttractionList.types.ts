@@ -25,6 +25,7 @@ export interface Attraction {
 export interface AttractionListProps {
   attractions: Attraction[];
   highlightedAttractionIds?: ReadonlySet<number>;
+  revealedAttractionId?: number;
   showPlaceholder: boolean;
   insertionIndex: number;
   placeholderHeight?: number;

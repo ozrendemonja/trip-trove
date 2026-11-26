@@ -100,7 +100,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date,
                 attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
-                tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime,
+                tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime, tripAttraction.note,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,

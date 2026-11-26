@@ -56,6 +56,13 @@ leave out Excluded or permanently closed attractions. Both are read
 in one SELECT without loading trip, day or attraction entities. When the
 board is already open, the itinerary keeps its visible place order while
 refreshing the attractions and their order within each place.
+
+Each attraction entry and unscheduled card carries its trip-owned working
+hours, visit duration and trip note when recorded. The attraction facts
+dialog reads current catalogue data from `GET /attractions/{id}` on demand
+(one additional SELECT), keeping the catalogue tip separate from the trip
+note and the entry's planned length separate from the visit duration.
+
 Liquibase creates the itinerary tables and backfills existing trips in one
 transaction. The backfill only initializes trips that have no itinerary. If it
 reports invalid saved dates, the entire migration is rolled back; correct the

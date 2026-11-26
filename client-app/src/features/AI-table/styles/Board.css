@@ -7,6 +7,11 @@ html {
   flex-direction: column;
 }
 
+.attraction[data-revealed-attraction="true"] {
+  outline: 2px solid var(--colorBrandStroke1);
+  outline-offset: 2px;
+}
+
 .attraction[data-just-added="true"] {
   outline: 2px solid transparent;
   outline-offset: 2px;

@@ -30,11 +30,13 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
 
     public record AttractionEntrySummary(long entryId, long attractionId, String name, TripAttractionGroup attractionGroup,
                                          boolean mustVisit, AttractionCategory category, int position,
-                                         boolean fixedStart, ItineraryTiming timing) {
+                                         boolean fixedStart, ItineraryTiming timing,
+                                         String workingHours, String visitDuration, String tripNote) {
     }
 
     public record UnscheduledAttractionSummary(Long attractionId, String name, String place,
                                                TripAttractionGroup attractionGroup, boolean mustVisit,
-                                               AttractionCategory category, String workingHours, String visitDuration) {
+                                               AttractionCategory category, String workingHours, String visitDuration,
+                                               String tripNote) {
     }
 }

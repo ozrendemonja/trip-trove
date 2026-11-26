@@ -7,8 +7,12 @@ import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
 import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
+import com.triptrove.manager.application.dto.UpdateAttractionTipRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionVisitTimeRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionWorkingHoursRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -354,6 +358,65 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
     }
 
+    @Test
+    void editingVisitDurationUpdatesTheItineraryWithoutReschedulingTheEntry() throws Exception {
+        seedTrip(TODAY, TODAY, 1);
+        var entryId = schedule(1L, TODAY, "09:00");
+        saved().andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("1h 30m"));
+
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("2h"));
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].entryId").value(entryId.intValue()))
+                .andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("2h"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"));
+    }
+
+    @Test
+    void updatingAttractionHoursDurationAndNoteDoesNotRescheduleVisitsOrAffectOtherTrips() throws Exception {
+        seedTrip();
+        entityManager.createNativeQuery("""
+                UPDATE trip SET trip_start_date = :date, trip_end_date = :date WHERE id = 2;
+                INSERT INTO itinerary(trip_id) VALUES (2);
+                INSERT INTO itinerary_day(trip_id, date) VALUES (2, :date);
+                INSERT INTO trip_attraction(id, trip_id, attraction_id, created_on, status, attraction_group,
+                    board_position, must_visit, working_hours, visit_time, note)
+                VALUES (6, 2, 1, CURRENT_TIMESTAMP, 'PLANNED', 'SECONDARY', 1, false,
+                    '14:00-20:00', '30m', 'Evening market');
+                """).setParameter("date", TODAY).executeUpdate();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+
+        putFact("/trips/1/attractions/1/working-hours", new UpdateTripAttractionWorkingHoursRequest("10:00-16:00"));
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("2h"));
+        putFact("/trips/1/attractions/1/note", new UpdateTripAttractionNoteRequest("Try the bakery"));
+        putFact("/attractions/1/tip", new UpdateAttractionTipRequest("Enter from the square"));
+
+        saved().andExpect(jsonPath("$.days[0].entries[*].entryId", contains(market.intValue(), garden.intValue())))
+                .andExpect(jsonPath("$.days[1].entries").isEmpty())
+                .andExpect(jsonPath("$.days[0].entries[*].timing.start",
+                        contains("2027-03-29T09:00+02:00", "2027-03-29T13:00+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:30+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].workingHours").value("10:00-16:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("2h"))
+                .andExpect(jsonPath("$.days[0].entries[0].tripNote").value("Try the bakery"));
+        mockMvc.perform(get("/trips/2/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions[0].attractionId").value(1))
+                .andExpect(jsonPath("$.unscheduledAttractions[0].workingHours").value("14:00-20:00"))
+                .andExpect(jsonPath("$.unscheduledAttractions[0].visitDuration").value("30m"))
+                .andExpect(jsonPath("$.unscheduledAttractions[0].tripNote").value("Evening market"));
+        mockMvc.perform(get("/attractions/1").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tip").value("Enter from the square"));
+    }
+
+    private void putFact(String path, Object request) throws Exception {
+        mockMvc.perform(put(path).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+    }
+
     private ResultActions moveOnBoard(MoveAttractionOnBoardRequest move) throws Exception {
         return mockMvc.perform(put("/trips/1/board/attractions/1").header("x-api-version", "1")
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(move)));
@@ -406,8 +469,12 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     private void seedTrip(LocalDate first, LocalDate last) {
+        seedTrip(first, last, 5);
+    }
+
+    private void seedTrip(LocalDate first, LocalDate last, int attractionCount) {
         KeysetTestFixtures.clear(entityManager);
-        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, 5);
+        KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, attractionCount);
         entityManager.createNativeQuery("""
                 UPDATE trip SET trip_start_date = :first, trip_end_date = :last WHERE id = 1;
                 UPDATE attraction SET name = names.label

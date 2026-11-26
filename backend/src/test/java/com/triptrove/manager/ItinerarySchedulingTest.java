@@ -10,6 +10,7 @@ import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
 import com.triptrove.manager.application.dto.TripBoardItemRequest;
 import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionVisitTimeRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -199,7 +200,8 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
     void correctingAMissingDurationAndSettingTheZoneSucceedOnlyWithAValidProposedInterval() throws Exception {
         seedBoard("2027-03-28", "2027-03-29");
         mockMvc.perform(put("/trips/1/attractions/1/visit-time").header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new UpdateTripAttractionVisitTimeRequest(null))))
                 .andExpect(status().isNoContent());
         schedule(new ScheduleAttractionRequest(
                 1L, LocalDate.of(2027, 3, 29), "23:30", "Europe/Belgrade", "45m"))
@@ -214,7 +216,7 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
                 1L, LocalDate.of(2027, 3, 28), "09:00", "Europe/Belgrade", "45m"))
                 .andExpect(status().isNoContent());
         itinerary().andExpect(jsonPath("$.timeZone").value("Europe/Belgrade"))
-                .andExpect(jsonPath("$.days[0].entries[0].visitDuration").doesNotHaveJsonPath())
+                .andExpect(jsonPath("$.days[0].entries[0].visitDuration").value("45m"))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-28T09:45+02:00"));
         mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].visitTime").value("45m"));

@@ -8,6 +8,7 @@ export type { Attraction } from "./AttractionList.types";
 const AttractionList: React.FC<AttractionListProps> = ({
   attractions,
   highlightedAttractionIds,
+  revealedAttractionId,
   showPlaceholder,
   insertionIndex,
   placeholderHeight,
@@ -49,6 +50,10 @@ const AttractionList: React.FC<AttractionListProps> = ({
             onDragStart={onDragStart(attraction.id)}
             data-column={columnId}
             data-id={attraction.id}
+            data-revealed-attraction={
+              attraction.id === revealedAttractionId || undefined
+            }
+            tabIndex={attraction.id === revealedAttractionId ? -1 : undefined}
             data-just-added={
               highlightedAttractionIds?.has(attraction.id) || undefined
             }

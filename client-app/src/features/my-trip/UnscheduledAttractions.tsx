@@ -24,9 +24,12 @@ import {
 import { useId, useRef, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import {
-  ItineraryDragHandle,
-  type DraggedItineraryItem
+  attractionNameId,
+  useItineraryAttractionCard,
+  type DraggedItineraryItem,
+  type OpenAttractionFacts
 } from "./ItineraryDrag";
+import { TripAttractionCardFacts } from "./AttractionFactsDialog";
 import { useClasses } from "./Itinerary.styles";
 
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
@@ -83,7 +86,8 @@ const AttractionCard = ({
   formatDate,
   onSchedule,
   onGrab,
-  onRelease
+  onRelease,
+  onOpenFacts
 }: {
   attraction: Attraction;
   days: Days;
@@ -92,22 +96,30 @@ const AttractionCard = ({
   onSchedule: ScheduleAttraction;
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
+  onOpenFacts: OpenAttractionFacts;
 }): ReactElement => {
   const classes = useClasses();
-  const nameId = useId();
   const factsId = useId();
   const addButton = useRef<HTMLButtonElement>(null);
   const eatery = attraction.category === "EATERY";
   const { Icon, tone, label } = attractionImportance(attraction);
+  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+    item: { kind: "pool", attraction },
+    blocked: scheduleBlocked,
+    onGrab,
+    onRelease,
+    onOpenFacts
+  });
   return (
     <Card
       role="article"
-      tabIndex={0}
       size="small"
       appearance="outline"
-      aria-labelledby={nameId}
+      focusMode="off"
+      aria-labelledby={attractionNameId(attraction.attractionId)}
       aria-describedby={factsId}
       className={classes.unscheduledCard}
+      {...interaction}
     >
       <CardHeader
         className={classes.unscheduledCardHeader}
@@ -115,16 +127,9 @@ const AttractionCard = ({
           className: classes.iconLabel,
           children: (
             <>
-              <ItineraryDragHandle
-                item={{ kind: "pool", attraction }}
-                blocked={scheduleBlocked}
-                onGrab={onGrab}
-                onRelease={onRelease}
-              />
+              {dragHandle}
               <Icon aria-hidden className={classes[tone]} />
-              <Text id={nameId} weight="semibold">
-                {attraction.name}
-              </Text>
+              {nameButton}
             </>
           )
         }}
@@ -136,16 +141,7 @@ const AttractionCard = ({
               <Caption1 className={eatery ? undefined : classes.visuallyHidden}>
                 {label}
               </Caption1>
-              <Caption1>
-                {attraction.workingHours?.trim()
-                  ? `Working hours: ${attraction.workingHours}`
-                  : "Working hours not recorded"}
-              </Caption1>
-              <Caption1>
-                {attraction.visitDuration?.trim()
-                  ? `Visit duration: ${attraction.visitDuration}`
-                  : "Visit duration not recorded"}
-              </Caption1>
+              <TripAttractionCardFacts attraction={attraction} showMissing />
             </>
           )
         }}
@@ -215,7 +211,8 @@ export const UnscheduledAttractions = ({
   scheduleBlocked,
   onSchedule,
   onGrab,
-  onRelease
+  onRelease,
+  onOpenFacts
 }: {
   attractions: Attraction[];
   boardPlaceOrder: readonly string[];
@@ -227,6 +224,7 @@ export const UnscheduledAttractions = ({
   onSchedule: ScheduleAttraction;
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
+  onOpenFacts: OpenAttractionFacts;
 }): ReactElement => {
   const classes = useClasses();
   const titleId = useId();
@@ -299,6 +297,7 @@ export const UnscheduledAttractions = ({
                         onSchedule={onSchedule}
                         onGrab={onGrab}
                         onRelease={onRelease}
+                        onOpenFacts={onOpenFacts}
                       />
                     </li>
                   ))}

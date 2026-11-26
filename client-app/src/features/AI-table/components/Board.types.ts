@@ -47,6 +47,7 @@ export interface BoardProps {
   onPlaceOrderChange?: (places: string[]) => void;
   onPrepareDraftChange?: (draft: PrepareDraftState) => void;
   renderScheduledStatus?: (attractionId: number) => ReactNode;
+  revealedAttractionId?: number;
   initialReviewData?: Record<
     number,
     { rating: Rating; reviewNote: string; wouldVisitAgain: boolean }

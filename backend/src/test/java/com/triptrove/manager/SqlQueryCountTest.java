@@ -663,9 +663,13 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     @Test
     void attractionDetailsUseOneSelect() throws Exception {
         KeysetTestFixtures.populateAttractionDetails(entityManager);
+        assertCatalogueDetailsUseOneSelect(5);
+    }
+
+    private void assertCatalogueDetailsUseOneSelect(long attractionId) throws Exception {
         resetSqlStatementCounts();
 
-        mockMvc.perform(get("/attractions/5").header("x-api-version", "1"))
+        mockMvc.perform(get("/attractions/{id}", attractionId).header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isNotEmpty());
 
@@ -917,7 +921,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 30})
-    void itineraryReadWithEntriesStillUsesOneSelect(int entryCount) throws Exception {
+    void itineraryAndOnDemandCatalogueDetailsKeepTheirSelectBudgets(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
         resetSqlStatementCounts();
 
@@ -929,6 +933,8 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1));
 
         assertReadOnlySelectCount(1);
+        assertCatalogueDetailsUseOneSelect(1);
+        assertCatalogueDetailsUseOneSelect(entryCount + 1L);
     }
 
     @ParameterizedTest

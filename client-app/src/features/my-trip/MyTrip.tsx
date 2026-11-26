@@ -77,6 +77,8 @@ import {
   useTripPlanningWorkspace
 } from "./useTripPlanningWorkspace";
 
+type StepTarget = ItineraryTarget | { attractionId: number };
+
 const unavailableCheckReason = (
   itinerary: ReturnType<typeof useItinerary>,
   check: ReturnType<typeof useItineraryCheck>,
@@ -150,9 +152,10 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   const [selectedMode, setSelectedMode] = useState<{
     tripId: string | undefined;
     mode: BoardMode;
+    attractionId?: number;
   }>();
   const [requestedMode, setRequestedMode] = useState<
-    NonNullable<typeof selectedMode> & { itineraryTarget?: ItineraryTarget }
+    NonNullable<typeof selectedMode> & { target?: StepTarget }
   >();
 
   useEffect(() => {
@@ -309,12 +312,15 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   const itineraryOpen =
     tripDataReady && !loadError && boardMode === "itinerary";
   const planOpen = tripDataReady && !loadError && boardMode === "readOnly";
+  const stepAttractionId =
+    selectedMode?.tripId === tripId ? selectedMode?.attractionId : undefined;
   const itinerary = useItinerary(
     tripDataReady && !loadError ? currentTripId : undefined,
     itineraryOpen,
     workspace,
     (attractionId, duration) =>
-      boardRef.current?.reflectSavedVisitDuration(attractionId, duration)
+      boardRef.current?.reflectSavedVisitDuration(attractionId, duration),
+    itineraryOpen ? stepAttractionId : undefined
   );
   const entryDraft = itinerary.scheduling.draft;
   const pendingTimingEdit = itinerary.timingEditing.pending;
@@ -427,21 +433,26 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
       workspace.hasLocalWork()
     )
       return;
-    if (nextMode.itineraryTarget)
-      focusRequestedTarget(nextMode.itineraryTarget);
-    setSelectedMode({ tripId: nextMode.tripId, mode: nextMode.mode });
+    const { tripId, mode, target } = nextMode;
+    if (target && "date" in target) focusRequestedTarget(target);
+    setSelectedMode({
+      tripId,
+      mode,
+      attractionId:
+        target && "attractionId" in target ? target.attractionId : undefined
+    });
     setRequestedMode(undefined);
   }, [nextMode, leavingTrip, hasPlanningChanges, workspace]);
 
   const changeMode = async (
     mode: BoardMode,
-    itineraryTarget?: ItineraryTarget
+    target?: StepTarget
   ): Promise<void> => {
     if (mode === boardMode) {
-      if (itineraryTarget) itinerary.focusItineraryTarget(itineraryTarget);
+      if (target && "date" in target) itinerary.focusItineraryTarget(target);
       return;
     }
-    const target = { tripId, mode, itineraryTarget };
+    const request = { tripId, mode, target };
     const generation = ++modeChangeGeneration.current;
     if (
       boardMode === "prepare" &&
@@ -454,14 +465,14 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
         generation === modeChangeGeneration.current &&
         activeTripId.current === tripId
       ) {
-        setRequestedMode(target);
+        setRequestedMode(request);
       }
       return;
     }
-    if (workspace.hasLocalWork() || itineraryTarget) {
-      setRequestedMode(target);
+    if (workspace.hasLocalWork() || target) {
+      setRequestedMode(request);
     } else {
-      setSelectedMode(target);
+      setSelectedMode({ tripId, mode });
     }
   };
 
@@ -536,6 +547,17 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
               }
               actions={
                 <>
+                  {boardMode === "edit" && stepAttractionId !== undefined && (
+                    <Button
+                      onClick={() =>
+                        void changeMode("itinerary", {
+                          attractionId: stepAttractionId
+                        })
+                      }
+                    >
+                      Return to itinerary
+                    </Button>
+                  )}
                   {itineraryOpen && (
                     <ItineraryDayPager
                       itinerary={itinerary}
@@ -609,12 +631,18 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
               }
               visitHistory={visitHistoryMap}
               mode={boardMode}
+              revealedAttractionId={
+                boardMode === "edit" ? stepAttractionId : undefined
+              }
             />
             {itineraryOpen && (
               <ItineraryContent
                 itinerary={itinerary}
                 boardPlaceOrder={boardPlaceOrder}
                 prepareBlocked={planningBlocked || check.locked}
+                onEditTripData={(attractionId) =>
+                  void changeMode("edit", { attractionId })
+                }
                 onPrepare={() => {
                   if (planningBlocked || check.locked || pendingTimingEdit)
                     return;

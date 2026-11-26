@@ -2,7 +2,6 @@ import {
   Caption1,
   Card,
   Input,
-  Text,
   ToggleButton,
   mergeClasses,
   type InputProps
@@ -10,6 +9,12 @@ import {
 import { LockClosed16Regular, LockOpen16Regular } from "@fluentui/react-icons";
 import { useEffect, useId, useState, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
+import { TripAttractionCardFacts } from "./AttractionFactsDialog";
+import {
+  useItineraryAttractionCard,
+  type DraggedItineraryItem,
+  type OpenAttractionFacts
+} from "./ItineraryDrag";
 import { useClasses } from "./Itinerary.styles";
 import { attractionImportance } from "./UnscheduledAttractions";
 import {
@@ -42,14 +47,18 @@ export function TimelineEntry({
   editing,
   blocked,
   actions,
-  dragHandle
+  onGrab,
+  onRelease,
+  onOpenFacts
 }: {
   entry: Entry;
   index: number;
   editing: ItineraryTimingEditing;
   blocked: boolean;
   actions?: ReactElement;
-  dragHandle?: ReactElement;
+  onGrab: (item: DraggedItineraryItem) => void;
+  onRelease: () => void;
+  onOpenFacts: OpenAttractionFacts;
 }): ReactElement {
   const classes = useClasses();
   const errorId = useId();
@@ -64,6 +73,13 @@ export function TimelineEntry({
     message: string;
   }>();
   const [lockError, setLockError] = useState<string>();
+  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+    item: { kind: "entry", entry },
+    blocked,
+    onGrab,
+    onRelease,
+    onOpenFacts
+  });
   const { Icon, tone, label } = attractionImportance(entry);
   const { start, end, zone, repeatedStart, repeatedEnd } = entry.timing;
   const minutes = elapsedMinutes(start, end);
@@ -219,12 +235,18 @@ export function TimelineEntry({
           </>
         )}
       </div>
-      <Card size="small" appearance="outline" className={classes.entryCard}>
+      <Card
+        size="small"
+        appearance="outline"
+        focusMode="off"
+        className={classes.entryCard}
+        {...interaction}
+      >
         <div className={classes.entryHeader}>
           <div className={classes.iconLabel}>
             {dragHandle}
             <Icon aria-hidden className={classes[tone]} />
-            <Text weight="semibold">{entry.name}</Text>
+            {nameButton}
             <Caption1 className={classes.visuallyHidden}>{label}</Caption1>
           </div>
           <div className={classes.entryActions}>
@@ -264,6 +286,11 @@ export function TimelineEntry({
             contentAfter={<Caption1>min</Caption1>}
           />
         </label>
+        {(entry.workingHours || entry.visitDuration || entry.tripNote) && (
+          <div className={classes.unscheduledFacts}>
+            <TripAttractionCardFacts attraction={entry} />
+          </div>
+        )}
       </Card>
       {endFocused && !blocked && (
         <Caption1 className={classes.entryMessage}>{endHint}</Caption1>

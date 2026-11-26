@@ -24,6 +24,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -35,17 +36,23 @@ import type {
   GetItineraryResponse,
   MoveItineraryEntryRequest
 } from "../../clients/manager";
-import { UnscheduledAttractions } from "./UnscheduledAttractions";
+import {
+  attractionImportance,
+  UnscheduledAttractions
+} from "./UnscheduledAttractions";
+import { AttractionFactsDialog } from "./AttractionFactsDialog";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
 import {
   ItineraryEntryActions,
   MoveStartChoice
 } from "./ItineraryEntryActions";
 import {
+  attractionNameId,
   dropSlot,
   gapSuggestion,
-  ItineraryDragHandle,
-  type DraggedItineraryItem
+  type DraggedItineraryItem,
+  type ItineraryAttraction,
+  type OpenAttractionFacts
 } from "./ItineraryDrag";
 import {
   useItineraryScheduling,
@@ -92,6 +99,23 @@ type Day = GetItineraryResponse["days"][number];
 type Entry = Day["entries"][number];
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
 
+function locateAttraction(
+  itinerary: GetItineraryResponse | undefined,
+  attractionId: number
+): { attraction: ItineraryAttraction; date?: string } | undefined {
+  if (!itinerary) return;
+  for (const day of itinerary.days) {
+    const attraction = day.entries.find(
+      (entry) => entry.attractionId === attractionId
+    );
+    if (attraction) return { attraction, date: day.date };
+  }
+  const attraction = itinerary.unscheduledAttractions.find(
+    (item) => item.attractionId === attractionId
+  );
+  if (attraction) return { attraction };
+}
+
 interface ItineraryView {
   saved?: GetItineraryResponse;
   days: GetItineraryResponse["days"];
@@ -136,11 +160,13 @@ export const useItinerary = (
   tripId: number | undefined,
   open: boolean,
   workspace: PlanningWorkspace,
-  onDurationCorrected: (attractionId: number, duration: string) => void
+  onDurationCorrected: (attractionId: number, duration: string) => void,
+  returnAttractionId?: number
 ): ItineraryView => {
   const [load, setLoad] = useState<LoadState>();
   const accepted = useRef<GetItineraryResponse>(undefined);
-  const reconciling = useRef<AbortSignal>(undefined);
+  const reconciling =
+    useRef<Promise<GetItineraryResponse | undefined>>(undefined);
   const { start: startRead, hasRequested } = usePlanningReads(
     tripId,
     workspace
@@ -153,7 +179,6 @@ export const useItinerary = (
       )
         return;
       const request = startRead();
-      if (!protectDrafts) reconciling.current = request.signal;
       const previousData =
         accepted.current?.tripId === tripId ? accepted.current : undefined;
       setLoad((previous) => ({
@@ -193,8 +218,6 @@ export const useItinerary = (
           }));
         }
       } finally {
-        if (reconciling.current === request.signal)
-          reconciling.current = undefined;
         if (request.isLatest() && !request.isCurrent()) {
           setLoad((previous) =>
             previous?.tripId === tripId
@@ -211,11 +234,14 @@ export const useItinerary = (
     [startRead, tripId, workspace]
   );
 
-  const refresh = useCallback(() => read(false), [read]);
+  const refresh = useCallback(() => {
+    const result = read(false);
+    reconciling.current = result;
+    return result.finally(() => {
+      if (reconciling.current === result) reconciling.current = undefined;
+    });
+  }, [read]);
   const checkForUpdates = useCallback(() => read(true), [read]);
-  useEffect(() => {
-    if (open || !hasRequested()) void checkForUpdates();
-  }, [open, hasRequested, checkForUpdates]);
 
   const current = load?.tripId === tripId ? load : undefined;
   const savedDays = current?.data?.days;
@@ -271,6 +297,36 @@ export const useItinerary = (
       id: entryId === undefined ? dayTargetId(date) : entryTargetId(entryId)
     });
   };
+  const focusReturnedAttraction = useEffectEvent(
+    (attractionId: number, saved: GetItineraryResponse | undefined): void => {
+      if (tripId === undefined) return;
+      const target = locateAttraction(saved, attractionId);
+      if (target) {
+        const { date } = target;
+        if (date && !visibleDays.some((day) => day.date === date)) {
+          showDate(date);
+        }
+        setFocusTarget({ tripId, id: attractionNameId(attractionId) });
+      } else if (visibleDays[0]) {
+        setFocusTarget({ tripId, id: dayTargetId(visibleDays[0].date) });
+      }
+    }
+  );
+  useEffect(() => {
+    if (!open && hasRequested()) return;
+    if (!open || returnAttractionId === undefined) {
+      void checkForUpdates();
+      return;
+    }
+    const read = reconciling.current ?? checkForUpdates();
+    let returning = true;
+    void read.then((saved) => {
+      if (returning) focusReturnedAttraction(returnAttractionId, saved);
+    });
+    return () => {
+      returning = false;
+    };
+  }, [open, returnAttractionId, hasRequested, checkForUpdates]);
   useEffect(() => {
     if (!open || !focusTarget || focusTarget.tripId !== tripId) return;
     // Let the dialog restore focus before moving it to the revealed target.
@@ -445,12 +501,14 @@ export const ItineraryContent = ({
   itinerary,
   boardPlaceOrder,
   prepareBlocked,
-  onPrepare
+  onPrepare,
+  onEditTripData
 }: {
   itinerary: ItineraryView;
   boardPlaceOrder: readonly string[];
   prepareBlocked: boolean;
   onPrepare: () => void;
+  onEditTripData: (attractionId: number) => void;
 }): ReactElement => {
   const classes = useClasses();
   const {
@@ -478,6 +536,23 @@ export const ItineraryContent = ({
     !!pending;
   const [hovered, setHovered] = useState<{ date: string; slot: number }>();
   const [actionStatus, setActionStatus] = useState("");
+  const [factsTarget, setFactsTarget] = useState<{
+    attractionId: number;
+    trigger: HTMLButtonElement;
+  }>();
+  const factsAttraction =
+    factsTarget &&
+    locateAttraction(itinerary.saved, factsTarget.attractionId)?.attraction;
+  const openFacts: OpenAttractionFacts = (attractionId, trigger) => {
+    trigger.focus({ preventScroll: true });
+    setFactsTarget({ attractionId, trigger });
+  };
+  const closeFacts = (): void => {
+    setFactsTarget(undefined);
+    requestAnimationFrame(() => {
+      if (factsTarget?.trigger.isConnected) factsTarget.trigger.focus();
+    });
+  };
   const [moveChoice, setMoveChoice] = useState<{
     entry: Entry;
     sourceDate: string;
@@ -646,6 +721,18 @@ export const ItineraryContent = ({
 
   return (
     <div className={classes.itinerary}>
+      {factsAttraction && (
+        <AttractionFactsDialog
+          key={factsAttraction.attractionId}
+          attraction={factsAttraction}
+          importance={attractionImportance(factsAttraction).label}
+          onClose={closeFacts}
+          onEditTripData={() => {
+            setFactsTarget(undefined);
+            onEditTripData(factsAttraction.attractionId);
+          }}
+        />
+      )}
       {moveChoice && (
         <MoveStartChoice
           entry={moveChoice.entry}
@@ -731,6 +818,7 @@ export const ItineraryContent = ({
           onSchedule={scheduling.choose}
           onGrab={setDragged}
           onRelease={endDrag}
+          onOpenFacts={openFacts}
         />
         <section
           ref={measureDayRow}
@@ -819,14 +907,9 @@ export const ItineraryContent = ({
                             index={index}
                             editing={timingEditing}
                             blocked={writeBlocked}
-                            dragHandle={
-                              <ItineraryDragHandle
-                                item={{ kind: "entry", entry }}
-                                blocked={writeBlocked}
-                                onGrab={setDragged}
-                                onRelease={endDrag}
-                              />
-                            }
+                            onGrab={setDragged}
+                            onRelease={endDrag}
+                            onOpenFacts={openFacts}
                             actions={
                               <ItineraryEntryActions
                                 entry={entry}

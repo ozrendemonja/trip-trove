@@ -76,6 +76,15 @@ export const useClasses = makeStyles({
   unscheduledCardHeader: {
     rowGap: tokens.spacingVerticalXXS
   },
+  attractionName: {
+    minWidth: 0,
+    padding: 0,
+    color: tokens.colorNeutralForeground1,
+    fontWeight: tokens.fontWeightSemibold,
+    overflowWrap: "anywhere",
+    textAlign: "start",
+    justifyContent: "start"
+  },
   iconLabel: {
     display: "flex",
     alignItems: "baseline",
@@ -88,7 +97,7 @@ export const useClasses = makeStyles({
     alignSelf: "center",
     padding: tokens.spacingHorizontalXXS,
     touchAction: "none",
-    "&[draggable='true']": { cursor: "grab" }
+    "[draggable='true'] &": { cursor: "grab" }
   },
   dragPreview: {
     position: "fixed",
@@ -109,6 +118,18 @@ export const useClasses = makeStyles({
     display: "flex",
     flexDirection: "column",
     color: tokens.colorNeutralForeground2
+  },
+  factsSections: {
+    display: "grid",
+    rowGap: tokens.spacingVerticalM,
+    overflowWrap: "anywhere"
+  },
+  factsList: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr)",
+    gap: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalM}`,
+    margin: `${tokens.spacingVerticalXS} 0 0`,
+    "& dd": { margin: 0, whiteSpace: "pre-wrap" }
   },
   star: { color: tokens.colorStatusWarningForeground1 },
   ring: { color: tokens.colorNeutralForeground1 },

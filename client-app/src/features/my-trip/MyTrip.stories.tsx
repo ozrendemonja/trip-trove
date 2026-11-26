@@ -12,8 +12,11 @@ import {
 import makeServer from "../../ServerSetup";
 import type {
   AddAttractionUnderTripRequest,
+  GetAttractionResponse,
   GetItineraryResponse,
-  GetSearchAttractionResponse
+  GetSearchAttractionResponse,
+  UpdateTripAttractionNoteRequest,
+  UpdateTripAttractionVisitTimeRequest
 } from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
 import type { TripAttractionFromServer } from "./infra/TripApi";
@@ -542,6 +545,224 @@ function compositionTimeline(): GetItineraryResponse {
   return saved;
 }
 
+const museumCatalogue: GetAttractionResponse = {
+  attractionId: 5,
+  attractionName: "Museum",
+  cityName: "Rome",
+  regionName: "Lazio",
+  countryName: "Italy",
+  attractionAddress: "1 Museum Street",
+  attractionLocation: { latitude: 41.9028, longitude: 12.4964 },
+  attractionCategory: "ART_MUSEUM",
+  attractionType: "STABLE",
+  mainAttractionName: "National Gallery",
+  isTraditional: true,
+  tip: "Try the side entrance",
+  infoFrom: "City guide",
+  infoRecorded: "2099-06-01",
+  optimalVisitPeriod: { fromDate: "2099-04-01", toDate: "2099-10-31" },
+  permanentlyClosedAt: "2099-06-09T14:00:00",
+  changedOn: "2099-06-09T14:00:00"
+};
+
+export const ShowsEditedVisitDurationInTheItinerary: Story = {
+  parameters: {
+    configureTripServer: (server: Server) => {
+      const saved = savedTimeline(
+        "2099-06-10T09:00+02:00",
+        "2099-06-10T09:30+02:00"
+      );
+      const [entry] = saved.days[0].entries;
+      entry.visitDuration = "30m";
+      server.get(
+        "http://localhost:8080/trips/1/attractions",
+        () => [
+          {
+            ...SAVED_ATTRACTIONS[0],
+            attractionId: 5,
+            attractionName: "Museum",
+            attractionCategory: "ART_MUSEUM",
+            visitTime: entry.visitDuration
+          }
+        ],
+        { timing: 0 }
+      );
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        "http://localhost:8080/trips/1/attractions/5/visit-time",
+        (_schema, request) => {
+          const { visitTime }: UpdateTripAttractionVisitTimeRequest =
+            JSON.parse(request.requestBody);
+          entry.visitDuration = visitTime ?? undefined;
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    const museum = () =>
+      within(canvas.getByRole("listitem", { name: "Museum" }));
+
+    const itinerary = await canvas.findByRole("button", { name: "Itinerary" });
+    await waitFor(() => expect(itinerary).toBeEnabled());
+    await user.click(itinerary);
+    await waitFor(() =>
+      expect(museum().getByText("Visit duration: 30m")).toBeVisible()
+    );
+
+    await user.click(canvas.getByRole("button", { name: "Edit" }));
+    await user.click(await canvas.findByTitle("Edit visit time"));
+    const duration = canvas.getByPlaceholderText("Visit time");
+    await user.clear(duration);
+    await user.type(duration, "2h");
+    await user.click(canvas.getByRole("button", { name: "Save" }));
+    const feedback = within(
+      await canvas.findByRole("status", { name: "Marked change for Museum" })
+    );
+    await feedback.findByText("Saved");
+
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await waitFor(() =>
+      expect(museum().getByText("Visit duration: 2h")).toBeVisible()
+    );
+  }
+};
+
+export const AttractionFactsOpenFromTheCardBodyAndKeyboard: Story = {
+  parameters: {
+    savedAttractions: [
+      ...SAVED_ATTRACTIONS,
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 8,
+        attractionName: "Luna Cafe",
+        attractionCategory: "EATERY"
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      const saved = compositionTimeline();
+      Object.assign(saved.days[0].entries[0], {
+        workingHours: "09:00-17:00",
+        visitDuration: "45-60m",
+        tripNote: "Try the side entrance"
+      });
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.get("http://localhost:8080/attractions/5", () => museumCatalogue);
+      server.get("http://localhost:8080/attractions/8", () => ({
+        ...museumCatalogue,
+        attractionId: 8,
+        attractionName: "Luna Cafe",
+        attractionCategory: "EATERY"
+      }));
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialogs = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+
+    const cafe = within(
+      await canvas.findByRole("article", { name: "Luna Cafe" })
+    );
+    const cafeName = cafe.getByRole("button", { name: "Luna Cafe" });
+    await user.click(cafe.getByRole("button", { name: "Add Luna Cafe" }));
+    await dialogs.findByRole("menu");
+    await expect(dialogs.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(cafe.getByText("Visit duration: 30m"));
+    const poolFacts = within(
+      await dialogs.findByRole("dialog", { name: "Luna Cafe" })
+    );
+    await waitFor(() => expect(poolFacts.getByText("Eatery")).toBeVisible());
+    await expect(
+      poolFacts.queryByText("Planned length")
+    ).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(cafeName).toHaveFocus());
+
+    await user.tab();
+    await expect(
+      cafe.getByRole("button", { name: "Add Luna Cafe" })
+    ).toHaveFocus();
+    await user.tab({ shift: true });
+    await expect(cafeName).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const cafeFacts = within(
+      await dialogs.findByRole("dialog", { name: "Luna Cafe" })
+    );
+    await user.click(
+      cafeFacts.getByRole("button", { name: "Edit trip data on board" })
+    );
+    await canvas.findByRole("link", { name: "Luna Cafe" });
+    await user.click(
+      canvas.getByRole("button", { name: "Return to itinerary" })
+    );
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Luna Cafe" })).toHaveFocus()
+    );
+
+    const clock = canvas.getByRole("textbox", {
+      name: "Start clock for Museum"
+    });
+    await user.click(clock);
+    await expect(clock).toHaveFocus();
+    await expect(dialogs.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.tab();
+    await expect(
+      canvas.getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveFocus();
+    const museum = canvas.getByRole("button", { name: /^Museum$/ });
+    await user.tab();
+    await expect(museum).toHaveFocus();
+    await user.keyboard("{Enter}");
+    const entryFacts = within(
+      await dialogs.findByRole("dialog", { name: "Museum" })
+    );
+    const catalogue = within(
+      await entryFacts.findByRole("region", { name: "Catalogue facts" })
+    );
+    const trip = within(entryFacts.getByRole("region", { name: "Trip data" }));
+    await waitFor(() =>
+      expect(catalogue.getByText("1 Museum Street")).toBeVisible()
+    );
+    await expect(catalogue.getByText("41.9028, 12.4964")).toBeVisible();
+    await expect(catalogue.getByText("Rome, Lazio, Italy")).toBeVisible();
+    await expect(catalogue.getByText("National Gallery")).toBeVisible();
+    await expect(catalogue.getByText("City guide")).toBeVisible();
+    await expect(catalogue.getByText(/Permanently closed since/)).toBeVisible();
+    await expect(catalogue.getByText("Catalogue tip")).toBeVisible();
+    await expect(catalogue.getByText("Try the side entrance")).toBeVisible();
+    await expect(trip.getByText("Trip note")).toBeVisible();
+    await expect(trip.getByText("Try the side entrance")).toBeVisible();
+    await expect(trip.getByText("09:00-17:00")).toBeVisible();
+    await expect(trip.getByText("45-60m")).toBeVisible();
+    await expect(trip.getByText("Must see")).toBeVisible();
+    await expect(entryFacts.getByText("30 min")).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(museum).toHaveFocus());
+
+    server.get("http://localhost:8080/attractions/5", () => ({
+      ...museumCatalogue,
+      tip: "Use the courtyard"
+    }));
+    await user.keyboard(" ");
+    const reopened = within(
+      await dialogs.findByRole("dialog", { name: "Museum" })
+    );
+    await waitFor(() =>
+      expect(reopened.getByText("Use the courtyard")).toBeVisible()
+    );
+    await expect(reopened.getByText("Try the side entrance")).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(museum).toHaveFocus());
+  }
+};
+
 function timelineWithScheduledLunaCafe(
   timeline: GetItineraryResponse,
   { start, end, index }: { start: string; end: string; index: number }
@@ -651,7 +872,14 @@ export const PoolDropOpensTheGapClockAndOnlySavesOnBlur: Story = {
     ).not.toBeInTheDocument();
     await expect(compositionWrites).not.toHaveBeenCalled();
 
-    dropItineraryItem(drag, canvas.getByText("1h 30m free"));
+    const body = within(
+      canvas.getByRole("article", { name: "Luna Cafe" })
+    ).getByText("Visit duration: 30m");
+    dropItineraryItem(body, canvas.getByText("1h 30m free"));
+    fireEvent.click(body, { detail: 1 });
+    await expect(
+      overlay(canvasElement).queryByRole("dialog")
+    ).not.toBeInTheDocument();
     const draft = within(
       await canvas.findByRole("form", { name: "Add Luna Cafe" })
     );
@@ -1213,6 +1441,8 @@ export const LocksAndUnlocksTheStartFromTheKeyboard: Story = {
 
     await user.click(end);
     await user.tab();
+    await expect(museum.getByRole("button", { name: "Museum" })).toHaveFocus();
+    await user.tab();
     await expect(lock).toHaveFocus();
     await user.keyboard(" ");
 
@@ -1456,7 +1686,9 @@ export const RejectsASavedClockThenAcceptsAnExplicitOvernightEnd: Story = {
     const end = museum.getByRole("textbox", { name: "End clock for Museum" });
     await user.clear(end);
     await user.type(end, "01:00");
-    await user.click(museum.getByText("Museum"));
+    await user.click(
+      museum.getByRole("textbox", { name: "Start clock for Museum" })
+    );
     await expect(await museum.findByRole("alert")).toHaveTextContent(
       "Include the end date if it differs."
     );
@@ -3207,6 +3439,128 @@ const savedCasinoEntry = {
     zone: "Europe/Monaco"
   }
 } satisfies GetItineraryResponse["days"][number]["entries"][number];
+
+export const RevealsTheBoardCardAndReturnsToItsCurrentItineraryEntry: Story = {
+  parameters: {
+    savedAttractions: [
+      { ...SAVED_ATTRACTIONS[0], mustVisit: false, note: "Original note" },
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 5,
+        attractionName: "Garden",
+        mustVisit: false
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      const casinoEntry = {
+        ...savedCasinoEntry,
+        mustVisit: false,
+        tripNote: "Original note"
+      };
+      saved.days[1].entries.push(casinoEntry);
+      server.get(itineraryUrl, () => saved, { timing: 150 });
+      server.get("http://localhost:8080/attractions/0", () => ({
+        ...museumCatalogue,
+        attractionId: 0,
+        attractionName: savedCasinoEntry.name
+      }));
+      server.put(
+        "http://localhost:8080/trips/1/attractions/0/note",
+        (_schema, request) => {
+          const body: UpdateTripAttractionNoteRequest = JSON.parse(
+            request.requestBody
+          );
+          casinoEntry.tripNote = body.note ?? "";
+          return new MirageResponse(204);
+        }
+      );
+      server.delete("http://localhost:8080/trips/1/attractions/0", () => {
+        saved.days[1].entries = [];
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialogs = overlay(canvasElement);
+    const user = setupUser();
+    const name = savedCasinoEntry.name;
+    await user.click(
+      await canvas.findByRole("button", { name: "Filters on demand" })
+    );
+    await user.selectOptions(
+      canvas.getByRole("combobox", { name: "Must Visit" }),
+      "true"
+    );
+    await expect(canvas.queryByRole("link", { name })).not.toBeInTheDocument();
+    await user.click(canvas.getByRole("button", { name: "Collapse Monaco" }));
+    await user.click(canvas.getByRole("button", { name: "Itinerary" }));
+    await user.click(await canvas.findByRole("button", { name: "Next day" }));
+
+    await user.click(await canvas.findByText("Original note"));
+    const facts = within(await dialogs.findByRole("dialog", { name }));
+    await user.click(
+      facts.getByRole("button", { name: "Edit trip data on board" })
+    );
+    const cardLink = await canvas.findByRole("link", { name });
+    const boardCard = cardLink.closest("li")!;
+    await waitFor(() => expect(boardCard).toHaveFocus());
+    await expect(
+      canvas.getByRole("combobox", { name: "Must Visit" })
+    ).toHaveValue("true");
+    await expect(
+      canvas.queryByRole("link", { name: "Garden" })
+    ).not.toBeInTheDocument();
+
+    const card = within(boardCard);
+    await user.click(card.getByTitle("Edit note"));
+    const note = card.getByRole("textbox", { name: "Trip note" });
+    await user.clear(note);
+    await user.type(note, "Ask for the exit map");
+    await user.click(card.getByRole("button", { name: "Save" }));
+    await user.click(
+      canvas.getByRole("button", { name: "Return to itinerary" })
+    );
+    const entry = await canvas.findByRole("button", { name });
+    await waitFor(() => expect(entry).toHaveFocus());
+    await expect(
+      canvas.getByRole("note", { name: "Trip note" })
+    ).toHaveTextContent("Ask for the exit map");
+    await expect(
+      canvas.getByRole("textbox", { name: `Start clock for ${name}` })
+    ).toHaveValue("09:00");
+
+    await user.click(entry);
+    const updated = within(await dialogs.findByRole("dialog", { name }));
+    const trip = within(updated.getByRole("region", { name: "Trip data" }));
+    await waitFor(() =>
+      expect(trip.getByText("Ask for the exit map")).toBeVisible()
+    );
+    await user.click(
+      updated.getByRole("button", { name: "Edit trip data on board" })
+    );
+    await user.click(
+      await canvas.findByRole("button", { name: `Remove ${name} from trip` })
+    );
+    const removal = within(await dialogs.findByRole("alertdialog"));
+    await waitFor(() =>
+      expect(removal.getByText(/Day 2.*09:00.*09:45/)).toBeVisible()
+    );
+    await user.click(removal.getByRole("button", { name: "Delete" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Return to itinerary" })
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("heading", { name: /Jun 11, 2099/ })
+      ).toHaveFocus()
+    );
+    await expect(
+      canvas.queryByRole("button", { name })
+    ).not.toBeInTheDocument();
+  }
+};
 
 export const RemovingAScheduledAttractionRequiresItsDayPreview: Story = {
   parameters: {

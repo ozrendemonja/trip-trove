@@ -21,7 +21,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    Long itineraryDayId, LocalDate itineraryDate,
                                    Long attractionId, String attractionName, String cityName, String regionName, String countryName,
                                    TripAttractionGroup boardColumn, Boolean mustVisit, AttractionCategory category,
-                                   String workingHours, String visitDuration, LocalDateTime permanentlyClosedAt,
+                                   String workingHours, String visitDuration, String tripNote, LocalDateTime permanentlyClosedAt,
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
                                    ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck,
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
@@ -45,12 +45,12 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
 
     UnscheduledAttractionSummary toUnscheduledAttractionSummary(String place) {
         return new UnscheduledAttractionSummary(attractionId, attractionName, place, boardColumn, mustVisit,
-                category, workingHours, visitDuration);
+                category, workingHours, visitDuration, tripNote);
     }
 
     AttractionEntrySummary toEntrySummary() {
         return new AttractionEntrySummary(entryId, attractionId, attractionName, boardColumn, mustVisit,
-                category, entryPosition, entryFixedStart, entryTiming);
+                category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote);
     }
 
     ChangeNoticeSummary toChangeNotice() {

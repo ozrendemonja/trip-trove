@@ -44,6 +44,7 @@ public record GetItineraryResponse(
         }
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record AttractionEntry(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long entryId,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long attractionId,
@@ -52,12 +53,15 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean mustVisit,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AttractionCategoryResponse category,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean fixedStart,
-            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryTimingResponse timing) {
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryTimingResponse timing,
+            String workingHours,
+            String visitDuration,
+            String tripNote) {
         private static AttractionEntry from(ItineraryDetails.AttractionEntrySummary entry) {
             return new AttractionEntry(entry.entryId(), entry.attractionId(), entry.name(),
                     TripAttractionGroupDTO.valueOf(entry.attractionGroup().name()), entry.mustVisit(),
                     AttractionCategoryResponse.from(entry.category()), entry.fixedStart(),
-                    ItineraryTimingResponse.from(entry.timing()));
+                    ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(), entry.tripNote());
         }
     }
 
@@ -70,12 +74,13 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean mustVisit,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AttractionCategoryResponse category,
             String workingHours,
-            String visitDuration) {
+            String visitDuration,
+            String tripNote) {
         private static UnscheduledAttraction from(ItineraryDetails.UnscheduledAttractionSummary attraction) {
             return new UnscheduledAttraction(attraction.attractionId(), attraction.name(), attraction.place(),
                     TripAttractionGroupDTO.valueOf(attraction.attractionGroup().name()), attraction.mustVisit(),
                     AttractionCategoryResponse.from(attraction.category()), attraction.workingHours(),
-                    attraction.visitDuration());
+                    attraction.visitDuration(), attraction.tripNote());
         }
     }
 

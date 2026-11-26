@@ -3,10 +3,13 @@ package com.triptrove.manager;
 import com.jayway.jsonpath.JsonPath;
 import com.triptrove.manager.application.dto.CheckItineraryRequest;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
+import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.SaveTripRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
+import com.triptrove.manager.application.dto.UpdateItineraryDayNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
+import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -107,6 +110,140 @@ class ItineraryTest extends AbstractIntegrationTest {
         } finally {
             mockMvc.perform(delete(trip).header("x-api-version", "1")).andExpect(status().isNoContent());
         }
+    }
+
+    @Test
+    void aDayNoteIsAnUntimedReminderAndDoesNotAffectChecks() throws Exception {
+        var trip = createTrip("Notes only", "2028-02-01", "2028-02-02");
+        var itinerary = trip + "/itinerary";
+        var dayNote = itinerary + "/days/2028-02-02/note";
+        var note = "  Bring the tickets\nMeet by the gate.  ";
+        var empty = mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].note").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+
+        saveNote(dayNote, new UpdateItineraryDayNoteRequest(note))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, itinerary))
+                .andExpect(content().string(""));
+        mockMvc.perform(get(trip).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasItineraryEntries").value(false))
+                .andExpect(jsonPath("$.hasItineraryDayNotes").value(true));
+
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.days[0].note").doesNotExist())
+                .andExpect(jsonPath("$.days[1].note").value(note))
+                .andExpect(jsonPath("$.days[*].entries[*]").isEmpty())
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+        submitCheck(itinerary, JsonPath.read(empty, "$.checkContext")).andExpect(status().isNoContent());
+
+        var checked = mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.days[1].note").value(note))
+                .andExpect(jsonPath("$.changeNotices").isEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String checkedContext = JsonPath.read(checked, "$.checkContext");
+
+        var edited = "Bring the tickets and ID.";
+        saveNote(dayNote, new UpdateItineraryDayNoteRequest(edited)).andExpect(status().isNoContent());
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.days[1].note").value(edited))
+                .andExpect(jsonPath("$.checkContext").value(checkedContext))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        saveNote(dayNote, new UpdateItineraryDayNoteRequest("")).andExpect(status().isNoContent());
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.days[1].note").doesNotExist())
+                .andExpect(jsonPath("$.checkContext").value(checkedContext))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+        mockMvc.perform(get(trip).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasItineraryDayNotes").value(false));
+    }
+
+    private ResultActions saveNote(String path, Object request) throws Exception {
+        return mockMvc.perform(put(path).header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(request)));
+    }
+
+    @Test
+    void movingAnAttractionShowsItsCurrentTripNoteAndLeavesTheDayNoteOnItsDate() throws Exception {
+        seedItineraryWithBoard(2);
+        var itinerary = "/trips/1/itinerary";
+        var tripNote = "/trips/1/attractions/1/note";
+        saveNote(tripNote, new UpdateTripAttractionNoteRequest("Use the side entrance"))
+                .andExpect(status().isNoContent());
+        saveNote(itinerary + "/days/2026-09-01/note", new UpdateItineraryDayNoteRequest("Collect the tickets"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unscheduledAttractions[0].tripNote").value("Use the side entrance"));
+
+        schedule(new ScheduleAttractionRequest(1L, LocalDate.of(2026, 9, 1), "09:00", "Europe/Belgrade", null))
+                .andExpect(status().isNoContent());
+        var initial = mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].entries[0].tripNote").value("Use the side entrance"))
+                .andReturn().getResponse().getContentAsString();
+        submitCheck(itinerary, JsonPath.read(initial, "$.checkContext")).andExpect(status().isNoContent());
+        entityManager.clear();
+
+        int entryId = JsonPath.read(initial, "$.days[0].entries[0].entryId");
+        var position = new MoveItineraryEntryRequest(LocalDate.of(2026, 9, 2), null, null);
+        mockMvc.perform(put(itinerary + "/entries/{id}/position", entryId).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(position)))
+                .andExpect(status().isNoContent());
+        var moved = mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].note").value("Collect the tickets"))
+                .andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.days[1].note").doesNotExist())
+                .andExpect(jsonPath("$.days[1].entries[0].entryId").value(entryId))
+                .andExpect(jsonPath("$.days[1].entries[0].tripNote").value("Use the side entrance"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_MOVED")))
+                .andReturn().getResponse().getContentAsString();
+
+        saveNote(tripNote, new UpdateTripAttractionNoteRequest("Use the main entrance"))
+                .andExpect(status().isNoContent());
+        submitCheck(itinerary, JsonPath.read(moved, "$.checkContext"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ITINERARY_CHECK_STALE"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The itinerary or its attraction sources changed. Refresh and review the itinerary before checking again."));
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].note").value("Collect the tickets"))
+                .andExpect(jsonPath("$.days[1].entries[0].tripNote").value("Use the main entrance"))
+                .andExpect(jsonPath("$.changeNotices[*].entryId", contains(entryId)))
+                .andExpect(jsonPath("$.changeNotices[0].sourceChanges[*].field", contains("TRIP_NOTE")));
+    }
+
+    @Test
+    void dayNotesAcceptTheExactLimitAndRejectAnOverlongReplacement() throws Exception {
+        var itinerary = createTrip("Day note", "2026-09-01", "2026-09-01") + "/itinerary";
+        var path = itinerary + "/days/2026-09-01/note";
+        var maximum = "x".repeat(1999) + "\n";
+
+        saveNote(path, new UpdateItineraryDayNoteRequest(maximum)).andExpect(status().isNoContent());
+        saveNote(path, new UpdateItineraryDayNoteRequest("y" + maximum))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("{note = Day note may not be longer than 2000 characters}"));
+        mockMvc.perform(get(itinerary).header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].note").value(maximum))
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
     }
 
     @Test
@@ -282,6 +419,23 @@ class ItineraryTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fromDate").value("2028-04-03"))
                 .andExpect(jsonPath("$.toDate").value("2028-04-05"));
+    }
+
+    @Test
+    void droppingADateWouldNotSilentlyDeleteItsDayNote() throws Exception {
+        var trip = createTrip("Date with a reminder", "2028-04-04", "2028-04-06");
+        saveNote(trip + "/itinerary/days/2028-04-06/note", new UpdateItineraryDayNoteRequest("Return the keys."))
+                .andExpect(status().isNoContent());
+        var range = new UpdateTripRangeRequest(LocalDate.of(2028, 4, 4), LocalDate.of(2028, 4, 5));
+        mockMvc.perform(put(trip + "/range").header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(range)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "Those dates would remove a day with a note. Keep that date or clear its day note first."));
+        mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[2].note").value("Return the keys."));
     }
 
     @Test

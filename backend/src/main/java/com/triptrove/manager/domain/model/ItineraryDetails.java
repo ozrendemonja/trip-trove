@@ -30,7 +30,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
         }
     }
 
-    public record Day(Long id, LocalDate date, List<AttractionEntrySummary> entries) {
+    public record Day(Long id, LocalDate date, String note, List<AttractionEntrySummary> entries) {
     }
 
     public record AttractionEntrySummary(long entryId, long attractionId, String name, TripAttractionGroup attractionGroup,

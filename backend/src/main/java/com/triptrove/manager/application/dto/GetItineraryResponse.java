@@ -53,14 +53,16 @@ public record GetItineraryResponse(
         }
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Day(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDate date,
+            @Schema(description = "Untimed, plain-text day note, if recorded.") String note,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                     description = "Entries are returned in visit order, even when start times match.")
             List<AttractionEntry> entries) {
         private static Day from(ItineraryDetails.Day day) {
-            return new Day(day.id(), day.date(), day.entries().stream().map(AttractionEntry::from).toList());
+            return new Day(day.id(), day.date(), day.note(), day.entries().stream().map(AttractionEntry::from).toList());
         }
     }
 
@@ -81,7 +83,8 @@ public record GetItineraryResponse(
             return new AttractionEntry(entry.entryId(), entry.attractionId(), entry.name(),
                     TripAttractionGroupDTO.valueOf(entry.attractionGroup().name()), entry.mustVisit(),
                     AttractionCategoryResponse.from(entry.category()), entry.fixedStart(),
-                    ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(), entry.tripNote());
+                    ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(),
+                    entry.tripNote());
         }
     }
 

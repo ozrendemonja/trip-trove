@@ -94,6 +94,23 @@ It returns `204` with the itinerary `Location` and does not change the
 interval. A fixed start blocks automatic propagation but can still be
 edited deliberately without losing its lock.
 
+An attraction has one planning note per trip, edited in Edit mode via
+`PUT /trips/{id}/attractions/{attractionId}/note`. The itinerary shows this
+same `tripNote` before and after scheduling or moving the attraction.
+There is no separate note for its position or date.
+
+Use `PUT /trips/{id}/itinerary/days/{date}/note` to replace a day's untimed
+reminder. It takes `{"note":"..."}` (up to 2,000 characters of plain multiline
+text); an empty string clears it. It returns `204` with an itinerary `Location`.
+GET omits an absent day note. Moving an attraction does not move the day note.
+A date change cannot drop a day that still has a note.
+
+Day notes count as itinerary content, but they are reminders outside the
+manual check. Adding, editing or clearing one does not invalidate the check
+context or create a change notice.
+The itinerary and trip overview (`hasItineraryEntries`, `hasItineraryDayNotes`)
+still use one SELECT each.
+
 For board removal or a move to Excluded Attractions, preview the scheduled
 entry and its affected dates using `GET /trips/{id}/itinerary`. After
 confirmation, send `{"entryId":21}` as the optional JSON body of

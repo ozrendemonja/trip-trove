@@ -992,6 +992,47 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void itineraryReadWithDayNotesAndChangedAttractionNotesUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET last_checked_at = '2026-08-31T09:00:00Z' WHERE trip_id = 1;
+                UPDATE itinerary_day SET note = 'Reminder for ' || date
+                WHERE trip_id = 1 AND date IN ('2026-09-01', '2026-09-02');
+                UPDATE itinerary_entry SET included_in_last_check = true WHERE trip_id = 1;
+                UPDATE trip_attraction SET note = 'Plan for ' || attraction_id WHERE trip_id = 1;
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].note").exists())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.changeNotices.length()").value(entryCount));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void replacingADayNoteUsesOneSelectAndOneUpdate(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        var dayNote = new UpdateItineraryDayNoteRequest("Bring the tickets.");
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/days/2026-09-01/note")
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(dayNote)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
     @CsvSource(delimiter = '|', textBlock = """
              2 | start          | {"startTime":"07:01"}
             30 | start          | {"startTime":"07:01"}
@@ -1075,6 +1116,9 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     void recordingACheckUsesTwoUpdatesOneDeleteAndNoSelects(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
         var confirmation = itineraryCheckRequest();
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_day SET note = 'Reminder for ' || date WHERE trip_id = 1
+                """).executeUpdate();
         resetSqlStatementCounts();
 
         mockMvc.perform(confirmation).andExpect(status().isNoContent());
@@ -1294,6 +1338,23 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/trips/1").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hasItineraryEntries").exists());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
+    void tripOverviewWithOnlyDayNotesStillUsesOneSelect(int noteCount) throws Exception {
+        seedSchedulingBoard(noteCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_day SET note = 'Reminder for ' || date
+                WHERE trip_id = 1 AND date < DATE '2026-09-01' + :noteCount
+                """).setParameter("noteCount", noteCount).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasItineraryDayNotes").exists());
 
         assertReadOnlySelectCount(1);
     }

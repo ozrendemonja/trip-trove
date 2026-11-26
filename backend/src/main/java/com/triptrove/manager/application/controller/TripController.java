@@ -108,6 +108,26 @@ public class TripController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<Void> checkItinerary(@PathVariable Long id, @Valid @RequestBody CheckItineraryRequest request) {
         tripService.markItineraryChecked(id, request.checkContext());
+        return itineraryUpdated(id);
+    }
+
+    @PutMapping("/{id:\\d+}/itinerary/days/{date}/note")
+    @Operation(summary = "Set or clear a day's itinerary note")
+    @ApiResponse(responseCode = "204", description = "Day note updated",
+            headers = @Header(name = "Location", description = "URI of the updated itinerary",
+                    schema = @Schema(type = "string", format = "uri")))
+    @ApiResponse(responseCode = "400", description = "Invalid date or note",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Day not found in the trip",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> updateItineraryDayNote(@PathVariable Long id,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Valid @RequestBody UpdateItineraryDayNoteRequest request) {
+        tripService.updateItineraryDayNote(id, date, request.note());
+        return itineraryUpdated(id);
+    }
+
+    private static ResponseEntity<Void> itineraryUpdated(Long id) {
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/trips/{id}/itinerary")
                 .buildAndExpand(id)
@@ -128,7 +148,7 @@ public class TripController {
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update trip range", responses = {
             @ApiResponse(description = "Trip range is updated", responseCode = "204"),
-            @ApiResponse(description = "A scheduled entry would fall outside the trip, or the trip name conflicts",
+            @ApiResponse(description = "The dates would omit a scheduled entry or a day with a note, or the trip name conflicts",
                     responseCode = "409",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })

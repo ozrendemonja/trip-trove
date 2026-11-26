@@ -19,7 +19,8 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
     @Query("""
             SELECT new com.triptrove.manager.domain.model.TripOverviewSummary(
                 trip.id, trip.name, trip.from, trip.to, coalesce(trip.updatedOn, trip.createdOn), trip.archived,
-                EXISTS (SELECT 1 FROM ItineraryEntry entry WHERE entry.tripId = trip.id))
+                EXISTS (SELECT 1 FROM ItineraryEntry entry WHERE entry.tripId = trip.id),
+                EXISTS (SELECT 1 FROM ItineraryDay day WHERE day.itinerary.tripId = trip.id AND day.note IS NOT NULL))
             FROM Trip trip
             WHERE trip.id = :id
             """)

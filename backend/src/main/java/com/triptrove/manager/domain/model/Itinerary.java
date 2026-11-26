@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Entity
@@ -48,7 +49,12 @@ public class Itinerary {
         if (from == null || to == null || to.isBefore(from)) {
             throw new IllegalArgumentException("Invalid itinerary date range: " + from + " to " + to);
         }
-        days.removeIf(day -> day.getDate().isBefore(from) || day.getDate().isAfter(to));
+        Predicate<ItineraryDay> outsideRange = day -> day.getDate().isBefore(from) || day.getDate().isAfter(to);
+        days.stream().filter(outsideRange).filter(day -> day.getNote() != null).findFirst().ifPresent(day -> {
+            throw new BaseApiException("Trip range would remove a day note on " + day.getDate(),
+                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRIP_DATES_WITH_DAY_NOTE);
+        });
+        days.removeIf(outsideRange);
         var existingDates = days.stream().map(ItineraryDay::getDate).collect(Collectors.toSet());
         from.datesUntil(to.plusDays(1))
                 .filter(date -> !existingDates.contains(date))

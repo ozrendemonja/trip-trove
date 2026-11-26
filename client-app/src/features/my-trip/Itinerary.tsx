@@ -42,6 +42,7 @@ import {
 } from "./UnscheduledAttractions";
 import { AttractionFactsDialog } from "./AttractionFactsDialog";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
+import { DayNoteEditor, ItineraryDayNote } from "./ItineraryDayNote";
 import {
   ItineraryEntryActions,
   MoveStartChoice
@@ -58,6 +59,7 @@ import {
   useItineraryScheduling,
   type ItineraryScheduling
 } from "./useItineraryScheduling";
+import { useItineraryDayNotes } from "./useItineraryDayNotes";
 import {
   editKind,
   useItineraryTimingEdit,
@@ -136,6 +138,7 @@ interface ItineraryView {
   setDragged: (item?: DraggedItineraryItem) => void;
   scheduling: ItineraryScheduling;
   timingEditing: ItineraryTimingEditing;
+  dayNotes: ReturnType<typeof useItineraryDayNotes>;
 }
 
 const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -346,6 +349,7 @@ export const useItinerary = (
     workspace
   });
   const timingEditing = useItineraryTimingEdit(tripId, refresh, workspace);
+  const dayNotes = useItineraryDayNotes(tripId, refresh, workspace);
   const [dragged, setDragged] = useState<DraggedItineraryItem>();
   return {
     saved: current?.data,
@@ -366,7 +370,8 @@ export const useItinerary = (
     dragged,
     setDragged,
     scheduling,
-    timingEditing
+    timingEditing,
+    dayNotes
   };
 };
 
@@ -522,6 +527,7 @@ export const ItineraryContent = ({
     measureDayRow,
     scheduling,
     timingEditing,
+    dayNotes,
     focusItineraryTarget,
     dragged,
     setDragged
@@ -533,6 +539,7 @@ export const ItineraryContent = ({
     (loading && !days.length) ||
     failed ||
     !!draft ||
+    !!dayNotes.draft ||
     !!pending;
   const [hovered, setHovered] = useState<{ date: string; slot: number }>();
   const [actionStatus, setActionStatus] = useState("");
@@ -721,6 +728,7 @@ export const ItineraryContent = ({
 
   return (
     <div className={classes.itinerary}>
+      <DayNoteEditor editing={dayNotes} />
       {factsAttraction && (
         <AttractionFactsDialog
           key={factsAttraction.attractionId}
@@ -810,7 +818,9 @@ export const ItineraryContent = ({
         <UnscheduledAttractions
           attractions={unscheduledAttractions}
           boardPlaceOrder={boardPlaceOrder}
-          prepareBlocked={prepareBlocked || !!draft || !!pending}
+          prepareBlocked={
+            prepareBlocked || !!draft || !!pending || !!dayNotes.draft
+          }
           onPrepare={onPrepare}
           days={days}
           formatDate={formatItineraryDate}
@@ -830,6 +840,7 @@ export const ItineraryContent = ({
         >
           {renderedDays.map((day) => {
             const date = new Date(day.date);
+            const label = dateLabel.format(date);
             const hidden = !visibleDays.includes(day);
             const activeSlot =
               hovered?.date === day.date ? hovered.slot : undefined;
@@ -843,7 +854,7 @@ export const ItineraryContent = ({
               <Card
                 key={day.id}
                 role="article"
-                aria-label={dateLabel.format(date)}
+                aria-label={label}
                 inert={hidden}
                 className={mergeClasses(
                   classes.day,
@@ -868,7 +879,7 @@ export const ItineraryContent = ({
                 <Text
                   as="h2"
                   className={classes.dayHeading}
-                  aria-label={dateLabel.format(date)}
+                  aria-label={label}
                   id={dayTargetId(day.date)}
                   tabIndex={-1}
                 >
@@ -881,6 +892,15 @@ export const ItineraryContent = ({
                   </time>
                 </Text>
                 <Divider />
+                <ItineraryDayNote
+                  subject={label}
+                  value={day.note}
+                  blocked={writeBlocked || !!moveChoice}
+                  saved={dayNotes.savedDate === day.date}
+                  onEdit={(button) =>
+                    dayNotes.open(day.date, label, day.note, button)
+                  }
+                />
                 {day.entries.length > 0 && (
                   <ol className={classes.timeline} aria-label="Main path">
                     {day.entries.map((entry, index) => {

@@ -2,6 +2,7 @@ import {
   moveItineraryEntry,
   removeItineraryEntry,
   scheduleAttraction,
+  updateItineraryDayNote,
   updateItineraryEntryEnd,
   updateItineraryEntryFixedStart,
   updateItineraryEntryPlannedLength,
@@ -21,6 +22,25 @@ import {
 } from "./PlanningApi";
 
 const itineraryHeaders = { "x-api-version": "1" } as const;
+
+export async function saveDayNote(
+  tripId: number,
+  date: string,
+  note: string
+): Promise<void> {
+  const { response, error } = await updateItineraryDayNote({
+    path: { id: tripId, date },
+    body: { note },
+    headers: itineraryHeaders,
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
+  });
+  if (!response?.ok) {
+    throw new PlanningSaveError(
+      error?.errorMessage ?? "The day note couldn't be saved.",
+      isUnconfirmedSave(response)
+    );
+  }
+}
 
 export class EntrySaveError extends PlanningSaveError {
   constructor(

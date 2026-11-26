@@ -20,7 +20,7 @@ import java.util.List;
 import static com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.Reason.*;
 
 public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastCheckedAt,
-                                   Long itineraryDayId, LocalDate itineraryDate,
+                                   Long itineraryDayId, LocalDate itineraryDate, String dayNote,
                                    Long attractionId, String attractionName, String cityName, String regionName, String countryName,
                                    TripAttractionGroup boardColumn, Boolean mustVisit, AttractionCategory category,
                                    String workingHours, String visitDuration, String tripNote, LocalDateTime permanentlyClosedAt,
@@ -28,7 +28,8 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck,
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
                                    Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
-                                   Boolean followingStartsPushedSinceCheck, String removedSubject, LocalDate removedDate,
+                                   Boolean followingStartsPushedSinceCheck,
+                                   String removedSubject, LocalDate removedDate,
                                    Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause,
                                    WatchedSourceSnapshot watchedSourceBaseline, WatchedSourceSnapshot currentWatchedSource,
                                    String checkContext) {

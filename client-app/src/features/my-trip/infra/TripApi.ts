@@ -204,7 +204,7 @@ export const deleteTripById = async (id: number): Promise<void> => {
 
 export const fetchTripById = async (
   id: number
-): Promise<Trip & { hasItineraryEntries: boolean }> => {
+): Promise<Trip & { hasItineraryContent: boolean }> => {
   const { data, error } = await getTrip({
     path: { id },
     headers: { "x-api-version": "1" }
@@ -218,7 +218,11 @@ export const fetchTripById = async (
   if (!trip) {
     throw new Error("The server returned incomplete trip details.");
   }
-  return { ...trip, hasItineraryEntries: data.hasItineraryEntries === true };
+  return {
+    ...trip,
+    hasItineraryContent:
+      data.hasItineraryEntries === true || data.hasItineraryDayNotes === true
+  };
 };
 
 const isSavedItinerary = (

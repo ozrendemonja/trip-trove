@@ -26,6 +26,7 @@ class ItineraryMigrationTest {
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
     private static final int PRE_ITINERARY_CHANGESETS = 13;
     private static final int PRE_TIMING_CHANGE_FLAGS = PRE_ITINERARY_CHANGESETS + 2;
+    private static final int PRE_DAY_NOTE_CHANGESETS = 20;
 
     @Test
     void backfillsExistingTripsWithoutChangingSavedPlanningOrOverwritingItinerariesOnRerun() throws Exception {
@@ -153,6 +154,48 @@ class ItineraryMigrationTest {
                     rs.getObject("second_start_occurrence", Boolean.class), rs.getInt("planned_minutes")));
             assertThat(museum.start().toString()).isEqualTo("2027-10-31T10:00:15.123456+07:00");
             assertThat(museum.end().toString()).isEqualTo("2027-10-31T12:00:15.123456+07:00");
+        }
+    }
+
+    @Test
+    void addingDayNotesPreservesAttractionNotesAndTheItineraryCheckContext() throws Exception {
+        try (var postgres = new PostgreSQLContainer("postgres:17-alpine")) {
+            postgres.start();
+            var source = new DriverManagerDataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+            try (var liquibase = openChangelog(source)) {
+                liquibase.update(PRE_DAY_NOTE_CHANGESETS, new Contexts(), new LabelExpression());
+            }
+            try (var connection = source.getConnection()) {
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/attractions-test-data.sql"));
+            }
+            var jdbc = new JdbcTemplate(source);
+            jdbc.update("UPDATE trip_attraction SET note = 'Side entrance' WHERE trip_id = 1 AND attraction_id = 1");
+            jdbc.update("""
+                    INSERT INTO itinerary(trip_id, time_zone, last_checked_at)
+                    VALUES (1, 'Europe/Belgrade', '2027-10-30T18:00:00Z')
+                    """);
+            jdbc.update("INSERT INTO itinerary_day(trip_id, date) VALUES (1, '2027-10-31')");
+            jdbc.update("""
+                    INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                        start_time, planned_minutes, fixed_start)
+                    VALUES (1, '2027-10-31', 1, 1, 'Europe/Belgrade', '09:00', 30, false)
+                    """);
+            var checkContextQuery = """
+                    SELECT itinerary_check_context(trip_id, time_zone, last_checked_at)
+                    FROM itinerary WHERE trip_id = 1
+                    """;
+            var checkContext = jdbc.queryForObject(checkContextQuery, String.class);
+
+            migrate(source);
+
+            assertThat(jdbc.queryForObject("SELECT note FROM itinerary_day WHERE trip_id = 1", String.class)).isNull();
+            jdbc.update("UPDATE itinerary_day SET note = 'Bring the tickets' WHERE trip_id = 1");
+
+            assertThat(jdbc.queryForObject("SELECT note FROM trip_attraction WHERE trip_id = 1 AND attraction_id = 1", String.class))
+                    .isEqualTo("Side entrance");
+            assertThat(jdbc.queryForObject("SELECT note FROM itinerary_day WHERE trip_id = 1", String.class))
+                    .isEqualTo("Bring the tickets");
+            assertThat(jdbc.queryForObject(checkContextQuery, String.class)).isEqualTo(checkContext);
         }
     }
 

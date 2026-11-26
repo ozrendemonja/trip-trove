@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0019-add-itinerary-notes
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary_day
+            columns:
+              - column:
+                  name: note
+                  type: VARCHAR(2000)

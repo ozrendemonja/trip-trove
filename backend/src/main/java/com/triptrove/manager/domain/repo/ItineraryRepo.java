@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Itinerary;
+import com.triptrove.manager.domain.model.ItineraryDay;
 import com.triptrove.manager.domain.model.ItineraryDaySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
@@ -45,6 +46,9 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             WHERE itinerary.tripId = :tripId
             """)
     Optional<Itinerary> findWithDaysByTripId(Long tripId);
+
+    @Query("SELECT day FROM ItineraryDay day WHERE day.itinerary.tripId = :tripId AND day.date = :date")
+    Optional<ItineraryDay> findDayByTripIdAndDate(Long tripId, LocalDate date);
 
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItinerarySummaryRow(
@@ -99,13 +103,14 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     // Attach board cards and removals to the first day only. The uncorrelated subquery computes one check context per trip.
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
-                itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date,
+                itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date, day.note,
                 attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime, tripAttraction.note,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
-                entry.followingStartsPushedSinceCheck, removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
+                entry.followingStartsPushedSinceCheck,
+                removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
                 entry.watchedSourceBaseline, source.snapshot,
                 (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt) AS String)
                  FROM Itinerary saved WHERE saved.tripId = :tripId))
@@ -144,8 +149,10 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             throw new IllegalStateException("Itinerary for trip " + tripId + " has no days");
         }
 
+        var daysById = new LinkedHashMap<Long, ItineraryAndBoardRow>();
+        itineraryRows.forEach(row -> daysById.putIfAbsent(row.itineraryDayId(), row));
         return Optional.of(new ItineraryDetails(firstRow.tripId(), firstRow.timeZone(), firstRow.lastCheckedAt(),
-                itineraryDaysInDateOrder(itineraryRows), unscheduledAttractionsInBoardOrder(itineraryRows),
+                itineraryDaysInDateOrder(itineraryRows, daysById), unscheduledAttractionsInBoardOrder(itineraryRows),
                 changeNotices(itineraryRows, firstRow.lastCheckedAt()), firstRow.checkContext()));
     }
 
@@ -163,18 +170,17 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 .toList();
     }
 
-    private static List<ItineraryDetails.Day> itineraryDaysInDateOrder(List<ItineraryAndBoardRow> itineraryRows) {
-        var datesByDayId = new LinkedHashMap<Long, LocalDate>();
+    private static List<ItineraryDetails.Day> itineraryDaysInDateOrder(List<ItineraryAndBoardRow> itineraryRows,
+            SequencedMap<Long, ItineraryAndBoardRow> daysById) {
         var entriesByDate = new HashMap<LocalDate, List<AttractionEntrySummary>>();
         for (var row : itineraryRows) {
-            datesByDayId.putIfAbsent(row.itineraryDayId(), row.itineraryDate());
             if (row.entryId() != null) {
                 entriesByDate.computeIfAbsent(row.entryDate(), ignored -> new ArrayList<>()).add(row.toEntrySummary());
             }
         }
-        return datesByDayId.entrySet().stream()
-                .map(day -> new ItineraryDetails.Day(day.getKey(), day.getValue(),
-                        entriesByDate.getOrDefault(day.getValue(), List.of()).stream()
+        return daysById.sequencedValues().stream()
+                .map(day -> new ItineraryDetails.Day(day.itineraryDayId(), day.itineraryDate(), day.dayNote(),
+                        entriesByDate.getOrDefault(day.itineraryDate(), List.of()).stream()
                                 .sorted(Comparator.comparingInt(AttractionEntrySummary::position))
                                 .toList()))
                 .toList();

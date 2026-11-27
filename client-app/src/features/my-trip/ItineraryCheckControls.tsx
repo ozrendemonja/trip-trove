@@ -62,7 +62,8 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   ENTRY_REMOVED: "Removed from the itinerary",
   FOLLOWING_STARTS_PUSHED: "Following entries moved later",
   ATTRACTION_EXCLUDED: "Moved to Excluded Attractions on the board",
-  REMOVED_FROM_TRIP: "Removed from the trip"
+  REMOVED_FROM_TRIP: "Removed from the trip",
+  TRANSFER_CHANGED: "Transfer changed"
 };
 const sourceFieldLabels: Record<SourceChange["field"], string> = {
   WORKING_HOURS: "Working hours",
@@ -169,11 +170,14 @@ type WarningRow = {
 
 const warningRows = (itinerary?: GetItineraryResponse): WarningRow[] =>
   itinerary?.days.flatMap((day) =>
-    day.entries.flatMap((entry) =>
+    day.entries.flatMap((entry, index) =>
       entry.warnings.map((warning) => ({
         entryId: entry.entryId,
         date: day.date,
-        subject: entry.name,
+        subject:
+          warning === "MISSING_TRANSFER" && day.entries[index + 1]
+            ? `${entry.name} to ${day.entries[index + 1].name}`
+            : entry.name,
         warning
       }))
     )

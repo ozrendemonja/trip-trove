@@ -22,7 +22,7 @@ export class PlanningSaveError extends Error {
   }
 }
 
-export class BoardRemovalConfirmationError extends PlanningSaveError {}
+export class BoardRemovalReviewError extends PlanningSaveError {}
 
 const requestFor = (
   tripId: number,
@@ -49,7 +49,7 @@ const requestFor = (
       return {
         method: "DELETE",
         url: `${trip}/attractions/${change.attractionId}`,
-        body: change.confirmedRemoval
+        body: change.itineraryRemoval
       };
     case "arrange":
       return {
@@ -65,7 +65,7 @@ const requestFor = (
           targetGroup: change.targetGroup,
           previousAttractionId: change.previousAttractionId,
           nextAttractionId: change.nextAttractionId,
-          confirmedRemoval: change.confirmedRemoval
+          itineraryRemoval: change.itineraryRemoval
         }
       };
     default: {
@@ -107,7 +107,7 @@ export const savePlanningChange = async (
           false
         );
       }
-      throw new BoardRemovalConfirmationError(
+      throw new BoardRemovalReviewError(
         error.errorMessage ??
           "Review the itinerary consequences before confirming the board change.",
         false

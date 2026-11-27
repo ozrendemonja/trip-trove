@@ -276,11 +276,13 @@ export function TimelineEntry({
             {actions}
           </div>
         </div>
-        {entry.warnings.map((warning) => (
-          <ItineraryWarning key={warning}>
-            {entryWarningLabels[warning]}
-          </ItineraryWarning>
-        ))}
+        {entry.warnings
+          .filter((warning) => warning !== "MISSING_TRANSFER")
+          .map((warning) => (
+            <ItineraryWarning key={warning}>
+              {entryWarningLabels[warning]}
+            </ItineraryWarning>
+          ))}
         {isBriefStop && <Caption1>Brief stop</Caption1>}
         <label htmlFor={lengthId} className={classes.plannedLength}>
           <Caption1>Planned length</Caption1>

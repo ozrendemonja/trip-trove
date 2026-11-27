@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { TripPlanningChange } from "./domain/TripPlanning.types";
 import {
-  BoardRemovalConfirmationError,
+  BoardRemovalReviewError,
   PLANNING_REQUEST_TIMEOUT_MS,
   PlanningSaveError,
   savePlanningChange
@@ -23,7 +23,7 @@ export interface PlanningFeedback {
   message?: string;
   refreshing?: boolean;
   failedChange?: TripPlanningChange;
-  needsRemovalConfirmation?: boolean;
+  needsRemovalReview?: boolean;
   unconfirmed?: boolean;
 }
 
@@ -85,8 +85,7 @@ export const useTripPlanningSave = (
           proposal: { ...proposal, changes: proposal.changes.slice(completed) },
           state: "error",
           failedChange,
-          needsRemovalConfirmation:
-            error instanceof BoardRemovalConfirmationError,
+          needsRemovalReview: error instanceof BoardRemovalReviewError,
           unconfirmed,
           message:
             completed > 0

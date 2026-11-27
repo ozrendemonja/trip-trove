@@ -1,6 +1,10 @@
 import { useCallback, useContext, useState } from "react";
-import type { GetItineraryResponse } from "../../../clients/manager";
-import type { ConfirmedItineraryRemoval } from "../../my-trip/domain/TripPlanning.types";
+import type {
+  GetItineraryResponse,
+  ItineraryTransferDto,
+  ItineraryTransferRemovalResponse
+} from "../../../clients/manager";
+import type { ItineraryRemoval } from "../../my-trip/domain/TripPlanning.types";
 import { fetchTripItinerary } from "../../my-trip/infra/TripApi";
 import {
   TripPlanningWorkspace,
@@ -13,7 +17,12 @@ type Entry = Day["entries"][number];
 
 export interface BoardRemovalSelection {
   attractionIds: number[];
-  entry?: { dayNumber: number; saved: Entry; endDayNumber: number };
+  entry?: {
+    dayNumber: number;
+    saved: Entry;
+    endDayNumber: number;
+    transfers: ItineraryTransferRemovalResponse[];
+  };
 }
 
 interface BoardRemovalProposal {
@@ -31,11 +40,51 @@ export type BoardRemovalPreview = { proposal: BoardRemovalProposal } & (
   | { state: "ready"; selection: BoardRemovalSelection }
 );
 
-export function confirmedRemoval({
+export function itineraryRemovalFor({
   entry
-}: BoardRemovalSelection): ConfirmedItineraryRemoval | undefined {
+}: BoardRemovalSelection): ItineraryRemoval | undefined {
   if (!entry) return undefined;
-  return { entryId: entry.saved.entryId };
+  return {
+    entryId: entry.saved.entryId,
+    ...(entry.transfers.length && {
+      transfersToRemove: entry.transfers.map(({ transfer }) => transfer)
+    })
+  };
+}
+
+export const transferPairKey = ({
+  fromEntryId,
+  toEntryId
+}: ItineraryTransferDto): string => `${fromEntryId}:${toEntryId}`;
+
+export function excludingDisconnectedTransfers(
+  itineraryRemoval: ItineraryRemoval | undefined,
+  disconnected: ReadonlySet<string>
+): ItineraryRemoval | undefined {
+  const transfers = itineraryRemoval?.transfersToRemove;
+  if (!itineraryRemoval || !transfers) return itineraryRemoval;
+  const remaining = transfers.filter(
+    (transfer) => !disconnected.has(transferPairKey(transfer))
+  );
+  return remaining.length === transfers.length
+    ? itineraryRemoval
+    : { entryId: itineraryRemoval.entryId, transfersToRemove: remaining };
+}
+
+function transferConsequences(
+  entries: Entry[],
+  index: number
+): ItineraryTransferRemovalResponse[] {
+  const fromAndTo = [
+    [entries[index - 1], entries[index]],
+    [entries[index], entries[index + 1]]
+  ];
+  return fromAndTo.flatMap(([from, to]) => {
+    const transfer = from?.outgoingTransfer;
+    return transfer && to && transfer.toEntryId === to.entryId
+      ? [{ transfer, fromName: from.name, toName: to.name }]
+      : [];
+  });
 }
 
 function selectionFor(
@@ -52,7 +101,10 @@ function selectionFor(
   }
   const [id] = proposal.attractionIds;
   for (const [index, day] of days.entries()) {
-    const saved = day.entries.find((entry) => entry.attractionId === id);
+    const position = day.entries.findIndex(
+      (entry) => entry.attractionId === id
+    );
+    const saved = day.entries[position];
     if (saved) {
       const endDate = saved.timing.end.slice(0, 10);
       return {
@@ -60,7 +112,8 @@ function selectionFor(
         entry: {
           dayNumber: index + 1,
           saved,
-          endDayNumber: days.findIndex(({ date }) => date === endDate) + 1
+          endDayNumber: days.findIndex(({ date }) => date === endDate) + 1,
+          transfers: transferConsequences(day.entries, position)
         }
       };
     }

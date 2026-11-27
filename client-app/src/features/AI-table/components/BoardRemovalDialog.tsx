@@ -13,6 +13,7 @@ import {
 import type { ReactElement } from "react";
 import { useConfirmDeleteDialogStyles } from "../../../shared/list-element/ui/delete-dialog/DeleteDialog.styles";
 import { formatItineraryDate } from "../../my-trip/Itinerary";
+import { TransfersToRemoveList } from "../../my-trip/ItineraryTransfer";
 import { clockOffset, localClock } from "../../my-trip/itineraryClocks";
 import type { BoardRemovalPreview } from "./useBoardRemovalPreview";
 
@@ -91,6 +92,12 @@ export function BoardRemovalDialog({
                         {entry.saved.fixedStart && " (fixed start)"}
                       </li>
                     </ul>
+                    {entry.transfers.length > 0 && (
+                      <>
+                        <p>These transfers will also be removed:</p>
+                        <TransfersToRemoveList transfers={entry.transfers} />
+                      </>
+                    )}
                   </>
                 )}
                 {proposal.reviewAgain && !entry && (

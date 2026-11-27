@@ -15,7 +15,9 @@ import type {
   GetAttractionResponse,
   GetItineraryResponse,
   GetSearchAttractionResponse,
+  ItineraryTransferDto,
   UpdateItineraryDayNoteRequest,
+  UpdateItineraryTransferRequest,
   UpdateTripAttractionNoteRequest,
   UpdateTripAttractionVisitTimeRequest
 } from "../../clients/manager";
@@ -905,6 +907,198 @@ export const PoolDropOpensTheGapClockAndOnlySavesOnBlur: Story = {
 
     await expectLunaCafeScheduled(canvas, "09:30");
     await expect(compositionWrites).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const SavesAndRemovesATransferWithoutDistance: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = compositionTimeline();
+      const [museum, garden] = saved.days[0].entries;
+      museum.timing.end = "2099-06-10T09:45+02:00";
+      garden.timing.start = "2099-06-10T10:00+02:00";
+      garden.timing.end = "2099-06-10T10:30+02:00";
+      museum.warnings = ["MISSING_TRANSFER"];
+      const url = `${itineraryUrl}/transfers/42/43`;
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(url, (_schema, request) => {
+        const transfer: UpdateItineraryTransferRequest = JSON.parse(
+          request.requestBody
+        );
+        compositionWrites(transfer);
+        museum.outgoingTransfer = {
+          fromEntryId: 42,
+          toEntryId: 43,
+          ...transfer
+        };
+        museum.warnings = [];
+        return new MirageResponse(204);
+      });
+      server.delete(url, () => {
+        museum.outgoingTransfer = undefined;
+        museum.warnings = ["MISSING_TRANSFER"];
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "1 warning remains" })
+    );
+    const warnings = within(
+      await body.findByRole("tabpanel", { name: "Warnings (1)" })
+    );
+    await waitFor(() =>
+      expect(warnings.getByText("Museum to Garden")).toBeVisible()
+    );
+    await expect(warnings.getByText("Missing transfer")).toBeVisible();
+    await user.keyboard("{Escape}");
+
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Add transfer from Museum to Garden"
+      })
+    );
+    const dialog = within(
+      await body.findByRole("dialog", {
+        name: "Transfer from Museum to Garden"
+      })
+    );
+    await expect(
+      dialog.queryByLabelText("Distance (km)")
+    ).not.toBeInTheDocument();
+    await user.selectOptions(
+      dialog.getByRole("combobox", { name: "Mode" }),
+      "WALKING"
+    );
+    await user.type(dialog.getByRole("textbox", { name: "Minutes" }), "10");
+    await user.type(
+      dialog.getByLabelText("Transfer note"),
+      "Use the side gate"
+    );
+    await user.click(dialog.getByRole("button", { name: "Save transfer" }));
+    const edit = await canvas.findByRole("button", {
+      name: "Edit transfer from Museum to Garden"
+    });
+    await expect(compositionWrites).toHaveBeenCalledWith({
+      mode: "WALKING",
+      minutes: 10,
+      note: "Use the side gate"
+    });
+    await expect(edit).toHaveTextContent(/^Walking · 10m$/);
+    await expect(canvas.getByText("5m free")).toBeVisible();
+    await user.click(edit);
+    const reopened = within(
+      await body.findByRole("dialog", {
+        name: "Transfer from Museum to Garden"
+      })
+    );
+    await expect(
+      reopened.getByRole("textbox", { name: "Minutes" })
+    ).toHaveValue("10");
+    await expect(reopened.getByLabelText("Transfer note")).toHaveValue(
+      "Use the side gate"
+    );
+    await user.click(reopened.getByRole("button", { name: "Remove transfer" }));
+    await expect(
+      await canvas.findByRole("button", {
+        name: "Add transfer from Museum to Garden"
+      })
+    ).toHaveTextContent("Missing transfer");
+    await expect(canvas.getByText("15m free")).toBeVisible();
+  }
+};
+
+const museumToGarden: ItineraryTransferDto = {
+  fromEntryId: 42,
+  toEntryId: 43,
+  mode: "WALKING",
+  minutes: 20
+};
+
+export const ListsOnlyTheTransferToRemoveWhenAddingFromThePool: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = compositionTimeline();
+      saved.days[0].entries[0].outgoingTransfer = museumToGarden;
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(schedulingUrl, (_schema, request) => {
+        compositionWrites(JSON.parse(request.requestBody));
+        return new MirageResponse(
+          409,
+          {},
+          {
+            errorCode: "RESOURCE_HAS_DEPENDENCIES",
+            errorMessage:
+              "Review and confirm the transfers this change would remove.",
+            transfersToRemove: [
+              { transfer: museumToGarden, fromName: "Museum", toName: "Garden" }
+            ]
+          }
+        );
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const drag = await canvas.findByTitle("Drag Luna Cafe");
+    const gap = canvas.getByText("1h 10m free");
+    dropItineraryItem(drag, gap);
+    const first = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    await user.click(first.getByRole("button", { name: "Add to day" }));
+    const cancelled = within(await body.findByRole("alertdialog"));
+    await waitFor(() =>
+      expect(cancelled.getByText("Museum to Garden")).toBeVisible()
+    );
+    await user.click(cancelled.getByRole("button", { name: "Cancel" }));
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(gap).toBeVisible();
+
+    dropItineraryItem(drag, gap);
+    const second = within(
+      await canvas.findByRole("form", { name: "Add Luna Cafe" })
+    );
+    await expect(second.getByLabelText("Start clock")).toHaveValue("09:30");
+    await user.click(second.getByRole("button", { name: "Add to day" }));
+    const confirmation = within(await body.findByRole("alertdialog"));
+    const schedule = {
+      attractionId: 8,
+      date: "2099-06-10",
+      startTime: "09:30"
+    };
+    await expect(compositionWrites).toHaveBeenLastCalledWith(schedule);
+
+    server.post(schedulingUrl, (_schema, request) => {
+      compositionWrites(JSON.parse(request.requestBody));
+      const scheduled = timelineWithScheduledLunaCafe(compositionTimeline(), {
+        start: "09:30",
+        end: "10:00",
+        index: 1
+      });
+      server.get(itineraryUrl, () => scheduled, { timing: 0 });
+      return new MirageResponse(204);
+    });
+    await user.click(
+      confirmation.getByRole("button", { name: "Confirm and add to day" })
+    );
+    await expectLunaCafeScheduled(canvas, "09:30");
+    await expect(compositionWrites).toHaveBeenLastCalledWith({
+      ...schedule,
+      transfersToRemove: [museumToGarden]
+    });
   }
 };
 
@@ -4226,7 +4420,7 @@ export const RemovingAScheduledAttractionRequiresItsDayPreview: Story = {
   }
 };
 
-export const ExcludingAScheduledAttractionRequiresAChangedPreviewToBeConfirmed: Story =
+export const ExcludingAScheduledAttractionRequiresReviewingTheChangedPreview: Story =
   {
     parameters: { savedAttractions: SAVED_ATTRACTIONS },
     play: async ({ canvasElement }) => {
@@ -4297,7 +4491,7 @@ export const ExcludingAScheduledAttractionRequiresAChangedPreviewToBeConfirmed: 
         targetGroup: "EXCLUDED",
         previousAttractionId: null,
         nextAttractionId: null,
-        confirmedRemoval: { entryId: 21 }
+        itineraryRemoval: { entryId: 21 }
       });
       server.put(
         moveUrl,
@@ -4319,7 +4513,7 @@ export const ExcludingAScheduledAttractionRequiresAChangedPreviewToBeConfirmed: 
         targetGroup: "EXCLUDED",
         previousAttractionId: null,
         nextAttractionId: null,
-        confirmedRemoval: { entryId: 22 }
+        itineraryRemoval: { entryId: 22 }
       });
     }
   };
@@ -5366,6 +5560,83 @@ export const LeavesOnlyTheUnsavedPrepareRemovalBehind: Story = {
     );
     await expect(await canvas.findByText("My Trips list page")).toBeVisible();
     await expect(removals).toHaveBeenCalledTimes(2);
+  }
+};
+
+export const PrepareDisclosesAndRemovesASharedTransferOnlyOnce: Story = {
+  parameters: { savedAttractions: casinoAndGardenBoard },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const parent = overlay(canvasElement);
+    const user = setupUser();
+    const saved = itineraryFixture("2099-06-10", "2099-06-24");
+    const transfer: ItineraryTransferDto = {
+      fromEntryId: 21,
+      toEntryId: 22,
+      mode: "BUS",
+      minutes: 25
+    };
+    saved.days[1].entries = [
+      { ...savedCasinoEntry, outgoingTransfer: transfer },
+      {
+        ...savedCasinoEntry,
+        entryId: 22,
+        attractionId: 5,
+        name: "Garden",
+        timing: {
+          ...savedCasinoEntry.timing,
+          start: "2099-06-11T11:00+02:00",
+          end: "2099-06-11T11:45+02:00"
+        }
+      }
+    ];
+    server.get(itineraryUrl, () => saved, { timing: 0 });
+    const removals = fn();
+    server.delete(
+      "http://localhost:8080/trips/1/attractions/:attractionId",
+      (_schema, request) => {
+        removals(request.params.attractionId, JSON.parse(request.requestBody));
+        saved.days[1].entries.shift();
+        return new MirageResponse(204);
+      },
+      { timing: 0 }
+    );
+
+    await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "Remove Casino of Monte-Carlo from trip"
+      })
+    );
+    const casino = within(await parent.findByRole("alertdialog"));
+    await waitFor(() =>
+      expect(casino.getByText("Casino of Monte-Carlo to Garden")).toBeVisible()
+    );
+    await expect(casino.getByText("Bus · 25m")).toBeVisible();
+    await user.click(casino.getByRole("button", { name: "Delete" }));
+
+    await user.click(
+      await canvas.findByRole("button", { name: "Remove Garden from trip" })
+    );
+    const garden = within(await parent.findByRole("alertdialog"));
+    await waitFor(() =>
+      expect(garden.getByText("Casino of Monte-Carlo to Garden")).toBeVisible()
+    );
+    await user.click(garden.getByRole("button", { name: "Delete" }));
+    await expect(removals).not.toHaveBeenCalled();
+
+    await user.click(
+      await canvas.findByRole("button", { name: "Save to trip (2)" })
+    );
+    await waitFor(() => expect(removals).toHaveBeenCalledTimes(2));
+    await expect(removals).toHaveBeenNthCalledWith(1, "0", {
+      entryId: 21,
+      transfersToRemove: [transfer]
+    });
+    await expect(removals).toHaveBeenNthCalledWith(2, "5", {
+      entryId: 22,
+      transfersToRemove: []
+    });
   }
 };
 

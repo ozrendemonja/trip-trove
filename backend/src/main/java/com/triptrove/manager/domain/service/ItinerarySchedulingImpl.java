@@ -57,6 +57,12 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
                 attraction.startOffset());
         validateProposedIntervalFitsItinerary(proposedInterval, itinerary);
 
+        var lastPosition = day.lastPosition();
+        var position = day.firstPositionAfter(proposedInterval).orElse(lastPosition + 1);
+        // The unchanged visits bound every retained transfer. Only the transfer across the insertion can be lost.
+        var disconnectedTransfers = day.transfersToRemoveForInsertionAt(position);
+        ItineraryTransferRemovalSummary.requireListed(disconnectedTransfers, attraction.transfersToRemove());
+
         if (itinerary.timeZone() == null) {
             itineraries.getReferenceById(tripId).initializeTimeZone(itineraryTimeZone);
         }
@@ -64,7 +70,13 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
             tripAttractions.findById(tripAttraction.tripAttractionId()).orElseThrow().setVisitTime(attraction.visitDuration());
             tripAttractions.flush(); // Include the corrected source duration in the insert-time baseline.
         }
-        var position = prepareInsertionPosition(tripId, day, proposedInterval);
+        for (var removal : disconnectedTransfers) {
+            var transfer = removal.transfer();
+            if (entries.disconnectTransfer(tripId, transfer.fromEntryId(), transfer.toEntryId()) != 1) {
+                throw new IllegalStateException("Could not disconnect listed transfer " + transfer.fromEntryId());
+            }
+        }
+        makeRoomForInsertion(tripId, day.date(), position, lastPosition);
         entries.save(new ItineraryEntry(tripId, attractionId, position, proposedInterval));
     }
 
@@ -123,15 +135,12 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         });
     }
 
-    private int prepareInsertionPosition(Long tripId, ItineraryDaySummary day, ItineraryTiming proposedInterval) {
-        var lastPosition = day.lastPosition();
-        var position = day.firstPositionAfter(proposedInterval).orElse(lastPosition + 1);
+    private void makeRoomForInsertion(Long tripId, LocalDate date, int position, int lastPosition) {
         if (position <= lastPosition) {
             // Move the suffix past the current tail before shifting it back, so unique positions never collide.
             var offset = lastPosition - position + 2;
-            entries.shiftPositionsFrom(tripId, day.date(), position, offset);
-            entries.shiftPositionsFrom(tripId, day.date(), position + offset, 1 - offset);
+            entries.shiftPositionsFrom(tripId, date, position, offset);
+            entries.shiftPositionsFrom(tripId, date, position + offset, 1 - offset);
         }
-        return position;
     }
 }

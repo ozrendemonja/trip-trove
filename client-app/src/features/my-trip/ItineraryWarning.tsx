@@ -9,7 +9,8 @@ export const entryWarningLabels: Record<EntryWarning, string> = {
   PERMANENTLY_CLOSED: "Permanently closed",
   PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE:
     "Planned length is outside the current visit duration range.",
-  UNUSABLE_SOURCE_DURATION: "Missing or invalid visit duration."
+  UNUSABLE_SOURCE_DURATION: "Missing or invalid visit duration.",
+  MISSING_TRANSFER: "Missing transfer"
 };
 
 export const warningCountLabel = (count: number): string =>

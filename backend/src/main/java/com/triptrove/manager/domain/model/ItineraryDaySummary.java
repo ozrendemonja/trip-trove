@@ -19,4 +19,16 @@ public record ItineraryDaySummary(LocalDate date, List<ItinerarySchedulingEntryS
                 .filter(entry -> TIMELINE_ORDER.compare(entry.timing(), proposedInterval) > 0)
                 .mapToInt(ItinerarySchedulingEntrySummary::position).min();
     }
+
+    public List<ItineraryTransferRemovalSummary> transfersToRemoveForInsertionAt(int position) {
+        var destination = entries.stream().filter(entry -> entry.position() == position).findFirst();
+        if (destination.isEmpty()) {
+            return List.of();
+        }
+        var to = destination.get();
+        return entries.stream()
+                .filter(entry -> ItineraryTransfer.between(entry.outgoingTransfer(), to.entryId()) != null)
+                .map(from -> new ItineraryTransferRemovalSummary(from.entryId(), from.name(), to.name(), from.outgoingTransfer()))
+                .toList();
+    }
 }

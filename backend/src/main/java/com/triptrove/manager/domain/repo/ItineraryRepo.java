@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
@@ -52,8 +53,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
 
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItinerarySummaryRow(
-                trip.from, trip.to, itinerary.timeZone, day.date, entry.attractionId, attraction.name,
-                entry.position, entry.fixedStart, entry.timing)
+                trip.from, trip.to, itinerary.timeZone, day.date, entry.id, entry.attractionId, attraction.name,
+                entry.position, entry.fixedStart, entry.timing, entry.outgoingTransfer)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN itinerary.days day
@@ -74,8 +75,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             if (row.itineraryDate() != null) {
                 var entries = entriesByDate.computeIfAbsent(row.itineraryDate(), ignored -> new ArrayList<>());
                 if (row.attractionId() != null) {
-                    entries.add(new ItinerarySchedulingEntrySummary(row.attractionId(), row.attractionName(),
-                            row.position(), row.fixedStart(), row.timing()));
+                    entries.add(new ItinerarySchedulingEntrySummary(row.entryId(), row.attractionId(), row.attractionName(),
+                            row.position(), row.fixedStart(), row.timing(), row.outgoingTransfer()));
                 }
             }
         }
@@ -107,7 +108,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
                 tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime, tripAttraction.note,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
-                entry.timing, entry.includedInLastCheck, entry.startChangedSinceCheck,
+                entry.timing, entry.includedInLastCheck, entry.outgoingTransfer, entry.transferChangedSinceCheck,
+                entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
                 entry.followingStartsPushedSinceCheck,
                 removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
@@ -172,17 +174,22 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
 
     private static List<ItineraryDetails.Day> itineraryDaysInDateOrder(List<ItineraryAndBoardRow> itineraryRows,
             SequencedMap<Long, ItineraryAndBoardRow> daysById) {
-        var entriesByDate = new HashMap<LocalDate, List<AttractionEntrySummary>>();
+        var entriesByDate = new HashMap<LocalDate, List<ItineraryAndBoardRow>>();
         for (var row : itineraryRows) {
             if (row.entryId() != null) {
-                entriesByDate.computeIfAbsent(row.entryDate(), ignored -> new ArrayList<>()).add(row.toEntrySummary());
+                entriesByDate.computeIfAbsent(row.entryDate(), ignored -> new ArrayList<>()).add(row);
             }
         }
         return daysById.sequencedValues().stream()
                 .map(day -> new ItineraryDetails.Day(day.itineraryDayId(), day.itineraryDate(), day.dayNote(),
-                        entriesByDate.getOrDefault(day.itineraryDate(), List.of()).stream()
-                                .sorted(Comparator.comparingInt(AttractionEntrySummary::position))
-                                .toList()))
+                        entriesInPathOrder(entriesByDate.getOrDefault(day.itineraryDate(), List.of()))))
+                .toList();
+    }
+
+    private static List<AttractionEntrySummary> entriesInPathOrder(List<ItineraryAndBoardRow> rows) {
+        var ordered = rows.stream().sorted(Comparator.comparingInt(ItineraryAndBoardRow::entryPosition)).toList();
+        return IntStream.range(0, ordered.size())
+                .mapToObj(i -> ordered.get(i).toEntrySummary(i + 1 < ordered.size() ? ordered.get(i + 1).entryId() : null))
                 .toList();
     }
 

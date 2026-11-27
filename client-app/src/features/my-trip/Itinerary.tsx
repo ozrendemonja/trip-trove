@@ -34,6 +34,8 @@ import {
 } from "react";
 import type {
   GetItineraryResponse,
+  ItineraryTransferDto,
+  ItineraryTransferRemovalResponse,
   MoveItineraryEntryRequest
 } from "../../clients/manager";
 import {
@@ -44,6 +46,11 @@ import { AttractionFactsDialog } from "./AttractionFactsDialog";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
 import { DayNoteEditor, ItineraryDayNote } from "./ItineraryDayNote";
 import { ItineraryWarning, warningCountLabel } from "./ItineraryWarning";
+import {
+  TransferEditor,
+  TransferLine,
+  TransfersToRemoveDialog
+} from "./ItineraryTransfer";
 import {
   ItineraryEntryActions,
   MoveStartChoice
@@ -100,6 +107,14 @@ type ScheduledEntryTarget = ItineraryTarget & {
 
 type Day = GetItineraryResponse["days"][number];
 type Entry = Day["entries"][number];
+type TransferRemovalChoice = {
+  entry: Entry;
+  day: Day;
+  transfers: ItineraryTransferRemovalResponse[];
+} & (
+  { action: "move"; position: MoveItineraryEntryRequest } | { action: "remove" }
+);
+
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
 
 function locateAttraction(
@@ -567,6 +582,13 @@ export const ItineraryContent = ({
     position: MoveItineraryEntryRequest;
     offsets: string[];
   }>();
+  const [transferRemoval, setTransferRemoval] =
+    useState<TransferRemovalChoice>();
+  const [transferEdit, setTransferEdit] = useState<{
+    from: Entry;
+    to: Entry;
+    trigger: HTMLButtonElement;
+  }>();
   const cancelMoveChoice = (): void => {
     if (!moveChoice) return;
     focusItineraryTarget({
@@ -577,6 +599,32 @@ export const ItineraryContent = ({
     timingEditing.discardRejection(moveChoice.entry.entryId, "move");
   };
   usePlanningDraft(!!moveChoice, cancelMoveChoice);
+  const cancelTransferRemoval = (): void => {
+    if (!transferRemoval) return;
+    const { entry, day, action } = transferRemoval;
+    timingEditing.discardRejection(entry.entryId, action);
+    focusItineraryTarget({ date: day.date, entryId: entry.entryId });
+    setTransferRemoval(undefined);
+  };
+  usePlanningDraft(!!transferRemoval, cancelTransferRemoval);
+  const closeTransferEdit = (): void => {
+    if (
+      !transferEdit ||
+      pending?.activity ||
+      pending?.recovery === "unconfirmed"
+    )
+      return;
+    const { from, trigger } = transferEdit;
+    timingEditing.discardRejection(from.entryId, "transfer");
+    setTransferEdit(undefined);
+    requestAnimationFrame(() => {
+      if (trigger.isConnected) trigger.focus();
+    });
+  };
+  usePlanningDraft(!!transferEdit, closeTransferEdit);
+  const interactionBlocked =
+    writeBlocked || !!moveChoice || !!transferRemoval || !!transferEdit;
+
   const move = (entry: Entry, position: MoveItineraryEntryRequest): void => {
     if (writeBlocked || (moveChoice && position.startOffset === undefined))
       return;
@@ -627,29 +675,64 @@ export const ItineraryContent = ({
           });
           return;
         }
+        if (error.transfersToRemove) {
+          setTransferRemoval({
+            action: "move",
+            entry,
+            day: source,
+            position,
+            transfers: error.transfersToRemove
+          });
+          return;
+        }
         focusItineraryTarget({ date: source.date, entryId });
       });
   };
-  const remove = (entry: Entry, day: Day): void => {
+  const remove = (
+    entry: Entry,
+    day: Day,
+    transfersToRemove?: ItineraryTransferDto[]
+  ): void => {
     if (writeBlocked) return;
     setActionStatus("");
     void timingEditing
-      .save(entry.entryId, { action: "remove" }, (saved) => {
-        const present = saved.days.find((candidate) =>
-          candidate.entries.some((item) => item.entryId === entry.entryId)
-        );
-        if (present) {
-          focusItineraryTarget({ date: present.date, entryId: entry.entryId });
-          setActionStatus(
-            `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
+      .save(
+        entry.entryId,
+        {
+          action: "remove",
+          removal: transfersToRemove && {
+            transfersToRemove
+          }
+        },
+        (saved) => {
+          const present = saved.days.find((candidate) =>
+            candidate.entries.some((item) => item.entryId === entry.entryId)
           );
-          return;
+          if (present) {
+            focusItineraryTarget({
+              date: present.date,
+              entryId: entry.entryId
+            });
+            setActionStatus(
+              `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
+            );
+            return;
+          }
+          focusItineraryTarget({ date: day.date });
+          setActionStatus(`${entry.name} removed from the itinerary.`);
         }
-        focusItineraryTarget({ date: day.date });
-        setActionStatus(`${entry.name} removed from the itinerary.`);
-      })
+      )
       .then((error) => {
         if (!error) return;
+        if (error.transfersToRemove) {
+          setTransferRemoval({
+            action: "remove",
+            entry,
+            day,
+            transfers: error.transfersToRemove
+          });
+          return;
+        }
         focusItineraryTarget({ date: day.date, entryId: entry.entryId });
       });
   };
@@ -670,7 +753,7 @@ export const ItineraryContent = ({
     (day) => day.date === dragSourceDate || visibleDays.includes(day)
   );
   const dragOver = (event: DragEvent<HTMLElement>, day: Day): void => {
-    if (writeBlocked || moveChoice || !dragged) return;
+    if (interactionBlocked || !dragged) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = dragged.kind === "pool" ? "copy" : "move";
     const slot = dropSlot(event, day);
@@ -679,7 +762,7 @@ export const ItineraryContent = ({
     }
   };
   const drop = (event: DragEvent<HTMLElement>, day: Day): void => {
-    if (writeBlocked || moveChoice || !dragged) return;
+    if (interactionBlocked || !dragged) return;
     event.preventDefault();
     const slot = dropSlot(event, day);
     if (dragged.kind === "pool") {
@@ -753,6 +836,44 @@ export const ItineraryContent = ({
           }}
         />
       )}
+      {transferEdit && (
+        <TransferEditor
+          from={transferEdit.from}
+          to={transferEdit.to}
+          editing={timingEditing}
+          onClose={closeTransferEdit}
+          onSaved={setActionStatus}
+        />
+      )}
+      {draft?.transfersToRemove && (
+        <TransfersToRemoveDialog
+          transfers={draft.transfersToRemove}
+          scheduling
+          blocked={prepareBlocked || !!draft.activity}
+          onCancel={scheduling.cancel}
+          onConfirm={() => void scheduling.submitWithTransfersToRemove()}
+        />
+      )}
+      {transferRemoval && (
+        <TransfersToRemoveDialog
+          transfers={transferRemoval.transfers}
+          blocked={writeBlocked}
+          onCancel={cancelTransferRemoval}
+          onConfirm={() => {
+            const { entry, day, transfers } = transferRemoval;
+            const transfersToRemove = transfers.map(({ transfer }) => transfer);
+            setTransferRemoval(undefined);
+            if (transferRemoval.action === "move") {
+              move(entry, {
+                ...transferRemoval.position,
+                transfersToRemove
+              });
+            } else {
+              remove(entry, day, transfersToRemove);
+            }
+          }}
+        />
+      )}
       {feedback && <Text role="status">{feedback}</Text>}
       <Text
         role="status"
@@ -762,7 +883,12 @@ export const ItineraryContent = ({
       </Text>
       {rejections.map(({ entryId, edit, message, inspected }) => {
         const kind = editKind(edit);
-        if (kind === "move" && moveChoice?.entry.entryId === entryId)
+        if (
+          (kind === "move" && moveChoice?.entry.entryId === entryId) ||
+          (kind === transferRemoval?.action &&
+            transferRemoval.entry.entryId === entryId) ||
+          (kind === "transfer" && transferEdit?.from.entryId === entryId)
+        )
           return null;
         const composition = kind === "move" || kind === "remove";
         const visible = visibleDays.some((day) =>
@@ -786,7 +912,7 @@ export const ItineraryContent = ({
           </MessageBar>
         );
       })}
-      {pending?.recovery && (
+      {pending?.recovery && !transferEdit && (
         <MessageBar intent="warning">
           <MessageBarBody>
             {pending.recovery === "unconfirmed"
@@ -820,12 +946,18 @@ export const ItineraryContent = ({
           attractions={unscheduledAttractions}
           boardPlaceOrder={boardPlaceOrder}
           prepareBlocked={
-            prepareBlocked || !!draft || !!pending || !!dayNotes.draft
+            prepareBlocked ||
+            !!draft ||
+            !!pending ||
+            !!dayNotes.draft ||
+            !!moveChoice ||
+            !!transferRemoval ||
+            !!transferEdit
           }
           onPrepare={onPrepare}
           days={days}
           formatDate={formatItineraryDate}
-          scheduleBlocked={writeBlocked}
+          scheduleBlocked={interactionBlocked}
           onSchedule={scheduling.choose}
           onGrab={setDragged}
           onRelease={endDrag}
@@ -905,7 +1037,7 @@ export const ItineraryContent = ({
                 <ItineraryDayNote
                   subject={label}
                   value={day.note}
-                  blocked={writeBlocked || !!moveChoice}
+                  blocked={interactionBlocked}
                   saved={dayNotes.savedDate === day.date}
                   onEdit={(button) =>
                     dayNotes.open(day.date, label, day.note, button)
@@ -919,15 +1051,29 @@ export const ItineraryContent = ({
                         ? elapsedMinutes(
                             previous.timing.end,
                             entry.timing.start
-                          )
+                          ) - (previous.outgoingTransfer?.minutes ?? 0)
                         : 0;
                       return (
                         <Fragment key={entry.entryId}>
                           <li
                             data-itinerary-slot={index}
-                            aria-hidden={gap <= 0 || undefined}
+                            aria-hidden={!previous || undefined}
                             className={slotClass(index, gap > 0)}
                           >
+                            {previous && (
+                              <TransferLine
+                                from={previous}
+                                to={entry}
+                                blocked={interactionBlocked}
+                                onEdit={(trigger) =>
+                                  setTransferEdit({
+                                    from: previous,
+                                    to: entry,
+                                    trigger
+                                  })
+                                }
+                              />
+                            )}
                             {gap > 0 && (
                               <Caption1>{freeTimeLabel(gap)}</Caption1>
                             )}
@@ -936,7 +1082,7 @@ export const ItineraryContent = ({
                             entry={entry}
                             index={index}
                             editing={timingEditing}
-                            blocked={writeBlocked}
+                            blocked={interactionBlocked}
                             onGrab={setDragged}
                             onRelease={endDrag}
                             onOpenFacts={openFacts}
@@ -946,7 +1092,7 @@ export const ItineraryContent = ({
                                 day={day}
                                 index={index}
                                 days={days}
-                                blocked={writeBlocked}
+                                blocked={interactionBlocked}
                                 formatDate={formatItineraryDate}
                                 onMove={(position) => move(entry, position)}
                                 onRemove={() => remove(entry, day)}

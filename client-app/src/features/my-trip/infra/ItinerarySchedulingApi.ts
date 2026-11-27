@@ -1,19 +1,23 @@
 import {
   moveItineraryEntry,
   removeItineraryEntry,
+  removeItineraryTransfer,
   scheduleAttraction,
   updateItineraryDayNote,
   updateItineraryEntryEnd,
   updateItineraryEntryFixedStart,
   updateItineraryEntryPlannedLength,
   updateItineraryEntryStart,
+  updateItineraryTransfer,
   type ErrorResponse,
   type MoveItineraryEntryRequest,
+  type RemoveItineraryEntryRequest,
   type ScheduleAttractionRequest,
   type UpdateItineraryEntryEndRequest,
   type UpdateItineraryEntryFixedStartRequest,
   type UpdateItineraryEntryPlannedLengthRequest,
-  type UpdateItineraryEntryStartRequest
+  type UpdateItineraryEntryStartRequest,
+  type UpdateItineraryTransferRequest
 } from "../../../clients/manager";
 import {
   isUnconfirmedSave,
@@ -46,7 +50,8 @@ export class EntrySaveError extends PlanningSaveError {
   constructor(
     message: string,
     unconfirmed: boolean,
-    readonly schedulingInputs: ErrorResponse["schedulingInputs"]
+    readonly schedulingInputs: ErrorResponse["schedulingInputs"],
+    readonly transfersToRemove: ErrorResponse["transfersToRemove"]
   ) {
     super(message, unconfirmed);
   }
@@ -61,13 +66,19 @@ export type TimingEdit =
 export type EntryEdit =
   | TimingEdit
   | { action: "move"; position: MoveItineraryEntryRequest }
-  | { action: "remove" };
+  | { action: "remove"; removal?: RemoveItineraryEntryRequest }
+  | {
+      action: "transfer";
+      toEntryId: number;
+      transfer?: UpdateItineraryTransferRequest;
+    };
 
 export class EntryEditError extends PlanningSaveError {
   constructor(
     message: string,
     unconfirmed: boolean,
-    readonly moveOffsets?: string[]
+    readonly moveOffsets?: string[],
+    readonly transfersToRemove?: ErrorResponse["transfersToRemove"]
   ) {
     super(message, unconfirmed);
   }
@@ -85,9 +96,28 @@ export async function saveEntryEdit(
   };
   const result = (() => {
     if ("action" in edit) {
-      return edit.action === "move"
-        ? moveItineraryEntry({ ...options, body: edit.position })
-        : removeItineraryEntry(options);
+      switch (edit.action) {
+        case "move":
+          return moveItineraryEntry({ ...options, body: edit.position });
+        case "remove":
+          return removeItineraryEntry({ ...options, body: edit.removal });
+        case "transfer": {
+          const transferOptions = {
+            ...options,
+            path: {
+              id: tripId,
+              fromEntryId: entryId,
+              toEntryId: edit.toEntryId
+            }
+          };
+          return edit.transfer
+            ? updateItineraryTransfer({
+                ...transferOptions,
+                body: edit.transfer
+              })
+            : removeItineraryTransfer(transferOptions);
+        }
+      }
     }
     if ("startTime" in edit)
       return updateItineraryEntryStart({ ...options, body: edit });
@@ -102,7 +132,8 @@ export async function saveEntryEdit(
     throw new EntryEditError(
       error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
       isUnconfirmedSave(response),
-      error?.moveStartChoices?.offsets
+      error?.moveStartChoices?.offsets,
+      error?.transfersToRemove
     );
   }
 }
@@ -124,7 +155,8 @@ export async function saveEntry(
       isUnconfirmedSave(response),
       response?.status === 400 && Array.isArray(inputs?.requiredInputs)
         ? inputs
-        : undefined
+        : undefined,
+      error?.transfersToRemove
     );
   }
 }

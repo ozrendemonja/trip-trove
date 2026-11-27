@@ -8,6 +8,8 @@ import com.triptrove.manager.domain.model.ItineraryDetails.EntryWarning;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryTiming;
+import com.triptrove.manager.domain.model.ItineraryTransfer;
+import com.triptrove.manager.domain.model.ItineraryTransferSummary;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
 import com.triptrove.manager.domain.model.VisitDuration;
@@ -28,6 +30,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    String workingHours, String visitDuration, String tripNote, LocalDateTime permanentlyClosedAt,
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
                                    ItineraryTiming entryTiming, Boolean entryIncludedInLastCheck,
+                                   ItineraryTransfer entryTransfer, Boolean transferChangedSinceCheck,
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
                                    Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
                                    Boolean followingStartsPushedSinceCheck,
@@ -55,14 +58,18 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                 category, workingHours, visitDuration, tripNote);
     }
 
-    AttractionEntrySummary toEntrySummary() {
+    AttractionEntrySummary toEntrySummary(Long nextEntryId) {
+        if (entryTransfer != null && !entryTransfer.toEntryId().equals(nextEntryId)) {
+            throw new IllegalStateException("Saved transfer does not connect neighbouring entries: " + entryId);
+        }
         return new AttractionEntrySummary(entryId, attractionId, attractionName, boardColumn, mustVisit,
                 category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote,
-                entryWarnings());
+                entryTransfer == null ? null : new ItineraryTransferSummary(entryId, entryTransfer),
+                entryWarnings(nextEntryId != null && entryTransfer == null));
     }
 
-    private List<EntryWarning> entryWarnings() {
-        var warnings = new ArrayList<EntryWarning>(2);
+    private List<EntryWarning> entryWarnings(boolean missingTransfer) {
+        var warnings = new ArrayList<EntryWarning>(3);
         if (permanentlyClosedAt != null) {
             warnings.add(EntryWarning.PERMANENTLY_CLOSED);
         }
@@ -71,6 +78,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
             warnings.add(EntryWarning.UNUSABLE_SOURCE_DURATION);
         } else if (!sourceRange.get().contains(entryTiming.plannedMinutes())) {
             warnings.add(EntryWarning.PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE);
+        }
+        if (missingTransfer) {
+            warnings.add(EntryWarning.MISSING_TRANSFER);
         }
         return List.copyOf(warnings);
     }
@@ -86,7 +96,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     }
 
     private List<ChangeNoticeSummary.Reason> entryChangeReasons() {
-        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(6);
+        var reasons = new ArrayList<ChangeNoticeSummary.Reason>(7);
         if (!entryIncludedInLastCheck) {
             reasons.add(ATTRACTION_ADDED);
         }
@@ -104,6 +114,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         }
         if (followingStartsPushedSinceCheck) {
             reasons.add(FOLLOWING_STARTS_PUSHED);
+        }
+        if (transferChangedSinceCheck) {
+            reasons.add(TRANSFER_CHANGED);
         }
         return List.copyOf(reasons);
     }

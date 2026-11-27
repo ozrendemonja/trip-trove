@@ -5,6 +5,8 @@ import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "itinerary_entry")
 public class ItineraryEntry {
@@ -26,6 +28,13 @@ public class ItineraryEntry {
     @Embedded
     @Getter
     private ItineraryTiming timing;
+
+    @Embedded
+    @Getter
+    private ItineraryTransfer outgoingTransfer;
+
+    @Column(name = "transfer_changed_since_check", nullable = false)
+    private boolean transferChangedSinceCheck;
 
     @Column(name = "fixed_start", nullable = false)
     @Getter
@@ -68,6 +77,13 @@ public class ItineraryEntry {
         if (fixedStart != fixed) {
             fixedStart = fixed;
             fixedStartChangedSinceCheck = true;
+        }
+    }
+
+    public void changeOutgoingTransfer(ItineraryTransfer replacement) {
+        if (!Objects.equals(outgoingTransfer, replacement)) {
+            outgoingTransfer = replacement;
+            transferChangedSinceCheck = true;
         }
     }
 

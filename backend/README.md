@@ -88,6 +88,15 @@ move, clock, length and start-lock notices appear only after a check. Removing
 an entry ends source tracking; after a check its removal keeps the label and
 last day but no entry link.
 
+Each saved entry also includes a `warnings` array, separate from change
+notices. Permanent closure keeps existing entries editable and movable, but
+prevents new entries for the attraction and excludes it from unscheduled
+attractions. Reopening it never restores removed entries. An out-of-range
+planned length, or a missing or invalid source visit duration, warns without
+changing saved timing. These conditions are derived by the same one-SELECT
+itinerary read. A manual check can accept them without fixing them: warnings
+remain visible, and correcting a condition is a new change to check.
+
 `PUT /trips/{id}/itinerary/entries/{entryId}/fixed-start` takes
 `{"fixedStart":true}` to lock or `{"fixedStart":false}` to unlock a start.
 It returns `204` with the itinerary `Location` and does not change the

@@ -78,13 +78,15 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryTimingResponse timing,
             String workingHours,
             String visitDuration,
-            String tripNote) {
+            String tripNote,
+            @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Current conditions that persist until corrected.")
+            List<ItineraryDetails.EntryWarning> warnings) {
         private static AttractionEntry from(ItineraryDetails.AttractionEntrySummary entry) {
             return new AttractionEntry(entry.entryId(), entry.attractionId(), entry.name(),
                     TripAttractionGroupDTO.valueOf(entry.attractionGroup().name()), entry.mustVisit(),
                     AttractionCategoryResponse.from(entry.category()), entry.fixedStart(),
                     ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(),
-                    entry.tripNote());
+                    entry.tripNote(), entry.warnings());
         }
     }
 

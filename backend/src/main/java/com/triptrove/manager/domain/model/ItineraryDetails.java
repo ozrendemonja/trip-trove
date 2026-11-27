@@ -18,6 +18,10 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
         NOT_YET_CHECKED, MANUALLY_CHECKED, CHANGED_SINCE_LAST_CHECK
     }
 
+    public enum EntryWarning {
+        PERMANENTLY_CLOSED, PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE, UNUSABLE_SOURCE_DURATION
+    }
+
     public record ChangeNoticeSummary(Long entryId, String subject, LocalDate date, List<Reason> reasons,
                                       SourceBaseline sourceBaseline, List<WatchedSourceChangeSummary> sourceChanges) {
         public enum Reason {
@@ -36,7 +40,8 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
     public record AttractionEntrySummary(long entryId, long attractionId, String name, TripAttractionGroup attractionGroup,
                                          boolean mustVisit, AttractionCategory category, int position,
                                          boolean fixedStart, ItineraryTiming timing,
-                                         String workingHours, String visitDuration, String tripNote) {
+                                         String workingHours, String visitDuration, String tripNote,
+                                         List<EntryWarning> warnings) {
     }
 
     public record UnscheduledAttractionSummary(Long attractionId, String name, String place,

@@ -18,9 +18,14 @@ import {
   makeStyles,
   shorthands,
   tokens,
-  useId
+  useId,
+  useModalAttributes
 } from "@fluentui/react-components";
-import { Alert16Regular, ArrowClockwise16Regular } from "@fluentui/react-icons";
+import {
+  Alert16Regular,
+  ArrowClockwise16Regular,
+  Warning16Regular
+} from "@fluentui/react-icons";
 import { useState, type ReactElement } from "react";
 import type {
   ChangeNotice,
@@ -32,8 +37,14 @@ import {
   readableFactValue,
   recordedFactValue
 } from "./AttractionFactsDialog";
-import { formatItineraryDate } from "./Itinerary";
+import { formatItineraryDate, type ItineraryTarget } from "./Itinerary";
 import { useClasses as useItineraryStyles } from "./Itinerary.styles";
+import {
+  entryWarningLabels,
+  ItineraryWarning,
+  warningCountLabel,
+  type EntryWarning
+} from "./ItineraryWarning";
 import type { useItineraryCheck } from "./useItineraryCheck";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
@@ -147,6 +158,61 @@ const useStyles = makeStyles({
   }
 });
 
+type DetailTab = "changes" | "warnings";
+
+type WarningRow = {
+  entryId: number;
+  date: string;
+  subject: string;
+  warning: EntryWarning;
+};
+
+const warningRows = (itinerary?: GetItineraryResponse): WarningRow[] =>
+  itinerary?.days.flatMap((day) =>
+    day.entries.flatMap((entry) =>
+      entry.warnings.map((warning) => ({
+        entryId: entry.entryId,
+        date: day.date,
+        subject: entry.name,
+        warning
+      }))
+    )
+  ) ?? [];
+
+function WarningRows({
+  rows,
+  onJump,
+  jumpBlocked
+}: {
+  rows: WarningRow[];
+  onJump?: (target: ItineraryTarget) => void;
+  jumpBlocked?: boolean;
+}): ReactElement {
+  const classes = useStyles();
+  return (
+    <ul className={classes.notices}>
+      {rows.map((row) => (
+        <li className={classes.notice} key={`${row.entryId}:${row.warning}`}>
+          <Text weight="semibold">{row.subject}</Text>
+          <Caption1>{formatItineraryDate(row.date)}</Caption1>
+          <ItineraryWarning>{entryWarningLabels[row.warning]}</ItineraryWarning>
+          {onJump && (
+            <DialogTrigger action="close" disableButtonEnhancement>
+              <Button
+                size="small"
+                disabledFocusable={jumpBlocked}
+                onClick={() => onJump(row)}
+              >
+                Go to entry
+              </Button>
+            </DialogTrigger>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 interface Props {
   saved?: GetItineraryResponse;
   failed: boolean;
@@ -155,7 +221,7 @@ interface Props {
   unavailableReason?: string;
   jumpBlocked: boolean;
   check: ReturnType<typeof useItineraryCheck>;
-  onJump: (notice: ChangeNotice) => void;
+  onJump: (target: ItineraryTarget) => void;
   onRetry: () => void;
 }
 
@@ -172,18 +238,28 @@ export function ItineraryCheckControls({
 }: Props): ReactElement {
   const classes = useStyles();
   const { factsList } = useItineraryStyles();
+  const { triggerAttributes } = useModalAttributes();
   const detailsId = useId("check-availability");
-  const tabId = useId("check-changes");
-  const panelId = useId("check-change-notices");
+  const changesId = useId("check-changes");
+  const warningsId = useId("check-warnings");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [tab, setTab] = useState<DetailTab>("changes");
   const [confirmation, setConfirmation] = useState<GetItineraryResponse>();
   usePlanningDraft(!!confirmation, () => setConfirmation(undefined));
   const notices = saved?.changeNotices ?? [];
+  const warnings = warningRows(saved);
+  const acceptingWarnings = warningRows(confirmation);
   const empty = confirmation?.days.every((day) => day.entries.length === 0);
   const confirmationProblem =
     unavailableReason ??
     (confirmation !== saved
       ? "The saved itinerary was refreshed. Close this dialog and confirm again."
       : undefined);
+
+  const openDetails = (target: DetailTab): void => {
+    setTab(target);
+    setDetailsOpen(true);
+  };
 
   const hasTarget = (notice: ChangeNotice): boolean => {
     const day = saved?.days.find((candidate) => candidate.date === notice.date);
@@ -218,28 +294,74 @@ export function ItineraryCheckControls({
         />
       )}
       {notices.length > 0 && (
-        <Dialog>
-          <DialogTrigger disableButtonEnhancement>
-            <Button
-              size="small"
-              appearance="outline"
-              icon={<Alert16Regular />}
-              className={classes.changes}
-            >
-              {notices.length} {notices.length === 1 ? "change" : "changes"} to
-              check
-            </Button>
-          </DialogTrigger>
+        <Button
+          {...triggerAttributes}
+          size="small"
+          appearance="outline"
+          aria-haspopup="dialog"
+          icon={<Alert16Regular />}
+          className={classes.changes}
+          onClick={() => openDetails("changes")}
+        >
+          {notices.length} {notices.length === 1 ? "change" : "changes"} to
+          check
+        </Button>
+      )}
+      {warnings.length > 0 && (
+        <Button
+          {...triggerAttributes}
+          size="small"
+          appearance="outline"
+          aria-haspopup="dialog"
+          icon={<Warning16Regular />}
+          onClick={() => openDetails("warnings")}
+        >
+          {warningCountLabel(warnings.length)}
+          {saved?.checkState === "MANUALLY_CHECKED" &&
+            (warnings.length === 1 ? " remains" : " remain")}
+        </Button>
+      )}
+      {(detailsOpen || notices.length > 0 || warnings.length > 0) && (
+        <Dialog
+          open={detailsOpen}
+          onOpenChange={(_event, info) => setDetailsOpen(info.open)}
+        >
           <DialogSurface>
             <DialogBody>
-              <DialogTitle>Itinerary changes</DialogTitle>
+              <DialogTitle>Itinerary check details</DialogTitle>
               <DialogContent>
-                <TabList selectedValue="changes" aria-label="Check information">
-                  <Tab value="changes" id={tabId} aria-controls={panelId}>
-                    Changes to check
+                <TabList
+                  selectedValue={tab}
+                  onTabSelect={(_event, { value }) => {
+                    if (value !== "changes" && value !== "warnings") {
+                      throw new Error("Unknown itinerary check details tab.");
+                    }
+                    setTab(value);
+                  }}
+                  aria-label="Check information"
+                >
+                  <Tab
+                    value="changes"
+                    id={changesId}
+                    aria-controls={`${changesId}-panel`}
+                  >
+                    Changes to check ({notices.length})
+                  </Tab>
+                  <Tab
+                    value="warnings"
+                    id={warningsId}
+                    aria-controls={`${warningsId}-panel`}
+                  >
+                    Warnings ({warnings.length})
                   </Tab>
                 </TabList>
-                <div role="tabpanel" id={panelId} aria-labelledby={tabId}>
+                <div
+                  role="tabpanel"
+                  id={`${changesId}-panel`}
+                  aria-labelledby={changesId}
+                  hidden={tab !== "changes"}
+                >
+                  {notices.length === 0 && <p>No changes to check.</p>}
                   <ul className={classes.notices}>
                     {notices.map((notice, index) => {
                       const sourceBaseline = notice.sourceBaseline;
@@ -327,6 +449,22 @@ export function ItineraryCheckControls({
                     })}
                   </ul>
                 </div>
+                <div
+                  role="tabpanel"
+                  id={`${warningsId}-panel`}
+                  aria-labelledby={warningsId}
+                  hidden={tab !== "warnings"}
+                >
+                  {warnings.length > 0 ? (
+                    <WarningRows
+                      rows={warnings}
+                      onJump={onJump}
+                      jumpBlocked={jumpBlocked}
+                    />
+                  ) : (
+                    <p>No current-condition warnings.</p>
+                  )}
+                </div>
               </DialogContent>
               <DialogActions>
                 <DialogTrigger action="close" disableButtonEnhancement>
@@ -370,6 +508,15 @@ export function ItineraryCheckControls({
                       the empty itinerary as checked.
                     </p>
                   )}
+                  {acceptingWarnings.length > 0 && (
+                    <>
+                      <p>
+                        Accepting these warnings does not repair or retime
+                        anything.
+                      </p>
+                      <WarningRows rows={acceptingWarnings} />
+                    </>
+                  )}
                   {confirmationProblem && (
                     <Text role="status">{confirmationProblem}</Text>
                   )}
@@ -387,7 +534,11 @@ export function ItineraryCheckControls({
                       void check.submit(confirmation);
                     }}
                   >
-                    {empty ? "Mark empty itinerary checked" : "Mark as checked"}
+                    {acceptingWarnings.length > 0
+                      ? "Accept warnings and mark checked"
+                      : empty
+                        ? "Mark empty itinerary checked"
+                        : "Mark as checked"}
                   </Button>
                 </DialogActions>
               </DialogBody>

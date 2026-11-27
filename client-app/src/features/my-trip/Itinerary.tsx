@@ -43,6 +43,7 @@ import {
 import { AttractionFactsDialog } from "./AttractionFactsDialog";
 import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
 import { DayNoteEditor, ItineraryDayNote } from "./ItineraryDayNote";
+import { ItineraryWarning, warningCountLabel } from "./ItineraryWarning";
 import {
   ItineraryEntryActions,
   MoveStartChoice
@@ -841,6 +842,10 @@ export const ItineraryContent = ({
           {renderedDays.map((day) => {
             const date = new Date(day.date);
             const label = dateLabel.format(date);
+            const warnings = day.entries.reduce(
+              (count, entry) => count + entry.warnings.length,
+              0
+            );
             const hidden = !visibleDays.includes(day);
             const activeSlot =
               hovered?.date === day.date ? hovered.slot : undefined;
@@ -892,6 +897,11 @@ export const ItineraryContent = ({
                   </time>
                 </Text>
                 <Divider />
+                {warnings > 0 && (
+                  <ItineraryWarning>
+                    {warningCountLabel(warnings)}
+                  </ItineraryWarning>
+                )}
                 <ItineraryDayNote
                   subject={label}
                   value={day.note}

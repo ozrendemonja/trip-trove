@@ -1,8 +1,12 @@
 import {
+  extractGroupedAttraction,
   joinItineraryAttraction,
+  moveGroupedAttraction,
   moveItineraryEntry,
+  removeGroupedAttraction,
   removeItineraryEntry,
   removeItineraryTransfer,
+  reorderGroupedAttractions,
   scheduleAttraction,
   updateItineraryDayNote,
   updateItineraryEntryEnd,
@@ -11,9 +15,11 @@ import {
   updateItineraryEntryStart,
   updateItineraryTransfer,
   type ErrorResponse,
+  type ExtractGroupedAttractionRequest,
   type JoinItineraryAttractionRequest,
   type MoveItineraryEntryRequest,
   type RemoveItineraryEntryRequest,
+  type ReorderGroupedAttractionsRequest,
   type ScheduleAttractionRequest,
   type UpdateItineraryEntryEndRequest,
   type UpdateItineraryEntryFixedStartRequest,
@@ -65,9 +71,24 @@ export type TimingEdit =
   | UpdateItineraryEntryPlannedLengthRequest
   | UpdateItineraryEntryFixedStartRequest;
 
+export type GroupMemberEdit =
+  | {
+      action: "extract-group-member";
+      attractionId: number;
+      request: ExtractGroupedAttractionRequest;
+    }
+  | {
+      action: "move-group-member";
+      attractionId: number;
+      destinationEntryId: number;
+    }
+  | { action: "remove-group-member"; attractionId: number };
+
 export type EntryEdit =
   | TimingEdit
+  | GroupMemberEdit
   | { action: "join"; request: JoinItineraryAttractionRequest }
+  | { action: "reorder-group"; request: ReorderGroupedAttractionsRequest }
   | { action: "move"; position: MoveItineraryEntryRequest }
   | { action: "remove"; removal?: RemoveItineraryEntryRequest }
   | {
@@ -107,6 +128,38 @@ export async function saveEntryEdit(
             path: { tripId, hostEntryId: entryId },
             body: edit.request
           });
+        case "reorder-group":
+          return reorderGroupedAttractions({
+            ...options,
+            path: { tripId, hostEntryId: entryId },
+            body: edit.request
+          });
+        case "extract-group-member":
+        case "move-group-member":
+        case "remove-group-member": {
+          const memberOptions = {
+            ...options,
+            path: {
+              tripId,
+              hostEntryId: entryId,
+              attractionId: edit.attractionId
+            }
+          };
+          if (edit.action === "extract-group-member")
+            return extractGroupedAttraction({
+              ...memberOptions,
+              body: edit.request
+            });
+          if (edit.action === "move-group-member")
+            return moveGroupedAttraction({
+              ...memberOptions,
+              path: {
+                ...memberOptions.path,
+                destinationEntryId: edit.destinationEntryId
+              }
+            });
+          return removeGroupedAttraction(memberOptions);
+        }
         case "move":
           return moveItineraryEntry({ ...options, body: edit.position });
         case "remove":

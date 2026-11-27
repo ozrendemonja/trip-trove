@@ -19,6 +19,9 @@ const offsetPattern = /([+-]\d\d:\d\d(?::\d\d)?|Z)$/;
 const clockPattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
 const datedClockPattern = /^(\d{4}-\d{2}-\d{2})\s+(.+)$/;
 
+export const isLocalClock = (value: string): boolean =>
+  clockPattern.test(value);
+
 export const clockOffset = (clock: string): string =>
   clock.match(offsetPattern)?.[0] ?? "";
 
@@ -61,14 +64,14 @@ export function parseTimingEdit(
       : "Enter a planned length in whole minutes (0 for a brief stop).";
   }
   if (field === "start") {
-    return clockPattern.test(value)
+    return isLocalClock(value)
       ? { startTime: value }
       : "Enter a start clock in HH:mm format.";
   }
 
   const datedClock = value.match(datedClockPattern);
   const endTime = datedClock?.[2] ?? value;
-  return clockPattern.test(endTime)
+  return isLocalClock(endTime)
     ? { endTime, endDate: datedClock?.[1] ?? displayedEndDate }
     : "Enter an end clock as HH:mm, or YYYY-MM-DD HH:mm for another date.";
 }

@@ -18,9 +18,15 @@ import { MoreHorizontal16Regular } from "@fluentui/react-icons";
 import { useRef, useState, type ReactElement } from "react";
 import type {
   GetItineraryResponse,
-  MoveItineraryEntryRequest
+  MoveItineraryEntryRequest,
+  RemoveItineraryEntryRequest
 } from "../../clients/manager";
 import { useClasses } from "./Itinerary.styles";
+import { GroupDissolutionDetails } from "./ItineraryGroupActions";
+import {
+  transfersForEntryRemoval,
+  TransfersToRemoveList
+} from "./ItineraryTransfer";
 import { localClock } from "./itineraryClocks";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
@@ -44,7 +50,7 @@ export function ItineraryEntryActions({
   blocked: boolean;
   formatDate: (date: string) => string;
   onMove: (position: MoveItineraryEntryRequest) => void;
-  onRemove: () => void;
+  onRemove: (removal?: RemoveItineraryEntryRequest) => void;
 }): ReactElement {
   const classes = useClasses();
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -54,6 +60,11 @@ export function ItineraryEntryActions({
   const destinationDay = days.find(
     (candidate) => candidate.date === destination
   );
+  const groupedAttractions = entry.groupedAttractions;
+  const groupTransfers =
+    groupedAttractions?.length && dialog === "remove"
+      ? transfersForEntryRemoval(day.entries, index)
+      : [];
   const selectDefaultPosition = (date: string): void => {
     setDestination(date);
     setBeforeEntryId(
@@ -115,15 +126,7 @@ export function ItineraryEntryActions({
             >
               Move to day...
             </MenuItem>
-            <MenuItem
-              disabled={blocked || !!entry.groupedAttractions?.length}
-              title={
-                entry.groupedAttractions?.length
-                  ? "Removing a grouped entry is not available yet."
-                  : undefined
-              }
-              onClick={() => setDialog("remove")}
-            >
+            <MenuItem disabled={blocked} onClick={() => setDialog("remove")}>
               Remove from itinerary
             </MenuItem>
           </MenuList>
@@ -177,6 +180,20 @@ export function ItineraryEntryActions({
                     </Select>
                   </Field>
                 </>
+              ) : groupedAttractions?.length ? (
+                <div>
+                  <p>
+                    This removes the entry on {formatDate(day.date)}. The
+                    attraction stays on your trip board.
+                  </p>
+                  <GroupDissolutionDetails members={groupedAttractions} />
+                  {groupTransfers.length > 0 && (
+                    <>
+                      <p>These transfers will also be removed:</p>
+                      <TransfersToRemoveList transfers={groupTransfers} />
+                    </>
+                  )}
+                </div>
               ) : (
                 <>The attraction stays on your trip board.</>
               )}
@@ -202,7 +219,19 @@ export function ItineraryEntryActions({
                   disabled={blocked}
                   onClick={() => {
                     close();
-                    onRemove();
+                    onRemove(
+                      groupedAttractions?.length
+                        ? {
+                            groupedAttractionIdsToRemove:
+                              groupedAttractions.map(
+                                ({ attractionId }) => attractionId
+                              ),
+                            transfersToRemove: groupTransfers.length
+                              ? groupTransfers.map(({ transfer }) => transfer)
+                              : undefined
+                          }
+                        : undefined
+                    );
                   }}
                 >
                   Remove entry

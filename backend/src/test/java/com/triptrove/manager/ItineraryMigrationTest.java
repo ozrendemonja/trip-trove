@@ -241,9 +241,11 @@ class ItineraryMigrationTest {
                     """, Integer.class)).isZero();
             assertThat(jdbc.queryForList("""
                     SELECT (to_jsonb(entry) - ARRAY['transfer_to_entry_id', 'transfer_mode', 'transfer_minutes',
-                        'transfer_note', 'transfer_changed_since_check'])::text
+                        'transfer_note', 'transfer_changed_since_check', 'group_changed_since_check'])::text
                     FROM itinerary_entry entry ORDER BY path_position
                     """, String.class)).containsExactlyElementsOf(entriesBeforeMigration);
+            assertThat(jdbc.queryForList("SELECT group_changed_since_check FROM itinerary_entry", Boolean.class))
+                    .containsExactly(false, false);
             assertThat(jdbc.queryForObject(checkContextQuery, String.class)).isEqualTo(initialCheckContext);
 
             jdbc.update("""

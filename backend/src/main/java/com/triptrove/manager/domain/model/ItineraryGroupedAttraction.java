@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -15,6 +16,7 @@ public class ItineraryGroupedAttraction {
     private long tripId;
 
     @Column(name = "attraction_id", nullable = false)
+    @Getter
     private long attractionId;
 
     @Column(name = "host_entry_id", nullable = false)
@@ -27,6 +29,7 @@ public class ItineraryGroupedAttraction {
     private int contributionMinutes;
 
     @Column(name = "included_in_last_check", nullable = false)
+    @Getter
     private boolean includedInLastCheck;
 
     @Column(name = "joined_since_last_check", nullable = false)
@@ -34,8 +37,22 @@ public class ItineraryGroupedAttraction {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "watched_source_baseline", insertable = false, updatable = false, nullable = false)
+    @Getter
     private WatchedSourceSnapshot watchedSourceBaseline;
 
     protected ItineraryGroupedAttraction() {
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
+    }
+
+    public int contributionMinutes() {
+        return contributionMinutes;
+    }
+
+    public void moveToHost(long hostEntryId, int position) {
+        this.hostEntryId = hostEntryId;
+        this.position = position;
     }
 }

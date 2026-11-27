@@ -68,11 +68,19 @@ export function transfersForEntryRemoval(
     [entries[index], entries[index + 1]]
   ];
   return fromAndTo.flatMap(([from, to]) => {
-    const transfer = from?.outgoingTransfer;
-    return transfer && to && transfer.toEntryId === to.entryId
-      ? [{ transfer, fromName: from.name, toName: to.name }]
-      : [];
+    const removal = transferBetweenEntries(from, to);
+    return removal ? [removal] : [];
   });
+}
+
+export function transferBetweenEntries(
+  from?: AttractionEntry,
+  to?: AttractionEntry
+): ItineraryTransferRemovalResponse | undefined {
+  const transfer = from?.outgoingTransfer;
+  return transfer && to && transfer.toEntryId === to.entryId
+    ? { transfer, fromName: from.name, toName: to.name }
+    : undefined;
 }
 
 export function TransferLine({

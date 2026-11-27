@@ -36,6 +36,9 @@ public class ItineraryEntry {
     @Column(name = "transfer_changed_since_check", nullable = false)
     private boolean transferChangedSinceCheck;
 
+    @Column(name = "group_changed_since_check", nullable = false)
+    private boolean groupChangedSinceCheck;
+
     @Column(name = "fixed_start", nullable = false)
     @Getter
     private boolean fixedStart;
@@ -44,7 +47,7 @@ public class ItineraryEntry {
     private boolean includedInLastCheck;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "watched_source_baseline", insertable = false, updatable = false, nullable = false)
+    @Column(name = "watched_source_baseline", updatable = false, nullable = false)
     private WatchedSourceSnapshot watchedSourceBaseline;
 
     @Column(name = "start_changed_since_check", nullable = false)
@@ -73,6 +76,17 @@ public class ItineraryEntry {
         this.timing = timing;
     }
 
+    public static ItineraryEntry fromGroup(long tripId, ItineraryGroupedAttraction member, int position,
+                                           ItineraryTiming timing) {
+        if (timing.plannedMinutes() != member.contributionMinutes()) {
+            throw new IllegalArgumentException("Extraction must keep the grouped duration contribution");
+        }
+        var entry = new ItineraryEntry(tripId, member.getAttractionId(), position, timing);
+        entry.watchedSourceBaseline = member.getWatchedSourceBaseline();
+        entry.includedInLastCheck = member.isIncludedInLastCheck();
+        return entry;
+    }
+
     public void changeFixedStart(boolean fixed) {
         if (fixedStart != fixed) {
             fixedStart = fixed;
@@ -85,6 +99,10 @@ public class ItineraryEntry {
             outgoingTransfer = replacement;
             transferChangedSinceCheck = true;
         }
+    }
+
+    public void markGroupChanged() {
+        groupChangedSinceCheck = true;
     }
 
     public void moveTo(ItineraryTiming replacement, boolean pushedFollowingStarts) {

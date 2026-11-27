@@ -37,7 +37,9 @@ interface RejectedEdit {
 }
 
 type EditKind =
-  TimingField | "move" | "remove" | "fixed-start" | "transfer" | "join";
+  | TimingField
+  | "fixed-start"
+  | Extract<EntryEdit, { action: string }>["action"];
 
 export function editKind(edit: EntryEdit): EditKind {
   if ("action" in edit) return edit.action;
@@ -73,12 +75,61 @@ function editIsReflected(
     entries.some((entry) => entry.entryId === entryId)
   );
   const entry = day?.entries.find((item) => item.entryId === entryId);
+  const sameClock = (a: string, b: string): boolean =>
+    a.padEnd(8, ":00") === b.padEnd(8, ":00");
   if ("action" in edit) {
+    if (edit.action === "reorder-group") {
+      const members = entry?.groupedAttractions;
+      const { attractionIds } = edit.request;
+      return (
+        members?.length === attractionIds.length &&
+        members.every(
+          (member, index) => member.attractionId === attractionIds[index]
+        )
+      );
+    }
     if (edit.action === "join") {
       return (
         entry?.groupedAttractions?.some(
           (member) => member.attractionId === edit.request.attractionId
         ) === true
+      );
+    }
+    if (edit.action === "move-group-member") {
+      return saved.days.some(({ entries }) =>
+        entries.some(
+          (host) =>
+            host.entryId === edit.destinationEntryId &&
+            host.groupedAttractions?.some(
+              (member) => member.attractionId === edit.attractionId
+            )
+        )
+      );
+    }
+    if (edit.action === "extract-group-member") {
+      const { date, beforeEntryId, startTime } = edit.request;
+      const entries =
+        saved.days.find((item) => item.date === date)?.entries ?? [];
+      const index = entries.findIndex(
+        (item) => item.attractionId === edit.attractionId
+      );
+      return (
+        index >= 0 &&
+        entries[index + 1]?.entryId === beforeEntryId &&
+        (startTime === undefined ||
+          (!entries[index].timing.repeatedStart &&
+            sameClock(localClock(entries[index].timing.start), startTime)))
+      );
+    }
+    if (edit.action === "remove-group-member") {
+      return !saved.days.some(({ entries }) =>
+        entries.some(
+          (host) =>
+            host.attractionId === edit.attractionId ||
+            host.groupedAttractions?.some(
+              (member) => member.attractionId === edit.attractionId
+            )
+        )
       );
     }
     if (edit.action === "remove") return entry === undefined;
@@ -103,8 +154,6 @@ function editIsReflected(
   }
   if (!entry) return false;
   const { start, end, repeatedStart, repeatedEnd } = entry.timing;
-  const sameClock = (a: string, b: string): boolean =>
-    a.padEnd(8, ":00") === b.padEnd(8, ":00");
   const input = clockEditInput(edit);
   // Matching a clock alone does not identify its occurrence in a repeated hour.
   if (input?.field === "start")

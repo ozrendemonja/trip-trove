@@ -212,7 +212,8 @@ export const UnscheduledAttractions = ({
   onSchedule,
   onGrab,
   onRelease,
-  onOpenFacts
+  onOpenFacts,
+  onDropMember
 }: {
   attractions: Attraction[];
   boardPlaceOrder: readonly string[];
@@ -225,6 +226,7 @@ export const UnscheduledAttractions = ({
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
   onOpenFacts: OpenAttractionFacts;
+  onDropMember?: () => void;
 }): ReactElement => {
   const classes = useClasses();
   const titleId = useId();
@@ -233,6 +235,16 @@ export const UnscheduledAttractions = ({
       role="region"
       aria-labelledby={titleId}
       className={classes.unscheduledAttractions}
+      onDragOver={(event) => {
+        if (!onDropMember) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(event) => {
+        if (!onDropMember) return;
+        event.preventDefault();
+        onDropMember();
+      }}
     >
       <Subtitle2 as="h2" id={titleId} className={classes.unscheduledHeading}>
         Unscheduled attractions

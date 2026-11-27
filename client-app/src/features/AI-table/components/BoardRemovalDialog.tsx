@@ -13,6 +13,7 @@ import {
 import type { ReactElement } from "react";
 import { useConfirmDeleteDialogStyles } from "../../../shared/list-element/ui/delete-dialog/DeleteDialog.styles";
 import { formatItineraryDate } from "../../my-trip/Itinerary";
+import { GroupDissolutionDetails } from "../../my-trip/ItineraryGroupActions";
 import { TransfersToRemoveList } from "../../my-trip/ItineraryTransfer";
 import { clockOffset, localClock } from "../../my-trip/itineraryClocks";
 import type { BoardRemovalPreview } from "./useBoardRemovalPreview";
@@ -76,7 +77,13 @@ export function BoardRemovalDialog({
                 ) : (
                   !exclude && <p>{`Remove ${proposal.name} from the trip?`}</p>
                 )}
-                {entry && start && end && (
+                {entry?.member && start && (
+                  <p>
+                    {`${entry.member.name} is grouped on ${entry.saved.name} on Day ${entry.dayNumber} (${formatItineraryDate(start.slice(0, 10))}). `}
+                    {`${prepare ? "Saving this change" : "This change"} will subtract its saved ${entry.member.contributionMinutes} min from ${entry.saved.name}'s planned length.`}
+                  </p>
+                )}
+                {entry && !entry.member && start && end && (
                   <>
                     <p>
                       {prepare
@@ -92,6 +99,11 @@ export function BoardRemovalDialog({
                         {entry.saved.fixedStart && " (fixed start)"}
                       </li>
                     </ul>
+                    {!!entry.saved.groupedAttractions?.length && (
+                      <GroupDissolutionDetails
+                        members={entry.saved.groupedAttractions}
+                      />
+                    )}
                     {entry.transfers.length > 0 && (
                       <>
                         <p>These transfers will also be removed:</p>

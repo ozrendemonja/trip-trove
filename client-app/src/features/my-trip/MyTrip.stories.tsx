@@ -15,6 +15,7 @@ import type {
   GetAttractionResponse,
   GetItineraryResponse,
   GetSearchAttractionResponse,
+  ItineraryRemovalRequest,
   ItineraryTransferDto,
   UpdateItineraryDayNoteRequest,
   UpdateItineraryTransferRequest,
@@ -4909,6 +4910,322 @@ export const GroupsAStandaloneAttractionAndLinksItFromPlan: Story = {
   }
 };
 
+function groupedCompositionTimeline(): GetItineraryResponse {
+  const saved = compositionTimeline();
+  const [host] = saved.days[0].entries;
+  const [cafe] = saved.unscheduledAttractions;
+  host.timing.end = "2099-06-10T09:45+02:00";
+  host.groupedAttractions = [
+    {
+      ...cafe,
+      contributionMinutes: 5,
+      warnings: [],
+      tripNote: "Use the side door."
+    },
+    {
+      attractionId: 7,
+      name: "Courtyard",
+      attractionGroup: "PRIMARY",
+      category: "HISTORIC_SITE",
+      mustVisit: false,
+      contributionMinutes: 10,
+      warnings: []
+    }
+  ];
+  saved.unscheduledAttractions = [];
+  return saved;
+}
+
+export const ReordersGroupedAttractionsWithoutChangingTheHostClock: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = groupedCompositionTimeline();
+      const [host] = saved.days[0].entries;
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${entryUrl}/grouped-attractions/order`,
+        (_schema, request) => {
+          compositionWrites(JSON.parse(request.requestBody));
+          host.groupedAttractions = host.groupedAttractions?.toReversed();
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const members = within(
+      await canvas.findByRole("list", {
+        name: "Grouped attractions on Museum"
+      })
+    );
+    await expect(members.getByText("Use the side door.")).toBeVisible();
+    await user.click(
+      members.getByRole("button", { name: "Actions for Courtyard" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("menuitem", { name: "Move up" })
+    );
+
+    await waitFor(() =>
+      expect(members.getAllByRole("listitem")[0]).toHaveTextContent("Courtyard")
+    );
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(compositionWrites).toHaveBeenCalledWith({
+      attractionIds: [7, 8]
+    });
+    await expect(
+      canvas.getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveValue("09:45");
+    await expect(members.getByText("Use the side door.")).toBeVisible();
+  }
+};
+
+export const ExtractsAGroupedAttractionToAnEmptyDayOnlyAfterConfirmation: Story =
+  {
+    parameters: {
+      savedAttractions: SAVED_ATTRACTIONS,
+      configureTripServer: (server: Server) => {
+        compositionWrites.mockClear();
+        const saved = groupedCompositionTimeline();
+        const [host] = saved.days[0].entries;
+        const [member, courtyard] = host.groupedAttractions ?? [];
+        server.get(itineraryUrl, () => saved, { timing: 0 });
+        server.post(
+          `${entryUrl}/grouped-attractions/:attractionId/extract`,
+          (_schema, request) => {
+            compositionWrites(
+              request.params.attractionId,
+              JSON.parse(request.requestBody)
+            );
+            host.groupedAttractions = [courtyard];
+            host.timing.end = "2099-06-10T09:40+02:00";
+            saved.days[1].entries = [
+              {
+                ...member,
+                entryId: 44,
+                fixedStart: false,
+                timing: {
+                  start: "2099-06-11T13:15+02:00",
+                  end: "2099-06-11T13:20+02:00",
+                  zone: "Europe/Rome"
+                }
+              }
+            ];
+            return new MirageResponse(204);
+          },
+          { timing: 0 }
+        );
+      }
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const dialogs = overlay(canvasElement);
+      const user = setupUser();
+      await user.click(
+        await canvas.findByRole("button", { name: "Itinerary" })
+      );
+      const open = async (): Promise<ReturnType<typeof within>> => {
+        await user.click(
+          await canvas.findByRole("button", { name: "Actions for Luna Cafe" })
+        );
+        await user.click(
+          await dialogs.findByRole("menuitem", { name: "Extract to day..." })
+        );
+        return within(
+          await dialogs.findByRole("dialog", { name: "Extract Luna Cafe" })
+        );
+      };
+      const cancelled = await open();
+      await expect(
+        cancelled.queryByRole("textbox", { name: "Start clock" })
+      ).not.toBeInTheDocument();
+      await user.selectOptions(
+        cancelled.getByRole("combobox", { name: "Day" }),
+        "2099-06-11"
+      );
+      await user.type(
+        cancelled.getByRole("textbox", { name: "Start clock" }),
+        "13:15"
+      );
+      await user.click(cancelled.getByRole("button", { name: "Cancel" }));
+      await expect(compositionWrites).not.toHaveBeenCalled();
+
+      const confirmed = await open();
+      await user.selectOptions(
+        confirmed.getByRole("combobox", { name: "Day" }),
+        "2099-06-11"
+      );
+      await user.type(
+        confirmed.getByRole("textbox", { name: "Start clock" }),
+        "13:15"
+      );
+      await user.click(
+        confirmed.getByRole("button", { name: "Extract attraction" })
+      );
+
+      const extracted = within(
+        await canvas.findByRole("listitem", { name: "Luna Cafe" })
+      );
+      await expect(
+        extracted.getByRole("textbox", { name: "Start clock for Luna Cafe" })
+      ).toHaveValue("13:15");
+      await expect(
+        extracted.getByRole("textbox", { name: "Planned length for Luna Cafe" })
+      ).toHaveValue("5");
+      await expect(
+        extracted.getByRole("button", {
+          name: "Lock start for Luna Cafe",
+          pressed: false
+        })
+      ).toBeVisible();
+      await expect(extracted.getByText("Use the side door.")).toBeVisible();
+      await expect(compositionWrites).toHaveBeenCalledTimes(1);
+      await expect(compositionWrites).toHaveBeenCalledWith("8", {
+        date: "2099-06-11",
+        startTime: "13:15"
+      });
+    }
+  };
+
+export const DragsAGroupedAttractionOntoAnotherEntry: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = groupedCompositionTimeline();
+      const [host, destination] = saved.days[0].entries;
+      const [cafe, courtyard] = host.groupedAttractions ?? [];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${entryUrl}/grouped-attractions/:attractionId/move-to-entry/:destinationEntryId`,
+        (_schema, request) => {
+          compositionWrites(
+            request.params.entryId,
+            request.params.attractionId,
+            request.params.destinationEntryId,
+            request.requestBody ?? ""
+          );
+          host.groupedAttractions = [courtyard];
+          host.timing.end = "2099-06-10T09:40+02:00";
+          destination.groupedAttractions = [cafe];
+          destination.timing.end = "2099-06-10T11:35+02:00";
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const group = await canvas.findByRole("list", {
+      name: "Grouped attractions on Museum"
+    });
+    const cafe = within(group).getAllByRole("listitem")[0];
+    dropItineraryItem(cafe, canvas.getByRole("button", { name: "Garden" }));
+
+    const dialog = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Move Luna Cafe?"
+      })
+    );
+    await expect(
+      dialog.getByRole("combobox", { name: "Destination entry" })
+    ).toHaveValue("43");
+    await expect(compositionWrites).not.toHaveBeenCalled();
+    await user.click(dialog.getByRole("button", { name: "Move attraction" }));
+
+    const destination = within(
+      await canvas.findByRole("list", { name: "Grouped attractions on Garden" })
+    );
+    await expect(destination.getByText("Use the side door.")).toBeVisible();
+    await expect(
+      within(group).queryByRole("button", { name: "Luna Cafe" })
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole("textbox", { name: "End clock for Garden" })
+    ).toHaveValue("11:35");
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(compositionWrites).toHaveBeenCalledWith("42", "8", "43", "");
+  }
+};
+
+export const BoardDeletionPreviewsGroupDissolutionBeforeRemovingTheHost: Story =
+  {
+    parameters: {
+      savedAttractions: SAVED_ATTRACTIONS,
+      configureTripServer: (server: Server) => {
+        compositionWrites.mockClear();
+        const saved = itineraryFixture("2099-06-10", "2099-06-24");
+        const [cafe, courtyard] =
+          groupedCompositionTimeline().days[0].entries[0].groupedAttractions ??
+          [];
+        saved.days[1].entries = [
+          {
+            ...savedCasinoEntry,
+            groupedAttractions: [
+              cafe,
+              { ...courtyard, warnings: ["PERMANENTLY_CLOSED"] }
+            ]
+          }
+        ];
+        server.get(itineraryUrl, () => saved, { timing: 0 });
+        server.delete(
+          "http://localhost:8080/trips/1/attractions/0",
+          (_schema, request) => {
+            compositionWrites(JSON.parse(request.requestBody));
+            saved.days[1].entries = [];
+            return new MirageResponse(204);
+          },
+          { timing: 0 }
+        );
+      }
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const user = setupUser();
+      const dialogs = overlay(canvasElement);
+      const remove = await canvas.findByRole("button", {
+        name: "Remove Casino of Monte-Carlo from trip"
+      });
+      const open = async (): Promise<ReturnType<typeof within>> => {
+        await user.click(remove);
+        const dialog = within(await dialogs.findByRole("alertdialog"));
+        await waitFor(() =>
+          expect(
+            dialog.getByText("Luna Cafe: returns to Unscheduled attractions")
+          ).toBeVisible()
+        );
+        await expect(
+          dialog.getByText(
+            "Courtyard: does not return to Unscheduled attractions"
+          )
+        ).toBeVisible();
+        await expect(dialog.getByText(/Day 2/)).toBeVisible();
+        return dialog;
+      };
+      const cancelled = await open();
+      await user.click(cancelled.getByRole("button", { name: "Cancel" }));
+      await expect(compositionWrites).not.toHaveBeenCalled();
+
+      const confirmed = await open();
+      await user.click(confirmed.getByRole("button", { name: "Delete" }));
+      await waitFor(() => expect(remove).not.toBeInTheDocument());
+      await expect(compositionWrites).toHaveBeenCalledTimes(1);
+      await expect(compositionWrites).toHaveBeenCalledWith({
+        entryId: 21,
+        groupedAttractionIdsToRemove: [8, 7]
+      });
+    }
+  };
+
 export const CorrectsMissingDurationOnlyWhenAddingAGroupedAttraction: Story = {
   parameters: {
     savedAttractions: SAVED_ATTRACTIONS,
@@ -5924,6 +6241,112 @@ export const PrepareDisclosesAndRemovesASharedTransferOnlyOnce: Story = {
     });
   }
 };
+
+const preparedGroupBoard = [
+  { ...SAVED_ATTRACTIONS[0], attractionId: 2 },
+  { ...SAVED_ATTRACTIONS[0], attractionId: 5, attractionName: "Garden" }
+];
+
+function prepareRemovesHostAndMember(
+  host: TripAttractionFromServer,
+  member: TripAttractionFromServer,
+  firstRemoval: ItineraryRemovalRequest,
+  secondRemoval: ItineraryRemovalRequest | null
+): Story {
+  return {
+    parameters: { savedAttractions: preparedGroupBoard },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const parent = overlay(canvasElement);
+      const user = setupUser();
+      const saved = itineraryFixture("2099-06-10", "2099-06-24");
+      saved.days[1].entries = [
+        {
+          ...savedCasinoEntry,
+          attractionId: host.attractionId,
+          name: host.attractionName,
+          groupedAttractions: [
+            {
+              attractionId: member.attractionId,
+              name: member.attractionName,
+              category: "PARK",
+              attractionGroup: "PRIMARY",
+              mustVisit: false,
+              contributionMinutes: 5,
+              warnings: []
+            }
+          ]
+        }
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      const removals = fn();
+      server.delete(
+        "http://localhost:8080/trips/1/attractions/:attractionId",
+        (_schema, request) => {
+          removals(
+            request.params.attractionId,
+            JSON.parse(request.requestBody || "null")
+          );
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+
+      await user.click(await canvas.findByRole("button", { name: "Prepare" }));
+      await user.click(
+        await canvas.findByRole("button", {
+          name: `Remove ${host.attractionName} from trip`
+        })
+      );
+      const hostPreview = within(await parent.findByRole("alertdialog"));
+      await waitFor(() =>
+        expect(
+          hostPreview.getByText(
+            `${member.attractionName}: returns to Unscheduled attractions`
+          )
+        ).toBeVisible()
+      );
+      await user.click(hostPreview.getByRole("button", { name: "Delete" }));
+
+      await user.click(
+        await canvas.findByRole("button", {
+          name: `Remove ${member.attractionName} from trip`
+        })
+      );
+      const memberPreview = within(await parent.findByRole("alertdialog"));
+      await waitFor(() =>
+        expect(
+          memberPreview.getByText(/subtract its saved 5 min/)
+        ).toBeVisible()
+      );
+      await user.click(memberPreview.getByRole("button", { name: "Delete" }));
+      await expect(removals).not.toHaveBeenCalled();
+
+      await user.click(
+        await canvas.findByRole("button", { name: "Save to trip (2)" })
+      );
+      await waitFor(() => expect(removals).toHaveBeenCalledTimes(2));
+      await expect(removals).toHaveBeenNthCalledWith(1, "2", firstRemoval);
+      await expect(removals).toHaveBeenNthCalledWith(2, "5", secondRemoval);
+    }
+  };
+}
+
+export const PrepareRemovesTheHostBeforeItsStagedMember =
+  prepareRemovesHostAndMember(
+    preparedGroupBoard[0],
+    preparedGroupBoard[1],
+    { entryId: 21, groupedAttractionIdsToRemove: [5] },
+    null
+  );
+
+export const PrepareRemovesTheMemberBeforeItsStagedHost =
+  prepareRemovesHostAndMember(
+    preparedGroupBoard[1],
+    preparedGroupBoard[0],
+    { entryId: 21 },
+    { entryId: 21, groupedAttractionIdsToRemove: [] }
+  );
 
 export const NewTripNotesDoNotCopyCatalogueTips: Story = {
   play: async ({ canvasElement }) => {

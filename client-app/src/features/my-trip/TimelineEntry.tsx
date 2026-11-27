@@ -47,6 +47,7 @@ export function TimelineEntry({
   index,
   editing,
   blocked,
+  groupDropActive,
   actions,
   grouping,
   onGrab,
@@ -57,6 +58,7 @@ export function TimelineEntry({
   index: number;
   editing: ItineraryTimingEditing;
   blocked: boolean;
+  groupDropActive: boolean;
   actions?: ReactElement;
   grouping?: ReactElement;
   onGrab: (item: DraggedItineraryItem) => void;
@@ -242,7 +244,11 @@ export function TimelineEntry({
         size="small"
         appearance="outline"
         focusMode="off"
-        className={classes.entryCard}
+        className={mergeClasses(
+          classes.entryCard,
+          groupDropActive && classes.activeDropTarget
+        )}
+        data-itinerary-group-host={entry.entryId}
         {...interaction}
       >
         <div className={classes.entryHeader}>

@@ -59,9 +59,8 @@ import {
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import { BoardRemovalDialog } from "./BoardRemovalDialog";
 import {
-  excludingDisconnectedTransfers,
   itineraryRemovalFor,
-  transferPairKey,
+  remainingItineraryRemoval,
   useBoardRemovalPreview
 } from "./useBoardRemovalPreview";
 import {
@@ -956,7 +955,7 @@ const Board: React.FC<BoardProps> = ({
     if (activePrepareSave.current) return activePrepareSave.current;
     if (isPlanningBlocked() || removalPreview) return Promise.resolve(false);
     if (pendingCommitCount === 0) return Promise.resolve(true);
-    const alreadyDisclosed = new Set<string>();
+    const precedingRemovals: BoardRemovalChange[] = [];
     const changes = buildPrepareChanges(
       savedCitiesRef.current,
       cities,
@@ -978,14 +977,16 @@ const Board: React.FC<BoardProps> = ({
       })
       .map((change) => {
         if (!isBoardRemoval(change) || !change.itineraryRemoval) return change;
-        const itineraryRemoval = excludingDisconnectedTransfers(
-          change.itineraryRemoval,
-          alreadyDisclosed
+        const itineraryRemoval = precedingRemovals.reduce<
+          ItineraryRemoval | undefined
+        >(
+          (pending, earlier) =>
+            remainingItineraryRemoval(change.attractionId, pending, earlier),
+          change.itineraryRemoval
         );
-        for (const transfer of itineraryRemoval?.transfersToRemove ?? []) {
-          alreadyDisclosed.add(transferPairKey(transfer));
-        }
-        return { ...change, itineraryRemoval };
+        const adjusted = { ...change, itineraryRemoval };
+        if (itineraryRemoval) precedingRemovals.push(adjusted);
+        return adjusted;
       });
     if (
       removalRejection &&
@@ -1022,20 +1023,17 @@ const Board: React.FC<BoardProps> = ({
         const change = changes[committedCount];
         if (isBoardRemoval(change) && change.itineraryRemoval) {
           removedItineraryEntries = true;
-          const removed = change.itineraryRemoval.transfersToRemove;
-          if (removed?.length) {
-            const disconnected = new Set(removed.map(transferPairKey));
-            for (const [id, staged] of preparedRemovalsRef.current) {
-              const itineraryRemoval = excludingDisconnectedTransfers(
-                staged.itineraryRemoval,
-                disconnected
-              );
-              if (itineraryRemoval !== staged.itineraryRemoval) {
-                preparedRemovalsRef.current.set(id, {
-                  ...staged,
-                  itineraryRemoval
-                });
-              }
+          for (const [id, staged] of preparedRemovalsRef.current) {
+            const itineraryRemoval = remainingItineraryRemoval(
+              id,
+              staged.itineraryRemoval,
+              change
+            );
+            if (itineraryRemoval !== staged.itineraryRemoval) {
+              preparedRemovalsRef.current.set(id, {
+                ...staged,
+                itineraryRemoval
+              });
             }
           }
         }

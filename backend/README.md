@@ -169,8 +169,8 @@ There is no 24-hour cap.
 
 An insertion, move or removal that disconnects transfers returns `409`
 with `transfersToRemove` and writes nothing. After the user reviews them,
-repeat the same action with `transfersToRemove` containing the listed
-`transfer` objects. This removes exactly those transfers with the rest of
+repeat the same action with the listed `transfer` objects in its confirmation
+field (`transfersToRemove` unless otherwise noted). This removes exactly those transfers with the rest of
 the action; none is reused for a different pair. A pool addition still uses the submitted clock and
 does not retime saved entries.
 
@@ -198,8 +198,38 @@ Success returns `204` with the itinerary `Location`. GET returns members in
 saved order under their host, includes their current facts and contributions,
 and excludes them from the unscheduled attractions. Their changes are
 reviewed under the host; a manual check renews their source baselines.
-Removing or excluding members or their host is unavailable until group
-removal can be previewed and confirmed.
+
+Under `/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions`:
+
+- `PUT /order` replaces the order with `attractionIds`, listing every current
+  member exactly once. Reordering does not change any clocks or contributions.
+- `POST /{attractionId}/move-to-entry/{destinationEntryId}` moves the member
+  to the destination entry without a request body. The member keeps its
+  contribution and baseline, and the destination keeps its start. Normal
+  propagation can push following unlocked entries, including the former host
+  at its shortened length.
+- `POST /{attractionId}/extract` creates an unlocked standalone entry with
+  the saved contribution, even if the current source duration or closure
+  would prevent scheduling another entry. Send `date` and an optional `beforeEntryId`;
+  omit it for the end of the day. The server derives the start from the
+  position after shortening the host. Supply `startTime` on an empty day only.
+  Confirm removal of a saved transfer between the entries at the insertion
+  point with `transfersToRemoveAtInsertionPoint`.
+- `DELETE /{attractionId}` removes just that member, subtracting its saved
+  contribution from the host's current total.
+
+To delete the whole host entry, include `groupedAttractionIdsToRemove` with all
+members in addition to any `transfersToRemove`. All eligible members become
+independently unscheduled. A board exclusion or deletion uses the same fields
+in its existing itinerary removal payload. For a member, send its `entryId`
+as the host's ID without any transfer or group removals. A host board action
+affects only the host's board membership, not that of its former members.
+These changes are atomic; stale confirmations reject without writing. Group
+changes are relevant after a check even if the group's total stays the same.
+Itinerary changes never copy or clear trip notes.
+When saving multiple Prepare changes, the client removes consequences
+already covered by earlier changes in that save, such as a member already
+unscheduled when its host was removed.
 
 ## Location-grouped Attraction Search
 

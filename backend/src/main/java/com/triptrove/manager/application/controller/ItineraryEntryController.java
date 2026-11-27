@@ -1,9 +1,11 @@
 package com.triptrove.manager.application.controller;
 
+import com.triptrove.manager.application.dto.ExtractGroupedAttractionRequest;
 import com.triptrove.manager.application.dto.ItineraryTransferDTO;
 import com.triptrove.manager.application.dto.JoinItineraryAttractionRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.RemoveItineraryEntryRequest;
+import com.triptrove.manager.application.dto.ReorderGroupedAttractionsRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
@@ -69,6 +71,52 @@ public class ItineraryEntryController {
                 ItineraryTransferDTO.toSummaries(request.transfersToRemoveWithSourceEntry());
         entryEditor.joinAttraction(tripId, hostEntryId, request.attractionId(), request.sourceEntryId(),
                 request.visitDuration(), transfersToRemoveWithSourceEntry);
+        return itineraryUpdated(tripId);
+    }
+
+    @PutMapping("/entries/{hostEntryId:\\d+}/grouped-attractions/order")
+    @Operation(summary = "Save the order of the grouped attractions on an itinerary entry")
+    @EntryUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The requested members do not match the saved group",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> reorderGroupedAttractions(@PathVariable Long tripId, @PathVariable Long hostEntryId,
+            @RequestBody @Valid ReorderGroupedAttractionsRequest request) {
+        entryEditor.reorderGroupedAttractions(tripId, hostEntryId, request.attractionIds());
+        return itineraryUpdated(tripId);
+    }
+
+    @PostMapping("/entries/{hostEntryId:\\d+}/grouped-attractions/{attractionId:\\d+}/move-to-entry/{destinationEntryId:\\d+}")
+    @Operation(summary = "Move a grouped attraction and its saved contribution to a different itinerary entry")
+    @EntryUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The attraction is no longer grouped on the requested entry",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> moveGroupedAttraction(@PathVariable Long tripId, @PathVariable Long hostEntryId,
+            @PathVariable Long attractionId, @PathVariable @Positive Long destinationEntryId) {
+        entryEditor.moveGroupedAttraction(tripId, hostEntryId, attractionId, destinationEntryId);
+        return itineraryUpdated(tripId);
+    }
+
+    @PostMapping("/entries/{hostEntryId:\\d+}/grouped-attractions/{attractionId:\\d+}/extract")
+    @Operation(summary = "Extract a grouped attraction as a standalone entry with its saved contribution as planned length")
+    @EntryUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The group, destination or transfers to remove changed",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> extractGroupedAttraction(@PathVariable Long tripId, @PathVariable Long hostEntryId,
+            @PathVariable Long attractionId, @RequestBody @Valid ExtractGroupedAttractionRequest request) {
+        var start = request.startTime() == null ? null : LocalTime.parse(request.startTime());
+        entryEditor.extractGroupedAttraction(tripId, hostEntryId, attractionId, request.date(), request.beforeEntryId(),
+                start, ItineraryTransferDTO.toSummaries(request.transfersToRemoveAtInsertionPoint()));
+        return itineraryUpdated(tripId);
+    }
+
+    @DeleteMapping("/entries/{hostEntryId:\\d+}/grouped-attractions/{attractionId:\\d+}")
+    @Operation(summary = "Remove a grouped attraction without removing it from the trip")
+    @EntryUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The attraction is no longer grouped on the requested entry",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> removeGroupedAttraction(@PathVariable Long tripId, @PathVariable Long hostEntryId,
+            @PathVariable Long attractionId) {
+        entryEditor.removeGroupedAttraction(tripId, hostEntryId, attractionId);
         return itineraryUpdated(tripId);
     }
 
@@ -142,10 +190,13 @@ public class ItineraryEntryController {
     @DeleteMapping("/entries/{entryId:\\d+}")
     @Operation(summary = "Remove an itinerary entry without removing its attraction from the trip")
     @EntryUpdateResponses
-    @TransferConflictResponse
+    @ApiResponse(responseCode = "409", description = "The grouped attractions or transfers to remove changed",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<Void> removeItineraryEntry(@PathVariable Long tripId, @PathVariable Long entryId,
             @RequestBody(required = false) @Valid RemoveItineraryEntryRequest request) {
-        entryEditor.removeEntry(tripId, entryId, request == null ? List.of() : request.transferSummariesToRemove());
+        var groupedIds = request == null ? null : request.groupedAttractionIdsToRemove();
+        entryEditor.removeEntry(tripId, entryId, request == null ? List.of() : request.transferSummariesToRemove(),
+                groupedIds == null ? List.of() : groupedIds);
         return itineraryUpdated(tripId);
     }
 

@@ -139,14 +139,22 @@ export function TripAttractionCardFacts({
             : "Visit duration not recorded"}
         </Caption1>
       )}
-      {tripNote?.trim() && (
-        <div role="note" aria-label="Trip note" className="sticky-note">
-          <Caption1Strong block>Trip note</Caption1Strong>
-          <Caption1 block>{tripNote}</Caption1>
-        </div>
-      )}
+      <TripAttractionNote note={tripNote} />
     </>
   );
+}
+
+export function TripAttractionNote({
+  note
+}: {
+  note?: string;
+}): ReactElement | null {
+  return note?.trim() ? (
+    <div role="note" aria-label="Trip note" className="sticky-note">
+      <Caption1Strong block>Trip note</Caption1Strong>
+      <Caption1 block>{note}</Caption1>
+    </div>
+  ) : null;
 }
 
 type CatalogueRead =

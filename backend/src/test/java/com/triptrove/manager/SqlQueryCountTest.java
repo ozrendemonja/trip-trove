@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import static com.triptrove.manager.KeysetTestFixtures.nextPageRequest;
@@ -60,6 +61,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql("/db/attractions-test-data.sql")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class SqlQueryCountTest extends AbstractIntegrationTest {
+    private static final String GROUP_ENTRIES = "/trips/1/itinerary/entries/{host}";
+    private static final String GROUP_MEMBERS = GROUP_ENTRIES + "/grouped-attractions";
+    private static final String BOARD_ATTRACTION = "/trips/1/attractions/{attractionId}";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -886,6 +891,71 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertReadOnlySelectCount(3);
     }
 
+    @ParameterizedTest(name = "{0}, {1} hosts and members on the edited entry")
+    @MethodSource("groupEditWorkflows")
+    void groupEditsKeepExactWriteAndReadSelectBudgets(String operation, int hostCount, int addedEntries,
+            int removedHosts, int writeSelects, GroupEditRequest request) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount, hostCount - 1);
+        var host = entryIdAtPosition(hostCount);
+        var otherHost = entryIdAtPosition(hostCount - 1);
+        var members = LongStream.concat(LongStream.of(2L * hostCount),
+                LongStream.rangeClosed(2L * hostCount + 2, 3L * hostCount)).boxed().toList();
+        var edit = request.create(mapper, hostCount, host, otherHost, members);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(edit.header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+        assertSelectCount(writeSelects);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].entries.length()").value(addedEntries))
+                .andExpect(jsonPath("$.days[1].entries.length()").value(hostCount - removedHosts))
+                .andExpect(jsonPath("$.days[1].entries[0].groupedAttractions").isNotEmpty());
+        assertReadOnlySelectCount(1);
+    }
+
+    private static Stream<Arguments> groupEditWorkflows() {
+        return Stream.of(3, 30).flatMap(size -> Stream.of(
+                groupEditWorkflow("Reorder", size, 0, 0, 2, (json, count, host, other, members) ->
+                        put(GROUP_MEMBERS + "/order", host).content(json.writeValueAsString(
+                                new ReorderGroupedAttractionsRequest(members.reversed())))),
+                groupEditWorkflow("Regroup", size, 0, 0, 2, (json, count, host, other, members) ->
+                        post(GROUP_MEMBERS + "/{member}/move-to-entry/{destination}", other, members.getFirst() - 1, host)),
+                groupEditWorkflow("Extract", size, 1, 0, 2, (json, count, host, other, members) ->
+                        post(GROUP_MEMBERS + "/{member}/extract", host, members.getFirst())
+                                .content(json.writeValueAsString(new ExtractGroupedAttractionRequest(
+                                        LocalDate.parse("2026-09-01"), null, "14:00", null)))),
+                groupEditWorkflow("Remove member", size, 0, 0, 2, (json, count, host, other, members) ->
+                        delete(GROUP_MEMBERS + "/{member}", host, members.getFirst())),
+                groupEditWorkflow("Dissolve group", size, 0, 1, 2, (json, count, host, other, members) ->
+                        delete(GROUP_ENTRIES, host).content(json.writeValueAsString(
+                                new RemoveItineraryEntryRequest(null, members)))),
+                groupEditWorkflow("Remove host from trip", size, 0, 1, 2, (json, count, host, other, members) ->
+                        delete(BOARD_ATTRACTION, count).content(json.writeValueAsString(
+                                new ItineraryRemovalRequest(host, null, members)))),
+                groupEditWorkflow("Remove member from trip", size, 0, 0, 2, (json, count, host, other, members) ->
+                        delete(BOARD_ATTRACTION, members.getFirst()).content(json.writeValueAsString(
+                                new ItineraryRemovalRequest(host)))),
+                groupEditWorkflow("Exclude host from trip", size, 0, 1, 5, (json, count, host, other, members) ->
+                        put("/trips/1/board/attractions/{attractionId}", count).content(json.writeValueAsString(
+                                new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null,
+                                        new ItineraryRemovalRequest(host, null, members)))))));
+    }
+
+    private static Arguments groupEditWorkflow(String name, int hostCount, int addedEntries,
+            int removedHosts, int selects, GroupEditRequest request) {
+        return Arguments.of(name, hostCount, addedEntries, removedHosts, selects, request);
+    }
+
+    @FunctionalInterface
+    private interface GroupEditRequest {
+        MockHttpServletRequestBuilder create(JsonMapper json, int hostCount, long host, long otherHost,
+                                              List<Long> memberIds);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {3, 30})
     void joiningAnUnscheduledAttractionUsesTwoSelectsWithExistingGroups(int hostCount) throws Exception {
@@ -1654,7 +1724,11 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     private void seedItineraryWithGroupedAttractions(int hostCount) {
-        seedSchedulingBoard(2 * hostCount + 1);
+        seedItineraryWithGroupedAttractions(hostCount, 0);
+    }
+
+    private void seedItineraryWithGroupedAttractions(int hostCount, int extraMemberCount) {
+        seedSchedulingBoard(2 * hostCount + 1 + extraMemberCount);
         entityManager.createNativeQuery("""
                 UPDATE itinerary SET time_zone = 'Europe/Belgrade' WHERE trip_id = 1;
                 INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
@@ -1664,9 +1738,13 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 FROM generate_series(1, :hostCount) AS entries(position);
                 INSERT INTO itinerary_grouped_attraction(trip_id, attraction_id, host_entry_id, member_position, contribution_minutes)
                 SELECT 1, attraction_id + :hostCount, id, 1, 5 FROM itinerary_entry WHERE trip_id = 1;
+                INSERT INTO itinerary_grouped_attraction(trip_id, attraction_id, host_entry_id, member_position, contribution_minutes)
+                SELECT 1, 2 * :hostCount + 1 + extra.position, host.id, extra.position + 1, 0
+                FROM itinerary_entry host CROSS JOIN generate_series(1, :extraMembers) AS extra(position)
+                WHERE host.trip_id = 1 AND host.path_position = :hostCount;
                 UPDATE trip_attraction SET note = 'Updated member note ' || attraction_id
                 WHERE trip_id = 1 AND attraction_id > :hostCount;
-                """).setParameter("hostCount", hostCount).executeUpdate();
+                """).setParameter("hostCount", hostCount).setParameter("extraMembers", extraMemberCount).executeUpdate();
     }
 
     private long entryIdAtPosition(int position) {

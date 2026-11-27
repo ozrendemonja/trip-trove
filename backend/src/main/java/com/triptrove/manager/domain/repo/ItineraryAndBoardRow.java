@@ -36,7 +36,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    ItineraryTransfer entryTransfer, Boolean transferChangedSinceCheck,
                                    Boolean startChangedSinceCheck, Boolean plannedLengthChangedSinceCheck,
                                    Boolean fixedStartChangedSinceCheck, Boolean movedSinceCheck,
-                                   Boolean followingStartsPushedSinceCheck,
+                                   Boolean followingStartsPushedSinceCheck, Boolean groupChangedSinceCheck,
                                    String removedSubject, LocalDate removedDate,
                                    Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause,
                                    WatchedSourceSnapshot watchedSourceBaseline, WatchedSourceSnapshot currentWatchedSource,
@@ -140,7 +140,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (transferChangedSinceCheck) {
             reasons.add(TRANSFER_CHANGED);
         }
-        if (members.stream().anyMatch(ItineraryAndBoardRow::memberJoinedSinceLastCheck)) {
+        if (groupChangedSinceCheck || members.stream().anyMatch(ItineraryAndBoardRow::memberJoinedSinceLastCheck)) {
             reasons.add(GROUP_CHANGED);
         }
         return List.copyOf(reasons);

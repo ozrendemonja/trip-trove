@@ -34,9 +34,9 @@ import {
 } from "react";
 import type {
   GetItineraryResponse,
-  ItineraryTransferDto,
   ItineraryTransferRemovalResponse,
-  MoveItineraryEntryRequest
+  MoveItineraryEntryRequest,
+  RemoveItineraryEntryRequest
 } from "../../clients/manager";
 import {
   attractionImportance,
@@ -52,6 +52,10 @@ import {
   useItineraryGrouping
 } from "./ItineraryGrouping";
 import {
+  GroupMemberDialog,
+  type GroupMemberChoice
+} from "./ItineraryGroupActions";
+import {
   TransferEditor,
   TransferLine,
   TransfersToRemoveDialog
@@ -64,6 +68,7 @@ import {
   attractionNameId,
   dropSlot,
   gapSuggestion,
+  groupedDropTarget,
   type DraggedItineraryItem,
   type ItineraryAttraction,
   type OpenAttractionFacts
@@ -117,7 +122,8 @@ type TransferRemovalChoice = {
   day: Day;
   transfers: ItineraryTransferRemovalResponse[];
 } & (
-  { action: "move"; position: MoveItineraryEntryRequest } | { action: "remove" }
+  | { action: "move"; position: MoveItineraryEntryRequest }
+  | { action: "remove"; removal?: RemoveItineraryEntryRequest }
 );
 
 const dayTargetId = (date: string): string => `itinerary-day-${date}`;
@@ -158,7 +164,10 @@ interface ItineraryView {
   lastStart: number;
   visibleDays: GetItineraryResponse["days"];
   showDate: (date: string) => void;
-  focusItineraryTarget: (target: ItineraryTarget) => void;
+  focusItineraryTarget: (
+    target: ItineraryTarget,
+    attractionId?: number
+  ) => void;
   dragged?: DraggedItineraryItem;
   setDragged: (item?: DraggedItineraryItem) => void;
   scheduling: ItineraryScheduling;
@@ -322,12 +331,20 @@ export const useItinerary = (
     tripId: number;
     id: string;
   }>();
-  const focusItineraryTarget = ({ date, entryId }: ItineraryTarget): void => {
+  const focusItineraryTarget = (
+    { date, entryId }: ItineraryTarget,
+    attractionId?: number
+  ): void => {
     if (tripId === undefined) return;
     if (!open || !visibleDays.some((day) => day.date === date)) showDate(date);
     setFocusTarget({
       tripId,
-      id: entryId === undefined ? dayTargetId(date) : entryTargetId(entryId)
+      id:
+        attractionId !== undefined
+          ? attractionNameId(attractionId)
+          : entryId === undefined
+            ? dayTargetId(date)
+            : entryTargetId(entryId)
     });
   };
   const focusReturnedAttraction = useEffectEvent(
@@ -573,7 +590,9 @@ export const ItineraryContent = ({
     !!dayNotes.draft ||
     !!pending;
   const [hovered, setHovered] = useState<{ date: string; slot: number }>();
+  const [hoveredGroup, setHoveredGroup] = useState<number>();
   const [actionStatus, setActionStatus] = useState("");
+  const [memberChoice, setMemberChoice] = useState<GroupMemberChoice>();
   const grouping = useItineraryGrouping(
     timingEditing,
     itinerary.onDurationCorrected,
@@ -647,7 +666,62 @@ export const ItineraryContent = ({
     !!moveChoice ||
     !!transferRemoval ||
     !!transferEdit ||
-    !!grouping.choice;
+    !!grouping.choice ||
+    !!memberChoice;
+
+  const closeMemberChoice = (): void => {
+    if (!memberChoice) return;
+    const { trigger } = memberChoice;
+    const { host, member } = memberChoice.item;
+    setMemberChoice(undefined);
+    if (trigger?.isConnected) requestAnimationFrame(() => trigger.focus());
+    else
+      focusItineraryTarget(
+        { date: host.timing.start.slice(0, 10) },
+        member.attractionId
+      );
+  };
+  const finishMemberChoice = (saved: GetItineraryResponse): void => {
+    if (!memberChoice) return;
+    const {
+      item: { host, member },
+      action
+    } = memberChoice;
+    const target = locateAttraction(saved, member.attractionId);
+    setMemberChoice(undefined);
+    focusItineraryTarget(
+      {
+        date: target?.date ?? host.timing.start.slice(0, 10),
+        entryId: host.entryId
+      },
+      target?.attraction.attractionId
+    );
+    setActionStatus(
+      action === "remove-group-member"
+        ? `${member.name} removed from the group.`
+        : action === "extract-group-member"
+          ? `${member.name} is now a separate entry.`
+          : `${member.name} moved to another entry.`
+    );
+  };
+  const reorderGroup = (
+    host: Entry,
+    attractionId: number,
+    position: number
+  ): void => {
+    if (interactionBlocked || !host.groupedAttractions) return;
+    const attractionIds = host.groupedAttractions.map(
+      (member) => member.attractionId
+    );
+    const previousPosition = attractionIds.indexOf(attractionId);
+    if (previousPosition < 0 || previousPosition === position) return;
+    attractionIds.splice(previousPosition, 1);
+    attractionIds.splice(position, 0, attractionId);
+    void timingEditing.save(host.entryId, {
+      action: "reorder-group",
+      request: { attractionIds }
+    });
+  };
 
   const move = (entry: Entry, position: MoveItineraryEntryRequest): void => {
     if (writeBlocked || (moveChoice && position.startOffset === undefined))
@@ -715,37 +789,28 @@ export const ItineraryContent = ({
   const remove = (
     entry: Entry,
     day: Day,
-    transfersToRemove?: ItineraryTransferDto[]
+    removal?: RemoveItineraryEntryRequest
   ): void => {
     if (writeBlocked) return;
     setActionStatus("");
     void timingEditing
-      .save(
-        entry.entryId,
-        {
-          action: "remove",
-          removal: transfersToRemove && {
-            transfersToRemove
-          }
-        },
-        (saved) => {
-          const present = saved.days.find((candidate) =>
-            candidate.entries.some((item) => item.entryId === entry.entryId)
+      .save(entry.entryId, { action: "remove", removal }, (saved) => {
+        const present = saved.days.find((candidate) =>
+          candidate.entries.some((item) => item.entryId === entry.entryId)
+        );
+        if (present) {
+          focusItineraryTarget({
+            date: present.date,
+            entryId: entry.entryId
+          });
+          setActionStatus(
+            `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
           );
-          if (present) {
-            focusItineraryTarget({
-              date: present.date,
-              entryId: entry.entryId
-            });
-            setActionStatus(
-              `Saved itinerary reloaded. ${entry.name} is still in the itinerary.`
-            );
-            return;
-          }
-          focusItineraryTarget({ date: day.date });
-          setActionStatus(`${entry.name} removed from the itinerary.`);
+          return;
         }
-      )
+        focusItineraryTarget({ date: day.date });
+        setActionStatus(`${entry.name} removed from the itinerary.`);
+      })
       .then((error) => {
         if (!error) return;
         if (error.transfersToRemove) {
@@ -753,6 +818,7 @@ export const ItineraryContent = ({
             action: "remove",
             entry,
             day,
+            removal,
             transfers: error.transfersToRemove
           });
           return;
@@ -763,6 +829,7 @@ export const ItineraryContent = ({
   const endDrag = useCallback((): void => {
     setDragged(undefined);
     setHovered(undefined);
+    setHoveredGroup(undefined);
   }, [setDragged]);
   useEffect(() => {
     window.addEventListener("dragend", endDrag);
@@ -771,7 +838,9 @@ export const ItineraryContent = ({
   const dragSourceDate =
     dragged?.kind === "entry"
       ? dragged.entry.timing.start.slice(0, 10)
-      : undefined;
+      : dragged?.kind === "member"
+        ? dragged.host.timing.start.slice(0, 10)
+        : undefined;
   // Keep the source mounted when hovering the pager reveals a different day.
   const renderedDays = days.filter(
     (day) => day.date === dragSourceDate || visibleDays.includes(day)
@@ -780,6 +849,13 @@ export const ItineraryContent = ({
     if (interactionBlocked || !dragged) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = dragged.kind === "pool" ? "copy" : "move";
+    const target =
+      dragged.kind === "member" ? groupedDropTarget(event, day) : undefined;
+    setHoveredGroup(target?.host.entryId);
+    if (target) {
+      setHovered(undefined);
+      return;
+    }
     const slot = dropSlot(event, day);
     if (hovered?.date !== day.date || hovered.slot !== slot) {
       setHovered({ date: day.date, slot });
@@ -799,11 +875,34 @@ export const ItineraryContent = ({
         button instanceof HTMLButtonElement ? button : null,
         gapSuggestion(days, day, slot)
       );
-    } else {
+    } else if (dragged.kind === "entry") {
       const before = day.entries
         .slice(slot)
         .find((entry) => entry.entryId !== dragged.entry.entryId);
       move(dragged.entry, { date: day.date, beforeEntryId: before?.entryId });
+    } else {
+      const target = groupedDropTarget(event, day);
+      if (!target) {
+        setMemberChoice({
+          item: dragged,
+          action: "extract-group-member",
+          date: day.date,
+          beforeEntryId: day.entries[slot]?.entryId
+        });
+      } else if (target.host.entryId !== dragged.host.entryId) {
+        setMemberChoice({
+          item: dragged,
+          action: "move-group-member",
+          destinationEntryId: target.host.entryId
+        });
+      } else {
+        reorderGroup(
+          dragged.host,
+          dragged.member.attractionId,
+          target.memberIndex ??
+            (dragged.host.groupedAttractions?.length ?? 1) - 1
+        );
+      }
     }
     endDrag();
   };
@@ -838,6 +937,17 @@ export const ItineraryContent = ({
     <div className={classes.itinerary}>
       <DayNoteEditor editing={dayNotes} />
       <JoinAttractionDialog grouping={grouping} />
+      {memberChoice && (
+        <GroupMemberDialog
+          choice={memberChoice}
+          days={days}
+          formatDate={formatItineraryDate}
+          editing={timingEditing}
+          blocked={writeBlocked}
+          onClose={closeMemberChoice}
+          onSaved={finishMemberChoice}
+        />
+      )}
       {factsAttraction && (
         <AttractionFactsDialog
           key={factsAttraction.attractionId}
@@ -894,7 +1004,10 @@ export const ItineraryContent = ({
                 transfersToRemove
               });
             } else {
-              remove(entry, day, transfersToRemove);
+              remove(entry, day, {
+                ...transferRemoval.removal,
+                transfersToRemove
+              });
             }
           }}
         />
@@ -913,11 +1026,12 @@ export const ItineraryContent = ({
           (kind === transferRemoval?.action &&
             transferRemoval.entry.entryId === entryId) ||
           (kind === "transfer" && transferEdit?.from.entryId === entryId) ||
-          (kind === "join" && grouping.choice?.host.entryId === entryId)
+          (kind === "join" && grouping.choice?.host.entryId === entryId) ||
+          (kind === memberChoice?.action &&
+            memberChoice.item.host.entryId === entryId)
         )
           return null;
-        const composition =
-          kind === "move" || kind === "remove" || kind === "join";
+        const composition = "action" in edit && edit.action !== "transfer";
         const visible = visibleDays.some((day) =>
           day.entries.some((entry) => entry.entryId === entryId)
         );
@@ -939,24 +1053,27 @@ export const ItineraryContent = ({
           </MessageBar>
         );
       })}
-      {pending?.recovery && !transferEdit && !grouping.pending && (
-        <MessageBar intent="warning">
-          <MessageBarBody>
-            {pending.recovery === "unconfirmed"
-              ? "The entry save couldn't be confirmed. Inspect the saved itinerary before editing again."
-              : "The entry change was saved, but the itinerary couldn't be refreshed."}
-          </MessageBarBody>
-          <MessageBarActions>
-            <Button
-              size="small"
-              disabledFocusable={!!pending.activity}
-              onClick={() => void timingEditing.inspect()}
-            >
-              Inspect saved itinerary
-            </Button>
-          </MessageBarActions>
-        </MessageBar>
-      )}
+      {pending?.recovery &&
+        !transferEdit &&
+        !grouping.pending &&
+        !memberChoice && (
+          <MessageBar intent="warning">
+            <MessageBarBody>
+              {pending.recovery === "unconfirmed"
+                ? "The entry save couldn't be confirmed. Inspect the saved itinerary before editing again."
+                : "The entry change was saved, but the itinerary couldn't be refreshed."}
+            </MessageBarBody>
+            <MessageBarActions>
+              <Button
+                size="small"
+                disabledFocusable={!!pending.activity}
+                onClick={() => void timingEditing.inspect()}
+              >
+                Inspect saved itinerary
+              </Button>
+            </MessageBarActions>
+          </MessageBar>
+        )}
       {draft && !visibleDays.some((day) => day.date === draft.intent.date) && (
         <Card size="small">
           <Caption1>{formatItineraryDate(draft.intent.date)}</Caption1>
@@ -980,7 +1097,8 @@ export const ItineraryContent = ({
             !!moveChoice ||
             !!transferRemoval ||
             !!transferEdit ||
-            !!grouping.choice
+            !!grouping.choice ||
+            !!memberChoice
           }
           onPrepare={onPrepare}
           days={days}
@@ -990,6 +1108,17 @@ export const ItineraryContent = ({
           onGrab={setDragged}
           onRelease={endDrag}
           onOpenFacts={openFacts}
+          onDropMember={
+            dragged?.kind === "member" && !interactionBlocked
+              ? () => {
+                  setMemberChoice({
+                    item: dragged,
+                    action: "remove-group-member"
+                  });
+                  endDrag();
+                }
+              : undefined
+          }
         />
         <section
           ref={measureDayRow}
@@ -1032,7 +1161,7 @@ export const ItineraryContent = ({
                   hidden && classes.hiddenDragSource,
                   activeSlot !== undefined &&
                     day.entries.length === 0 &&
-                    classes.dropOnEmptyDay
+                    classes.activeDropTarget
                 )}
                 onDragOver={(event) => dragOver(event, day)}
                 onDragLeave={(event) => {
@@ -1042,6 +1171,11 @@ export const ItineraryContent = ({
                   ) {
                     setHovered((target) =>
                       target?.date === day.date ? undefined : target
+                    );
+                    setHoveredGroup((target) =>
+                      day.entries.some(({ entryId }) => entryId === target)
+                        ? undefined
+                        : target
                     );
                   }
                 }}
@@ -1117,6 +1251,7 @@ export const ItineraryContent = ({
                             index={index}
                             editing={timingEditing}
                             blocked={interactionBlocked}
+                            groupDropActive={hoveredGroup === entry.entryId}
                             onGrab={setDragged}
                             onRelease={endDrag}
                             onOpenFacts={openFacts}
@@ -1127,7 +1262,11 @@ export const ItineraryContent = ({
                                   itinerary={itinerary.saved}
                                   blocked={interactionBlocked}
                                   onChoose={grouping.choose}
+                                  onReorder={reorderGroup}
+                                  onChangeMember={setMemberChoice}
                                   onOpenFacts={openFacts}
+                                  onGrab={setDragged}
+                                  onRelease={endDrag}
                                 />
                               )
                             }
@@ -1140,7 +1279,9 @@ export const ItineraryContent = ({
                                 blocked={interactionBlocked}
                                 formatDate={formatItineraryDate}
                                 onMove={(position) => move(entry, position)}
-                                onRemove={() => remove(entry, day)}
+                                onRemove={(removal) =>
+                                  remove(entry, day, removal)
+                                }
                               />
                             }
                           />

@@ -114,7 +114,11 @@ public final class ItineraryTiming {
     }
 
     public ItineraryTiming withStartAt(Instant instant, ZoneId destinationZone) {
-        return new ItineraryTiming(instant.atZone(destinationZone), plannedMinutes);
+        return atInstant(instant, destinationZone, plannedMinutes);
+    }
+
+    public static ItineraryTiming atInstant(Instant instant, ZoneId zone, int minutes) {
+        return new ItineraryTiming(instant.atZone(zone), minutes);
     }
 
     public List<ItineraryTiming> localStartsOn(LocalDate destinationDate, ZoneId destinationZone) {

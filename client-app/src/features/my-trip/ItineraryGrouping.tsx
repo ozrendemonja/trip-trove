@@ -9,20 +9,34 @@ import {
   DialogTitle,
   Field,
   Input,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   MessageBar,
   MessageBarBody,
-  SearchBox
+  SearchBox,
+  mergeClasses
 } from "@fluentui/react-components";
-import { useId, useState, type ReactElement } from "react";
+import { MoreHorizontal16Regular } from "@fluentui/react-icons";
+import { useId, useRef, useState, type ReactElement } from "react";
 import type {
   AttractionEntry,
   GetItineraryResponse,
   ItineraryTransferRemovalResponse,
   UnscheduledAttraction
 } from "../../clients/manager";
-import { readableFactValue } from "./AttractionFactsDialog";
+import { readableFactValue, TripAttractionNote } from "./AttractionFactsDialog";
 import { useClasses } from "./Itinerary.styles";
-import { attractionNameId, type OpenAttractionFacts } from "./ItineraryDrag";
+import {
+  attractionNameId,
+  useItineraryAttractionCard,
+  type DraggedItineraryItem,
+  type GroupMemberItem,
+  type OpenAttractionFacts
+} from "./ItineraryDrag";
+import type { GroupMemberChoice } from "./ItineraryGroupActions";
 import {
   TransfersToRemoveList,
   transfersForEntryRemoval
@@ -234,64 +248,182 @@ export function useItineraryGrouping(
   };
 }
 
+interface EntryGroupingProps {
+  entry: AttractionEntry;
+  itinerary: GetItineraryResponse;
+  blocked: boolean;
+  onChoose: ItineraryGrouping["choose"];
+  onReorder: (
+    entry: AttractionEntry,
+    attractionId: number,
+    position: number
+  ) => void;
+  onChangeMember: (choice: GroupMemberChoice) => void;
+  onOpenFacts: OpenAttractionFacts;
+  onGrab: (item: DraggedItineraryItem) => void;
+  onRelease: () => void;
+}
+
+function GroupMemberRow({
+  item,
+  index,
+  last,
+  canRegroup,
+  blocked,
+  onReorder,
+  onChangeMember,
+  onOpenFacts,
+  onGrab,
+  onRelease
+}: Pick<
+  EntryGroupingProps,
+  | "blocked"
+  | "onReorder"
+  | "onChangeMember"
+  | "onOpenFacts"
+  | "onGrab"
+  | "onRelease"
+> & {
+  item: GroupMemberItem;
+  index: number;
+  last: boolean;
+  canRegroup: boolean;
+}): ReactElement {
+  const classes = useClasses();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const { host, member } = item;
+  const { Icon, tone, label } = attractionImportance(member);
+  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+    item,
+    blocked,
+    onGrab,
+    onRelease,
+    onOpenFacts,
+    description: label
+  });
+  const choose = (action: GroupMemberChoice["action"]): void => {
+    onChangeMember({ item, action, trigger: menuButton.current ?? undefined });
+  };
+  return (
+    <li data-itinerary-group-member-index={index} {...interaction}>
+      <div className={classes.entryHeader}>
+        <div
+          className={mergeClasses(
+            classes.iconLabel,
+            classes.groupedMemberLabel
+          )}
+        >
+          {dragHandle}
+          <Icon aria-hidden className={classes[tone]} />
+          {nameButton}
+          <Caption1>
+            {readableFactValue(member.category)} · {member.contributionMinutes}{" "}
+            min
+          </Caption1>
+        </div>
+        <Menu>
+          <MenuTrigger disableButtonEnhancement>
+            <Button
+              ref={menuButton}
+              appearance="subtle"
+              size="small"
+              icon={<MoreHorizontal16Regular />}
+              aria-label={`Actions for ${member.name}`}
+              disabledFocusable={blocked}
+            />
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem
+                disabled={blocked || index === 0}
+                onClick={() => onReorder(host, member.attractionId, index - 1)}
+              >
+                Move up
+              </MenuItem>
+              <MenuItem
+                disabled={blocked || last}
+                onClick={() => onReorder(host, member.attractionId, index + 1)}
+              >
+                Move down
+              </MenuItem>
+              <MenuItem
+                disabled={blocked}
+                onClick={() => choose("extract-group-member")}
+              >
+                Extract to day...
+              </MenuItem>
+              <MenuItem
+                disabled={blocked || !canRegroup}
+                onClick={() => choose("move-group-member")}
+              >
+                Move to another entry...
+              </MenuItem>
+              <MenuItem
+                disabled={blocked}
+                onClick={() => choose("remove-group-member")}
+              >
+                Remove from group
+              </MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      </div>
+      <TripAttractionNote note={member.tripNote} />
+      {member.warnings.map((warning) => (
+        <ItineraryWarning key={warning}>
+          {entryWarningLabels[warning]}
+        </ItineraryWarning>
+      ))}
+    </li>
+  );
+}
+
 export function EntryGrouping({
   entry,
   itinerary,
   blocked,
   onChoose,
-  onOpenFacts
-}: {
-  entry: AttractionEntry;
-  itinerary: GetItineraryResponse;
-  blocked: boolean;
-  onChoose: ItineraryGrouping["choose"];
-  onOpenFacts: OpenAttractionFacts;
-}): ReactElement {
+  onReorder,
+  onChangeMember,
+  onOpenFacts,
+  onGrab,
+  onRelease
+}: EntryGroupingProps): ReactElement {
   const classes = useClasses();
   const searchId = useId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const candidates = open ? candidatesFor(itinerary, entry, search) : [];
+  const members = entry.groupedAttractions ?? [];
+  const canRegroup = itinerary.days.some(({ entries }) =>
+    entries.some(({ entryId }) => entryId !== entry.entryId)
+  );
 
   return (
-    <div className={classes.entryGrouping}>
-      {!!entry.groupedAttractions?.length && (
+    <div
+      className={classes.entryGrouping}
+      data-itinerary-group-host={entry.entryId}
+    >
+      {members.length > 0 && (
         <ul
           className={classes.groupedMembers}
           aria-label={`Grouped attractions on ${entry.name}`}
         >
-          {entry.groupedAttractions.map((member) => {
-            const { Icon, tone, label } = attractionImportance(member);
-            return (
-              <li key={member.attractionId}>
-                <div className={classes.iconLabel}>
-                  <Icon aria-hidden className={classes[tone]} />
-                  <Button
-                    appearance="transparent"
-                    size="small"
-                    className={classes.attractionName}
-                    id={attractionNameId(member.attractionId)}
-                    aria-haspopup="dialog"
-                    aria-description={label}
-                    onClick={({ currentTarget }) =>
-                      onOpenFacts(member.attractionId, currentTarget)
-                    }
-                  >
-                    {member.name}
-                  </Button>
-                  <Caption1>
-                    {readableFactValue(member.category)} ·{" "}
-                    {member.contributionMinutes} min
-                  </Caption1>
-                </div>
-                {member.warnings.map((warning) => (
-                  <ItineraryWarning key={warning}>
-                    {entryWarningLabels[warning]}
-                  </ItineraryWarning>
-                ))}
-              </li>
-            );
-          })}
+          {members.map((member, index) => (
+            <GroupMemberRow
+              key={member.attractionId}
+              item={{ kind: "member", host: entry, member }}
+              index={index}
+              last={index === members.length - 1}
+              canRegroup={canRegroup}
+              blocked={blocked}
+              onReorder={onReorder}
+              onChangeMember={onChangeMember}
+              onOpenFacts={onOpenFacts}
+              onGrab={onGrab}
+              onRelease={onRelease}
+            />
+          ))}
         </ul>
       )}
       <Button

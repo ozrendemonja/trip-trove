@@ -1,6 +1,11 @@
-import { Button, type CardProps } from "@fluentui/react-components";
+import { Button } from "@fluentui/react-components";
 import { ReOrderDotsVertical20Regular } from "@fluentui/react-icons";
-import { useRef, type DragEvent, type ReactElement } from "react";
+import {
+  useRef,
+  type DragEvent,
+  type HTMLAttributes,
+  type ReactElement
+} from "react";
 import type {
   GetItineraryResponse,
   ScheduleAttractionRequest
@@ -11,12 +16,22 @@ import { clockOffset, localClock } from "./itineraryClocks";
 type Day = GetItineraryResponse["days"][number];
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
 type Entry = Day["entries"][number];
+export type GroupedAttraction = NonNullable<
+  Entry["groupedAttractions"]
+>[number];
+
+export type GroupMemberItem = {
+  kind: "member";
+  host: Entry;
+  member: GroupedAttraction;
+};
 
 export type DraggedItineraryItem =
-  { kind: "pool"; attraction: Attraction } | { kind: "entry"; entry: Entry };
+  | { kind: "pool"; attraction: Attraction }
+  | { kind: "entry"; entry: Entry }
+  | GroupMemberItem;
 
-export type ItineraryAttraction =
-  Attraction | Entry | NonNullable<Entry["groupedAttractions"]>[number];
+export type ItineraryAttraction = Attraction | Entry | GroupedAttraction;
 export type OpenAttractionFacts = (
   attractionId: number,
   trigger: HTMLButtonElement
@@ -33,16 +48,18 @@ export function useItineraryAttractionCard({
   blocked,
   onGrab,
   onRelease,
-  onOpenFacts
+  onOpenFacts,
+  description
 }: {
   item: DraggedItineraryItem;
   blocked: boolean;
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
   onOpenFacts: OpenAttractionFacts;
+  description?: string;
 }): {
   interaction: Pick<
-    CardProps,
+    HTMLAttributes<HTMLElement>,
     | "draggable"
     | "onPointerDown"
     | "onPointerUp"
@@ -54,7 +71,12 @@ export function useItineraryAttractionCard({
   dragHandle: ReactElement;
 } {
   const classes = useClasses();
-  const subject = item.kind === "pool" ? item.attraction : item.entry;
+  const subject =
+    item.kind === "pool"
+      ? item.attraction
+      : item.kind === "entry"
+        ? item.entry
+        : item.member;
   const trigger = useRef<HTMLButtonElement>(null);
   const pressedControl = useRef(false);
   const didDrag = useRef(false);
@@ -123,6 +145,7 @@ export function useItineraryAttractionCard({
         size="small"
         appearance="transparent"
         aria-haspopup="dialog"
+        aria-description={description}
         className={classes.attractionName}
       >
         {subject.name}
@@ -137,6 +160,29 @@ export function useItineraryAttractionCard({
         <ReOrderDotsVertical20Regular />
       </span>
     )
+  };
+}
+
+export function groupedDropTarget(
+  event: DragEvent<HTMLElement>,
+  day: Day
+): { host: Entry; memberIndex?: number } | undefined {
+  if (!(event.target instanceof Element)) return;
+  const hostTarget = event.target.closest<HTMLElement>(
+    "[data-itinerary-group-host]"
+  );
+  const host = day.entries.find(
+    (entry) => entry.entryId === Number(hostTarget?.dataset.itineraryGroupHost)
+  );
+  if (!host) return;
+  const memberTarget = event.target.closest<HTMLElement>(
+    "[data-itinerary-group-member-index]"
+  );
+  return {
+    host,
+    memberIndex: memberTarget
+      ? Number(memberTarget.dataset.itineraryGroupMemberIndex)
+      : undefined
   };
 }
 

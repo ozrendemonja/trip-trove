@@ -116,7 +116,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 entry.timing, entry.includedInLastCheck, entry.outgoingTransfer, entry.transferChangedSinceCheck,
                 entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
-                entry.followingStartsPushedSinceCheck,
+                entry.followingStartsPushedSinceCheck, entry.groupChangedSinceCheck,
                 removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
                 entry.watchedSourceBaseline, source.snapshot, member.hostEntryId, member.position,
                 member.contributionMinutes, member.includedInLastCheck, member.joinedSinceLastCheck, member.watchedSourceBaseline,

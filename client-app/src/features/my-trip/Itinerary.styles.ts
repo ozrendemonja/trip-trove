@@ -161,7 +161,7 @@ export const useClasses = makeStyles({
     height: 0,
     overflow: "hidden"
   },
-  dropOnEmptyDay: { outline: `2px solid ${tokens.colorBrandStroke1}` },
+  activeDropTarget: { outline: `2px solid ${tokens.colorBrandStroke1}` },
   dayHeading: {
     margin: 0,
     textAlign: "center"
@@ -266,6 +266,10 @@ export const useClasses = makeStyles({
     borderInlineStartStyle: "solid",
     borderInlineStartColor: tokens.colorNeutralStroke2,
     paddingInlineStart: tokens.spacingHorizontalS
+  },
+  groupedMemberLabel: {
+    flexWrap: "wrap",
+    minWidth: 0
   },
   groupingPicker: {
     display: "grid",

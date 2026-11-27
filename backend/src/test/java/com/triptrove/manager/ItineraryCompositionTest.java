@@ -5,6 +5,7 @@ import com.triptrove.manager.application.dto.AttractionCategoryDTO;
 import com.triptrove.manager.application.dto.AttractionTypeDTO;
 import com.triptrove.manager.application.dto.CheckItineraryRequest;
 import com.triptrove.manager.application.dto.DateSpanDTO;
+import com.triptrove.manager.application.dto.ExtractGroupedAttractionRequest;
 import com.triptrove.manager.application.dto.GetItineraryResponse;
 import com.triptrove.manager.application.dto.GetItineraryResponse.ChangeNotice.SourceChange;
 import com.triptrove.manager.application.dto.ItineraryRemovalRequest;
@@ -14,6 +15,7 @@ import com.triptrove.manager.application.dto.LocationDTO;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.RemoveItineraryEntryRequest;
+import com.triptrove.manager.application.dto.ReorderGroupedAttractionsRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
 import com.triptrove.manager.application.dto.UpdateAttractionCategoryRequest;
@@ -203,6 +205,329 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.days[1].entries[0].timing.end").value("2027-03-30T09:35+02:00"))
                 .andExpect(jsonPath("$.days[1].entries[0].groupedAttractions[*].attractionId", contains(3, 2)))
                 .andExpect(jsonPath("$.days[1].entries[0].groupedAttractions[*].contributionMinutes", contains(5, 0)));
+    }
+
+    @Test
+    void reorderingChangesTheCheckStateButNotTheHostIntervalAndSurvivesSourceEdits() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("15m"));
+        var host = schedule(1L, TODAY, "09:00");
+        lock(host);
+        join(host, new JoinItineraryAttractionRequest(2L, null, null, null)).andExpect(status().isNoContent());
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        checkItinerary();
+        var originalCheck = readCheckRequest();
+
+        putFact(ITINERARY + "/entries/" + host + "/grouped-attractions/order",
+                new ReorderGroupedAttractionsRequest(List.of(3L, 2L)));
+        submitCheck(originalCheck).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ITINERARY_CHECK_STALE"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The itinerary or its attraction sources changed. Refresh and review the itinerary before checking again."));
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("GROUP_CHANGED")));
+
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("10m"));
+        saved().andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[*].attractionId", contains(3, 2)))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[*].contributionMinutes", contains(15, 5)))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].warnings").isEmpty())
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[1].warnings",
+                        contains("PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE")))
+                .andExpect(jsonPath("$.changeNotices[0].groupedSourceChanges[0].attractionId").value(2));
+        checkItinerary();
+        saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"));
+    }
+
+    @Test
+    void regroupingTransfersTheSavedAllocationAndKeepsBothHostsInPlace() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        putFact("/trips/1/attractions/3/note", new UpdateTripAttractionNoteRequest("Use the west gate."));
+        putFact("/trips/1/attractions/4/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        var destination = schedule(2L, TODAY, "09:00");
+        var following = schedule(4L, TODAY, "09:33");
+        var source = schedule(1L, TODAY, "11:15");
+        lock(destination);
+        lock(following);
+        join(source, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        checkItinerary();
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("15m"));
+        var before = saved()
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:30+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].timing.end").value("2027-03-29T12:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].groupedAttractions[0].contributionMinutes").value(5))
+                .andReturn().getResponse().getContentAsString();
+
+        regroup(source, 3, destination)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "That timing conflicts with the fixed start of Gallery. Choose another clock or length."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        putFact(ITINERARY + "/entries/" + following + "/fixed-start", new UpdateItineraryEntryFixedStartRequest(false));
+        regroup(source, 3, destination).andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost" + ITINERARY))
+                .andExpect(content().string(""));
+        saved().andExpect(jsonPath("$.days[0].entries[*].timing.start",
+                        contains("2027-03-29T09:00+02:00", "2027-03-29T09:35+02:00", "2027-03-29T11:15+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:35+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].attractionId").value(3))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].contributionMinutes").value(5))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].tripNote").value("Use the west gate."))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].warnings",
+                        contains("PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE")))
+                .andExpect(jsonPath("$.days[0].entries[2].timing.end").value("2027-03-29T12:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].groupedAttractions").doesNotExist())
+                .andExpect(jsonPath("$.changeNotices[0].groupedSourceChanges[0].sourceBaseline").value("AT_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].groupedSourceChanges[0].sourceChanges[0].baseline").value("5m"));
+    }
+
+    @Test
+    void regroupingCanPushTheUnlockedHostThatLosesTheMember() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("60m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        var destination = schedule(1L, TODAY, "09:00");
+        var source = schedule(2L, TODAY, "10:00");
+        lock(destination);
+        join(source, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+
+        regroup(source, 3, destination).andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T10:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].contributionMinutes").value(5))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T10:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.end").value("2027-03-29T10:35+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].fixedStart").value(false))
+                .andExpect(jsonPath("$.days[0].entries[1].groupedAttractions").doesNotExist());
+    }
+
+    @Test
+    void regroupingRejectsAZeroDestinationEntryId() throws Exception {
+        regroup(10, 7, 0).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("{destinationEntryId = must be greater than 0}"));
+    }
+
+    @Test
+    void extractingBeforeTheHostPushesOnlyItsUnlockedStartAndUsesItsShortenedLength() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("60m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        schedule(1L, TODAY, "09:00");
+        var host = schedule(2L, TODAY, "10:00");
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        var request = new ExtractGroupedAttractionRequest(TODAY, host, null, null);
+        lock(host);
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        extract(host, 3, request).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The move conflicts with the fixed start of Garden. Choose another position or day."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+        putFact(ITINERARY + "/entries/" + host + "/fixed-start", new UpdateItineraryEntryFixedStartRequest(false));
+        extract(host, 3, request).andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[*].attractionId", contains(1, 3, 2)))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T10:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.end").value("2027-03-29T10:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].timing.start").value("2027-03-29T10:05+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].timing.end").value("2027-03-29T10:35+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[2].groupedAttractions").doesNotExist());
+    }
+
+    @Test
+    void extractionIntoAGapUsesTheShortenedHostAndRequiresConfirmingTheDisconnectedTransfer() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        putFact("/trips/1/attractions/3/note", new UpdateTripAttractionNoteRequest("Use the west gate."));
+        var host = schedule(1L, TODAY, "09:00");
+        var next = schedule(2L, TODAY, "10:00");
+        lock(host);
+        lock(next);
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        putTransfer(host, next, walking(10)).andExpect(status().isNoContent());
+        checkItinerary();
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest(null));
+        putFact("/attractions/3/permanently-closed", new UpdateAttractionPermanentlyClosedRequest(true));
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        extract(host, 3, new ExtractGroupedAttractionRequest(TODAY, next, null, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value("Review and confirm the transfers this change would remove."))
+                .andExpect(jsonPath("$.transfersToRemove[0].transfer.toEntryId").value(next));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        var transfer = new ItineraryTransferDTO(host, next, TransferMode.WALKING, 10, null);
+        extract(host, 3, new ExtractGroupedAttractionRequest(TODAY, next, null, List.of(transfer)))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[*].attractionId", contains(1, 3, 2)))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:45+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T09:45+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.end").value("2027-03-29T09:50+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].fixedStart").value(false))
+                .andExpect(jsonPath("$.days[0].entries[1].tripNote").value("Use the west gate."))
+                .andExpect(jsonPath("$.days[0].entries[1].warnings",
+                        contains("PERMANENTLY_CLOSED", "UNUSABLE_SOURCE_DURATION", "MISSING_TRANSFER")))
+                .andExpect(jsonPath("$.changeNotices[1].sourceBaseline").value("AT_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[1].sourceChanges[?(@.field == 'VISIT_DURATION')].baseline",
+                        contains("5m")));
+    }
+
+    @Test
+    void extractionToAnEmptyDayNeedsAClockWithoutCreatingALock() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("0m"));
+        var host = schedule(1L, TODAY, "09:00");
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        extract(host, 3, new ExtractGroupedAttractionRequest(TOMORROW, null, null, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("Enter the required details to add this attraction."))
+                .andExpect(jsonPath("$.schedulingInputs.requiredInputs", contains("START")));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+        extract(host, 3, new ExtractGroupedAttractionRequest(TOMORROW, null, "14:30", null))
+                .andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].groupedAttractions").doesNotExist())
+                .andExpect(jsonPath("$.days[1].entries[0].attractionId").value(3))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.start").value("2027-03-30T14:30+02:00"))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.end").value("2027-03-30T14:30+02:00"))
+                .andExpect(jsonPath("$.days[1].entries[0].fixedStart").value(false));
+    }
+
+    @Test
+    void removingAMemberSubtractsItsSavedContributionFromTheLatestTotal() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("30-45m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        putFact("/trips/1/attractions/4/visit-time", new UpdateTripAttractionVisitTimeRequest("10m"));
+        putFact("/trips/1/attractions/3/note", new UpdateTripAttractionNoteRequest("Use the west gate."));
+        var host = schedule(1L, TODAY, "09:00");
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        join(host, new JoinItineraryAttractionRequest(4L, null, null, null)).andExpect(status().isNoContent());
+        putFact(ITINERARY + "/entries/" + host + "/planned-length",
+                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(50)));
+        checkItinerary();
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("15m"));
+
+        mockMvc.perform(delete(ITINERARY + "/entries/{id}/grouped-attractions/3", host)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:45+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[*].attractionId", contains(4)))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].contributionMinutes").value(10))
+                .andExpect(jsonPath("$.unscheduledAttractions[?(@.attractionId == 3)].tripNote",
+                        contains("Use the west gate.")))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("PLANNED_LENGTH_CHANGED", "GROUP_CHANGED")));
+    }
+
+    @Test
+    void removingAHostDissolvesTheConfirmedGroupWithoutPromotingOrReturningClosedMembers() throws Exception {
+        seedTrip();
+        var host = schedule(1L, TODAY, "09:00");
+        join(host, new JoinItineraryAttractionRequest(2L, null, null, null)).andExpect(status().isNoContent());
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        putFact("/attractions/3/permanently-closed", new UpdateAttractionPermanentlyClosedRequest(true));
+        putFact("/trips/1/attractions/2/note", new UpdateTripAttractionNoteRequest("Use the garden gate."));
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        remove(host).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The saved itinerary changed. Refresh it and review the group change again."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+        mockMvc.perform(delete(ITINERARY + "/entries/{id}", host).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RemoveItineraryEntryRequest(null, List.of(2L, 3L)))))
+                .andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(1, 2, 4, 5)))
+                .andExpect(jsonPath("$.unscheduledAttractions[?(@.attractionId == 2)].tripNote",
+                        contains("Use the garden gate.")));
+    }
+
+    @Test
+    void boardExclusionOfAHostDissolvesItsGroupAndKeepsTheOtherMembersOnTheTrip() throws Exception {
+        seedTrip();
+        var host = schedule(1L, TODAY, "09:00");
+        join(host, new JoinItineraryAttractionRequest(2L, null, null, null)).andExpect(status().isNoContent());
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        putFact("/attractions/3/permanently-closed", new UpdateAttractionPermanentlyClosedRequest(true));
+        checkItinerary();
+        var incomplete = new ItineraryRemovalRequest(host, null, List.of(2L));
+        var confirmed = new ItineraryRemovalRequest(host, null, List.of(2L, 3L));
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, incomplete))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The saved itinerary changed. Refresh it and review the group change again."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, confirmed))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attractionId == 1)].attractionGroup", contains("EXCLUDED")))
+                .andExpect(jsonPath("$[?(@.attractionId == 2 || @.attractionId == 3)].attractionId", contains(2, 3)));
+        saved().andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 4, 5)))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_REMOVED", "ATTRACTION_EXCLUDED")));
+    }
+
+    @Test
+    void boardDeletionOfAMemberLeavesItsHostAndOtherMembersInPlace() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("5m"));
+        putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("10m"));
+        putFact("/trips/1/attractions/3/note", new UpdateTripAttractionNoteRequest("Use the west gate."));
+        var host = schedule(1L, TODAY, "09:00");
+        join(host, new JoinItineraryAttractionRequest(2L, null, null, null)).andExpect(status().isNoContent());
+        join(host, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
+        var before = saved().andReturn().getResponse().getContentAsString();
+        var path = "/trips/1/attractions/2";
+
+        mockMvc.perform(delete(path).header("x-api-version", "1"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("Confirm the itinerary consequences before removing or excluding a scheduled attraction."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+        mockMvc.perform(delete(path).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new ItineraryRemovalRequest(host))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].attractionId", contains(1, 3, 4, 5)));
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:55+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[*].attractionId", contains(3)))
+                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].tripNote").value("Use the west gate."));
     }
 
     @Test
@@ -1247,6 +1572,18 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
         return mockMvc.perform(post(ITINERARY + "/entries/{hostEntryId}/grouped-attractions", hostEntryId)
                 .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
                 .content(mapper.writeValueAsString(request)));
+    }
+
+    private ResultActions regroup(long hostEntryId, long attractionId, long destinationEntryId) throws Exception {
+        return mockMvc.perform(post(ITINERARY + "/entries/{host}/grouped-attractions/{attraction}/move-to-entry/{destination}",
+                hostEntryId, attractionId, destinationEntryId).header("x-api-version", "1"));
+    }
+
+    private ResultActions extract(long hostEntryId, long attractionId, ExtractGroupedAttractionRequest request)
+            throws Exception {
+        return mockMvc.perform(post(ITINERARY + "/entries/{host}/grouped-attractions/{attraction}/extract",
+                        hostEntryId, attractionId).header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
     }
 
     private void seedTrip() {

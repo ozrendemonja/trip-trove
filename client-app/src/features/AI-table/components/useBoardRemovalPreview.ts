@@ -4,8 +4,12 @@ import type {
   ItineraryTransferDto,
   ItineraryTransferRemovalResponse
 } from "../../../clients/manager";
-import type { ItineraryRemoval } from "../../my-trip/domain/TripPlanning.types";
+import type {
+  BoardRemovalChange,
+  ItineraryRemoval
+} from "../../my-trip/domain/TripPlanning.types";
 import { fetchTripItinerary } from "../../my-trip/infra/TripApi";
+import type { GroupedAttraction } from "../../my-trip/ItineraryDrag";
 import { transfersForEntryRemoval } from "../../my-trip/ItineraryTransfer";
 import {
   TripPlanningWorkspace,
@@ -21,6 +25,7 @@ export interface BoardRemovalSelection {
   entry?: {
     dayNumber: number;
     saved: Entry;
+    member?: GroupedAttraction;
     endDayNumber: number;
     transfers: ItineraryTransferRemovalResponse[];
   };
@@ -47,29 +52,57 @@ export function itineraryRemovalFor({
   if (!entry) return undefined;
   return {
     entryId: entry.saved.entryId,
+    ...(!entry.member &&
+      !!entry.saved.groupedAttractions?.length && {
+        groupedAttractionIdsToRemove: entry.saved.groupedAttractions.map(
+          ({ attractionId }) => attractionId
+        )
+      }),
     ...(entry.transfers.length && {
       transfersToRemove: entry.transfers.map(({ transfer }) => transfer)
     })
   };
 }
 
-export const transferPairKey = ({
+const transferPairKey = ({
   fromEntryId,
   toEntryId
 }: ItineraryTransferDto): string => `${fromEntryId}:${toEntryId}`;
 
-export function excludingDisconnectedTransfers(
-  itineraryRemoval: ItineraryRemoval | undefined,
-  disconnected: ReadonlySet<string>
+export function remainingItineraryRemoval(
+  attractionId: number,
+  pending: ItineraryRemoval | undefined,
+  earlier: BoardRemovalChange
 ): ItineraryRemoval | undefined {
-  const transfers = itineraryRemoval?.transfersToRemove;
-  if (!itineraryRemoval || !transfers) return itineraryRemoval;
-  const remaining = transfers.filter(
+  const { itineraryRemoval: completed } = earlier;
+  if (!pending || !completed) return pending;
+  const sameEntry = pending.entryId === completed.entryId;
+  if (
+    sameEntry &&
+    completed.groupedAttractionIdsToRemove?.includes(attractionId)
+  ) {
+    return undefined;
+  }
+  const members = pending.groupedAttractionIdsToRemove;
+  const afterGroupChange =
+    sameEntry && members?.includes(earlier.attractionId)
+      ? {
+          ...pending,
+          groupedAttractionIdsToRemove: members.filter(
+            (id) => id !== earlier.attractionId
+          )
+        }
+      : pending;
+  const transfers = pending.transfersToRemove;
+  const removedTransfers = completed.transfersToRemove;
+  if (!transfers?.length || !removedTransfers?.length) return afterGroupChange;
+  const disconnected = new Set(removedTransfers.map(transferPairKey));
+  const remainingTransfers = transfers.filter(
     (transfer) => !disconnected.has(transferPairKey(transfer))
   );
-  return remaining.length === transfers.length
-    ? itineraryRemoval
-    : { entryId: itineraryRemoval.entryId, transfersToRemove: remaining };
+  return remainingTransfers.length === transfers.length
+    ? afterGroupChange
+    : { ...afterGroupChange, transfersToRemove: remainingTransfers };
 }
 
 function selectionFor(
@@ -93,18 +126,26 @@ function selectionFor(
   const [id] = proposal.attractionIds;
   for (const [index, day] of days.entries()) {
     const position = day.entries.findIndex(
-      (entry) => entry.attractionId === id
+      (entry) =>
+        entry.attractionId === id ||
+        entry.groupedAttractions?.some((member) => member.attractionId === id)
     );
     const saved = day.entries[position];
     if (saved) {
       const endDate = saved.timing.end.slice(0, 10);
+      const member = saved.groupedAttractions?.find(
+        (item) => item.attractionId === id
+      );
       return {
         attractionIds: proposal.attractionIds,
         entry: {
           dayNumber: index + 1,
           saved,
+          member,
           endDayNumber: days.findIndex(({ date }) => date === endDate) + 1,
-          transfers: transfersForEntryRemoval(day.entries, position)
+          transfers: member
+            ? []
+            : transfersForEntryRemoval(day.entries, position)
         }
       };
     }
@@ -147,28 +188,6 @@ export function useBoardRemovalPreview(tripId: number | undefined): {
               state: "error",
               message:
                 "Planning changed while loading. Reload the itinerary preview."
-            });
-            return;
-          }
-          if (
-            proposal.operation !== "city" &&
-            days.some(({ entries }) =>
-              entries.some(
-                ({ attractionId, groupedAttractions }) =>
-                  groupedAttractions?.length &&
-                  (attractionId === proposal.attractionIds[0] ||
-                    groupedAttractions.some(
-                      (member) =>
-                        member.attractionId === proposal.attractionIds[0]
-                    ))
-              )
-            )
-          ) {
-            setPreview({
-              proposal,
-              state: "error",
-              message:
-                "Removing or excluding a grouped attraction or its host is not available yet."
             });
             return;
           }

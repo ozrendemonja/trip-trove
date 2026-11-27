@@ -70,10 +70,18 @@ unlocked entries on its own day only; it cannot overlap entries on another
 day. Success returns `204` with a `Location` for GET; rejection leaves all
 timings unchanged.
 
-Later ways to schedule, including drag into a gap, keep the same focused
-draft and chosen-clock contract. Position-based recalculation for moving an
-existing entry is a different operation. Later confirmation of a specific
-consequence, such as disconnecting a transfer or accepting an alternative
-path, must keep the chosen clock. If a save is unconfirmed, load and inspect
-the itinerary before deliberately submitting again, as in
+Scheduling by dragging into a gap keeps the same focused draft and
+chosen-clock contract. Position-based recalculation for moving an existing
+entry is a different operation. During propagation, add each retained
+transfer's elapsed minutes to the preceding end before checking the next
+start. Only push unlocked starts as needed. If a retained transfer cannot
+fit around fixed starts or bounds, reject the action.
+
+Transfers belong to ordered pairs of neighbouring entries on the same day.
+Losing that relationship requires confirming those specific removals within
+the composition change. A pool addition that disconnects a transfer keeps
+the submitted clock and the saved clocks of existing entries.
+
+If a save is unconfirmed, load and inspect the itinerary before deliberately
+submitting again, as in
 [the single-editor decision](./0001-trip-planning-actions.md).

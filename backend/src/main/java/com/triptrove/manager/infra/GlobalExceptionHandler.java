@@ -1,5 +1,6 @@
 package com.triptrove.manager.infra;
 
+import com.triptrove.manager.application.dto.ItineraryTransferRemovalResponse;
 import com.triptrove.manager.application.dto.error.ErrorCodeResponse;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.AttractionToSchedule.MissingInputs;
@@ -7,6 +8,7 @@ import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.ItineraryDependency;
 import com.triptrove.manager.domain.model.ItineraryTimingIssue;
 import com.triptrove.manager.domain.model.ItineraryMoveStartChoices;
+import com.triptrove.manager.domain.model.ItineraryTransferRemovalSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.TypeMismatchException;
@@ -25,6 +27,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -143,6 +146,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         var userMessage = userMessage(exception);
         MissingInputs schedulingInputs = null;
         ItineraryMoveStartChoices moveStartChoices = null;
+        List<ItineraryTransferRemovalResponse> transfersToRemove = null;
         if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_INPUT_REQUIRED
                 && exception.getContext().getFirst() instanceof MissingInputs inputs) {
             schedulingInputs = inputs;
@@ -151,12 +155,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 && exception.getContext().getFirst() instanceof ItineraryMoveStartChoices choices) {
             moveStartChoices = choices;
             log.warn("Moving an itinerary entry requires a start choice: {}", choices);
+        } else if (exception.getErrorCode() == BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES
+                && exception.getContext().size() > 1
+                && exception.getContext().getFirst() == ItineraryDependency.TRANSFERS_TO_REMOVE
+                && exception.getContext().get(1) instanceof ItineraryTransferRemovalSummary[] removals) {
+            transfersToRemove = Arrays.stream(removals).map(ItineraryTransferRemovalResponse::from).toList();
+            log.warn("Itinerary change must list {} transfers to remove", removals.length);
         } else {
             log.error("Domain error {} - {}: ", exception.getErrorCode(), userMessage, exception);
         }
 
         return ResponseEntity.status(httpStatus(responseCode)).contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs, moveStartChoices));
+                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs, moveStartChoices, transfersToRemove));
     }
 
     @ExceptionHandler(Exception.class)

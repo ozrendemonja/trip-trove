@@ -211,6 +211,13 @@ export const useClasses = makeStyles({
     listStyleType: "none",
     rowGap: tokens.spacingVerticalXXS
   },
+  transferLine: {
+    justifySelf: "start",
+    minWidth: 0,
+    whiteSpace: "normal",
+    textAlign: "start",
+    overflowWrap: "anywhere"
+  },
   entry: {
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr)",

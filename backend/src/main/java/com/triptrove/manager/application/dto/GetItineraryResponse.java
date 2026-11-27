@@ -79,6 +79,8 @@ public record GetItineraryResponse(
             String workingHours,
             String visitDuration,
             String tripNote,
+            @Schema(description = "Entered transfer to the immediately following entry, if any.")
+            ItineraryTransferDTO outgoingTransfer,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Current conditions that persist until corrected.")
             List<ItineraryDetails.EntryWarning> warnings) {
         private static AttractionEntry from(ItineraryDetails.AttractionEntrySummary entry) {
@@ -86,7 +88,9 @@ public record GetItineraryResponse(
                     TripAttractionGroupDTO.valueOf(entry.attractionGroup().name()), entry.mustVisit(),
                     AttractionCategoryResponse.from(entry.category()), entry.fixedStart(),
                     ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(),
-                    entry.tripNote(), entry.warnings());
+                    entry.tripNote(),
+                    entry.outgoingTransfer() == null ? null : ItineraryTransferDTO.from(entry.outgoingTransfer()),
+                    entry.warnings());
         }
     }
 

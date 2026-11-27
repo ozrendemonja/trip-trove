@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0020-add-itinerary-transfers
+      author: trip-trove
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE itinerary_entry
+                ADD COLUMN transfer_to_entry_id BIGINT UNIQUE,
+                ADD COLUMN transfer_mode VARCHAR(255),
+                ADD COLUMN transfer_minutes INTEGER,
+                ADD COLUMN transfer_note VARCHAR(512),
+                ADD COLUMN transfer_changed_since_check BOOLEAN NOT NULL DEFAULT FALSE,
+                ADD CONSTRAINT itinerary_transfer_destination_fkey
+                  FOREIGN KEY (transfer_to_entry_id) REFERENCES itinerary_entry (id) DEFERRABLE INITIALLY DEFERRED,
+                ADD CONSTRAINT itinerary_transfer_fields_check CHECK (
+                  (transfer_to_entry_id IS NULL AND transfer_mode IS NULL AND transfer_minutes IS NULL
+                    AND transfer_note IS NULL)
+                  OR (transfer_to_entry_id IS NOT NULL AND transfer_to_entry_id <> id AND transfer_mode IS NOT NULL
+                    AND transfer_minutes IS NOT NULL AND transfer_minutes >= 0)
+                );
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION itinerary_check_context(trip_id BIGINT, itinerary_zone TEXT, checked_at TIMESTAMPTZ)
+              RETURNS TEXT LANGUAGE sql STABLE AS $$
+                  SELECT encode(sha256(convert_to(jsonb_build_array(
+                      trip.id, trip.trip_start_date, trip.trip_end_date, itinerary_zone, checked_at AT TIME ZONE 'UTC',
+                      (SELECT jsonb_agg(jsonb_build_array(
+                          entry.id, entry.date, entry.path_position, entry.zone_id, entry.start_time,
+                          entry.second_start_occurrence, entry.planned_minutes, entry.fixed_start,
+                          entry.start_changed_since_check, entry.planned_length_changed_since_check,
+                          entry.fixed_start_changed_since_check, entry.moved_since_check, entry.following_starts_pushed_since_check,
+                          a.watched_source_versions, item.watched_source_versions
+                      ) || CASE WHEN entry.transfer_to_entry_id IS NOT NULL OR entry.transfer_changed_since_check
+                          THEN jsonb_build_array(entry.transfer_to_entry_id, entry.transfer_mode, entry.transfer_minutes,
+                              entry.transfer_note, entry.transfer_changed_since_check)
+                          ELSE '[]'::jsonb END ORDER BY entry.id)
+                      FROM itinerary_entry entry
+                      JOIN trip_attraction item ON item.trip_id = entry.trip_id AND item.attraction_id = entry.attraction_id
+                      JOIN attraction a ON a.id = entry.attraction_id
+                      WHERE entry.trip_id = trip.id),
+                      (SELECT max(removal.id) FROM itinerary_entry_removal removal WHERE removal.trip_id = trip.id)
+                  )::text, 'UTF8')), 'hex')
+                  FROM trip WHERE trip.id = $1
+              $$;

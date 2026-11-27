@@ -1,11 +1,13 @@
 package com.triptrove.manager.application.controller;
 
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
+import com.triptrove.manager.application.dto.RemoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryStartRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryTransferRequest;
 import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.service.ItineraryScheduling;
 import com.triptrove.manager.domain.service.ItineraryEntryEditor;
@@ -16,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +30,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.time.LocalTime;
+import java.util.List;
 
 @RestController
 @RequestMapping(path = "/trips/{id:\\d+}/itinerary", headers = "x-api-version=1")
@@ -45,6 +49,7 @@ public class ItineraryEntryController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Trip or trip attraction not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    @TransferConflictResponse
     public ResponseEntity<Void> scheduleAttraction(@PathVariable Long id,
             @RequestBody @Valid ScheduleAttractionRequest request) {
         scheduling.scheduleAttractionOnDay(id, request.date(), request.toSchedulingInput());
@@ -87,20 +92,44 @@ public class ItineraryEntryController {
         return itineraryUpdated(id);
     }
 
+    @PutMapping("/transfers/{fromEntryId:\\d+}/{toEntryId:\\d+}")
+    @Operation(summary = "Set the transfer between two consecutive entries on the same day")
+    @TimingUpdateResponses
+    @TransferConflictResponse
+    public ResponseEntity<Void> updateItineraryTransfer(@PathVariable Long id, @PathVariable @Positive Long fromEntryId,
+            @PathVariable @Positive Long toEntryId, @RequestBody @Valid UpdateItineraryTransferRequest request) {
+        entryEditor.updateTransfer(id, fromEntryId, request.toTransfer(toEntryId));
+        return itineraryUpdated(id);
+    }
+
+    @DeleteMapping("/transfers/{fromEntryId:\\d+}/{toEntryId:\\d+}")
+    @Operation(summary = "Remove the entered transfer between two consecutive entries")
+    @EntryUpdateResponses
+    @TransferConflictResponse
+    public ResponseEntity<Void> removeItineraryTransfer(@PathVariable Long id, @PathVariable @Positive Long fromEntryId,
+            @PathVariable @Positive Long toEntryId) {
+        entryEditor.removeTransfer(id, fromEntryId, toEntryId);
+        return itineraryUpdated(id);
+    }
+
     @PutMapping("/entries/{entryId:\\d+}/position")
     @Operation(summary = "Move an itinerary entry before another entry on a day, or to the end")
     @EntryUpdateResponses
+    @TransferConflictResponse
     public ResponseEntity<Void> moveItineraryEntry(@PathVariable Long id, @PathVariable Long entryId,
             @RequestBody @Valid MoveItineraryEntryRequest request) {
-        entryEditor.moveEntry(id, entryId, request.date(), request.beforeEntryId(), request.startOffset());
+        entryEditor.moveEntry(id, entryId, request.date(), request.beforeEntryId(), request.startOffset(),
+                request.transferSummariesToRemove());
         return itineraryUpdated(id);
     }
 
     @DeleteMapping("/entries/{entryId:\\d+}")
     @Operation(summary = "Remove an itinerary entry without removing its attraction from the trip")
     @EntryUpdateResponses
-    public ResponseEntity<Void> removeItineraryEntry(@PathVariable Long id, @PathVariable Long entryId) {
-        entryEditor.removeEntry(id, entryId);
+    @TransferConflictResponse
+    public ResponseEntity<Void> removeItineraryEntry(@PathVariable Long id, @PathVariable Long entryId,
+            @RequestBody(required = false) @Valid RemoveItineraryEntryRequest request) {
+        entryEditor.removeEntry(id, entryId, request == null ? List.of() : request.transferSummariesToRemove());
         return itineraryUpdated(id);
     }
 
@@ -133,4 +162,10 @@ public class ItineraryEntryController {
     @ApiResponse(responseCode = "404", description = "Entry or destination entry not found in the trip",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     private @interface EntryUpdateResponses {}
+
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "409", description = "Transfer neighbours changed or transfersToRemove does not match the change",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    private @interface TransferConflictResponse {}
 }

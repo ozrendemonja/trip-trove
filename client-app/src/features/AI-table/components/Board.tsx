@@ -41,7 +41,7 @@ import {
 import {
   isBoardRemoval,
   type BoardRemovalChange,
-  type ConfirmedItineraryRemoval,
+  type ItineraryRemoval,
   type TripPlanningChange
 } from "../../my-trip/domain/TripPlanning.types";
 import { useTripPlanningSave } from "../../my-trip/useTripPlanningSave";
@@ -59,7 +59,9 @@ import {
 import { setAttractionPermanentlyClosed } from "../../continent/infra/ManagerApi";
 import { BoardRemovalDialog } from "./BoardRemovalDialog";
 import {
-  confirmedRemoval,
+  excludingDisconnectedTransfers,
+  itineraryRemovalFor,
+  transferPairKey,
   useBoardRemovalPreview
 } from "./useBoardRemovalPreview";
 import {
@@ -372,8 +374,7 @@ const Board: React.FC<BoardProps> = ({
       ? planning.feedback.failedChange
       : undefined;
   const removalRejection =
-    planning.feedback?.needsRemovalConfirmation &&
-    isBoardRemoval(rejectedChange)
+    planning.feedback?.needsRemovalReview && isBoardRemoval(rejectedChange)
       ? rejectedChange
       : undefined;
   const reviewRejectedRemoval = useCallback(() => {
@@ -389,7 +390,7 @@ const Board: React.FC<BoardProps> = ({
       apply: (selection) => {
         const change = {
           ...removalRejection,
-          confirmedRemoval: confirmedRemoval(selection)
+          itineraryRemoval: itineraryRemovalFor(selection)
         };
         clearSaveError();
         if (isPrepare) {
@@ -436,7 +437,7 @@ const Board: React.FC<BoardProps> = ({
             new Set([change.attractionId])
           )
         );
-        if (change.confirmedRemoval) onItineraryEntriesRemoved?.();
+        if (change.itineraryRemoval) onItineraryEntriesRemoved?.();
       }
     },
     [replaceSavedCities, onItineraryEntriesRemoved]
@@ -693,7 +694,7 @@ const Board: React.FC<BoardProps> = ({
           };
           const isExclusion =
             isBoardRemoval(change) && sourceColumn !== targetColumn;
-          const apply = (confirmation?: ConfirmedItineraryRemoval): void => {
+          const apply = (itineraryRemoval?: ItineraryRemoval): void => {
             if (isPlanningBlocked()) return;
             if (
               tripId !== undefined &&
@@ -704,10 +705,10 @@ const Board: React.FC<BoardProps> = ({
                 subjectIds: [attraction.id],
                 subjectName: attraction.name,
                 description: `Move to ${targetColumn.title}`,
-                changes: [{ ...change, confirmedRemoval: confirmation }],
+                changes: [{ ...change, itineraryRemoval }],
                 onCommitted: (committed) => {
                   replaceSavedCities(nextCities);
-                  if (committed.type === "move" && committed.confirmedRemoval) {
+                  if (committed.type === "move" && committed.itineraryRemoval) {
                     onItineraryEntriesRemoved?.();
                   }
                 }
@@ -723,7 +724,7 @@ const Board: React.FC<BoardProps> = ({
                 if (isExclusion) {
                   preparedRemovalsRef.current.set(attraction.id, {
                     ...change,
-                    confirmedRemoval: confirmation
+                    itineraryRemoval
                   });
                 } else if (targetGroup !== "EXCLUDED") {
                   preparedRemovalsRef.current.delete(attraction.id);
@@ -750,7 +751,7 @@ const Board: React.FC<BoardProps> = ({
               operation: "exclude",
               name: attraction.name,
               attractionIds: [attraction.id],
-              apply: (selection) => apply(confirmedRemoval(selection))
+              apply: (selection) => apply(itineraryRemovalFor(selection))
             });
           } else apply();
         }
@@ -955,23 +956,37 @@ const Board: React.FC<BoardProps> = ({
     if (activePrepareSave.current) return activePrepareSave.current;
     if (isPlanningBlocked() || removalPreview) return Promise.resolve(false);
     if (pendingCommitCount === 0) return Promise.resolve(true);
+    const alreadyDisclosed = new Set<string>();
     const changes = buildPrepareChanges(
       savedCitiesRef.current,
       cities,
       savedAttractionIdsRef.current,
       pendingBoardMovesRef.current
-    ).map((change) => {
-      const staged = preparedRemovalsRef.current.get(change.attractionId);
-      if (change.type === "remove" && staged?.type === "remove") return staged;
-      if (
-        change.type === "move" &&
-        change.targetGroup === "EXCLUDED" &&
-        staged?.type === "move"
-      ) {
-        return { ...change, confirmedRemoval: staged.confirmedRemoval };
-      }
-      return change;
-    });
+    )
+      .map((change) => {
+        const staged = preparedRemovalsRef.current.get(change.attractionId);
+        if (change.type === "remove" && staged?.type === "remove")
+          return staged;
+        if (
+          change.type === "move" &&
+          change.targetGroup === "EXCLUDED" &&
+          staged?.type === "move"
+        ) {
+          return { ...change, itineraryRemoval: staged.itineraryRemoval };
+        }
+        return change;
+      })
+      .map((change) => {
+        if (!isBoardRemoval(change) || !change.itineraryRemoval) return change;
+        const itineraryRemoval = excludingDisconnectedTransfers(
+          change.itineraryRemoval,
+          alreadyDisclosed
+        );
+        for (const transfer of itineraryRemoval?.transfersToRemove ?? []) {
+          alreadyDisclosed.add(transferPairKey(transfer));
+        }
+        return { ...change, itineraryRemoval };
+      });
     if (
       removalRejection &&
       changes.some(
@@ -1005,8 +1020,24 @@ const Board: React.FC<BoardProps> = ({
       allowRetryAfterRejection: true,
       onCommitted: () => {
         const change = changes[committedCount];
-        if (isBoardRemoval(change) && change.confirmedRemoval) {
+        if (isBoardRemoval(change) && change.itineraryRemoval) {
           removedItineraryEntries = true;
+          const removed = change.itineraryRemoval.transfersToRemove;
+          if (removed?.length) {
+            const disconnected = new Set(removed.map(transferPairKey));
+            for (const [id, staged] of preparedRemovalsRef.current) {
+              const itineraryRemoval = excludingDisconnectedTransfers(
+                staged.itineraryRemoval,
+                disconnected
+              );
+              if (itineraryRemoval !== staged.itineraryRemoval) {
+                preparedRemovalsRef.current.set(id, {
+                  ...staged,
+                  itineraryRemoval
+                });
+              }
+            }
+          }
         }
         if (
           preparedRemovalsRef.current.get(change.attractionId)?.type ===
@@ -1212,7 +1243,7 @@ const Board: React.FC<BoardProps> = ({
 
   const failedChange = planning.feedback?.failedChange;
   const inspectBoardRemoval =
-    isBoardRemoval(failedChange) && !!failedChange.confirmedRemoval;
+    isBoardRemoval(failedChange) && !!failedChange.itineraryRemoval;
   const inspectSavedPlanning = useCallback(async (): Promise<void> => {
     if (tripId === undefined || inspecting.current) return;
     inspecting.current = true;
@@ -1395,7 +1426,7 @@ const Board: React.FC<BoardProps> = ({
             {
               type: "remove",
               attractionId,
-              confirmedRemoval: confirmedRemoval(selection)
+              itineraryRemoval: itineraryRemovalFor(selection)
             }
           ],
           task.name,

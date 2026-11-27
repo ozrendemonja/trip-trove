@@ -84,17 +84,18 @@ check. Field-specific versions preserve changes that were restored between
 reads. Existing entries start tracking from the values present at migration;
 no earlier source history is inferred. Source notices can appear before the
 first check without changing the **Not yet checked** state. Manual addition,
-move, clock, length and start-lock notices appear only after a check. Removing
-an entry ends source tracking; after a check its removal keeps the label and
-last day but no entry link.
+move, clock, length, start-lock and transfer notices appear only after a
+check. Removing an entry ends source tracking; after a check its removal
+keeps the label and last day but no entry link.
 
 Each saved entry also includes a `warnings` array, separate from change
 notices. Permanent closure keeps existing entries editable and movable, but
 prevents new entries for the attraction and excludes it from unscheduled
 attractions. Reopening it never restores removed entries. An out-of-range
 planned length, or a missing or invalid source visit duration, warns without
-changing saved timing. These conditions are derived by the same one-SELECT
-itinerary read. A manual check can accept them without fixing them: warnings
+changing saved timing. `MISSING_TRANSFER` belongs to the gap after an entry,
+not to the last entry of a day. These conditions are derived by the same
+one-SELECT itinerary read. A manual check can accept them without fixing them: warnings
 remain visible, and correcting a condition is a new change to check.
 
 `PUT /trips/{id}/itinerary/entries/{entryId}/fixed-start` takes
@@ -121,15 +122,16 @@ The itinerary and trip overview (`hasItineraryEntries`, `hasItineraryDayNotes`)
 still use one SELECT each.
 
 For board removal or a move to Excluded Attractions, preview the scheduled
-entry and its affected dates using `GET /trips/{id}/itinerary`. After
-confirmation, send `{"entryId":21}` as the optional JSON body of
-`DELETE /trips/{id}/attractions/{attractionId}`, or as `confirmedRemoval` on
+entry, its affected dates and its incoming and outgoing transfers using
+`GET /trips/{id}/itinerary`. After the user reviews it, send the `entryId`
+and the previewed `transfersToRemove` (if any) as the optional JSON body of
+`DELETE /trips/{id}/attractions/{attractionId}`, or as `itineraryRemoval` on
 the board move or group update. An attraction has at most one entry, so the
 request removes that entry wherever it is, even if it moved after the
-preview. A missing confirmation, or one naming an entry the attraction no
-longer has, returns `409` with no changes; load the itinerary and confirm the
-current consequences before submitting again. For unscheduled
-attractions, omit the confirmation. Each request applies the board and
+preview, provided the disconnected transfers still match. A missing or
+changed `itineraryRemoval` returns `409` with no changes; load the itinerary
+and review the current consequences before submitting again. For unscheduled
+attractions, omit `itineraryRemoval`. Each request applies the board and
 itinerary effects in one transaction, leaves other entries' timings alone,
 and returns `204`. After a check, the removal notice includes whether the
 attraction was excluded or removed from the trip. Moving it back from
@@ -147,6 +149,30 @@ removing its attraction from the trip or moving any remaining start earlier.
 Both operations are atomic; on success they return `204` with the itinerary
 `Location` for GET. A move's propagated starts are grouped under that move
 in the check summary.
+
+### Transfers between entries
+
+`PUT /trips/{id}/itinerary/transfers/{fromEntryId}/{toEntryId}` replaces the
+transfer between ordered neighbours on one day. Send `mode` (`WALKING`,
+`METRO`, `BUS`, `TRAM`, `TRAIN`, `CAR`, `BOAT` or `FLIGHT`), nonnegative whole
+`minutes`, and optionally `note` (up to 512 characters). Transfer distance
+is not stored or returned by the API. `DELETE` on the same route clears the
+transfer and does not pull any start earlier. Both return `204` with the itinerary
+`Location`. GET includes `outgoingTransfer` on the departure entry only
+when entered. An absent transfer adds no time; zero minutes is a recorded
+value, not missing data.
+
+Timing propagation leaves each following start in place until the preceding
+end plus its transfer needs more time. A conflict with a fixed start or
+itinerary bounds rejects the whole edit, not the transfer in isolation.
+There is no 24-hour cap.
+
+An insertion, move or removal that disconnects transfers returns `409`
+with `transfersToRemove` and writes nothing. After the user reviews them,
+repeat the same action with `transfersToRemove` containing the listed
+`transfer` objects. This removes exactly those transfers with the rest of
+the action; none is reused for a different pair. A pool addition still uses the submitted clock and
+does not retime saved entries.
 
 ## Location-grouped Attraction Search
 

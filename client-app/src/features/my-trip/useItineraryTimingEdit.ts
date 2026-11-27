@@ -20,7 +20,11 @@ interface PendingEdit {
   tripId: number;
   entryId: number;
   edit: EntryEdit;
-  onReload?: (saved: GetItineraryResponse, recovery: ReloadOutcome) => void;
+  onReload?: (
+    saved: GetItineraryResponse,
+    recovery: ReloadOutcome,
+    applied: boolean
+  ) => void;
   activity?: "saving" | "loading";
   recovery?: ReloadOutcome;
 }
@@ -32,7 +36,7 @@ interface RejectedEdit {
   inspected?: boolean;
 }
 
-type EditKind = TimingField | "move" | "remove" | "fixed-start";
+type EditKind = TimingField | "move" | "remove" | "fixed-start" | "transfer";
 
 export function editKind(edit: EntryEdit): EditKind {
   if ("action" in edit) return edit.action;
@@ -70,6 +74,16 @@ function editIsReflected(
   const entry = day?.entries.find((item) => item.entryId === entryId);
   if ("action" in edit) {
     if (edit.action === "remove") return entry === undefined;
+    if (edit.action === "transfer") {
+      const transfer = entry?.outgoingTransfer;
+      if (!edit.transfer) return transfer?.toEntryId !== edit.toEntryId;
+      return (
+        transfer?.toEntryId === edit.toEntryId &&
+        transfer.mode === edit.transfer.mode &&
+        transfer.minutes === edit.transfer.minutes &&
+        transfer.note === edit.transfer.note
+      );
+    }
     if (!day || !entry || day.date !== edit.position.date) return false;
     const index = day.entries.indexOf(entry);
     return (
@@ -146,7 +160,8 @@ export function useItineraryTimingEdit(
     const saved = await refresh();
     if (saved) {
       setState(undefined);
-      if (recovery === "unconfirmed" && !editIsReflected(saved, edit)) {
+      const applied = recovery === "refresh" || editIsReflected(saved, edit);
+      if (!applied) {
         rememberRejection({
           ...edit,
           inspected: true,
@@ -155,7 +170,7 @@ export function useItineraryTimingEdit(
         });
       }
       if (edit.onReload) {
-        edit.onReload(saved, recovery);
+        edit.onReload(saved, recovery, applied);
       } else {
         setFeedback({
           ...edit,

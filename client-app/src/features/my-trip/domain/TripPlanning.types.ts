@@ -1,3 +1,5 @@
+import type { ItineraryRemovalRequest } from "../../../clients/manager";
+
 export type TripAttractionGroup = "PRIMARY" | "SECONDARY" | "EXCLUDED";
 
 export interface TripBoardItem {
@@ -5,9 +7,7 @@ export interface TripBoardItem {
   group: TripAttractionGroup;
 }
 
-export interface ConfirmedItineraryRemoval {
-  entryId: number;
-}
+export type ItineraryRemoval = ItineraryRemovalRequest;
 
 export type TripPlanningChange =
   | { type: "dates"; fromDate: string; toDate: string }
@@ -19,7 +19,7 @@ export type TripPlanningChange =
   | {
       type: "remove";
       attractionId: number;
-      confirmedRemoval?: ConfirmedItineraryRemoval;
+      itineraryRemoval?: ItineraryRemoval;
       unscheduledOnly?: true;
     }
   | { type: "arrange"; attractions: TripBoardItem[] }
@@ -29,7 +29,7 @@ export type TripPlanningChange =
       targetGroup: TripAttractionGroup;
       previousAttractionId: number | null;
       nextAttractionId: number | null;
-      confirmedRemoval?: ConfirmedItineraryRemoval;
+      itineraryRemoval?: ItineraryRemoval;
     }
   | {
       type: "must-visit";

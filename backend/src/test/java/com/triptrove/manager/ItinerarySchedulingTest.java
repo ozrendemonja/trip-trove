@@ -90,7 +90,7 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("boardChangesThatWouldDropAScheduledAttraction")
-    void theBoardCannotExcludeOrRemoveAScheduledAttractionWithoutConfirmation(MockHttpServletRequestBuilder change) throws Exception {
+    void theBoardCannotExcludeOrRemoveAScheduledAttractionWithoutItsItineraryRemoval(MockHttpServletRequestBuilder change) throws Exception {
         seedBoard("2027-03-28", "2027-03-29");
         schedule(new ScheduleAttractionRequest(
                 1L, LocalDate.of(2027, 3, 28), "09:00", "Europe/Belgrade", null))

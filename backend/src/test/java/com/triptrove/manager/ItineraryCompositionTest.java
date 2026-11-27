@@ -4,13 +4,15 @@ import com.jayway.jsonpath.JsonPath;
 import com.triptrove.manager.application.dto.AttractionCategoryDTO;
 import com.triptrove.manager.application.dto.AttractionTypeDTO;
 import com.triptrove.manager.application.dto.CheckItineraryRequest;
-import com.triptrove.manager.application.dto.ConfirmItineraryEntryRemovalRequest;
 import com.triptrove.manager.application.dto.DateSpanDTO;
 import com.triptrove.manager.application.dto.GetItineraryResponse;
 import com.triptrove.manager.application.dto.GetItineraryResponse.ChangeNotice.SourceChange;
+import com.triptrove.manager.application.dto.ItineraryRemovalRequest;
+import com.triptrove.manager.application.dto.ItineraryTransferDTO;
 import com.triptrove.manager.application.dto.LocationDTO;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
+import com.triptrove.manager.application.dto.RemoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
 import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
 import com.triptrove.manager.application.dto.UpdateAttractionCategoryRequest;
@@ -28,13 +30,17 @@ import com.triptrove.manager.application.dto.UpdateAttractionVisitRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryStartRequest;
+import com.triptrove.manager.application.dto.UpdateItineraryTransferRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionVisitTimeRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionWorkingHoursRequest;
+import com.triptrove.manager.domain.model.TransferMode;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +54,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static com.triptrove.manager.domain.model.WatchedSourceChangeSummary.Field.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,6 +80,259 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
 
     @Autowired
     private JsonMapper mapper;
+
+    @ParameterizedTest
+    @EnumSource(TransferMode.class)
+    void savingAnExplicitZeroTransferReplacesTheMissingTransferWarning(TransferMode mode) throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        saved().andExpect(jsonPath("$.days[0].entries[0].warnings", contains("MISSING_TRANSFER")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist());
+
+        putTransfer(market, garden, new UpdateItineraryTransferRequest(
+                mode, BigDecimal.ZERO, "Across the square"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost" + ITINERARY))
+                .andExpect(content().string(""));
+
+        saved().andExpect(jsonPath("$.days[0].entries[0].warnings").isEmpty())
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.toEntryId").value(garden))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.mode").value(mode.name()))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.minutes").value(0))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.distanceKm").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.note").value("Across the square"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T13:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].warnings").isEmpty());
+    }
+
+    @Test
+    void transfersConsumeTheGapBeforePushingAndNeverMoveAFixedStart() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("30-60m"));
+        var market = schedule(1L, TODAY, "09:00");
+        putFact(ITINERARY + "/entries/" + market + "/planned-length",
+                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(30)));
+        var garden = schedule(2L, TODAY, "10:00");
+        var park = schedule(3L, TODAY, "12:30");
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        putTransfer(garden, park, walking(55)).andExpect(status().isNoContent());
+
+        putFact(ITINERARY + "/entries/" + market + "/planned-length",
+                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(45)));
+        saved().andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:45+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T10:00+02:00"));
+        lock(park);
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(put(ITINERARY + "/entries/{id}/planned-length", market)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(60)))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The 55-minute transfer from Garden to Park does not fit. Adjust the transfer or the entry times."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        putFact(ITINERARY + "/entries/" + park + "/fixed-start", new UpdateItineraryEntryFixedStartRequest(false));
+        putFact(ITINERARY + "/entries/" + market + "/planned-length",
+                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(60)));
+        saved().andExpect(jsonPath("$.days[0].entries[*].timing.start", contains(
+                        "2027-03-29T09:00+02:00", "2027-03-29T10:10+02:00", "2027-03-29T12:35+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.minutes").value(10))
+                .andExpect(jsonPath("$.days[0].entries[1].outgoingTransfer.minutes").value(55));
+    }
+
+    @Test
+    void aPositiveTransferDoesNotFitBetweenFixedBriefStopsAtTheSameMinute() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("0m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("0m"));
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "09:00");
+        lock(market);
+        lock(garden);
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        putTransfer(market, garden, walking(1)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The 1-minute transfer from Market to Garden does not fit. Adjust the transfer or the entry times."));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void aTransferCanExceedTwentyFourHoursWhenItFits() throws Exception {
+        var longDay = LocalDate.parse("2027-10-31");
+        seedTrip(longDay, longDay);
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("0m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("0m"));
+        var market = schedule(1L, longDay, "00:00");
+        var garden = schedule(2L, longDay, "23:59");
+        lock(garden);
+
+        putTransfer(market, garden, new UpdateItineraryTransferRequest(TransferMode.TRAIN,
+                BigDecimal.valueOf(1470), "R".repeat(512)))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.minutes").value(1470))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.note").value("R".repeat(512)))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-10-31T23:59+01:00"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            0.5 | 0   | {wholeMinutes = enter non-negative whole transfer minutes}
+            0   | 513 | {note = size must be between 0 and 512}
+            """)
+    void invalidTransferFieldsAreRejectedWithoutTruncation(BigDecimal minutes, int noteLength, String message) throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+
+        putTransfer(market, garden, new UpdateItineraryTransferRequest(
+                TransferMode.WALKING, minutes, "R".repeat(noteLength)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value(message));
+        saved().andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist());
+    }
+
+    @Test
+    void checkingCanAcceptMissingTravelButAddingEditingAndRemovingItRequireAnotherCheck() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        checkItinerary();
+        var checked = saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.days[0].entries[0].warnings", contains("MISSING_TRANSFER")))
+                .andReturn().getResponse().getContentAsString();
+        var staleCheck = new CheckItineraryRequest(mapper.readValue(checked, GetItineraryResponse.class).checkContext());
+        saved().andExpect(content().json(checked, JsonCompareMode.STRICT));
+
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("TRANSFER_CHANGED")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.distanceKm").doesNotExist());
+        submitCheck(staleCheck).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ITINERARY_CHECK_STALE"));
+        checkItinerary();
+        checked = saved().andReturn().getResponse().getContentAsString();
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        saved().andExpect(content().json(checked, JsonCompareMode.STRICT));
+
+        putTransfer(market, garden, new UpdateItineraryTransferRequest(
+                TransferMode.BUS, BigDecimal.TEN, null)).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer.mode").value("BUS"));
+        checkItinerary();
+
+        mockMvc.perform(delete(ITINERARY + "/transfers/{fromEntryId}/{toEntryId}", market, garden)
+                        .header("x-api-version", "1"))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.days[0].entries[0].warnings", contains("MISSING_TRANSFER")))
+                .andExpect(jsonPath("$.days[0].entries[1].timing.start").value("2027-03-29T13:00+02:00"));
+    }
+
+    @Test
+    void insertingFromThePoolListsOnlyTheTransferToRemoveAndKeepsAllClocks() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        var gallery = schedule(4L, TODAY, "16:00");
+        putTransfer(market, garden, walking(60)).andExpect(status().isNoContent());
+        putTransfer(garden, gallery, walking(10)).andExpect(status().isNoContent());
+        var before = saved().andReturn().getResponse().getContentAsString();
+        var transfer = mapper.readValue(before, GetItineraryResponse.class).days().getFirst().entries().getFirst()
+                .outgoingTransfer();
+
+        postSchedule(new ScheduleAttractionRequest(3L, TODAY, "11:00", null, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value("Review and confirm the transfers this change would remove."))
+                .andExpect(jsonPath("$.transfersToRemove[0].fromName").value("Market"))
+                .andExpect(jsonPath("$.transfersToRemove[0].toName").value("Garden"))
+                .andExpect(jsonPath("$.transfersToRemove[0].transfer.minutes").value(60));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        postSchedule(new ScheduleAttractionRequest(3L, TODAY, "11:00", null, null, null, List.of(transfer)))
+                .andExpect(status().isNoContent());
+        var inserted = saved().andExpect(jsonPath("$.days[0].entries[*].name", contains("Market", "Park", "Garden", "Gallery")))
+                .andExpect(jsonPath("$.days[0].entries[*].timing.start", contains(
+                        "2027-03-29T09:00+02:00", "2027-03-29T11:00+02:00", "2027-03-29T13:00+02:00", "2027-03-29T16:00+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[1].outgoingTransfer").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[2].outgoingTransfer.toEntryId").value(gallery))
+                .andReturn().getResponse().getContentAsString();
+        var park = mapper.readValue(inserted, GetItineraryResponse.class).days().getFirst().entries().get(1);
+        remove(park.entryId()).andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[0].warnings", contains("MISSING_TRANSFER")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist());
+    }
+
+    @Test
+    void movingAcrossDaysDisclosesBothFormerNeighboursAndTheTransferAtTheDestination() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        var park = schedule(3L, TODAY, "17:00");
+        var gallery = schedule(4L, TOMORROW, "09:00");
+        var lookout = schedule(5L, TOMORROW, "13:00");
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        putTransfer(garden, park, walking(20)).andExpect(status().isNoContent());
+        putTransfer(gallery, lookout, walking(30)).andExpect(status().isNoContent());
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        move(garden, TOMORROW, lookout).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.transfersToRemove[*].fromName", contains("Market", "Garden", "Gallery")))
+                .andExpect(jsonPath("$.transfersToRemove[*].toName", contains("Garden", "Park", "Lookout")));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        var snapshot = mapper.readValue(before, GetItineraryResponse.class);
+        var transfersToRemove = List.of(snapshot.days().getFirst().entries().getFirst().outgoingTransfer(),
+                snapshot.days().getFirst().entries().get(1).outgoingTransfer(),
+                snapshot.days().get(1).entries().getFirst().outgoingTransfer());
+        move(garden, new MoveItineraryEntryRequest(TOMORROW, lookout, null, transfersToRemove))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[*].name", contains("Market", "Park")))
+                .andExpect(jsonPath("$.days[1].entries[*].name", contains("Gallery", "Garden", "Lookout")))
+                .andExpect(jsonPath("$.days[1].entries[1].timing.start").value("2027-03-30T10:30+02:00"))
+                .andExpect(jsonPath("$.days[*].entries[*].outgoingTransfer").isEmpty());
+    }
+
+    @Test
+    void entryRemovalAndBoardExclusionRequireTheCurrentTransferDetails() throws Exception {
+        seedTrip();
+        var market = schedule(1L, TODAY, "09:00");
+        var garden = schedule(2L, TODAY, "13:00");
+        var park = schedule(3L, TODAY, "17:00");
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        putTransfer(garden, park, walking(20)).andExpect(status().isNoContent());
+        checkItinerary();
+        var before = saved().andReturn().getResponse().getContentAsString();
+        var entries = mapper.readValue(before, GetItineraryResponse.class).days().getFirst().entries();
+
+        remove(garden).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.transfersToRemove[*].fromName", contains("Market", "Garden")));
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null,
+                new ItineraryRemovalRequest(market, List.of(
+                        new ItineraryTransferDTO(market, garden, TransferMode.WALKING, 11, null)))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.transfersToRemove[0].transfer.minutes").value(10))
+                .andExpect(jsonPath("$.transfersToRemove[0].transfer.distanceKm").doesNotExist());
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null,
+                new ItineraryRemovalRequest(market, List.of(entries.getFirst().outgoingTransfer()))))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(delete(ITINERARY + "/entries/{id}", garden)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new RemoveItineraryEntryRequest(
+                                List.of(entries.get(1).outgoingTransfer())))))
+                .andExpect(status().isNoContent());
+        saved().andExpect(jsonPath("$.days[0].entries[*].name", contains("Park")))
+                .andExpect(jsonPath("$.unscheduledAttractions[*].attractionId", contains(2, 4, 5)));
+    }
 
     @Test
     void movingToTheBeginningPreservesTheFirstVisitsClockAndTheMovedVisitIdentity() throws Exception {
@@ -266,10 +526,10 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
         var market = schedule(1L, TOMORROW, "09:00");
         var garden = schedule(2L, TOMORROW, "13:00");
         checkItinerary();
-        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        var itineraryRemoval = new ItineraryRemovalRequest(market);
 
         mockMvc.perform(delete("/trips/1/attractions/1").header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(confirmation)))
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(itineraryRemoval)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
@@ -288,14 +548,14 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void boardExclusionWithPreMoveConfirmationRemovesTheVisitAndReinclusionRestoresOnlyThePoolEntry() throws Exception {
+    void boardExclusionWithPreMoveItineraryRemovalRemovesTheVisitAndReinclusionRestoresOnlyThePoolEntry() throws Exception {
         seedTrip();
         var market = schedule(1L, TODAY, "09:00");
         checkItinerary();
-        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        var itineraryRemoval = new ItineraryRemovalRequest(market);
         move(market, TOMORROW, null).andExpect(status().isNoContent());
 
-        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, confirmation))
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, itineraryRemoval))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
@@ -315,23 +575,23 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void excludingWithAConfirmationOfAReplacedEntryRequiresANewConfirmation() throws Exception {
+    void excludingWithTheItineraryRemovalOfAReplacedEntryRequiresANewOne() throws Exception {
         seedTrip();
         var market = schedule(1L, TODAY, "09:00");
-        var oldConfirmation = new ConfirmItineraryEntryRemovalRequest(market);
+        var oldItineraryRemoval = new ItineraryRemovalRequest(market);
         remove(market).andExpect(status().isNoContent());
         var rescheduledMarket = schedule(1L, TODAY, "09:00");
         var before = saved().andReturn().getResponse().getContentAsString();
 
-        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, oldConfirmation))
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, oldItineraryRemoval))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
                 .andExpect(jsonPath("$.errorMessage")
                         .value("The itinerary consequences changed. Review them and confirm the board change again."));
         saved().andExpect(content().json(before, JsonCompareMode.STRICT));
 
-        var newConfirmation = new ConfirmItineraryEntryRemovalRequest(rescheduledMarket);
-        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, newConfirmation))
+        var newItineraryRemoval = new ItineraryRemovalRequest(rescheduledMarket);
+        moveOnBoard(new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, newItineraryRemoval))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
@@ -342,11 +602,11 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void confirmedGroupUpdateToExcludedBeforeTheFirstCheckRemovesTheVisitWithoutAPoolEntryOrChangeNotice() throws Exception {
+    void groupUpdateToExcludedWithItsItineraryRemovalBeforeTheFirstCheckRemovesTheVisitWithoutAPoolEntryOrChangeNotice() throws Exception {
         seedTrip();
         var market = schedule(1L, TODAY, "09:00");
-        var confirmation = new ConfirmItineraryEntryRemovalRequest(market);
-        var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, confirmation);
+        var itineraryRemoval = new ItineraryRemovalRequest(market);
+        var request = new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, itineraryRemoval);
 
         mockMvc.perform(put("/trips/1/attractions/1/group").header("x-api-version", "1")
                         .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
@@ -722,6 +982,16 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(move)));
     }
 
+    private ResultActions putTransfer(long from, long to, UpdateItineraryTransferRequest request) throws Exception {
+        return mockMvc.perform(put(ITINERARY + "/transfers/{fromEntryId}/{toEntryId}", from, to)
+                .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(request)));
+    }
+
+    private static UpdateItineraryTransferRequest walking(int minutes) {
+        return new UpdateItineraryTransferRequest(TransferMode.WALKING, BigDecimal.valueOf(minutes), null);
+    }
+
     private ResultActions remove(long entryId) throws Exception {
         return mockMvc.perform(delete(ITINERARY + "/entries/{entryId}", entryId).header("x-api-version", "1"));
     }
@@ -763,14 +1033,17 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     private Long schedule(long attractionId, LocalDate date, String clock) throws Exception {
-        var request = new ScheduleAttractionRequest(attractionId, date, clock, "Europe/Belgrade", null);
-        mockMvc.perform(post(ITINERARY + "/attractions").header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
+        postSchedule(new ScheduleAttractionRequest(attractionId, date, clock, "Europe/Belgrade", null))
                 .andExpect(status().isNoContent());
         return mapper.readValue(saved().andReturn().getResponse().getContentAsString(), GetItineraryResponse.class)
                 .days().stream().flatMap(day -> day.entries().stream())
                 .filter(entry -> entry.attractionId() == attractionId)
                 .findFirst().orElseThrow().entryId();
+    }
+
+    private ResultActions postSchedule(ScheduleAttractionRequest request) throws Exception {
+        return mockMvc.perform(post(ITINERARY + "/attractions").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
     }
 
     private void seedTrip() {

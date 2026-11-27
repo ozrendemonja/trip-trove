@@ -992,6 +992,37 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"3, 0", "3, 1", "30, 0", "30, 1"})
+    void itineraryReadAndEntryRemovalWithTransfersToRemoveUseOneSelectEach(int entryCount, int transferMinutes) throws Exception {
+        seedItineraryWithTransfers(entryCount, transferMinutes);
+        resetSqlStatementCounts();
+
+        var response = mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.days[1].entries[0].outgoingTransfer").exists())
+                .andReturn().getResponse().getContentAsString();
+
+        assertReadOnlySelectCount(1);
+        var entries = mapper.readValue(response, GetItineraryResponse.class).days().get(1).entries();
+        var removed = entries.get(1);
+        var removal = new RemoveItineraryEntryRequest(
+                List.of(entries.getFirst().outgoingTransfer(), removed.outgoingTransfer()));
+        resetSqlStatementCounts();
+
+        mockMvc.perform(delete("/trips/1/itinerary/entries/{id}", removed.entryId())
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(removal)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(1);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {2, 30})
     void itineraryReadWithPendingTimingChangesUsesOneSelect(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
@@ -1234,9 +1265,9 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest(name = "{0}, {1} entries")
-    @MethodSource("confirmedBoardRemovalWorkflows")
-    void previewAndReadAfterConfirmedBoardRemovalUseOneSelectEach(String action, int entryCount,
-            MockHttpServletRequestBuilder request, Function<ConfirmItineraryEntryRemovalRequest, Object> body,
+    @MethodSource("boardItineraryRemovalWorkflows")
+    void previewAndReadAfterBoardItineraryRemovalUseOneSelectEach(String action, int entryCount,
+            MockHttpServletRequestBuilder request, Function<ItineraryRemovalRequest, Object> body,
             int writeSelects, int writeUpdates, int writeDeletes) throws Exception {
         seedItineraryWithEntries(entryCount);
         mockMvc.perform(itineraryCheckRequest()).andExpect(status().isNoContent());
@@ -1250,11 +1281,11 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
         assertReadOnlySelectCount(1);
         var entry = mapper.readValue(preview, GetItineraryResponse.class).days().get(1).entries().getFirst();
-        var confirmation = new ConfirmItineraryEntryRemovalRequest(entry.entryId());
+        var itineraryRemoval = new ItineraryRemovalRequest(entry.entryId());
         resetSqlStatementCounts();
 
         mockMvc.perform(request.header("x-api-version", "1")
-                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body.apply(confirmation))))
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body.apply(itineraryRemoval))))
                 .andExpect(status().isNoContent());
 
         assertSelectCount(writeSelects);
@@ -1271,18 +1302,18 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertReadOnlySelectCount(1);
     }
 
-    private static Stream<Arguments> confirmedBoardRemovalWorkflows() {
+    private static Stream<Arguments> boardItineraryRemovalWorkflows() {
         return Stream.of(2, 30).flatMap(size -> Stream.of(
                 boardRemovalWorkflow("Remove from trip", size, delete("/trips/1/attractions/1"),
-                        confirmation -> confirmation, 1, 1, 2),
+                        itineraryRemoval -> itineraryRemoval, 1, 1, 2),
                 boardRemovalWorkflow("Move to Excluded", size, put("/trips/1/board/attractions/1"),
-                        confirmation -> new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, confirmation), 4, 2, 1),
+                        itineraryRemoval -> new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.EXCLUDED, null, null, itineraryRemoval), 4, 2, 1),
                 boardRemovalWorkflow("Set group to Excluded", size, put("/trips/1/attractions/1/group"),
-                        confirmation -> new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, confirmation), 4, 2, 1)));
+                        itineraryRemoval -> new UpdateAttractionGroupRequest(TripAttractionGroupDTO.EXCLUDED, itineraryRemoval), 4, 2, 1)));
     }
 
     private static Arguments boardRemovalWorkflow(String action, int size, MockHttpServletRequestBuilder request,
-            Function<ConfirmItineraryEntryRemovalRequest, Object> body, int selects, int updates, int deletes) {
+            Function<ItineraryRemovalRequest, Object> body, int selects, int updates, int deletes) {
         return Arguments.of(action, size, request, body, selects, updates, deletes);
     }
 
@@ -1478,6 +1509,22 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 """).setParameter("size", entryCount).executeUpdate();
     }
 
+    private void seedItineraryWithTransfers(int entryCount, int transferMinutes) {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_entry SET start_time =
+                    TIME '07:00' + (path_position - 1) * (:minutes + 30) * INTERVAL '1 minute'
+                WHERE trip_id = 1;
+                WITH neighbours AS (
+                    SELECT id, lead(id) OVER (ORDER BY path_position) AS next_id
+                    FROM itinerary_entry WHERE trip_id = 1
+                )
+                UPDATE itinerary_entry entry SET transfer_to_entry_id = neighbours.next_id,
+                    transfer_mode = 'WALKING', transfer_minutes = :minutes, transfer_note = 'Route ' || entry.id
+                FROM neighbours WHERE neighbours.id = entry.id AND neighbours.next_id IS NOT NULL
+                """).setParameter("minutes", transferMinutes).executeUpdate();
+    }
+
     private void seedSchedulingBoard(int boardSize) {
         KeysetTestFixtures.clear(entityManager);
         KeysetTestFixtures.populateTripBoardWithDistinctRelationships(entityManager, boardSize);
@@ -1530,7 +1577,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest(name = "{0}, {1} attractions")
-    @MethodSource("groupChangesWithoutConfirmation")
+    @MethodSource("groupChangesWithoutItineraryRemoval")
     void prepareGroupChangeUsesThreeSelectsRegardlessOfBoardSize(String action, int boardSize,
             MockHttpServletRequestBuilder request, Object body) throws Exception {
         KeysetTestFixtures.clear(entityManager);
@@ -1547,7 +1594,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
         assertDeleteCount(0);
     }
 
-    private static Stream<Arguments> groupChangesWithoutConfirmation() {
+    private static Stream<Arguments> groupChangesWithoutItineraryRemoval() {
         return Stream.of(1, 20).flatMap(size -> Stream.of(
                 Arguments.of("Move to Secondary", size, put("/trips/1/board/attractions/1"),
                         new MoveAttractionOnBoardRequest(TripAttractionGroupDTO.SECONDARY, null, null)),

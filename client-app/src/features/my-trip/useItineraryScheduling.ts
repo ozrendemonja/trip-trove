@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type {
   GetItineraryResponse,
+  ItineraryTransferRemovalResponse,
   MissingInputs,
   ScheduleAttractionRequest
 } from "../../clients/manager";
@@ -37,6 +38,7 @@ export interface EntryDraft {
   activity?: "saving" | "loading";
   message?: string;
   unconfirmed?: boolean;
+  transfersToRemove?: ItineraryTransferRemovalResponse[];
 }
 
 interface Context {
@@ -59,6 +61,7 @@ export interface ItineraryScheduling {
   ) => void;
   update: (field: Field, value: string) => void;
   submit: () => Promise<void>;
+  submitWithTransfersToRemove: () => Promise<void>;
   inspect: () => Promise<void>;
   cancel: () => void;
 }
@@ -116,6 +119,7 @@ export function useItineraryScheduling({
           ...entryDraft,
           activity: undefined,
           unconfirmed,
+          transfersToRemove: failure?.transfersToRemove,
           inputs: [...new Set([...entryDraft.inputs, ...required])],
           message: unconfirmed
             ? "The save couldn't be confirmed. Inspect the saved itinerary before trying again."
@@ -167,6 +171,7 @@ export function useItineraryScheduling({
       ...draft,
       intent: {
         ...draft.intent,
+        transfersToRemove: undefined,
         ...(field === "startTime" ? { startOffset: undefined } : {}),
         [field]: value || undefined
       },
@@ -175,7 +180,23 @@ export function useItineraryScheduling({
   };
 
   const submit = async (): Promise<void> => {
-    if (draft && !draft.unconfirmed) await save(draft);
+    if (draft && !draft.unconfirmed && !draft.transfersToRemove) {
+      await save(draft);
+    }
+  };
+
+  const submitWithTransfersToRemove = async (): Promise<void> => {
+    if (!draft?.transfersToRemove) return;
+    await save({
+      ...draft,
+      transfersToRemove: undefined,
+      intent: {
+        ...draft.intent,
+        transfersToRemove: draft.transfersToRemove.map(
+          ({ transfer }) => transfer
+        )
+      }
+    });
   };
 
   const inspect = async (): Promise<void> => {
@@ -221,6 +242,7 @@ export function useItineraryScheduling({
     choose,
     update,
     submit,
+    submitWithTransfersToRemove,
     inspect,
     cancel
   };

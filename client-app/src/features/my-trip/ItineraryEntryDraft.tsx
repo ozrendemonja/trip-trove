@@ -32,7 +32,8 @@ export const ItineraryEntryDraft = ({
   const formRef = useRef<HTMLFormElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const { intent, inputs, activity, unconfirmed, message } = draft;
-  const disabled = !!activity || !!unconfirmed || blocked;
+  const disabled =
+    !!activity || !!unconfirmed || !!draft.transfersToRemove || blocked;
   const durationRequired = inputs.includes("VISIT_DURATION");
   const zoneRequired = inputs.includes("TIME_ZONE");
   const hasOtherInputs = durationRequired || zoneRequired;

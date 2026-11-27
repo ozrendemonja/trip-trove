@@ -557,7 +557,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
                   unavailableReason={checkUnavailableReason}
                   jumpBlocked={hasPlanningChanges || planningBlocked}
                   check={check}
-                  onJump={(notice) => void changeMode("itinerary", notice)}
+                  onJump={(target) => void changeMode("itinerary", target)}
                   onRetry={() => void checkForUpdates()}
                 />
               }

@@ -974,6 +974,25 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 30})
+    void itineraryReadWithCurrentConditionWarningsUsesOneSelect(int entryCount) throws Exception {
+        seedItineraryWithEntries(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE attraction SET permanently_closed_at = '2026-08-31T09:00:00' WHERE id <= :entryCount;
+                UPDATE trip_attraction SET visit_time = '3-4h'
+                WHERE trip_id = 1 AND attraction_id <= :entryCount;
+                """).setParameter("entryCount", entryCount).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(entryCount))
+                .andExpect(jsonPath("$.days[1].entries[0].warnings").isNotEmpty());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
     void itineraryReadWithPendingTimingChangesUsesOneSelect(int entryCount) throws Exception {
         seedItineraryWithEntries(entryCount);
         entityManager.createNativeQuery("""

@@ -232,7 +232,11 @@ const isSavedItinerary = (
   data?.tripId === id &&
   Array.isArray(data.days) &&
   data.days.length > 0 &&
-  data.days.every((day) => Array.isArray(day.entries)) &&
+  data.days.every(
+    (day) =>
+      Array.isArray(day.entries) &&
+      day.entries.every((entry) => Array.isArray(entry.warnings))
+  ) &&
   Array.isArray(data.unscheduledAttractions) &&
   Array.isArray(data.changeNotices) &&
   typeof data.checkContext === "string" &&

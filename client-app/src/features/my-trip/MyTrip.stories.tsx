@@ -512,6 +512,7 @@ function savedTimeline(start: string, end: string): GetItineraryResponse {
     category: "ART_MUSEUM",
     fixedStart: false,
     mustVisit: true,
+    warnings: [],
     timing: { start, end, zone: "Europe/Rome" }
   });
   return saved;
@@ -530,6 +531,7 @@ function compositionTimeline(): GetItineraryResponse {
     category: "PARK",
     fixedStart: true,
     mustVisit: false,
+    warnings: [],
     timing: {
       start: "2099-06-10T11:00+02:00",
       end: "2099-06-10T11:30+02:00",
@@ -781,6 +783,7 @@ function timelineWithScheduledLunaCafe(
     attractionGroup: cafe.attractionGroup,
     mustVisit: cafe.mustVisit,
     fixedStart: false,
+    warnings: [],
     timing: {
       start: `${day.date}T${start}+02:00`,
       end: `${day.date}T${end}+02:00`,
@@ -1287,7 +1290,7 @@ export const CancelsRemovalThenFindsTheSavedRemovalAfterALostResponse: Story = {
       await canvas.findByRole("button", { name: "1 change to check" })
     );
     const changes = within(
-      await parent.findByRole("dialog", { name: "Itinerary changes" })
+      await parent.findByRole("dialog", { name: "Itinerary check details" })
     );
     await waitFor(() => expect(changes.getByText("Museum")).toBeVisible());
     await expect(changes.getByText("Removed from the itinerary")).toBeVisible();
@@ -1474,7 +1477,7 @@ export const LocksAndUnlocksTheStartFromTheKeyboard: Story = {
     await user.click(canvas.getByRole("button", { name: "1 change to check" }));
     const changes = within(
       await overlay(canvasElement).findByRole("dialog", {
-        name: "Itinerary changes"
+        name: "Itinerary check details"
       })
     );
     await waitFor(() =>
@@ -1617,7 +1620,7 @@ export const EditsSavedTimingAndShowsUpdatedFreeTime: Story = {
     );
     const notice = within(
       await overlay(canvasElement).findByRole("dialog", {
-        name: "Itinerary changes"
+        name: "Itinerary check details"
       })
     );
     await waitFor(async () => {
@@ -2060,6 +2063,7 @@ export const ShowsGroupedChangesAndFocusesTheExistingEntry: Story = {
         category: "PARK",
         fixedStart: false,
         mustVisit: true,
+        warnings: [],
         timing: {
           start: "2025-06-20T09:00+02:00",
           end: "2025-06-20T09:45+02:00",
@@ -2109,12 +2113,12 @@ export const ShowsGroupedChangesAndFocusesTheExistingEntry: Story = {
     changes.focus();
     await user.keyboard("{Enter}");
     const dialog = within(
-      await body.findByRole("dialog", { name: "Itinerary changes" })
+      await body.findByRole("dialog", { name: "Itinerary check details" })
     );
-    const tab = dialog.getByRole("tab", { name: "Changes to check" });
+    const tab = dialog.getByRole("tab", { name: "Changes to check (2)" });
     await expect(tab).toHaveAttribute("aria-selected", "true");
     const panel = within(
-      dialog.getByRole("tabpanel", { name: "Changes to check" })
+      dialog.getByRole("tabpanel", { name: "Changes to check (2)" })
     );
     await waitFor(async () => {
       await expect(panel.getByText("Garden")).toBeVisible();
@@ -2318,7 +2322,7 @@ export const ShowsWatchedSourceValuesAndKeepsLaterNotices: Story = {
       await canvas.findByRole("button", { name: "1 change to check" })
     );
     const notices = within(
-      await body.findByRole("dialog", { name: "Itinerary changes" })
+      await body.findByRole("dialog", { name: "Itinerary check details" })
     );
     await waitFor(() =>
       expect(notices.getByText("Working hours")).toBeVisible()
@@ -2356,7 +2360,7 @@ export const ShowsWatchedSourceValuesAndKeepsLaterNotices: Story = {
     });
     await user.click(canvas.getByRole("button", { name: "1 change to check" }));
     const later = within(
-      await body.findByRole("dialog", { name: "Itinerary changes" })
+      await body.findByRole("dialog", { name: "Itinerary check details" })
     );
     await waitFor(() => expect(later.getByText("Catalogue tip")).toBeVisible());
     await expect(later.getAllByText("At last check")).toHaveLength(2);
@@ -2364,6 +2368,137 @@ export const ShowsWatchedSourceValuesAndKeepsLaterNotices: Story = {
     await expect(later.getByText("Use the main gate")).toBeVisible();
     await expect(later.getByText("May 1, 2026 to Sep 1, 2026")).toBeVisible();
     await expect(later.queryByText("Working hours")).not.toBeInTheDocument();
+  }
+};
+
+export const AcceptsTwoWarningsOnOneEntryWithoutClearingThem: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      const saved = savedTimeline(
+        "2099-06-20T09:00+02:00",
+        "2099-06-20T11:30+02:00"
+      );
+      const [entry] = saved.days[0].entries.splice(0, 1);
+      saved.days[10].entries.push({
+        ...entry,
+        visitDuration: "3-4h",
+        warnings: ["PERMANENTLY_CLOSED", "PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE"]
+      });
+      saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+      saved.changeNotices = [
+        {
+          entryId: entry.entryId,
+          subject: entry.name,
+          date: "2099-06-20",
+          reasons: [],
+          sourceBaseline: "AT_LAST_CHECK",
+          sourceChanges: [
+            {
+              field: "PERMANENT_CLOSURE",
+              baseline: "NOT_PERMANENTLY_CLOSED",
+              current: "PERMANENTLY_CLOSED",
+              restored: false
+            }
+          ]
+        }
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/check`,
+        (_schema, request) => {
+          checkPosts(JSON.parse(request.requestBody));
+          saved.lastCheckedAt = "2099-06-20T10:00:00Z";
+          saved.checkContext = "warnings-accepted";
+          saved.checkState = "MANUALLY_CHECKED";
+          saved.changeNotices = [];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    const closure = "Permanently closed";
+    const length =
+      "Planned length is outside the current visit duration range.";
+    await expect(
+      await canvas.findByRole("button", { name: "1 change to check" })
+    ).toBeVisible();
+    const warnings = await canvas.findByRole("button", { name: "2 warnings" });
+    await user.click(warnings);
+    const details = within(
+      await body.findByRole("dialog", { name: "Itinerary check details" })
+    );
+    const warningTab = details.getByRole("tab", { name: "Warnings (2)" });
+    await expect(warningTab).toHaveAttribute("aria-selected", "true");
+    const changesTab = details.getByRole("tab", {
+      name: "Changes to check (1)"
+    });
+    await user.click(changesTab);
+    await expect(changesTab).toHaveAttribute("aria-selected", "true");
+    await user.click(warningTab);
+    const warningPanel = within(
+      details.getByRole("tabpanel", { name: "Warnings (2)" })
+    );
+    await expect(warningPanel.getAllByRole("listitem")).toHaveLength(2);
+    await expect(warningPanel.getByText(closure)).toBeVisible();
+    await expect(warningPanel.getByText(length)).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(warnings).toHaveFocus());
+    await user.click(warnings);
+    await user.click(
+      (await body.findAllByRole("button", { name: "Go to entry" }))[0]
+    );
+
+    const museum = await canvas.findByRole("listitem", { name: "Museum" });
+    await waitFor(() => expect(museum).toHaveFocus());
+    const day = within(canvas.getByRole("article", { name: /Jun 20, 2099/ }));
+    await expect(day.getByText("2 warnings")).toBeVisible();
+    await expect(within(museum).getByText(closure)).toBeVisible();
+    await expect(within(museum).getByText(length)).toBeVisible();
+
+    const check = canvas.getByRole("button", { name: "Check itinerary" });
+    await waitFor(() =>
+      expect(check).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await user.click(check);
+    const confirmation = within(
+      await body.findByRole("dialog", { name: "Check itinerary" })
+    );
+    await waitFor(() => expect(confirmation.getByText(closure)).toBeVisible());
+    await expect(confirmation.getByText(length)).toBeVisible();
+    await expect(
+      confirmation.getByText(/does not repair or retime/)
+    ).toBeVisible();
+    await user.click(
+      confirmation.getByRole("button", {
+        name: "Accept warnings and mark checked"
+      })
+    );
+
+    await expect(await canvas.findByText("Manually checked")).toBeVisible();
+    const remaining = await canvas.findByRole("button", {
+      name: "2 warnings remain"
+    });
+    await expect(
+      canvas.queryByRole("button", { name: /changes? to check/ })
+    ).not.toBeInTheDocument();
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+    await expect(checkPosts).toHaveBeenCalledWith({
+      checkContext: "displayed-itinerary"
+    });
+    await expect(
+      within(museum).getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveValue("11:30");
+    await user.click(remaining);
+    await expect(
+      await body.findByRole("tab", { name: "Warnings (2)" })
+    ).toHaveAttribute("aria-selected", "true");
   }
 };
 
@@ -2567,6 +2702,7 @@ export const OpensTheSavedItineraryAndSavesTheSuggestedClockOnBlur: Story = {
           attractionGroup: "PRIMARY",
           mustVisit: true,
           fixedStart: false,
+          warnings: [],
           timing: {
             zone: "Europe/Belgrade",
             start: "2099-10-25T02:30+02:00",
@@ -2590,6 +2726,7 @@ export const OpensTheSavedItineraryAndSavesTheSuggestedClockOnBlur: Story = {
           attractionGroup: "SECONDARY",
           mustVisit: false,
           fixedStart: false,
+          warnings: [],
           timing
         });
         saved.unscheduledAttractions = [];
@@ -2692,6 +2829,7 @@ export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
           attractionGroup: "PRIMARY",
           mustVisit: true,
           fixedStart: false,
+          warnings: [],
           timing: {
             zone,
             start: `${date}T09:00+02:00`,
@@ -2714,6 +2852,7 @@ export const EditsTheSuggestedStartBeforeSavingOnBlur: Story = {
           attractionGroup: "PRIMARY",
           mustVisit: true,
           fixedStart: false,
+          warnings: [],
           timing: {
             zone,
             start: `${date}T11:45+02:00`,
@@ -2837,6 +2976,7 @@ export const InspectsSavedItineraryBeforeRetryingAnUnconfirmedEntry: Story = {
           attractionGroup: "PRIMARY",
           mustVisit: true,
           fixedStart: false,
+          warnings: [],
           timing
         }
       ];
@@ -3045,6 +3185,7 @@ export const KeepsAnInvalidSpringClockAndSavesTheFirstFallOccurrenceWithoutAProm
           attractionGroup: "PRIMARY",
           mustVisit: true,
           fixedStart: false,
+          warnings: [],
           timing: {
             zone: "Europe/Belgrade",
             start: "2027-10-31T02:30+02:00",
@@ -3903,6 +4044,7 @@ const savedCasinoEntry = {
   attractionGroup: "PRIMARY",
   mustVisit: true,
   fixedStart: true,
+  warnings: [],
   timing: {
     start: "2099-06-11T09:00+02:00",
     end: "2099-06-11T09:45+02:00",
@@ -4266,6 +4408,7 @@ export const PlanLinksToSavedEntriesAndKeepsTheBoardFilters: Story = {
         attractionGroup: "PRIMARY",
         mustVisit: true,
         fixedStart: false,
+        warnings: [],
         timing: {
           start: "2025-06-10T09:00+02:00",
           end: "2025-06-10T09:45+02:00",
@@ -4280,6 +4423,7 @@ export const PlanLinksToSavedEntriesAndKeepsTheBoardFilters: Story = {
         attractionGroup: "PRIMARY",
         mustVisit: true,
         fixedStart: false,
+        warnings: [],
         timing: {
           start: "2025-06-20T09:00+02:00",
           end: "2025-06-20T09:45+02:00",
@@ -4396,6 +4540,7 @@ export const PlanUpdatesStatusAfterSchedulingAndRefresh: Story = {
             attractionGroup: "SECONDARY",
             mustVisit: false,
             fixedStart: false,
+            warnings: [],
             timing: {
               start: "2099-06-10T09:00+02:00",
               end: "2099-06-10T09:45+02:00",

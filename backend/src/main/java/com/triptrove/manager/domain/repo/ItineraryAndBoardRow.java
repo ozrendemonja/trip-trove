@@ -4,11 +4,13 @@ import com.triptrove.manager.domain.model.AttractionCategory;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.SourceBaseline;
+import com.triptrove.manager.domain.model.ItineraryDetails.EntryWarning;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
+import com.triptrove.manager.domain.model.VisitDuration;
 import com.triptrove.manager.domain.model.WatchedSourceSnapshot;
 
 import java.time.Instant;
@@ -55,7 +57,22 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
 
     AttractionEntrySummary toEntrySummary() {
         return new AttractionEntrySummary(entryId, attractionId, attractionName, boardColumn, mustVisit,
-                category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote);
+                category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote,
+                entryWarnings());
+    }
+
+    private List<EntryWarning> entryWarnings() {
+        var warnings = new ArrayList<EntryWarning>(2);
+        if (permanentlyClosedAt != null) {
+            warnings.add(EntryWarning.PERMANENTLY_CLOSED);
+        }
+        var sourceRange = VisitDuration.parse(visitDuration);
+        if (sourceRange.isEmpty()) {
+            warnings.add(EntryWarning.UNUSABLE_SOURCE_DURATION);
+        } else if (!sourceRange.get().contains(entryTiming.plannedMinutes())) {
+            warnings.add(EntryWarning.PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE);
+        }
+        return List.copyOf(warnings);
     }
 
     ChangeNoticeSummary toChangeNotice(boolean hasBeenChecked) {

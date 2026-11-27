@@ -23,10 +23,16 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
     }
 
     public record ChangeNoticeSummary(Long entryId, String subject, LocalDate date, List<Reason> reasons,
-                                      SourceBaseline sourceBaseline, List<WatchedSourceChangeSummary> sourceChanges) {
+                                      SourceBaseline sourceBaseline, List<WatchedSourceChangeSummary> sourceChanges,
+                                      List<GroupedSourceChangeSummary> groupedSourceChanges) {
+        public record GroupedSourceChangeSummary(long attractionId, String subject, SourceBaseline sourceBaseline,
+                                                  List<WatchedSourceChangeSummary> sourceChanges) {
+        }
+
         public enum Reason {
             ATTRACTION_ADDED, START_CHANGED, PLANNED_LENGTH_CHANGED, FIXED_START_CHANGED,
-            ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED, ATTRACTION_EXCLUDED, REMOVED_FROM_TRIP, TRANSFER_CHANGED
+            ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED, ATTRACTION_EXCLUDED, REMOVED_FROM_TRIP, TRANSFER_CHANGED,
+            GROUP_CHANGED
         }
 
         public enum SourceBaseline {
@@ -42,12 +48,13 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
                                          boolean fixedStart, ItineraryTiming timing,
                                          String workingHours, String visitDuration, String tripNote,
                                          ItineraryTransferSummary outgoingTransfer,
-                                         List<EntryWarning> warnings) {
+                                         List<EntryWarning> warnings, List<ItineraryGroupedAttractionSummary> groupedAttractions,
+                                         Integer cityId, Long mainAttractionId) {
     }
 
     public record UnscheduledAttractionSummary(Long attractionId, String name, String place,
                                                TripAttractionGroup attractionGroup, boolean mustVisit,
                                                AttractionCategory category, String workingHours, String visitDuration,
-                                               String tripNote) {
+                                               String tripNote, Integer cityId, Long mainAttractionId) {
     }
 }

@@ -15,7 +15,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 import java.util.Set;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.*;
@@ -44,12 +43,11 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         var itineraryTimeZone = itinerary.timeZone() == null && attraction.timeZone() != null
                 ? attraction.timeZone().strip() : itinerary.timeZone();
 
-        validateAttractionCanBeScheduled(tripAttraction, attractionId, itinerary);
-        validateVisitDurationCanBeProvided(tripAttraction.visitDuration(), attraction.visitDuration());
-
-        var visitDurationMinutes = resolveVisitDurationMinutes(tripAttraction.visitDuration(), attraction.visitDuration())
-                .orElseThrow(() -> new BaseApiException(ITINERARY_INPUT_REQUIRED,
-                        new MissingInputs(List.of(RequiredInput.VISIT_DURATION))));
+        tripAttraction.requireEligible(false);
+        if (tripAttraction.groupedUnderEntryId() != null || itinerary.isAlreadyScheduled(attractionId)) {
+            throw new BaseApiException("The attraction already has an itinerary placement", ITINERARY_ATTRACTION_ALREADY_SCHEDULED);
+        }
+        var visitDurationMinutes = tripAttraction.resolveVisitDurationMinutes(attraction.visitDuration());
         validateStartAndTimeZone(attraction.start(), itineraryTimeZone);
 
         var zone = requireNamedTimeZone(itineraryTimeZone);
@@ -67,8 +65,7 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
             itineraries.getReferenceById(tripId).initializeTimeZone(itineraryTimeZone);
         }
         if (attraction.visitDuration() != null) {
-            tripAttractions.findById(tripAttraction.tripAttractionId()).orElseThrow().setVisitTime(attraction.visitDuration());
-            tripAttractions.flush(); // Include the corrected source duration in the insert-time baseline.
+            tripAttractions.correctSchedulingDuration(tripAttraction.tripAttractionId(), attraction.visitDuration());
         }
         for (var removal : disconnectedTransfers) {
             var transfer = removal.transfer();
@@ -78,27 +75,6 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         }
         makeRoomForInsertion(tripId, day.date(), position, lastPosition);
         entries.save(new ItineraryEntry(tripId, attractionId, position, proposedInterval));
-    }
-
-    private void validateAttractionCanBeScheduled(SchedulingSummary attraction, long attractionId,
-                                                  ItinerarySummary itinerary) {
-        if (!TripAttraction.isEligibleForScheduling(attraction.group(), attraction.permanentlyClosedAt())) {
-            throw new BaseApiException("Attraction is not eligible for scheduling", ITINERARY_ATTRACTION_INELIGIBLE);
-        }
-        if (itinerary.isAlreadyScheduled(attractionId)) {
-            throw new BaseApiException("The attraction already has an itinerary entry", ITINERARY_ATTRACTION_ALREADY_SCHEDULED);
-        }
-    }
-
-    private void validateVisitDurationCanBeProvided(String sourceDuration, String requestedDuration) {
-        if (requestedDuration != null && VisitDuration.upperBound(sourceDuration).isPresent()) {
-            throw new BaseApiException("Scheduling can correct only an unusable source duration",
-                    ITINERARY_DURATION_ALREADY_VALID);
-        }
-    }
-
-    private OptionalInt resolveVisitDurationMinutes(String sourceDuration, String requestedDuration) {
-        return VisitDuration.upperBound(requestedDuration == null ? sourceDuration : requestedDuration);
     }
 
     private void validateStartAndTimeZone(LocalTime requestedStart, String itineraryTimeZone) {

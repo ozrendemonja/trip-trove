@@ -6,6 +6,7 @@ import com.triptrove.manager.KeysetTestFixtures.Workflow;
 import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.domain.model.BucketListStatusFilter;
 import com.triptrove.manager.domain.model.SearchInElement;
+import com.triptrove.manager.domain.model.TransferMode;
 import com.triptrove.manager.domain.repo.*;
 import com.triptrove.manager.domain.service.SearchService;
 import com.triptrove.manager.domain.service.TripService;
@@ -30,6 +31,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -865,6 +867,148 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void itineraryAndPlanKeepTheirSelectBudgetsWithGroupedAttractions(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(hostCount))
+                .andExpect(jsonPath("$.days[1].entries[0].groupedAttractions").isNotEmpty())
+                .andExpect(jsonPath("$.unscheduledAttractions.length()").value(1));
+
+        assertReadOnlySelectCount(1);
+        mockMvc.perform(get("/trips/1/attractions").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2 * hostCount + 1));
+
+        assertReadOnlySelectCount(3);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void joiningAnUnscheduledAttractionUsesTwoSelectsWithExistingGroups(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var hostId = entryIdAtPosition(hostCount);
+        var request = new JoinItineraryAttractionRequest(2L * hostCount + 1, null, null, null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions", 1L, hostId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void joiningAnUnscheduledAttractionWithDurationCorrectionUsesThreeSelects(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var attractionId = 2L * hostCount + 1;
+        entityManager.createNativeQuery("UPDATE trip_attraction SET visit_time = NULL WHERE attraction_id = :id")
+                .setParameter("id", attractionId).executeUpdate();
+        var hostId = entryIdAtPosition(hostCount);
+        var request = new JoinItineraryAttractionRequest(attractionId, null, "5m", null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions", 1L, hostId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(3);
+        assertInsertCount(1);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void joiningAStandaloneAttractionWithAnEnteredTransferUsesTwoSelects(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var hostId = entryIdAtPosition(hostCount);
+        var attractionId = 2L * hostCount + 1;
+        var standaloneId = (Long) entityManager.createNativeQuery("""
+                INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                    start_time, planned_minutes, fixed_start)
+                VALUES (1, DATE '2026-09-02', :attractionId, :position, 'Europe/Belgrade', TIME '23:00', 5, true)
+                RETURNING id
+                """).setParameter("attractionId", attractionId).setParameter("position", hostCount + 1).getSingleResult();
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_entry SET transfer_to_entry_id = :standaloneId,
+                    transfer_mode = 'WALKING', transfer_minutes = 0, transfer_note = 'Across the square'
+                WHERE id = :hostId
+                """).setParameter("standaloneId", standaloneId).setParameter("hostId", hostId).executeUpdate();
+        var transfer = new ItineraryTransferDTO(hostId, standaloneId, TransferMode.WALKING, 0, "Across the square");
+        var request = new JoinItineraryAttractionRequest(attractionId, standaloneId, null, List.of(transfer));
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions", 1L, hostId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(1);
+        assertDeleteCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void joiningAScheduledAttractionWithoutItsSourceEntryConfirmationUsesTwoSelects(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var hostId = entryIdAtPosition(hostCount);
+        var attractionId = 2L * hostCount + 1;
+        var sourceEntryId = (Long) entityManager.createNativeQuery("""
+                INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                    start_time, planned_minutes, fixed_start)
+                VALUES (1, DATE '2026-09-02', :attractionId, :position, 'Europe/Belgrade', TIME '23:00', 5, true)
+                RETURNING id
+                """).setParameter("attractionId", attractionId).setParameter("position", hostCount + 1).getSingleResult();
+        var request = Map.of("attractionId", attractionId, "standaloneEntryId", sourceEntryId);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions", 1L, hostId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+
+        assertSelectCount(2);
+        assertInsertCount(0);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void editingTheTotalLengthOfAnEntryWithGroupedAttractionsUsesOneSelect(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var hostId = entryIdAtPosition(hostCount);
+        var request = new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.valueOf(95));
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/planned-length", hostId)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {1, 45})
     void itineraryReadUsesOneSelectRegardlessOfDayCount(int dayCount) throws Exception {
         var firstDate = LocalDate.of(2028, 2, 1);
@@ -1163,8 +1307,8 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, 2, 30})
-    void recordingACheckUsesTwoUpdatesOneDeleteAndNoSelects(int entryCount) throws Exception {
-        seedItineraryWithEntries(entryCount);
+    void recordingACheckWithGroupsUsesThreeUpdatesOneDeleteAndNoSelects(int entryCount) throws Exception {
+        seedItineraryWithGroupedAttractions(entryCount);
         var confirmation = itineraryCheckRequest();
         entityManager.createNativeQuery("""
                 UPDATE itinerary_day SET note = 'Reminder for ' || date WHERE trip_id = 1
@@ -1175,7 +1319,7 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
         assertSelectCount(0);
         assertInsertCount(0);
-        assertUpdateCount(2);
+        assertUpdateCount(3);
         assertDeleteCount(1);
     }
 
@@ -1507,6 +1651,28 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                     TIME '07:00' + (position - 1) * INTERVAL '30 minutes', 30, false
                 FROM generate_series(1, :size) AS entries(position);
                 """).setParameter("size", entryCount).executeUpdate();
+    }
+
+    private void seedItineraryWithGroupedAttractions(int hostCount) {
+        seedSchedulingBoard(2 * hostCount + 1);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET time_zone = 'Europe/Belgrade' WHERE trip_id = 1;
+                INSERT INTO itinerary_entry(trip_id, date, attraction_id, path_position, zone_id,
+                    start_time, planned_minutes, fixed_start)
+                SELECT 1, DATE '2026-09-02', position, position, 'Europe/Belgrade',
+                    TIME '05:00' + (position - 1) * INTERVAL '35 minutes', 35, false
+                FROM generate_series(1, :hostCount) AS entries(position);
+                INSERT INTO itinerary_grouped_attraction(trip_id, attraction_id, host_entry_id, member_position, contribution_minutes)
+                SELECT 1, attraction_id + :hostCount, id, 1, 5 FROM itinerary_entry WHERE trip_id = 1;
+                UPDATE trip_attraction SET note = 'Updated member note ' || attraction_id
+                WHERE trip_id = 1 AND attraction_id > :hostCount;
+                """).setParameter("hostCount", hostCount).executeUpdate();
+    }
+
+    private long entryIdAtPosition(int position) {
+        return (Long) entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND path_position = :position
+                """).setParameter("position", position).getSingleResult();
     }
 
     private void seedItineraryWithTransfers(int entryCount, int transferMinutes) {

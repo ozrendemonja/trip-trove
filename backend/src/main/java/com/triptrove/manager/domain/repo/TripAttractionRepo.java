@@ -23,12 +23,19 @@ public interface TripAttractionRepo extends JpaRepository<TripAttraction, Long> 
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.SchedulingSummary(
-                item.id, item.attractionGroup, attraction.permanentlyClosedAt, item.visitTime)
+                item.id, item.attractionGroup, attraction.permanentlyClosedAt, item.visitTime, member.hostEntryId)
             FROM TripAttraction item
             JOIN item.attraction attraction
+            LEFT JOIN ItineraryGroupedAttraction member
+                ON member.tripId = item.trip.id AND member.attractionId = attraction.id
             WHERE item.trip.id = :tripId AND attraction.id = :attractionId
             """)
     Optional<SchedulingSummary> findSchedulingSummaryByTripIdAndAttractionId(Long tripId, Long attractionId);
+
+    default void correctSchedulingDuration(long tripAttractionId, String visitDuration) {
+        findById(tripAttractionId).orElseThrow().setVisitTime(visitDuration);
+        flush(); // The new placement's baseline must include the corrected duration.
+    }
 
     @EntityGraph(attributePaths = {"trip", "attraction.country", "attraction.region", "attraction.city", "attraction.main", "attraction.informationProvider"})
     @Query("""

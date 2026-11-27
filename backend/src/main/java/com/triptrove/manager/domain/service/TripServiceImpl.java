@@ -81,6 +81,7 @@ public class TripServiceImpl implements TripService {
                     BaseApiException.ErrorCode.ITINERARY_CHECK_STALE, tripId);
         }
         itineraryEntryRepo.markEntriesChecked(tripId);
+        itineraryEntryRepo.markGroupedAttractionsChecked(tripId);
         itineraryEntryRepo.clearRemovalNoticesByTripId(tripId);
     }
 

@@ -36,7 +36,8 @@ interface RejectedEdit {
   inspected?: boolean;
 }
 
-type EditKind = TimingField | "move" | "remove" | "fixed-start" | "transfer";
+type EditKind =
+  TimingField | "move" | "remove" | "fixed-start" | "transfer" | "join";
 
 export function editKind(edit: EntryEdit): EditKind {
   if ("action" in edit) return edit.action;
@@ -73,6 +74,13 @@ function editIsReflected(
   );
   const entry = day?.entries.find((item) => item.entryId === entryId);
   if ("action" in edit) {
+    if (edit.action === "join") {
+      return (
+        entry?.groupedAttractions?.some(
+          (member) => member.attractionId === edit.request.attractionId
+        ) === true
+      );
+    }
     if (edit.action === "remove") return entry === undefined;
     if (edit.action === "transfer") {
       const transfer = entry?.outgoingTransfer;

@@ -4702,6 +4702,291 @@ const planStatusUnscheduled: GetItineraryResponse["unscheduledAttractions"] = [
   }
 ];
 
+export const GroupsAStandaloneAttractionAndLinksItFromPlan: Story = {
+  parameters: {
+    trip: planStatusTrip,
+    savedAttractions: [
+      {
+        ...SAVED_ATTRACTIONS[0],
+        attractionId: 42,
+        attractionName: "Spanish Steps",
+        attractionCategory: "HISTORIC_SITE"
+      }
+    ],
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const host = {
+        entryId: 51,
+        attractionId: 41,
+        name: "Piazza Navona",
+        cityId: 12,
+        attractionGroup: "PRIMARY",
+        category: "HISTORIC_SITE",
+        mustVisit: true,
+        fixedStart: true,
+        warnings: [],
+        timing: {
+          start: "2099-06-10T09:00+02:00",
+          end: "2099-06-10T09:45+02:00",
+          zone: "Europe/Rome"
+        }
+      } as const;
+      const transfer = {
+        fromEntryId: 52,
+        toEntryId: 53,
+        mode: "WALKING",
+        minutes: 15
+      } satisfies ItineraryTransferDto;
+      const member = {
+        attractionId: 42,
+        name: "Spanish Steps",
+        attractionGroup: "PRIMARY",
+        category: "HISTORIC_SITE",
+        mustVisit: true,
+        tripNote: "Use the steps by the fountain.",
+        visitDuration: "5-15m"
+      } as const;
+      const candidates = [
+        {
+          ...member,
+          attractionId: 43,
+          name: "Roman Forum",
+          place: "Italy"
+        },
+        {
+          ...member,
+          attractionId: 44,
+          name: "Pasquino",
+          mainAttractionId: host.attractionId,
+          place: "Rome"
+        }
+      ];
+      const saved = itineraryFixture(
+        planStatusTrip.fromDate,
+        planStatusTrip.toDate,
+        candidates
+      );
+      saved.timeZone = "Europe/Rome";
+      saved.days[0].entries = [{ ...host, warnings: [] }];
+      const stepTiming = {
+        start: "2099-06-11T13:00+02:00",
+        end: "2099-06-11T13:05+02:00",
+        zone: "Europe/Rome"
+      };
+      const lookout = {
+        ...host,
+        cityId: 32,
+        entryId: 53,
+        attractionId: 45,
+        name: "Lookout",
+        warnings: [],
+        timing: {
+          ...stepTiming,
+          start: "2099-06-11T13:30+02:00",
+          end: "2099-06-11T14:00+02:00"
+        }
+      };
+      saved.days[1].entries = [
+        {
+          ...member,
+          entryId: 52,
+          cityId: host.cityId,
+          fixedStart: true,
+          warnings: [],
+          timing: stepTiming,
+          outgoingTransfer: transfer
+        },
+        lookout
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.get("http://localhost:8080/attractions/42", () => ({
+        ...museumCatalogue,
+        attractionId: 42,
+        attractionName: "Spanish Steps",
+        permanentlyClosedAt: undefined
+      }));
+      server.post(
+        `${entryUrl}/grouped-attractions`,
+        (_schema, request) => {
+          compositionWrites(JSON.parse(request.requestBody));
+          const groupedHost = {
+            ...host,
+            warnings: [],
+            timing: { ...host.timing, end: "2099-06-10T09:50+02:00" },
+            groupedAttractions: [
+              {
+                ...member,
+                contributionMinutes: 5,
+                warnings: []
+              }
+            ]
+          };
+          saved.days[0].entries = [groupedHost];
+          saved.days[1].entries = [lookout];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", {
+        name: "On the entry for Piazza Navona"
+      })
+    );
+    const candidates = within(
+      canvas.getByRole("list", { name: "Candidates for Piazza Navona" })
+    );
+    await expect(
+      candidates
+        .getAllByRole("button")
+        .slice(0, 3)
+        .map((button) => button.getAttribute("aria-label"))
+    ).toEqual(["Add Pasquino", "Move Spanish Steps", "Add Roman Forum"]);
+    const search = canvas.getByRole("searchbox", {
+      name: "Search attractions to group with Piazza Navona"
+    });
+    await user.type(search, "Spanish");
+    await expect(
+      candidates.queryByRole("button", { name: "Add Pasquino" })
+    ).not.toBeInTheDocument();
+    await expect(candidates.getByText(/Day 2.*13:00/)).toBeVisible();
+
+    await user.click(
+      candidates.getByRole("button", { name: "Move Spanish Steps" })
+    );
+    const dialog = within(await overlay(canvasElement).findByRole("dialog"));
+    await waitFor(() =>
+      expect(dialog.getByText(/separate start and lock/)).toBeVisible()
+    );
+    await expect(dialog.getByText("Spanish Steps to Lookout")).toBeVisible();
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+    await expect(compositionWrites).not.toHaveBeenCalled();
+    await user.click(
+      candidates.getByRole("button", { name: "Move Spanish Steps" })
+    );
+    await user.click(
+      await overlay(canvasElement).findByRole("button", {
+        name: "Move into group"
+      })
+    );
+
+    const group = within(
+      await canvas.findByRole("list", {
+        name: "Grouped attractions on Piazza Navona"
+      })
+    );
+    await expect(group.getByText(/Historic site.*5 min/)).toBeVisible();
+    await expect(compositionWrites).toHaveBeenCalledWith({
+      attractionId: 42,
+      sourceEntryId: 52,
+      transfersToRemoveWithSourceEntry: [
+        { fromEntryId: 52, toEntryId: 53, mode: "WALKING", minutes: 15 }
+      ]
+    });
+    await user.click(group.getByRole("button", { name: "Spanish Steps" }));
+    const facts = within(
+      await overlay(canvasElement).findByRole("dialog", {
+        name: "Spanish Steps"
+      })
+    );
+    await waitFor(() =>
+      expect(facts.getByText("Use the steps by the fountain.")).toBeVisible()
+    );
+    await user.click(facts.getByRole("button", { name: "Close" }));
+
+    await user.click(canvas.getByRole("button", { name: "Plan" }));
+    const status = await canvas.findByRole("link", {
+      name: "Scheduled \u00b7 Day 1"
+    });
+    await user.click(status);
+    const host = await canvas.findByRole("listitem", { name: "Piazza Navona" });
+    await waitFor(() => expect(host).toHaveFocus());
+  }
+};
+
+export const CorrectsMissingDurationOnlyWhenAddingAGroupedAttraction: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = compositionTimeline();
+      const member = {
+        ...saved.unscheduledAttractions[0],
+        visitDuration: undefined
+      };
+      saved.unscheduledAttractions = [member];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${entryUrl}/grouped-attractions`,
+        (_schema, request) => {
+          compositionWrites(JSON.parse(request.requestBody));
+          saved.days[0].entries[0].groupedAttractions = [
+            {
+              ...member,
+              contributionMinutes: 0,
+              visitDuration: "0m",
+              warnings: []
+            }
+          ];
+          saved.unscheduledAttractions = [];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialogs = overlay(canvasElement);
+    const user = setupUser();
+    const itinerary = await canvas.findByRole("button", { name: "Itinerary" });
+    await waitFor(() => expect(itinerary).toBeEnabled());
+    await user.click(itinerary);
+    await user.click(
+      await canvas.findByRole("button", { name: "On the entry for Museum" })
+    );
+    const candidates = within(
+      canvas.getByRole("list", { name: "Candidates for Museum" })
+    );
+    const add = candidates.getByRole("button", { name: "Add Luna Cafe" });
+    await user.click(add);
+    const dialog = within(
+      await dialogs.findByRole("dialog", { name: "Add Luna Cafe to Museum" })
+    );
+    await user.type(
+      dialog.getByRole("textbox", { name: "Visit duration" }),
+      "5m"
+    );
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+    await expect(compositionWrites).not.toHaveBeenCalled();
+
+    await user.click(add);
+    const corrected = within(
+      await dialogs.findByRole("dialog", { name: "Add Luna Cafe to Museum" })
+    );
+    const duration = corrected.getByRole("textbox", { name: "Visit duration" });
+    await expect(duration).toHaveValue("");
+    await user.type(duration, "0m");
+    await user.click(corrected.getByRole("button", { name: "Add to group" }));
+    await expect(compositionWrites).toHaveBeenCalledWith({
+      attractionId: 8,
+      visitDuration: "0m"
+    });
+    const group = within(
+      await canvas.findByRole("list", { name: "Grouped attractions on Museum" })
+    );
+    await expect(
+      group.getByRole("button", { name: "Luna Cafe" })
+    ).toBeVisible();
+    await expect(group.getByText(/Eatery.*0 min/)).toBeVisible();
+  }
+};
+
 export const PlanUpdatesStatusAfterSchedulingAndRefresh: Story = {
   parameters: {
     trip: planStatusTrip,

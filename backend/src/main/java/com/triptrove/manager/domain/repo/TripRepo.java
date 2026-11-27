@@ -72,6 +72,8 @@ public interface TripRepo extends JpaRepository<Trip, Long> {
                   AND ta.attraction.id = :attractionId
                   AND NOT EXISTS (SELECT 1 FROM ItineraryEntry entry
                       WHERE entry.tripId = :tripId AND entry.attractionId = :attractionId)
+                  AND NOT EXISTS (SELECT 1 FROM ItineraryGroupedAttraction member
+                      WHERE member.tripId = :tripId AND member.attractionId = :attractionId)
             """)
     int deleteUnscheduledTripAttraction(Long tripId, Long attractionId);
 

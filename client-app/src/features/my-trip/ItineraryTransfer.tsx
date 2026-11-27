@@ -59,6 +59,22 @@ const isMode = (value: string): value is Mode => Object.hasOwn(modes, value);
 const transferLabel = ({ mode, minutes }: ItineraryTransferDto): string =>
   `${modes[mode].label} · ${minutes}m`;
 
+export function transfersForEntryRemoval(
+  entries: AttractionEntry[],
+  index: number
+): ItineraryTransferRemovalResponse[] {
+  const fromAndTo = [
+    [entries[index - 1], entries[index]],
+    [entries[index], entries[index + 1]]
+  ];
+  return fromAndTo.flatMap(([from, to]) => {
+    const transfer = from?.outgoingTransfer;
+    return transfer && to && transfer.toEntryId === to.entryId
+      ? [{ transfer, fromName: from.name, toName: to.name }]
+      : [];
+  });
+}
+
 export function TransferLine({
   from,
   to,

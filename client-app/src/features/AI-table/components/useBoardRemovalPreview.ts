@@ -6,6 +6,7 @@ import type {
 } from "../../../clients/manager";
 import type { ItineraryRemoval } from "../../my-trip/domain/TripPlanning.types";
 import { fetchTripItinerary } from "../../my-trip/infra/TripApi";
+import { transfersForEntryRemoval } from "../../my-trip/ItineraryTransfer";
 import {
   TripPlanningWorkspace,
   usePlanningDraft,
@@ -71,29 +72,19 @@ export function excludingDisconnectedTransfers(
     : { entryId: itineraryRemoval.entryId, transfersToRemove: remaining };
 }
 
-function transferConsequences(
-  entries: Entry[],
-  index: number
-): ItineraryTransferRemovalResponse[] {
-  const fromAndTo = [
-    [entries[index - 1], entries[index]],
-    [entries[index], entries[index + 1]]
-  ];
-  return fromAndTo.flatMap(([from, to]) => {
-    const transfer = from?.outgoingTransfer;
-    return transfer && to && transfer.toEntryId === to.entryId
-      ? [{ transfer, fromName: from.name, toName: to.name }]
-      : [];
-  });
-}
-
 function selectionFor(
   proposal: BoardRemovalProposal,
   days: Day[]
 ): BoardRemovalSelection {
   if (proposal.operation === "city") {
     const scheduled = new Set(
-      days.flatMap((day) => day.entries.map((entry) => entry.attractionId))
+      days.flatMap((day) =>
+        day.entries.flatMap((entry) => [
+          entry.attractionId,
+          ...(entry.groupedAttractions?.map((member) => member.attractionId) ??
+            [])
+        ])
+      )
     );
     return {
       attractionIds: proposal.attractionIds.filter((id) => !scheduled.has(id))
@@ -113,7 +104,7 @@ function selectionFor(
           dayNumber: index + 1,
           saved,
           endDayNumber: days.findIndex(({ date }) => date === endDate) + 1,
-          transfers: transferConsequences(day.entries, position)
+          transfers: transfersForEntryRemoval(day.entries, position)
         }
       };
     }
@@ -156,6 +147,28 @@ export function useBoardRemovalPreview(tripId: number | undefined): {
               state: "error",
               message:
                 "Planning changed while loading. Reload the itinerary preview."
+            });
+            return;
+          }
+          if (
+            proposal.operation !== "city" &&
+            days.some(({ entries }) =>
+              entries.some(
+                ({ attractionId, groupedAttractions }) =>
+                  groupedAttractions?.length &&
+                  (attractionId === proposal.attractionIds[0] ||
+                    groupedAttractions.some(
+                      (member) =>
+                        member.attractionId === proposal.attractionIds[0]
+                    ))
+              )
+            )
+          ) {
+            setPreview({
+              proposal,
+              state: "error",
+              message:
+                "Removing or excluding a grouped attraction or its host is not available yet."
             });
             return;
           }

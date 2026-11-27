@@ -115,7 +115,15 @@ export function ItineraryEntryActions({
             >
               Move to day...
             </MenuItem>
-            <MenuItem disabled={blocked} onClick={() => setDialog("remove")}>
+            <MenuItem
+              disabled={blocked || !!entry.groupedAttractions?.length}
+              title={
+                entry.groupedAttractions?.length
+                  ? "Removing a grouped entry is not available yet."
+                  : undefined
+              }
+              onClick={() => setDialog("remove")}
+            >
               Remove from itinerary
             </MenuItem>
           </MenuList>

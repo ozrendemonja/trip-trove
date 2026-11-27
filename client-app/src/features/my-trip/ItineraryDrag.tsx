@@ -15,7 +15,8 @@ type Entry = Day["entries"][number];
 export type DraggedItineraryItem =
   { kind: "pool"; attraction: Attraction } | { kind: "entry"; entry: Entry };
 
-export type ItineraryAttraction = Attraction | Entry;
+export type ItineraryAttraction =
+  Attraction | Entry | NonNullable<Entry["groupedAttractions"]>[number];
 export type OpenAttractionFacts = (
   attractionId: number,
   trigger: HTMLButtonElement

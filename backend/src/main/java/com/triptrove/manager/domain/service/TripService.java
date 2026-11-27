@@ -14,6 +14,8 @@ public interface TripService {
 
     void markItineraryChecked(Long tripId, String checkContext);
 
+    void updateItineraryDayNote(Long tripId, LocalDate date, String note);
+
     void updateTripName(Long id, String newName);
 
     void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip);

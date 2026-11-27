@@ -15,6 +15,7 @@ import type {
   GetAttractionResponse,
   GetItineraryResponse,
   GetSearchAttractionResponse,
+  UpdateItineraryDayNoteRequest,
   UpdateTripAttractionNoteRequest,
   UpdateTripAttractionVisitTimeRequest
 } from "../../clients/manager";
@@ -88,6 +89,7 @@ const boardMoves = fn();
 const boardNotes = fn();
 const schedulingPosts = fn();
 const checkPosts = fn();
+const itineraryNoteWrites = fn();
 const timingPuts = fn();
 const compositionWrites = fn();
 const itineraryUrl = "http://localhost:8080/trips/1/itinerary";
@@ -1797,6 +1799,241 @@ export const ChecksAnEmptyItineraryExplicitly: Story = {
     await expect(checkPosts).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(plan).toHaveAttribute("aria-current", "step"));
     await expect(canvas.getByText("Manually checked")).toBeVisible();
+  }
+};
+
+export const ChecksANoteOnlyItineraryWithoutReviewingDayNotes: Story = {
+  parameters: {
+    savedAttractions: [],
+    trip: {
+      ...ITINERARY_TRIP,
+      fromDate: "2099-06-10",
+      toDate: "2099-06-11",
+      hasItineraryEntries: false,
+      hasItineraryDayNotes: true
+    },
+    configureTripServer: (server: Server) => {
+      checkPosts.mockClear();
+      itineraryNoteWrites.mockClear();
+      const saved = itineraryFixture("2099-06-10", "2099-06-11");
+      const [day] = saved.days;
+      day.note = "Bring the tickets.";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/check`,
+        () => {
+          checkPosts();
+          saved.checkState = "MANUALLY_CHECKED";
+          saved.lastCheckedAt = "2099-05-31T10:00:00Z";
+          saved.checkContext = "after-check";
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+      server.put(
+        `${itineraryUrl}/days/2099-06-10/note`,
+        (_schema, request) => {
+          const body: UpdateItineraryDayNoteRequest = JSON.parse(
+            request.requestBody
+          );
+          itineraryNoteWrites(body);
+          day.note = body.note || undefined;
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    const day = within(
+      await canvas.findByRole("article", { name: /Jun 10, 2099/ })
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Itinerary" })
+    ).toHaveAttribute("aria-current", "step");
+    await expect(day.getByRole("note", { name: "Day note" })).toHaveTextContent(
+      "Bring the tickets."
+    );
+    await expect(
+      day.queryByRole("list", { name: "Main path" })
+    ).not.toBeInTheDocument();
+
+    await user.click(canvas.getByRole("button", { name: "Check itinerary" }));
+    const check = within(
+      await body.findByRole("dialog", { name: "Check itinerary" })
+    );
+    await waitFor(() =>
+      expect(
+        check.getByText(/No attractions or other items are scheduled/)
+      ).toBeVisible()
+    );
+    await expect(
+      check.queryByText("Bring the tickets.")
+    ).not.toBeInTheDocument();
+    await user.click(
+      check.getByRole("button", { name: "Mark empty itinerary checked" })
+    );
+    await canvas.findByText("Manually checked");
+    await expect(checkPosts).toHaveBeenCalledTimes(1);
+
+    await user.click(await day.findByRole("button", { name: "Edit day note" }));
+    const editor = within(
+      await body.findByRole("dialog", { name: "Edit day note" })
+    );
+    const field = editor.getByRole("textbox", { name: "Day note" });
+    await expect(field).toHaveValue("Bring the tickets.");
+    const overlong = "x".repeat(2001);
+    fireEvent.change(field, { target: { value: overlong } });
+    await expect(field).toHaveValue(overlong);
+    await waitFor(() =>
+      expect(
+        editor.getByText("Day note may not be longer than 2000 characters.")
+      ).toBeVisible()
+    );
+    await user.keyboard("{Control>}s{/Control}");
+    await expect(itineraryNoteWrites).not.toHaveBeenCalled();
+
+    fireEvent.change(field, { target: { value: "Bring the tickets." } });
+    await user.type(field, "{Enter}Bring an ID too.  ");
+    await expect(field).toHaveValue("Bring the tickets.\nBring an ID too.  ");
+    await user.keyboard("{Control>}s{/Control}");
+    await expect(
+      await day.findByRole("status", { name: /^Marked change for Day note/ })
+    ).toHaveTextContent("Saved");
+    await expect(canvas.getByText("Manually checked")).toBeVisible();
+
+    await user.click(await day.findByRole("button", { name: "Edit day note" }));
+    const reopened = within(
+      await body.findByRole("dialog", { name: "Edit day note" })
+    );
+    const savedText = reopened.getByRole("textbox", { name: "Day note" });
+    await expect(savedText).toHaveValue(
+      "Bring the tickets.\nBring an ID too.  "
+    );
+    await user.clear(savedText);
+    await user.click(reopened.getByRole("button", { name: "Save" }));
+    await day.findByRole("button", { name: "Add day note" });
+    await expect(
+      day.queryByRole("note", { name: "Day note" })
+    ).not.toBeInTheDocument();
+    await expect(itineraryNoteWrites.mock.calls).toEqual([
+      [{ note: "Bring the tickets.\nBring an ID too.  " }],
+      [{ note: "" }]
+    ]);
+    await expect(canvas.getByText("Manually checked")).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: /changes? to check/ })
+    ).not.toBeInTheDocument();
+  }
+};
+
+export const InspectsADayNoteSaveWithoutChangingTheTripNote: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      itineraryNoteWrites.mockClear();
+      const saved = compositionTimeline();
+      const [day] = saved.days;
+      const [museum] = day.entries;
+      museum.tripNote = "Use the side entrance.";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${itineraryUrl}/days/${day.date}/note`,
+        (_schema, request) => {
+          const body: UpdateItineraryDayNoteRequest = JSON.parse(
+            request.requestBody
+          );
+          itineraryNoteWrites(body);
+          day.note = body.note;
+          return new MirageResponse(503);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const day = within(
+      await canvas.findByRole("article", { name: /Jun 10, 2099/ })
+    );
+    const museum = within(day.getByRole("listitem", { name: "Museum" }));
+    await expect(
+      museum.getByRole("note", { name: "Trip note" })
+    ).toHaveTextContent("Use the side entrance.");
+    await expect(
+      museum.queryByRole("button", { name: /note/i })
+    ).not.toBeInTheDocument();
+
+    const add = day.getByRole("button", { name: "Add day note" });
+    await user.click(add);
+    const editor = within(
+      await body.findByRole("dialog", { name: "Edit day note" })
+    );
+    const field = editor.getByRole("textbox", { name: "Day note" });
+    await expect(field).toHaveFocus();
+    await expect(field).toHaveValue("");
+
+    const note = " Ask at the desk.\nCollect the passes. ";
+    fireEvent.change(field, { target: { value: note } });
+    await user.click(editor.getByRole("button", { name: "Save" }));
+    await expect(
+      await editor.findByText(/The save couldn't be confirmed/)
+    ).toBeVisible();
+    await expect(field).toHaveValue(note);
+    await user.click(
+      editor.getByRole("button", { name: "Inspect saved itinerary" })
+    );
+    await expect(
+      await day.findByRole("status", {
+        name: /^Marked change for Day note/
+      })
+    ).toHaveTextContent("Saved");
+    await expect(
+      museum.getByRole("note", { name: "Trip note" })
+    ).toHaveTextContent("Use the side entrance.");
+    const edit = day.getByRole("button", { name: "Edit day note" });
+    await waitFor(() => expect(edit).toHaveFocus());
+    await expect(itineraryNoteWrites.mock.calls).toEqual([[{ note }]]);
+
+    await user.click(edit);
+    const reopened = within(
+      await body.findByRole("dialog", { name: "Edit day note" })
+    );
+    await expect(
+      reopened.getByRole("textbox", { name: "Day note" })
+    ).toHaveValue(note);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(edit).toHaveFocus());
+  }
+};
+
+export const ATripWithOnlyDayNotesOpensInReviewAfterTheTrip: Story = {
+  parameters: {
+    savedAttractions: [],
+    trip: {
+      ...ITINERARY_TRIP,
+      hasItineraryEntries: false,
+      hasItineraryDayNotes: true
+    },
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture(
+        ITINERARY_TRIP.fromDate,
+        ITINERARY_TRIP.toDate
+      );
+      saved.days[0].note = "Return the keys.";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole("button", { name: "Review" })
+    ).toHaveAttribute("aria-current", "step");
   }
 };
 

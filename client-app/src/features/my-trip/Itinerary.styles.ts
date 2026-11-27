@@ -172,6 +172,30 @@ export const useClasses = makeStyles({
     alignItems: "center",
     rowGap: tokens.spacingVerticalXXS
   },
+  noteControl: {
+    display: "grid",
+    justifyItems: "start",
+    gap: tokens.spacingVerticalXXS,
+    minWidth: 0
+  },
+  note: {
+    width: "100%",
+    boxSizing: "border-box",
+    paddingBlockStart: tokens.spacingVerticalS
+  },
+  notePreview: {
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: 3,
+    overflow: "hidden"
+  },
+  noteForm: {
+    display: "grid",
+    rowGap: tokens.spacingVerticalS,
+    "& textarea": { whiteSpace: "pre-wrap" }
+  },
   dateNumber: {
     display: "grid",
     placeItems: "center",

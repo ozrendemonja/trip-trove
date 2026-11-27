@@ -86,6 +86,15 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
+    public void updateItineraryDayNote(Long tripId, LocalDate date, String note) {
+        itineraryRepo.findDayByTripIdAndDate(tripId, date)
+                .orElseThrow(() -> new BaseApiException("Itinerary day not found for trip",
+                        BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, date, tripId))
+                .changeNote(note);
+    }
+
+    @Override
+    @Transactional
     public void updateTripName(Long id, String newName) {
         log.atInfo().log("Updating the trip name");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));

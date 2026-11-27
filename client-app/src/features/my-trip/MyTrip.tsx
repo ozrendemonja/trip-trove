@@ -98,6 +98,10 @@ const unavailableCheckReason = (
     return "Inspect the saved timing before checking the itinerary.";
   if (itinerary.timingEditing.pending)
     return "Wait for the timing edit to finish.";
+  if (itinerary.dayNotes.draft?.recovery)
+    return "Inspect the saved note before checking the itinerary.";
+  if (itinerary.dayNotes.draft)
+    return "Finish or cancel editing the note before checking the itinerary.";
   if (planningBlocked)
     return "Finish or resolve the pending planning change first.";
   if (itinerary.loading) return "Wait for the saved itinerary to load.";
@@ -120,7 +124,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   const classes = useClasses();
   const planningGuard = useRef(false);
   const { workspace, hasDrafts } = useTripPlanningWorkspace(planningGuard);
-  const [trip, setTrip] = useState<Trip & { hasItineraryEntries: boolean }>();
+  const [trip, setTrip] = useState<Trip & { hasItineraryContent: boolean }>();
   const [boardSave, setBoardSave] = useState<PlanningFeedback>();
   const planningBlocked =
     boardSave?.state === "saving" ||
@@ -295,7 +299,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
     metadataTripId === currentTripId &&
     attractionsTripId === currentTripId;
   const initialMode: BoardMode =
-    trip?.hasItineraryEntries && !isTripPast(trip.endDate)
+    trip?.hasItineraryContent && !isTripPast(trip.endDate)
       ? "itinerary"
       : trip?.status === "past" || trip?.status === "archived"
         ? "review"
@@ -326,6 +330,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
   );
   const entryDraft = itinerary.scheduling.draft;
   const pendingTimingEdit = itinerary.timingEditing.pending;
+  const noteDraft = itinerary.dayNotes.draft;
   const { refresh: refreshItinerary, checkForUpdates } = itinerary;
   const check = useItineraryCheck(
     currentTripId,
@@ -376,12 +381,14 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
     !!boardSave?.refreshing ||
     !!entryDraft?.activity ||
     !!check.activity ||
-    !!pendingTimingEdit?.activity;
+    !!pendingTimingEdit?.activity ||
+    !!noteDraft?.activity;
   const unconfirmed =
     !!boardSave?.unconfirmed ||
     !!entryDraft?.unconfirmed ||
     check.unconfirmed ||
-    pendingTimingEdit?.recovery === "unconfirmed";
+    pendingTimingEdit?.recovery === "unconfirmed" ||
+    noteDraft?.recovery === "unconfirmed";
   const hasPrepareChanges =
     boardMode === "prepare" && (prepareDraft.count > 0 || !!prepareDraft.error);
   const hasPlanningChanges =
@@ -393,7 +400,8 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
     itinerary.timingEditing.rejections.length > 0 ||
     itinerary.timingEditing.hasClockInputs ||
     boardSave?.state === "error" ||
-    !!entryDraft;
+    !!entryDraft ||
+    !!noteDraft;
   useLayoutEffect(() => {
     planningGuard.current = hasPlanningChanges;
   }, [hasPlanningChanges]);
@@ -512,6 +520,7 @@ const TripWorkspace = ({ tripId }: { tripId?: string }): React.ReactElement => {
     check.discardRejection();
     itinerary.timingEditing.discardDrafts();
     if (entryDraft) itinerary.scheduling.cancel();
+    itinerary.dayNotes.cancel();
     if (boardSave?.state === "error" || hasPrepareChanges) {
       boardRef.current?.discard();
     }

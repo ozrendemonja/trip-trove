@@ -22,8 +22,13 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  feedback: PlanningFeedback;
-  onReload: () => void;
+  feedback: Pick<
+    PlanningFeedback,
+    "state" | "message" | "refreshing" | "unconfirmed"
+  > & {
+    proposal: Pick<PlanningFeedback["proposal"], "description" | "subjectName">;
+  };
+  onReload?: () => void;
   onDiscard?: () => void;
   onReviewRemoval?: () => void;
 }
@@ -61,7 +66,7 @@ export const MarkedPlanningChange = ({
         </Text>
       </Tooltip>
       <Text size={200}>{message ?? proposal.description}</Text>
-      {unconfirmed && (
+      {unconfirmed && onReload && (
         <Tooltip content="Reload saved planning" relationship="label">
           <Button
             size="small"

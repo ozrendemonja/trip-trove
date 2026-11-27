@@ -1,4 +1,5 @@
 import {
+  addItineraryItem,
   extractGroupedAttraction,
   joinItineraryAttraction,
   moveGroupedAttraction,
@@ -13,9 +14,12 @@ import {
   updateItineraryEntryFixedStart,
   updateItineraryEntryPlannedLength,
   updateItineraryEntryStart,
+  updateItineraryItem,
   updateItineraryTransfer,
+  type AddItineraryItemRequest,
   type ErrorResponse,
   type ExtractGroupedAttractionRequest,
+  type ItineraryItemFields,
   type JoinItineraryAttractionRequest,
   type MoveItineraryEntryRequest,
   type RemoveItineraryEntryRequest,
@@ -84,6 +88,12 @@ export type GroupMemberEdit =
     }
   | { action: "remove-group-member"; attractionId: number };
 
+export type AddItemEdit = {
+  action: "add-item";
+  request: AddItineraryItemRequest;
+  previousEntryIds: ReadonlySet<number>;
+};
+
 export type EntryEdit =
   | TimingEdit
   | GroupMemberEdit
@@ -91,6 +101,7 @@ export type EntryEdit =
   | { action: "reorder-group"; request: ReorderGroupedAttractionsRequest }
   | { action: "move"; position: MoveItineraryEntryRequest }
   | { action: "remove"; removal?: RemoveItineraryEntryRequest }
+  | { action: "edit-item"; request: ItineraryItemFields }
   | {
       action: "transfer";
       toEntryId: number;
@@ -103,10 +114,40 @@ export class EntryEditError extends PlanningSaveError {
     unconfirmed: boolean,
     readonly moveOffsets?: string[],
     readonly transfersToRemove?: ErrorResponse["transfersToRemove"],
-    readonly schedulingInputs?: ErrorResponse["schedulingInputs"]
+    readonly schedulingInputs?: ErrorResponse["schedulingInputs"],
+    readonly maximumPlannedMinutes?: number
   ) {
     super(message, unconfirmed);
   }
+}
+
+function requireEntryEditSuccess(
+  response: Response | undefined,
+  error: ErrorResponse | undefined
+): void {
+  if (!response?.ok) {
+    throw new EntryEditError(
+      error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
+      isUnconfirmedSave(response),
+      error?.moveStartChoices?.offsets,
+      error?.transfersToRemove,
+      error?.schedulingInputs,
+      error?.maximumPlannedMinutes
+    );
+  }
+}
+
+export async function saveItemAddition(
+  tripId: number,
+  request: AddItineraryItemRequest
+): Promise<void> {
+  const { response, error } = await addItineraryItem({
+    path: { tripId },
+    headers: itineraryHeaders,
+    body: request,
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
+  });
+  requireEntryEditSuccess(response, error);
 }
 
 export async function saveEntryEdit(
@@ -164,6 +205,8 @@ export async function saveEntryEdit(
           return moveItineraryEntry({ ...options, body: edit.position });
         case "remove":
           return removeItineraryEntry({ ...options, body: edit.removal });
+        case "edit-item":
+          return updateItineraryItem({ ...options, body: edit.request });
         case "transfer": {
           const transferOptions = {
             ...options,
@@ -191,15 +234,7 @@ export async function saveEntryEdit(
     return updateItineraryEntryFixedStart({ ...options, body: edit });
   })();
   const { response, error } = await result;
-  if (!response?.ok) {
-    throw new EntryEditError(
-      error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
-      isUnconfirmedSave(response),
-      error?.moveStartChoices?.offsets,
-      error?.transfersToRemove,
-      error?.schedulingInputs
-    );
-  }
+  requireEntryEditSuccess(response, error);
 }
 
 export async function saveEntry(

@@ -320,6 +320,11 @@ export const useClasses = makeStyles({
     borderInlineStartWidth: "1px",
     paddingInlineStart: tokens.spacingHorizontalS
   },
+  gapItemActions: {
+    display: "flex",
+    alignItems: "center",
+    columnGap: tokens.spacingHorizontalS
+  },
   dropSlot: {
     minHeight: "6px",
     borderBlockStartWidth: "2px",

@@ -7,33 +7,41 @@ import {
   type ReactElement
 } from "react";
 import type {
+  AttractionEntry,
   GetItineraryResponse,
-  ScheduleAttractionRequest
+  ScheduleAttractionRequest,
+  TypedItineraryEntryResponse
 } from "../../clients/manager";
 import { useClasses } from "./Itinerary.styles";
 import { clockOffset, localClock } from "./itineraryClocks";
+import { isAttractionEntry, type ItineraryEntry } from "./itineraryEntries";
 
 type Day = GetItineraryResponse["days"][number];
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
-type Entry = Day["entries"][number];
 export type GroupedAttraction = NonNullable<
-  Entry["groupedAttractions"]
+  AttractionEntry["groupedAttractions"]
 >[number];
 
 export type GroupMemberItem = {
   kind: "member";
-  host: Entry;
+  host: AttractionEntry;
   member: GroupedAttraction;
 };
 
 export type DraggedItineraryItem =
   | { kind: "pool"; attraction: Attraction }
-  | { kind: "entry"; entry: Entry }
+  | { kind: "entry"; entry: ItineraryEntry }
   | GroupMemberItem;
 
-export type ItineraryAttraction = Attraction | Entry | GroupedAttraction;
+export type ItineraryAttraction =
+  Attraction | AttractionEntry | GroupedAttraction;
 export type OpenAttractionFacts = (
   attractionId: number,
+  trigger: HTMLButtonElement
+) => void;
+
+export type OpenTypedItem = (
+  item: TypedItineraryEntryResponse,
   trigger: HTMLButtonElement
 ) => void;
 
@@ -43,12 +51,13 @@ export const attractionNameId = (attractionId: number): string =>
 const controlSelector =
   "button, a[href], input, select, textarea, label, [contenteditable], [role='menuitem']";
 
-export function useItineraryAttractionCard({
+export function useItineraryCard({
   item,
   blocked,
   onGrab,
   onRelease,
   onOpenFacts,
+  onOpenItem,
   description
 }: {
   item: DraggedItineraryItem;
@@ -56,6 +65,7 @@ export function useItineraryAttractionCard({
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
   onOpenFacts: OpenAttractionFacts;
+  onOpenItem?: OpenTypedItem;
   description?: string;
 }): {
   interaction: Pick<
@@ -105,7 +115,11 @@ export function useItineraryAttractionCard({
           !trigger.current
         )
           return;
-        onOpenFacts(subject.attractionId, trigger.current);
+        if ("attractionId" in subject) {
+          onOpenFacts(subject.attractionId, trigger.current);
+        } else if (!blocked) {
+          onOpenItem?.(subject, trigger.current);
+        }
       },
       onDragStart: (event) => {
         const { dataTransfer, currentTarget, target } = event;
@@ -120,7 +134,11 @@ export function useItineraryAttractionCard({
           return;
         }
         didDrag.current = true;
-        const category = subject.category.toLowerCase().replaceAll("_", " ");
+        const category = (
+          "attractionId" in subject ? subject.category : subject.kind
+        )
+          .toLowerCase()
+          .replaceAll("_", " ");
         const preview = currentTarget.ownerDocument.createElement("div");
         preview.className = classes.dragPreview;
         preview.textContent = `${subject.name} · ${category}`;
@@ -139,13 +157,18 @@ export function useItineraryAttractionCard({
     },
     nameButton: (
       <Button
-        id={attractionNameId(subject.attractionId)}
+        id={
+          "attractionId" in subject
+            ? attractionNameId(subject.attractionId)
+            : undefined
+        }
         ref={trigger}
         type="button"
         size="small"
         appearance="transparent"
         aria-haspopup="dialog"
         aria-description={description}
+        disabledFocusable={!("attractionId" in subject) && blocked}
         className={classes.attractionName}
       >
         {subject.name}
@@ -166,7 +189,7 @@ export function useItineraryAttractionCard({
 export function groupedDropTarget(
   event: DragEvent<HTMLElement>,
   day: Day
-): { host: Entry; memberIndex?: number } | undefined {
+): { host: AttractionEntry; memberIndex?: number } | undefined {
   if (!(event.target instanceof Element)) return;
   const hostTarget = event.target.closest<HTMLElement>(
     "[data-itinerary-group-host]"
@@ -174,7 +197,7 @@ export function groupedDropTarget(
   const host = day.entries.find(
     (entry) => entry.entryId === Number(hostTarget?.dataset.itineraryGroupHost)
   );
-  if (!host) return;
+  if (!host || !isAttractionEntry(host)) return;
   const memberTarget = event.target.closest<HTMLElement>(
     "[data-itinerary-group-member-index]"
   );

@@ -28,6 +28,7 @@ import {
   TransfersToRemoveList
 } from "./ItineraryTransfer";
 import { localClock } from "./itineraryClocks";
+import { isAttractionEntry } from "./itineraryEntries";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
 type Day = GetItineraryResponse["days"][number];
@@ -60,7 +61,8 @@ export function ItineraryEntryActions({
   const destinationDay = days.find(
     (candidate) => candidate.date === destination
   );
-  const groupedAttractions = entry.groupedAttractions;
+  const attraction = isAttractionEntry(entry);
+  const groupedAttractions = attraction ? entry.groupedAttractions : undefined;
   const groupTransfers =
     groupedAttractions?.length && dialog === "remove"
       ? transfersForEntryRemoval(day.entries, index)
@@ -194,8 +196,10 @@ export function ItineraryEntryActions({
                     </>
                   )}
                 </div>
-              ) : (
+              ) : attraction ? (
                 <>The attraction stays on your trip board.</>
+              ) : (
+                <>This removes the item and its note from the itinerary.</>
               )}
             </DialogContent>
             <DialogActions>

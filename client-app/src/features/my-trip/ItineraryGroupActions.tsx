@@ -25,6 +25,7 @@ import {
 } from "./ItineraryTransfer";
 import type { GroupMemberEdit } from "./infra/ItinerarySchedulingApi";
 import { isLocalClock } from "./itineraryClocks";
+import { isAttractionEntry } from "./itineraryEntries";
 import {
   editKind,
   type ItineraryTimingEditing
@@ -133,6 +134,7 @@ export function GroupMemberDialog({
   const destinations = moving
     ? days.flatMap((item) =>
         item.entries
+          .filter(isAttractionEntry)
           .filter((entry) => entry.entryId !== entryId)
           .map((entry) => ({ entry, date: item.date }))
       )

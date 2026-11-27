@@ -5,6 +5,7 @@ import com.triptrove.manager.KeysetTestFixtures.CursorRoute;
 import com.triptrove.manager.KeysetTestFixtures.Workflow;
 import com.triptrove.manager.application.dto.*;
 import com.triptrove.manager.domain.model.BucketListStatusFilter;
+import com.triptrove.manager.domain.model.ItineraryItemKind;
 import com.triptrove.manager.domain.model.SearchInElement;
 import com.triptrove.manager.domain.model.TransferMode;
 import com.triptrove.manager.domain.repo.*;
@@ -889,6 +890,137 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(2 * hostCount + 1));
 
         assertReadOnlySelectCount(3);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void firstTypedItemUsesThreeSelectsAndRejectsMissingInputsWithoutWriting(int boardSize) throws Exception {
+        seedSchedulingBoard(boardSize);
+        var date = LocalDate.parse("2026-09-01");
+        var meal = new ItineraryItemFields("Breakfast", BigDecimal.valueOf(30), false, "Find an outdoor table.");
+        var path = "/trips/1/itinerary/items";
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post(path).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(
+                                new AddItineraryItemRequest(date, null, null, null, ItineraryItemKind.MEAL, meal, null))))
+                .andExpect(status().isBadRequest());
+        assertReadOnlySelectCount(2);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post(path).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(
+                                new AddItineraryItemRequest(date, null, "09:00", "Europe/Belgrade", ItineraryItemKind.MEAL, meal, null))))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+        assertSelectCount(3);
+        assertInsertCount(1);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void firstTypedItemWithASavedZoneUsesTwoSelects(int boardSize) throws Exception {
+        seedSchedulingBoard(boardSize);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary SET time_zone = 'Europe/Belgrade' WHERE trip_id = 1
+                """).executeUpdate();
+        var request = new AddItineraryItemRequest(LocalDate.parse("2026-09-01"), null, "09:00", null,
+                ItineraryItemKind.OTHER, new ItineraryItemFields("Collect keys", BigDecimal.ONE, false, "Ring the bell."), null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/items").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(1);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 30})
+    void aMealThatDoesNotFitUsesOneSelectAndDoesNotWrite(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount);
+        var anchor = entryIdAtPosition(1);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_entry SET fixed_start = true WHERE trip_id = 1 AND path_position = 2
+                """).executeUpdate();
+        var request = new AddItineraryItemRequest(LocalDate.parse("2026-09-02"), anchor, null, null,
+                ItineraryItemKind.MEAL, new ItineraryItemFields("Breakfast", BigDecimal.valueOf(30), false, null), null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/items").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest(name = "{0} hosts with grouped attractions and {0} pairs of typed items")
+    @ValueSource(ints = {3, 30})
+    void typedItemWritesAndMixedItineraryReadsKeepExactStatementBudgets(int count) throws Exception {
+        seedItineraryWithGroupedAttractions(count);
+        var date = LocalDate.parse("2026-09-01");
+        entityManager.createNativeQuery("""
+                INSERT INTO itinerary_entry(trip_id, date, path_position, zone_id, start_time, planned_minutes,
+                    fixed_start, item_kind, item_name, item_note)
+                SELECT 1, :date, position * 2 - position_offset, 'Europe/Belgrade',
+                    TIME '01:00' + (position * 2 - position_offset) * INTERVAL '20 minutes', 10, false,
+                    kind, kind || ' ' || position, 'Entry note ' || position
+                FROM generate_series(1, :count) AS items(position)
+                CROSS JOIN (VALUES ('MEAL', 1), ('OTHER', 0)) AS kinds(kind, position_offset);
+                UPDATE itinerary_entry item SET transfer_to_entry_id = following.id,
+                    transfer_mode = 'WALKING', transfer_minutes = 5, transfer_note = 'Use the footpath'
+                FROM itinerary_entry following
+                WHERE item.trip_id = 1 AND following.trip_id = item.trip_id AND item.date = :date
+                    AND following.date = item.date AND following.path_position = item.path_position + 1;
+                """).setParameter("date", date).setParameter("count", count).executeUpdate();
+        var lastItem = typedEntryIdAtPosition(date, 2 * count);
+        var add = new AddItineraryItemRequest(date, lastItem, null, null, ItineraryItemKind.OTHER,
+                new ItineraryItemFields("Collect keys", BigDecimal.ONE, false, "Ring the bell."), null);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(post("/trips/1/itinerary/items").header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(add)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(1);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+        var added = typedEntryIdAtPosition(date, 2 * count + 1);
+        var edit = new ItineraryItemFields("Pick up keys", BigDecimal.ONE, true, "Use the side door.");
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put("/trips/1/itinerary/entries/{entryId}/item", added).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(edit)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(1);
+        assertInsertCount(0);
+        assertUpdateCount(1);
+        assertDeleteCount(0);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].entries.length()").value(2 * count + 1))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").isNotEmpty())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(count))
+                .andExpect(jsonPath("$.days[1].entries[0].groupedAttractions").isNotEmpty());
+        assertReadOnlySelectCount(1);
+    }
+
+    private long typedEntryIdAtPosition(LocalDate date, int position) {
+        return (Long) entityManager.createNativeQuery("""
+                SELECT id FROM itinerary_entry WHERE trip_id = 1 AND date = :date AND path_position = :position
+                """).setParameter("date", date).setParameter("position", position).getSingleResult();
     }
 
     @ParameterizedTest(name = "{0}, {1} hosts and members on the edited entry")

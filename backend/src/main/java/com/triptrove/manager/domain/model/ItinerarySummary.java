@@ -3,6 +3,7 @@ package com.triptrove.manager.domain.model;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -19,7 +20,7 @@ public record ItinerarySummary(LocalDate tripStart, LocalDate tripEnd, String ti
     }
 
     public boolean isAlreadyScheduled(long attractionId) {
-        return entries().anyMatch(entry -> entry.attractionId() == attractionId);
+        return entries().anyMatch(entry -> Objects.equals(entry.attractionId(), attractionId));
     }
 
     public Optional<ItinerarySchedulingEntrySummary> findOverlap(ItineraryTiming proposedInterval) {

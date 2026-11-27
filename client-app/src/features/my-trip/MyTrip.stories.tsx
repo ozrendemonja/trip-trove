@@ -12,11 +12,15 @@ import {
 import makeServer from "../../ServerSetup";
 import type {
   AddAttractionUnderTripRequest,
+  AddItineraryItemRequest,
+  AttractionEntry,
   GetAttractionResponse,
   GetItineraryResponse,
   GetSearchAttractionResponse,
   ItineraryRemovalRequest,
   ItineraryTransferDto,
+  MoveItineraryEntryRequest,
+  TypedItineraryEntryResponse,
   UpdateItineraryDayNoteRequest,
   UpdateItineraryTransferRequest,
   UpdateTripAttractionNoteRequest,
@@ -24,6 +28,7 @@ import type {
 } from "../../clients/manager";
 import { MyTrip } from "./MyTrip";
 import type { TripAttractionFromServer } from "./infra/TripApi";
+import { isAttractionEntry, type ItineraryEntry } from "./itineraryEntries";
 
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
@@ -36,13 +41,22 @@ const ITINERARY_TRIP = {
   archived: false
 };
 
-const itineraryFixture = (
+type ItineraryFixture<T extends ItineraryEntry = AttractionEntry> = Omit<
+  GetItineraryResponse,
+  "days"
+> & {
+  days: (Omit<GetItineraryResponse["days"][number], "entries"> & {
+    entries: T[];
+  })[];
+};
+
+const itineraryFixture = <T extends ItineraryEntry = AttractionEntry>(
   fromDate: string,
   toDate: string,
   unscheduledAttractions: GetItineraryResponse["unscheduledAttractions"] = []
-): GetItineraryResponse => {
+): ItineraryFixture<T> => {
   const lastDay = new Date(toDate);
-  const days: GetItineraryResponse["days"] = [];
+  const days: ItineraryFixture<T>["days"] = [];
   for (
     const date = new Date(fromDate);
     date <= lastDay;
@@ -95,6 +109,7 @@ const checkPosts = fn();
 const itineraryNoteWrites = fn();
 const timingPuts = fn();
 const compositionWrites = fn();
+const itemWrites = fn();
 const itineraryUrl = "http://localhost:8080/trips/1/itinerary";
 const schedulingUrl = "http://localhost:8080/trips/1/itinerary/attractions";
 const entryUrl = `${itineraryUrl}/entries/:entryId`;
@@ -502,7 +517,7 @@ export const CancelsAnInlineAttractionDraft: Story = {
   }
 };
 
-function savedTimeline(start: string, end: string): GetItineraryResponse {
+function savedTimeline(start: string, end: string): ItineraryFixture {
   const saved = itineraryFixture("2099-06-10", "2099-06-24");
   saved.timeZone = "Europe/Rome";
   saved.lastCheckedAt = "2099-06-01T10:00:00Z";
@@ -521,7 +536,7 @@ function savedTimeline(start: string, end: string): GetItineraryResponse {
   return saved;
 }
 
-function compositionTimeline(): GetItineraryResponse {
+function compositionTimeline(): ItineraryFixture {
   const saved = savedTimeline(
     "2099-06-10T09:00+02:00",
     "2099-06-10T09:30+02:00"
@@ -552,6 +567,456 @@ function compositionTimeline(): GetItineraryResponse {
   });
   return saved;
 }
+
+const mealSuggestionCases = [
+  {
+    anchor: "Museum",
+    start: "12:00",
+    end: "12:29",
+    name: "Breakfast",
+    length: "30"
+  },
+  {
+    anchor: "Courtyard",
+    start: "12:29",
+    end: "12:30",
+    name: "Lunch",
+    length: "60"
+  },
+  {
+    anchor: "Gallery",
+    start: "15:00",
+    end: "15:59",
+    name: "Lunch",
+    length: "60"
+  },
+  {
+    anchor: "Tower",
+    start: "15:59",
+    end: "16:00",
+    name: "Dinner",
+    length: "90"
+  }
+] as const;
+
+export const SuggestsQuickMealsAtTheInsertionClock: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      const saved = savedTimeline(
+        "2099-06-10T12:00+02:00",
+        "2099-06-10T12:29+02:00"
+      );
+      const [museum] = saved.days[0].entries;
+      saved.days[0].entries = mealSuggestionCases.map(
+        ({ anchor, start, end }, index) => ({
+          ...museum,
+          entryId: 42 + index,
+          attractionId: 5 + index,
+          name: anchor,
+          timing: {
+            start: `2099-06-10T${start}+02:00`,
+            end: `2099-06-10T${end}+02:00`,
+            zone: "Europe/Rome"
+          }
+        })
+      );
+      itemWrites.mockClear();
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(`${itineraryUrl}/items`, (_schema, request) => {
+        itemWrites(JSON.parse(request.requestBody));
+        return new MirageResponse(204);
+      });
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    for (const { anchor, name, length } of mealSuggestionCases) {
+      await user.click(
+        await canvas.findByRole("button", { name: `Add item after ${anchor}` })
+      );
+      await user.click(
+        await overlay(canvasElement).findByRole("menuitem", { name: "Meal..." })
+      );
+      const dialog = within(
+        await overlay(canvasElement).findByRole("dialog", { name: "Add meal" })
+      );
+      await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue(
+        name
+      );
+      await expect(
+        dialog.getByRole("textbox", { name: "Planned length (minutes)" })
+      ).toHaveValue(length);
+      await user.click(dialog.getByRole("button", { name: "Cancel" }));
+      await waitFor(() =>
+        expect(
+          overlay(canvasElement).queryByRole("dialog")
+        ).not.toBeInTheDocument()
+      );
+    }
+    await expect(itemWrites).not.toHaveBeenCalled();
+  }
+};
+
+export const ChoosesAMealAndStartTogetherOnAnEmptyDay: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      const saved = itineraryFixture<ItineraryEntry>(
+        "2099-06-10",
+        "2099-06-24"
+      );
+      itemWrites.mockClear();
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/items`,
+        (_schema, request) => {
+          const intent: AddItineraryItemRequest = JSON.parse(
+            request.requestBody
+          );
+          itemWrites(intent);
+          saved.timeZone = "Europe/Rome";
+          saved.days[0].entries = [
+            {
+              entryId: 55,
+              kind: "MEAL",
+              name: "Lunch",
+              fixedStart: true,
+              warnings: [],
+              timing: {
+                start: "2099-06-10T13:15+02:00",
+                end: "2099-06-10T14:15+02:00",
+                zone: "Europe/Rome"
+              }
+            }
+          ];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: /Add item to .*Jun 10/ })
+    );
+    await user.click(await body.findByRole("menuitem", { name: "Meal..." }));
+    const dialog = within(
+      await body.findByRole("dialog", { name: "Add meal" })
+    );
+    const start = dialog.getByLabelText(/^Start clock/);
+    const add = dialog.getByRole("button", { name: "Add item" });
+    await expect(start).toHaveValue("");
+    await expect(dialog.getByRole("combobox", { name: "Meal" })).toHaveValue(
+      ""
+    );
+    await expect(add).toBeDisabled();
+    await user.selectOptions(
+      dialog.getByRole("combobox", { name: "Meal" }),
+      "Lunch"
+    );
+    fireEvent.change(start, { target: { value: "13:15" } });
+    await user.type(
+      dialog.getByRole("combobox", { name: "Itinerary time zone" }),
+      "Europe/Rome"
+    );
+    await user.click(dialog.getByRole("switch", { name: "Lock start" }));
+    await expect(itemWrites).not.toHaveBeenCalled();
+    await user.click(add);
+    await expect(
+      await canvas.findByRole("listitem", { name: "Lunch" })
+    ).toBeVisible();
+    await expect(itemWrites).toHaveBeenCalledTimes(1);
+    await expect(itemWrites).toHaveBeenCalledWith({
+      date: "2099-06-10",
+      startTime: "13:15",
+      timeZone: "Europe/Rome",
+      kind: "MEAL",
+      item: { name: "Lunch", plannedMinutes: 60, fixedStart: true }
+    });
+  }
+};
+
+export const OnlySavesAShorterMealWhenTheUserChoosesIt: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      const fixture = compositionTimeline();
+      fixture.days[0].entries[1].timing = {
+        start: "2099-06-10T09:40+02:00",
+        end: "2099-06-10T10:10+02:00",
+        zone: "Europe/Rome"
+      };
+      const saved: ItineraryFixture<ItineraryEntry> = fixture;
+      itemWrites.mockClear();
+      const responses = [
+        () =>
+          new MirageResponse(
+            400,
+            {},
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage:
+                "That timing conflicts with the fixed start of Garden. Choose another clock or length.",
+              maximumPlannedMinutes: 10
+            }
+          ),
+        () => {
+          saved.days[0].entries.splice(1, 0, {
+            entryId: 55,
+            kind: "MEAL",
+            name: "Breakfast",
+            fixedStart: false,
+            warnings: [],
+            timing: {
+              start: "2099-06-10T09:30+02:00",
+              end: "2099-06-10T09:40+02:00",
+              zone: "Europe/Rome"
+            }
+          });
+          return new MirageResponse(204);
+        },
+        () =>
+          new MirageResponse(
+            400,
+            {},
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage:
+                "That timing conflicts with the fixed start of Garden. Choose another clock or length.",
+              maximumPlannedMinutes: 0
+            }
+          )
+      ];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/items`,
+        (_schema, request) => {
+          itemWrites(JSON.parse(request.requestBody));
+          return responses.shift()?.() ?? new MirageResponse(500);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Add item after Museum" })
+    );
+    await user.click(await body.findByRole("menuitem", { name: "Meal..." }));
+    const dialog = within(
+      await body.findByRole("dialog", { name: "Add meal" })
+    );
+    const add = dialog.getByRole("button", { name: "Add item" });
+    const length = dialog.getByRole("textbox", {
+      name: "Planned length (minutes)"
+    });
+    await user.click(add);
+    const shorter = await dialog.findByRole("button", {
+      name: "Use 10 minutes"
+    });
+    await expect(length).toHaveValue("30");
+    await expect(add).toBeDisabled();
+    await user.click(shorter);
+    await expect(length).toHaveValue("10");
+    await expect(itemWrites).toHaveBeenCalledTimes(1);
+    await user.click(add);
+    const meal = within(
+      await canvas.findByRole("listitem", { name: "Breakfast" })
+    );
+    await expect(
+      meal.getByRole("textbox", { name: "Planned length for Breakfast" })
+    ).toHaveValue("10");
+    await expect(itemWrites).toHaveBeenNthCalledWith(2, {
+      date: "2099-06-10",
+      afterEntryId: 42,
+      kind: "MEAL",
+      item: { name: "Breakfast", plannedMinutes: 10, fixedStart: false }
+    });
+    await user.click(
+      await canvas.findByRole("button", { name: "Add item after Breakfast" })
+    );
+    await user.click(await body.findByRole("menuitem", { name: "Meal..." }));
+    const fullGap = within(
+      await body.findByRole("dialog", { name: "Add meal" })
+    );
+    await user.click(fullGap.getByRole("button", { name: "Add item" }));
+    await expect(
+      await fullGap.findByText(/No positive length fits/)
+    ).toBeVisible();
+    await expect(
+      fullGap.getByRole("button", { name: "Add item" })
+    ).toBeDisabled();
+    await user.click(fullGap.getByRole("button", { name: "Cancel" }));
+    await expect(
+      await canvas.findByRole("listitem", { name: "Breakfast" })
+    ).toBeVisible();
+    await expect(itemWrites).toHaveBeenCalledTimes(3);
+  }
+};
+
+export const OtherItemsKeepTheirNameLengthAndNoteWhenReordered: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      const saved: ItineraryFixture<ItineraryEntry> = compositionTimeline();
+      const position = new Map<
+        number | undefined,
+        { index: number; clock: string; end: string }
+      >([
+        [43, { index: 1, clock: "09:30", end: "09:31" }],
+        [undefined, { index: 2, clock: "11:30", end: "11:31" }]
+      ]);
+      const item: TypedItineraryEntryResponse = {
+        entryId: 55,
+        kind: "OTHER",
+        name: "Collect keys",
+        note: "Ring the bell.",
+        warnings: [],
+        fixedStart: false,
+        timing: {
+          start: "2099-06-10T11:30+02:00",
+          end: "2099-06-10T11:31+02:00",
+          zone: "Europe/Rome"
+        }
+      };
+      itemWrites.mockClear();
+      compositionWrites.mockClear();
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.post(
+        `${itineraryUrl}/items`,
+        (_schema, request) => {
+          itemWrites(JSON.parse(request.requestBody));
+          saved.days[0].entries.push(item);
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+      server.put(
+        `${entryUrl}/position`,
+        (_schema, request) => {
+          const intent: MoveItineraryEntryRequest = JSON.parse(
+            request.requestBody
+          );
+          compositionWrites(request.params.entryId, intent);
+          const destination = position.get(intent.beforeEntryId);
+          if (!destination)
+            throw new Error("Unexpected destination in typed item story.");
+          const { index, clock, end } = destination;
+          const entries: ItineraryEntry[] =
+            saved.days[0].entries.filter(isAttractionEntry);
+          entries.splice(index, 0, {
+            ...item,
+            timing: {
+              start: `${intent.date}T${clock}+02:00`,
+              end: `${intent.date}T${end}+02:00`,
+              zone: "Europe/Rome"
+            }
+          });
+          saved.days[0].entries = entries;
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: /Add item to .*Jun 10/ })
+    );
+    await user.click(
+      await body.findByRole("menuitem", { name: "Other item..." })
+    );
+    const dialog = within(
+      await body.findByRole("dialog", { name: "Add other item" })
+    );
+    const add = dialog.getByRole("button", { name: "Add item" });
+    const length = dialog.getByRole("textbox", {
+      name: "Planned length (minutes)"
+    });
+    await expect(length).toHaveValue("");
+    await user.type(
+      dialog.getByRole("textbox", { name: "Name" }),
+      "Collect keys"
+    );
+    await expect(add).toBeDisabled();
+    await user.type(length, "0");
+    await expect(add).toBeDisabled();
+    await user.clear(length);
+    await user.type(length, "1");
+    await user.type(
+      dialog.getByRole("textbox", { name: "Entry note" }),
+      "Ring the bell."
+    );
+    await user.click(add);
+    await expect(
+      await canvas.findByRole("listitem", { name: "Collect keys" })
+    ).toBeVisible();
+    await expect(itemWrites).toHaveBeenCalledTimes(1);
+    await expect(itemWrites).toHaveBeenCalledWith({
+      date: "2099-06-10",
+      afterEntryId: 43,
+      kind: "OTHER",
+      item: {
+        name: "Collect keys",
+        plannedMinutes: 1,
+        fixedStart: false,
+        note: "Ring the bell."
+      }
+    });
+
+    canvas.getByRole("button", { name: "Actions for Collect keys" }).focus();
+    await user.keyboard("{Enter}");
+    (await body.findByRole("menuitem", { name: "Move up" })).focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("textbox", { name: "Start clock for Collect keys" })
+      ).toHaveValue("09:30")
+    );
+    await expect(compositionWrites).toHaveBeenNthCalledWith(1, "55", {
+      date: "2099-06-10",
+      beforeEntryId: 43
+    });
+
+    dropItineraryItem(
+      canvas.getByTitle("Drag Collect keys"),
+      canvas.getByRole("article", { name: /Jun 10, 2099/ })
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("textbox", { name: "Start clock for Collect keys" })
+      ).toHaveValue("11:30")
+    );
+    await expect(compositionWrites).toHaveBeenNthCalledWith(2, "55", {
+      date: "2099-06-10"
+    });
+    const item = within(canvas.getByRole("listitem", { name: "Collect keys" }));
+    await expect(
+      item.getByRole("textbox", { name: "Planned length for Collect keys" })
+    ).toHaveValue("1");
+    await expect(
+      item.getByRole("note", { name: "Entry note" })
+    ).toHaveTextContent("Ring the bell.");
+    await expect(
+      item.queryByRole("button", { name: "On the entry for Collect keys" })
+    ).not.toBeInTheDocument();
+  }
+};
 
 const museumCatalogue: GetAttractionResponse = {
   attractionId: 5,
@@ -772,9 +1237,9 @@ export const AttractionFactsOpenFromTheCardBodyAndKeyboard: Story = {
 };
 
 function timelineWithScheduledLunaCafe(
-  timeline: GetItineraryResponse,
+  timeline: ItineraryFixture,
   { start, end, index }: { start: string; end: string; index: number }
-): GetItineraryResponse {
+): ItineraryFixture {
   const saved = structuredClone(timeline);
   const [day] = saved.days;
   const [cafe] = saved.unscheduledAttractions;
@@ -4910,7 +5375,7 @@ export const GroupsAStandaloneAttractionAndLinksItFromPlan: Story = {
   }
 };
 
-function groupedCompositionTimeline(): GetItineraryResponse {
+function groupedCompositionTimeline(): ItineraryFixture {
   const saved = compositionTimeline();
   const [host] = saved.days[0].entries;
   const [cafe] = saved.unscheduledAttractions;

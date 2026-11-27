@@ -17,6 +17,38 @@ import {
 
 const timeZones = ["UTC", ...Intl.supportedValuesOf("timeZone")];
 
+export function ItineraryTimeZoneInput({
+  value,
+  disabled,
+  onChange
+}: {
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}): ReactElement {
+  const zoneListId = useId();
+  return (
+    <Field
+      label="Itinerary time zone"
+      hint="Choose a named zone for the itinerary."
+    >
+      <Input
+        list={zoneListId}
+        placeholder="Europe/Belgrade"
+        value={value}
+        maxLength={255}
+        disabled={disabled}
+        onChange={(_event, { value }) => onChange(value)}
+      />
+      <datalist id={zoneListId}>
+        {timeZones.map((zone) => (
+          <option key={zone} value={zone} />
+        ))}
+      </datalist>
+    </Field>
+  );
+}
+
 export const ItineraryEntryDraft = ({
   draft,
   scheduling,
@@ -28,7 +60,6 @@ export const ItineraryEntryDraft = ({
 }): ReactElement => {
   const classes = useClasses();
   const headingId = useId();
-  const zoneListId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const { intent, inputs, activity, unconfirmed, message } = draft;
@@ -113,26 +144,11 @@ export const ItineraryEntryDraft = ({
         </Field>
       )}
       {zoneRequired && (
-        <Field
-          label="Itinerary time zone"
-          hint="Choose a named zone for the itinerary."
-        >
-          <Input
-            list={zoneListId}
-            placeholder="Europe/Belgrade"
-            value={intent.timeZone ?? ""}
-            maxLength={255}
-            disabled={disabled}
-            onChange={(_event, { value }) =>
-              scheduling.update("timeZone", value)
-            }
-          />
-          <datalist id={zoneListId}>
-            {timeZones.map((zone) => (
-              <option key={zone} value={zone} />
-            ))}
-          </datalist>
-        </Field>
+        <ItineraryTimeZoneInput
+          value={intent.timeZone ?? ""}
+          disabled={disabled}
+          onChange={(value) => scheduling.update("timeZone", value)}
+        />
       )}
       {message && (
         <MessageBar intent={unconfirmed ? "warning" : "error"}>

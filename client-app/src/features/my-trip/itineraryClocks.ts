@@ -1,4 +1,8 @@
-import type { EntryEdit, TimingEdit } from "./infra/ItinerarySchedulingApi";
+import type {
+  AddItemEdit,
+  EntryEdit,
+  TimingEdit
+} from "./infra/ItinerarySchedulingApi";
 
 export type TimingField = "start" | "end" | "length";
 
@@ -7,7 +11,9 @@ type ClockEdit =
   | { field: "end"; clock: string; date: string }
   | { field: "length"; minutes: number };
 
-export function clockEditInput(edit: EntryEdit): ClockEdit | undefined {
+export function clockEditInput(
+  edit: EntryEdit | AddItemEdit
+): ClockEdit | undefined {
   if ("startTime" in edit) return { field: "start", clock: edit.startTime };
   if ("endTime" in edit)
     return { field: "end", clock: edit.endTime, date: edit.endDate };
@@ -40,6 +46,17 @@ function instant(dateTime: string): number {
 export const elapsedMinutes = (from: string, to: string): number =>
   (instant(to) - instant(from)) / 60_000;
 
+export function readPlannedMinutes(
+  text: string,
+  minimum: number
+): number | undefined {
+  const value = text.trim();
+  const minutes = Number(value);
+  return /^\d+$/.test(value) && minutes >= minimum && minutes <= 2_147_483_647
+    ? minutes
+    : undefined;
+}
+
 export function freeTimeLabel(minutes: number): string {
   const wholeMinutes = Math.floor(minutes);
   if (wholeMinutes < 1) return "<1m free";
@@ -54,14 +71,17 @@ export function freeTimeLabel(minutes: number): string {
 export function parseTimingEdit(
   field: TimingField,
   text: string,
-  displayedEndDate: string
+  displayedEndDate: string,
+  minimumMinutes = 0
 ): TimingEdit | string {
   const value = text.trim();
   if (field === "length") {
-    const minutes = Number(value);
-    return /^\d+$/.test(value) && minutes <= 2_147_483_647
+    const minutes = readPlannedMinutes(value, minimumMinutes);
+    return minutes !== undefined
       ? { plannedMinutes: minutes }
-      : "Enter a planned length in whole minutes (0 for a brief stop).";
+      : minimumMinutes === 0
+        ? "Enter a planned length in whole minutes (0 for a brief stop)."
+        : "Enter a positive planned length in whole minutes.";
   }
   if (field === "start") {
     return isLocalClock(value)

@@ -45,6 +45,7 @@ import {
   warningCountLabel,
   type EntryWarning
 } from "./ItineraryWarning";
+import { isAttractionEntry } from "./itineraryEntries";
 import type { useItineraryCheck } from "./useItineraryCheck";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
 
@@ -64,7 +65,9 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   ATTRACTION_EXCLUDED: "Moved to Excluded Attractions on the board",
   REMOVED_FROM_TRIP: "Removed from the trip",
   TRANSFER_CHANGED: "Transfer changed",
-  GROUP_CHANGED: "Grouped attractions changed"
+  GROUP_CHANGED: "Grouped attractions changed",
+  TYPED_ITEM_ADDED: "Added to the itinerary",
+  TYPED_ITEM_CHANGED: "Item details changed"
 };
 const sourceFieldLabels: Record<SourceChange["field"], string> = {
   WORKING_HOURS: "Working hours",
@@ -164,7 +167,7 @@ type DetailTab = "changes" | "warnings";
 
 type WarningRow = {
   entryId: number;
-  attractionId: number;
+  attractionId?: number;
   date: string;
   subject: string;
   warning: EntryWarning;
@@ -175,7 +178,7 @@ const warningRows = (itinerary?: GetItineraryResponse): WarningRow[] =>
     day.entries.flatMap((entry, index) => [
       ...entry.warnings.map((warning) => ({
         entryId: entry.entryId,
-        attractionId: entry.attractionId,
+        attractionId: isAttractionEntry(entry) ? entry.attractionId : undefined,
         date: day.date,
         subject:
           warning === "MISSING_TRANSFER" && day.entries[index + 1]
@@ -183,15 +186,17 @@ const warningRows = (itinerary?: GetItineraryResponse): WarningRow[] =>
             : entry.name,
         warning
       })),
-      ...(entry.groupedAttractions?.flatMap((member) =>
-        member.warnings.map((warning) => ({
-          entryId: entry.entryId,
-          attractionId: member.attractionId,
-          date: day.date,
-          subject: member.name,
-          warning
-        }))
-      ) ?? [])
+      ...(isAttractionEntry(entry)
+        ? (entry.groupedAttractions?.flatMap((member) =>
+            member.warnings.map((warning) => ({
+              entryId: entry.entryId,
+              attractionId: member.attractionId,
+              date: day.date,
+              subject: member.name,
+              warning
+            }))
+          ) ?? [])
+        : [])
     ])
   ) ?? [];
 
@@ -210,7 +215,7 @@ function WarningRows({
       {rows.map((row) => (
         <li
           className={classes.notice}
-          key={`${row.attractionId}:${row.warning}`}
+          key={`${row.entryId}:${row.attractionId}:${row.warning}`}
         >
           <Text weight="semibold">{row.subject}</Text>
           <Caption1>{formatItineraryDate(row.date)}</Caption1>

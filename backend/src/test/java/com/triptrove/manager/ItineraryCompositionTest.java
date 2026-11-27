@@ -1,6 +1,7 @@
 package com.triptrove.manager;
 
 import com.jayway.jsonpath.JsonPath;
+import com.triptrove.manager.application.dto.AddItineraryItemRequest;
 import com.triptrove.manager.application.dto.AttractionCategoryDTO;
 import com.triptrove.manager.application.dto.AttractionTypeDTO;
 import com.triptrove.manager.application.dto.CheckItineraryRequest;
@@ -8,6 +9,7 @@ import com.triptrove.manager.application.dto.DateSpanDTO;
 import com.triptrove.manager.application.dto.ExtractGroupedAttractionRequest;
 import com.triptrove.manager.application.dto.GetItineraryResponse;
 import com.triptrove.manager.application.dto.GetItineraryResponse.ChangeNotice.SourceChange;
+import com.triptrove.manager.application.dto.ItineraryItemFields;
 import com.triptrove.manager.application.dto.ItineraryRemovalRequest;
 import com.triptrove.manager.application.dto.ItineraryTransferDTO;
 import com.triptrove.manager.application.dto.JoinItineraryAttractionRequest;
@@ -38,6 +40,7 @@ import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitReques
 import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionVisitTimeRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionWorkingHoursRequest;
+import com.triptrove.manager.domain.model.ItineraryItemKind;
 import com.triptrove.manager.domain.model.TransferMode;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -84,6 +87,214 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
 
     @Autowired
     private JsonMapper mapper;
+
+    @Test
+    void addingAOneMinuteOtherItemReopensWithItsOwnNameClockLockAndNote() throws Exception {
+        seedTrip();
+        checkItinerary();
+
+        addItem(new AddItineraryItemRequest(TODAY, null, "09:00", "Europe/Belgrade", ItineraryItemKind.OTHER,
+                new ItineraryItemFields("Collect keys", BigDecimal.ONE, true, "Ring the bell.\nUse the side door."), null))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost" + ITINERARY))
+                .andExpect(content().string(""));
+
+        saved().andExpect(jsonPath("$.timeZone").value("Europe/Belgrade"))
+                .andExpect(jsonPath("$.days[0].entries[0].kind").value("OTHER"))
+                .andExpect(jsonPath("$.days[0].entries[0].name").value("Collect keys"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.start").value("2027-03-29T09:00+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:01+02:00"))
+                .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[0].entries[0].note").value("Ring the bell.\nUse the side door."))
+                .andExpect(jsonPath("$.days[0].entries[0].attractionId").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[0].warnings").isEmpty())
+                .andExpect(jsonPath("$.days[1].entries").isEmpty())
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].subject").value("Collect keys"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("TYPED_ITEM_ADDED")));
+    }
+
+    @Test
+    void anInitialMealNeedsBothAStartAndAnItineraryZone() throws Exception {
+        seedTrip();
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        addItem(new AddItineraryItemRequest(TODAY, null, null, null, ItineraryItemKind.MEAL,
+                new ItineraryItemFields("Lunch", BigDecimal.valueOf(60), false, null), null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("Enter the required timing details to add this item."))
+                .andExpect(jsonPath("$.schedulingInputs.requiredInputs", contains("START", "TIME_ZONE")));
+
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void anEmptyDayProposalDoesNotChooseANewPositionIfAnEntryAppears() throws Exception {
+        seedTrip();
+        schedule(1, TODAY, "09:00");
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        addItem(new AddItineraryItemRequest(TODAY, null, "12:30", null, ItineraryItemKind.MEAL,
+                new ItineraryItemFields("Lunch", BigDecimal.valueOf(60), false, null), null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("The insertion position changed. Refresh the itinerary and choose where to add the item again."));
+
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
+
+    @ParameterizedTest(name = "The {0} fixed start leaves {1} minutes for breakfast")
+    @CsvSource({"09:40, 10", "09:30, 0"})
+    void aMealThatDoesNotFitReportsTheLongestShorterLengthWithoutChangingTheDay(
+            String fixedStart, int maximumPlannedMinutes) throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        var market = schedule(1, TODAY, "09:00");
+        lock(schedule(2, TODAY, fixedStart));
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        addItem(new AddItineraryItemRequest(TODAY, market, null, null, ItineraryItemKind.MEAL,
+                new ItineraryItemFields("Breakfast", BigDecimal.valueOf(30), false, null), null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage")
+                        .value("That timing conflicts with the fixed start of Garden. Choose another clock or length."))
+                .andExpect(jsonPath("$.maximumPlannedMinutes").value(maximumPlannedMinutes));
+
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void mealDetailsStayWithTheEntryThroughAnEditAMoveAndRemoval() throws Exception {
+        seedTrip();
+        addItem(new AddItineraryItemRequest(TODAY, null, "13:00", "Europe/Belgrade", ItineraryItemKind.MEAL,
+                new ItineraryItemFields("Lunch", BigDecimal.valueOf(40), false, "Find a table outside."), null))
+                .andExpect(status().isNoContent());
+        var response = saved().andReturn().getResponse().getContentAsString();
+        var lunch = mapper.readValue(response, GetItineraryResponse.class).days().getFirst().entries().getFirst().entryId();
+        checkItinerary();
+        var beforeEdit = readCheckRequest();
+
+        putFact(ITINERARY + "/entries/" + lunch + "/item",
+                new ItineraryItemFields("Picnic", BigDecimal.valueOf(40), false, "Take the red blanket."));
+
+        saved().andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("TYPED_ITEM_CHANGED")));
+        submitCheck(beforeEdit).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ITINERARY_CHECK_STALE"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "The itinerary or its attraction sources changed. Refresh and review the itinerary before checking again."));
+        checkItinerary();
+        saved().andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+
+        lock(lunch);
+        move(lunch, TOMORROW, null).andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries").isEmpty())
+                .andExpect(jsonPath("$.days[1].entries[0].entryId").value(lunch))
+                .andExpect(jsonPath("$.days[1].entries[0].kind").value("MEAL"))
+                .andExpect(jsonPath("$.days[1].entries[0].name").value("Picnic"))
+                .andExpect(jsonPath("$.days[1].entries[0].note").value("Take the red blanket."))
+                .andExpect(jsonPath("$.days[1].entries[0].fixedStart").value(true))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.start").value("2027-03-30T13:00+02:00"))
+                .andExpect(jsonPath("$.days[1].entries[0].timing.end").value("2027-03-30T13:40+02:00"));
+        checkItinerary();
+
+        remove(lunch).andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[1].entries").isEmpty())
+                .andExpect(jsonPath("$.changeNotices[0].subject").value("Picnic"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("ENTRY_REMOVED")))
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"));
+    }
+
+    @Test
+    void mealInsertionConfirmsTheBrokenTransferAndPushesOnlyTheOverlappingStart() throws Exception {
+        seedTrip();
+        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("30m"));
+        var market = schedule(1, TODAY, "09:00");
+        var garden = schedule(2, TODAY, "09:40");
+        var park = schedule(3, TODAY, "10:30");
+        putTransfer(market, garden, walking(10)).andExpect(status().isNoContent());
+        putTransfer(garden, park, walking(5)).andExpect(status().isNoContent());
+        var before = saved().andReturn().getResponse().getContentAsString();
+        var brokenTransfer = mapper.readValue(before, GetItineraryResponse.class)
+                .days().getFirst().entries().getFirst().outgoingTransfer();
+        var breakfast = new ItineraryItemFields("Breakfast", BigDecimal.valueOf(25), false, null);
+
+        addItem(new AddItineraryItemRequest(TODAY, market, null, null, ItineraryItemKind.MEAL, breakfast, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value("Review and confirm the transfers this change would remove."))
+                .andExpect(jsonPath("$.transfersToRemove[*].transfer.toEntryId", contains(Math.toIntExact(garden))));
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+
+        addItem(new AddItineraryItemRequest(TODAY, market, null, null, ItineraryItemKind.MEAL, breakfast, List.of(brokenTransfer)))
+                .andExpect(status().isNoContent());
+
+        saved().andExpect(jsonPath("$.days[0].entries[*].name", contains("Market", "Breakfast", "Garden", "Park")))
+                .andExpect(jsonPath("$.days[0].entries[*].timing.start", contains(
+                        "2027-03-29T09:00+02:00", "2027-03-29T09:30+02:00",
+                        "2027-03-29T09:55+02:00", "2027-03-29T10:30+02:00")))
+                .andExpect(jsonPath("$.days[0].entries[0].outgoingTransfer").doesNotExist())
+                .andExpect(jsonPath("$.days[0].entries[2].outgoingTransfer.minutes").value(5));
+    }
+
+    @ParameterizedTest(name = "{0}, {1} minutes")
+    @CsvSource(delimiter = '|', nullValues = "missing", value = {
+            "Collect keys|missing|{item.plannedMinutes = must not be null}",
+            "Collect keys|0|{item.wholeMinutes = enter positive whole planned minutes}",
+            "Collect keys|1.5|{item.wholeMinutes = enter positive whole planned minutes}",
+            "' '|1|{item.name = must not be blank}"
+    })
+    void otherItemsRequireANameAndAPositiveWholeLength(String name, BigDecimal minutes, String message) throws Exception {
+        seedTrip();
+        var before = saved().andReturn().getResponse().getContentAsString();
+
+        addItem(new AddItineraryItemRequest(TODAY, null, "09:00", "Europe/Belgrade", ItineraryItemKind.OTHER,
+                new ItineraryItemFields(name, minutes, false, null), null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value(message));
+
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void aMealBlocksAttractionOverlapsAndCannotBeUsedAsAGroupHostOrSource() throws Exception {
+        seedTrip();
+        addItem(new AddItineraryItemRequest(TODAY, null, "09:00", "Europe/Belgrade", ItineraryItemKind.MEAL,
+                new ItineraryItemFields("Breakfast", BigDecimal.valueOf(30), false, null), null))
+                .andExpect(status().isNoContent());
+        var market = schedule(1, TODAY, "10:00");
+        var before = saved().andReturn().getResponse().getContentAsString();
+        var meal = mapper.readValue(before, GetItineraryResponse.class).days().getFirst().entries().getFirst().entryId();
+
+        postSchedule(new ScheduleAttractionRequest(2L, TODAY, "09:10", null, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("The chosen time overlaps another itinerary entry. Choose another start or day."));
+        join(meal, new JoinItineraryAttractionRequest(3L, null, null, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("Only an attraction entry can host grouped attractions."));
+        join(market, new JoinItineraryAttractionRequest(3L, meal, null, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value("The saved entry changed. Refresh the itinerary and review the move again."));
+        mockMvc.perform(put(ITINERARY + "/entries/{item}/planned-length", meal).header("x-api-version", "1")
+                        .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(
+                                new UpdateItineraryEntryPlannedLengthRequest(BigDecimal.ZERO))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.errorMessage").value("The planned length for Breakfast must be at least one minute."));
+
+        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
+    }
 
     @Test
     void joiningAnUnscheduledAttractionExtendsTheHostAndMovesOnlyTheOverlappingEntry() throws Exception {
@@ -258,11 +469,7 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
         join(source, new JoinItineraryAttractionRequest(3L, null, null, null)).andExpect(status().isNoContent());
         checkItinerary();
         putFact("/trips/1/attractions/3/visit-time", new UpdateTripAttractionVisitTimeRequest("15m"));
-        var before = saved()
-                .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:30+02:00"))
-                .andExpect(jsonPath("$.days[0].entries[2].timing.end").value("2027-03-29T12:05+02:00"))
-                .andExpect(jsonPath("$.days[0].entries[2].groupedAttractions[0].contributionMinutes").value(5))
-                .andReturn().getResponse().getContentAsString();
+        var before = saved().andReturn().getResponse().getContentAsString();
 
         regroup(source, 3, destination)
                 .andExpect(status().isBadRequest())
@@ -279,7 +486,6 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                         contains("2027-03-29T09:00+02:00", "2027-03-29T09:35+02:00", "2027-03-29T11:15+02:00")))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T09:35+02:00"))
                 .andExpect(jsonPath("$.days[0].entries[0].fixedStart").value(true))
-                .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].attractionId").value(3))
                 .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].contributionMinutes").value(5))
                 .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].tripNote").value("Use the west gate."))
                 .andExpect(jsonPath("$.days[0].entries[0].groupedAttractions[0].warnings",
@@ -1559,12 +1765,18 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
                 .andExpect(status().isNoContent());
         return mapper.readValue(saved().andReturn().getResponse().getContentAsString(), GetItineraryResponse.class)
                 .days().stream().flatMap(day -> day.entries().stream())
-                .filter(entry -> entry.attractionId() == attractionId)
+                .filter(entry -> entry instanceof GetItineraryResponse.AttractionEntry attraction
+                        && attraction.attractionId() == attractionId)
                 .findFirst().orElseThrow().entryId();
     }
 
     private ResultActions postSchedule(ScheduleAttractionRequest request) throws Exception {
         return mockMvc.perform(post(ITINERARY + "/attractions").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
+    }
+
+    private ResultActions addItem(AddItineraryItemRequest request) throws Exception {
+        return mockMvc.perform(post(ITINERARY + "/items").header("x-api-version", "1")
                 .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
     }
 

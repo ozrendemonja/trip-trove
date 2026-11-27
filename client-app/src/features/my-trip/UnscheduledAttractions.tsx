@@ -25,7 +25,7 @@ import { useId, useRef, type ReactElement } from "react";
 import type { GetItineraryResponse } from "../../clients/manager";
 import {
   attractionNameId,
-  useItineraryAttractionCard,
+  useItineraryCard,
   type DraggedItineraryItem,
   type OpenAttractionFacts
 } from "./ItineraryDrag";
@@ -103,7 +103,7 @@ const AttractionCard = ({
   const addButton = useRef<HTMLButtonElement>(null);
   const eatery = attraction.category === "EATERY";
   const { Icon, tone, label } = attractionImportance(attraction);
-  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+  const { interaction, nameButton, dragHandle } = useItineraryCard({
     item: { kind: "pool", attraction },
     blocked: scheduleBlocked,
     onGrab,

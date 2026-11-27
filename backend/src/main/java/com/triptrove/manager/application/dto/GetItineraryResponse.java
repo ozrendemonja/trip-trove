@@ -1,8 +1,11 @@
 package com.triptrove.manager.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.triptrove.manager.domain.model.ItineraryDetails;
 import com.triptrove.manager.domain.model.ItineraryGroupedAttractionSummary;
+import com.triptrove.manager.domain.model.TypedItineraryEntrySummary;
 import com.triptrove.manager.domain.model.WatchedSourceChangeSummary;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -74,9 +77,24 @@ public record GetItineraryResponse(
             @Schema(description = "Untimed, plain-text day note, if recorded.") String note,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
                     description = "Entries are returned in visit order, even when start times match.")
-            List<AttractionEntry> entries) {
+            List<Entry> entries) {
         private static Day from(ItineraryDetails.Day day) {
-            return new Day(day.id(), day.date(), day.note(), day.entries().stream().map(AttractionEntry::from).toList());
+            return new Day(day.id(), day.date(), day.note(), day.entries().stream().map(Entry::from).toList());
+        }
+    }
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
+    @JsonSubTypes({@JsonSubTypes.Type(AttractionEntry.class), @JsonSubTypes.Type(TypedItineraryEntryResponse.class)})
+    public sealed interface Entry permits AttractionEntry, TypedItineraryEntryResponse {
+        long entryId();
+
+        ItineraryTransferDTO outgoingTransfer();
+
+        private static Entry from(ItineraryDetails.EntrySummary entry) {
+            return switch (entry) {
+                case ItineraryDetails.AttractionEntrySummary attraction -> AttractionEntry.from(attraction);
+                case TypedItineraryEntrySummary item -> TypedItineraryEntryResponse.from(item);
+            };
         }
     }
 
@@ -101,7 +119,7 @@ public record GetItineraryResponse(
             @Schema(description = "Grouped attractions in their saved order, sharing this entry's interval.")
             List<GroupedAttraction> groupedAttractions,
             Integer cityId,
-            Long mainAttractionId) {
+            Long mainAttractionId) implements Entry {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         public record GroupedAttraction(
                 @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long attractionId,

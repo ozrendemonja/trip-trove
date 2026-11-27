@@ -8,6 +8,9 @@ import com.triptrove.manager.domain.model.ItineraryEntry;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
 import com.triptrove.manager.domain.model.ItineraryGroupedAttraction;
 import com.triptrove.manager.domain.model.ItineraryGroupedAttractionEditSummary;
+import com.triptrove.manager.domain.model.ItineraryItemFit;
+import com.triptrove.manager.domain.model.ItineraryItemKind;
+import com.triptrove.manager.domain.model.ItineraryItemToAdd;
 import com.triptrove.manager.domain.model.ItineraryMoveStartChoices;
 import com.triptrove.manager.domain.model.ItineraryRemoval;
 import com.triptrove.manager.domain.model.ItineraryRemovalSummary;
@@ -22,6 +25,7 @@ import com.triptrove.manager.domain.model.VisitDuration;
 import com.triptrove.manager.domain.repo.ItineraryEntryRepo;
 import com.triptrove.manager.domain.repo.ItineraryEntryRemovalRepo;
 import com.triptrove.manager.domain.repo.ItineraryGroupedAttractionRepo;
+import com.triptrove.manager.domain.repo.ItineraryRepo;
 import com.triptrove.manager.domain.repo.TripAttractionRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,7 +43,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.*;
 
@@ -48,13 +54,154 @@ import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.*;
 @Transactional
 public class ItineraryEntryEditor {
     private final ItineraryEntryRepo entries;
+    private final ItineraryRepo itineraries;
     private final ItineraryEntryRemovalRepo removals;
     private final ItineraryGroupedAttractionRepo groupedAttractions;
     private final TripAttractionRepo tripAttractions;
 
+    public void addItem(long tripId, ItineraryItemToAdd request) {
+        var itinerary = entries.findTimingEditSummariesByTripId(tripId);
+        var tripTiming = tripTimingForInsertion(tripId, itinerary);
+        var date = request.date();
+        validateDayInTrip(date, tripTiming.tripStart(), tripTiming.tripEnd());
+
+        var proposedDay = new ArrayList<>(entriesOn(itinerary, date));
+        var insertionIndex = itemInsertionIndex(proposedDay, tripId, request);
+        var item = proposeInsertedItem(tripId, request, tripTiming, proposedDay, insertionIndex);
+        proposedDay.add(insertionIndex, item);
+        var pushedTimings = planInsertedItemTiming(proposedDay, item, date, entriesNotOn(itinerary, date));
+        var disconnected = confirmedTransferRemovals(itinerary, Map.of(date, proposedDay),
+                request.transfersToRemoveAtInsertionPoint());
+
+        if (tripTiming.timeZone() == null) {
+            itineraries.getReferenceById(tripId).initializeTimeZone(item.itineraryZone());
+        }
+        clearTransfers(itinerary, disconnected);
+        pushedTimings.forEach(ItineraryEntry::changeTiming);
+        renumberPathPositions(proposedDay);
+        entries.save(item.entry());
+    }
+
+    private ItineraryTripTiming tripTimingForInsertion(long tripId, List<ItineraryTimingEditSummary> itinerary) {
+        if (!itinerary.isEmpty()) {
+            var first = itinerary.getFirst();
+            return new ItineraryTripTiming(first.tripStart(), first.tripEnd(), first.itineraryZone());
+        }
+        var trip = itineraries.findSummaryByTripId(tripId)
+                .orElseThrow(() -> new BaseApiException("Itinerary not found for trip", RESOURCE_NOT_FOUND, tripId));
+        return new ItineraryTripTiming(trip.tripStart(), trip.tripEnd(), trip.timeZone());
+    }
+
+    private static ItineraryTimingEditSummary proposeInsertedItem(long tripId, ItineraryItemToAdd request,
+            ItineraryTripTiming tripTiming, List<ItineraryTimingEditSummary> day, int insertionIndex) {
+        var savedZone = tripTiming.timeZone();
+        var zoneName = savedZone == null && request.timeZone() != null ? request.timeZone().strip() : savedZone;
+        requireItemTimingInputs(request.start(), day.isEmpty(), zoneName);
+        var zone = ItineraryTiming.requireNamedZone(zoneName);
+        var timing = day.isEmpty()
+                ? new ItineraryTiming(request.date(), request.start(), zone, request.plannedMinutes())
+                : ItineraryTiming.atInstant(day.get(insertionIndex - 1).timing().end().toInstant(), zone, request.plannedMinutes());
+        var item = ItineraryEntry.forTypedItem(tripId, request.item(), insertionIndex + 1, timing, request.fixedStart());
+        return new ItineraryTimingEditSummary(item, request.item().name(), null,
+                tripTiming.tripStart(), tripTiming.tripEnd(), zoneName, 0, 0);
+    }
+
+    private static int itemInsertionIndex(List<ItineraryTimingEditSummary> day, long tripId, ItineraryItemToAdd request) {
+        if (day.isEmpty() && request.afterEntryId() == null) {
+            return 0;
+        }
+        if (request.afterEntryId() == null || request.start() != null) {
+            throw new BaseApiException("The selected day now determines the new item's start",
+                    RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.ITEM_POSITION_CHANGED);
+        }
+        return day.indexOf(findEntry(day, tripId, request.afterEntryId())) + 1;
+    }
+
+    private static void requireItemTimingInputs(LocalTime start, boolean emptyDay, String zoneName) {
+        var missing = new ArrayList<RequiredInput>();
+        if (emptyDay && start == null) {
+            missing.add(RequiredInput.START);
+        }
+        if (zoneName == null || zoneName.isBlank()) {
+            missing.add(RequiredInput.TIME_ZONE);
+        }
+        if (!missing.isEmpty()) {
+            throw new BaseApiException(ITINERARY_INPUT_REQUIRED, ItineraryTimingIssue.TYPED_ITEM, new MissingInputs(missing));
+        }
+    }
+
+    private static Map<ItineraryEntry, ItineraryTiming> planInsertedItemTiming(
+            List<ItineraryTimingEditSummary> proposedDay, ItineraryTimingEditSummary item,
+            LocalDate date, List<ItineraryTimingEditSummary> otherDays) {
+        var timing = item.timing();
+        return planItemTiming(item.entry().getTypedItem().kind(), timing.plannedMinutes(), minutes ->
+                validateAndPushFollowingEntries(proposedDay, item, timing.withPlannedMinutes(minutes), date, otherDays,
+                        ItineraryTimingIssue.ENTRY));
+    }
+
+    private static Map<ItineraryEntry, ItineraryTiming> planItemTiming(ItineraryItemKind kind, int requestedMinutes,
+            IntFunction<Map<ItineraryEntry, ItineraryTiming>> plan) {
+        try {
+            return plan.apply(requestedMinutes);
+        } catch (BaseApiException conflict) {
+            if (kind != ItineraryItemKind.MEAL || !isTimingFitConflict(conflict)) {
+                throw conflict;
+            }
+            var maximum = maximumFittingMealMinutes(requestedMinutes, plan);
+            var context = Stream.concat(conflict.getContext().stream(), Stream.of(new ItineraryItemFit(maximum))).toArray();
+            throw new BaseApiException("The requested meal does not fit", conflict.getErrorCode(), context);
+        }
+    }
+
+    private static int maximumFittingMealMinutes(int tooLong, IntFunction<Map<ItineraryEntry, ItineraryTiming>> plan) {
+        // The start is unchanged and longer lengths can only push following entries later.
+        int fits = 0;
+        while (tooLong - fits > 1) {
+            int candidate = fits + (tooLong - fits) / 2;
+            try {
+                plan.apply(candidate);
+                fits = candidate;
+            } catch (BaseApiException conflict) {
+                if (!isTimingFitConflict(conflict)) {
+                    throw conflict;
+                }
+                tooLong = candidate;
+            }
+        }
+        return fits;
+    }
+
+    private static boolean isTimingFitConflict(BaseApiException conflict) {
+        return switch (conflict.getErrorCode()) {
+            case ITINERARY_ENTRY_OVERLAP, ITINERARY_START_DATE_CHANGE, ITINERARY_END_OUTSIDE_TRIP -> true;
+            default -> false;
+        };
+    }
+
+    public void updateItem(long tripId, long entryId, String name, int minutes, boolean fixedStart, String note) {
+        var itinerary = entries.findTimingEditSummariesByTripId(tripId);
+        var updated = findEntry(itinerary, tripId, entryId);
+        var entry = updated.entry();
+        var item = entry.getTypedItem();
+        if (item == null) {
+            throw new BaseApiException("Timed item not found in trip", RESOURCE_NOT_FOUND, entryId, tripId);
+        }
+        var savedTiming = entry.getTiming();
+        if (savedTiming.plannedMinutes() != minutes) {
+            validatePlannedLengthChange(updated, minutes);
+            var pushedTimings = planItemTiming(item.kind(), minutes,
+                    candidate -> planTimingChange(itinerary, updated, savedTiming.withPlannedMinutes(candidate)));
+            entry.changeTiming(savedTiming.withPlannedMinutes(minutes));
+            pushedTimings.forEach(ItineraryEntry::changeTiming);
+        }
+        entry.changeItemDetails(name, note);
+        entry.changeFixedStart(fixedStart);
+    }
+
     public void reorderGroupedAttractions(long tripId, long hostEntryId, List<Long> attractionIds) {
         var host = entries.findByIdAndTripId(hostEntryId, tripId)
                 .orElseThrow(() -> entryNotFound(tripId, hostEntryId));
+        requireAttractionEntry(host);
         var members = groupedAttractions.findAllByTripIdAndHostEntryIdOrderByPosition(tripId, hostEntryId);
         var savedOrder = members.stream().map(ItineraryGroupedAttraction::getAttractionId).toList();
         if (attractionIds.equals(savedOrder)) {
@@ -83,6 +230,8 @@ public class ItineraryEntryEditor {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
         var sourceHost = findEntry(itinerary, tripId, hostEntryId);
         var destination = findEntry(itinerary, tripId, destinationEntryId);
+        requireAttractionEntry(sourceHost.entry());
+        requireAttractionEntry(destination.entry());
         if (sourceHost == destination) {
             return;
         }
@@ -105,7 +254,8 @@ public class ItineraryEntryEditor {
                                          List<ItineraryTransferSummary> transfersToRemoveAtInsertionPoint) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
         var host = findEntry(itinerary, tripId, hostEntryId);
-        validateDayInTrip(host, date);
+        requireAttractionEntry(host.entry());
+        validateDayInTrip(date, host.tripStart(), host.tripEnd());
         var grouped = findGroupedAttraction(tripId, hostEntryId, attractionId);
         var member = grouped.member();
         var shortenedHost = host.withShortenedHostTiming(timingWithoutContribution(host.entry(), member.contributionMinutes()));
@@ -121,8 +271,8 @@ public class ItineraryEntryEditor {
 
         var pushedTimings = validateMoveAndPushFollowingEntries(proposedDay, extractedSummary, timing, date,
                 entriesNotOn(proposedItinerary, date));
-        var disconnected = disconnectedTransfers(itinerary, Map.of(date, proposedDay));
-        ItineraryTransferRemovalSummary.requireListed(disconnected, transfersToRemoveAtInsertionPoint);
+        var disconnected = confirmedTransferRemovals(itinerary, Map.of(date, proposedDay),
+                transfersToRemoveAtInsertionPoint);
 
         var pushesFollowingStarts = !pushedTimings.isEmpty();
         var newHostTiming = pushedTimings.remove(host.entry());
@@ -178,6 +328,7 @@ public class ItineraryEntryEditor {
                                String visitDuration, List<ItineraryTransferSummary> transfersToRemoveWithSourceEntry) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
         var host = findEntry(itinerary, tripId, hostEntryId);
+        requireAttractionEntry(host.entry());
         var attraction = findAttractionToJoin(tripId, attractionId);
         var sourceEntry = findSourceEntry(itinerary, attractionId);
 
@@ -204,8 +355,15 @@ public class ItineraryEntryEditor {
     private static ItineraryTimingEditSummary findSourceEntry(List<ItineraryTimingEditSummary> itinerary,
                                                               long attractionId) {
         // An unscheduled attraction has no source entry.
-        return itinerary.stream().filter(entry -> entry.entry().getAttractionId() == attractionId).findFirst()
+        return itinerary.stream().filter(entry -> Objects.equals(entry.entry().getAttractionId(), attractionId)).findFirst()
                 .orElse(null);
+    }
+
+    private static void requireAttractionEntry(ItineraryEntry entry) {
+        if (entry.getTypedItem() != null) {
+            throw new BaseApiException("A typed item cannot host grouped attractions", ITINERARY_GROUP_JOIN_NOT_ALLOWED,
+                    ItineraryTimingIssue.TYPED_ITEM);
+        }
     }
 
     private static void validateNotAlreadyGrouped(SchedulingSummary attraction) {
@@ -317,7 +475,7 @@ public class ItineraryEntryEditor {
         if (newTiming.plannedMinutes() == savedTiming.plannedMinutes()) {
             return;
         }
-        validatePlannedLengthWithinVisitDuration(editedEntry, newTiming.plannedMinutes());
+        validatePlannedLengthChange(editedEntry, newTiming.plannedMinutes());
         applyNewTiming(itinerary, editedEntry, newTiming);
     }
 
@@ -329,36 +487,43 @@ public class ItineraryEntryEditor {
         if (newTiming.plannedMinutes() == savedTiming.plannedMinutes()) {
             return;
         }
-        validatePlannedLengthWithinVisitDuration(editedEntry, newTiming.plannedMinutes());
+        validatePlannedLengthChange(editedEntry, newTiming.plannedMinutes());
         applyNewTiming(itinerary, editedEntry, newTiming);
     }
 
     public void updateTransfer(long tripId, long fromEntryId, ItineraryTransfer transfer) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
-        var from = findEntry(itinerary, tripId, fromEntryId);
-        var timing = from.entry().getTiming();
-        var day = entriesOn(itinerary, timing.date());
-        requireNextEntry(day, from, transfer.toEntryId());
-        var pushed = pushFollowingEntries(day, from, timing, entriesNotOn(itinerary, timing.date()),
-                ItineraryTimingIssue.ENTRY, transfer);
-        from.entry().changeOutgoingTransfer(transfer);
-        pushed.forEach(ItineraryEntry::changeTiming);
+        var departure = findEntry(itinerary, tripId, fromEntryId);
+        var pushedTimings = planTransferTiming(itinerary, departure, transfer);
+
+        departure.entry().changeOutgoingTransfer(transfer);
+        pushedTimings.forEach(ItineraryEntry::changeTiming);
     }
 
     public void removeTransfer(long tripId, long fromEntryId, long toEntryId) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
-        var from = findEntry(itinerary, tripId, fromEntryId);
-        requireNextEntry(entriesOn(itinerary, from.entry().getTiming().date()), from, toEntryId);
-        from.entry().changeOutgoingTransfer(null);
+        var departure = findEntry(itinerary, tripId, fromEntryId);
+        requireTransferNeighbours(entriesOn(itinerary, departure.timing().date()), departure, toEntryId);
+        departure.entry().changeOutgoingTransfer(null);
     }
 
-    private static void requireNextEntry(List<ItineraryTimingEditSummary> day, ItineraryTimingEditSummary from,
-                                         long toEntryId) {
-        var next = day.indexOf(from) + 1;
+    private static Map<ItineraryEntry, ItineraryTiming> planTransferTiming(List<ItineraryTimingEditSummary> itinerary,
+            ItineraryTimingEditSummary departure, ItineraryTransfer transfer) {
+        var timing = departure.timing();
+        var date = timing.date();
+        var day = entriesOn(itinerary, date);
+        requireTransferNeighbours(day, departure, transfer.toEntryId());
+        return pushFollowingEntries(day, departure, timing, entriesNotOn(itinerary, date),
+                ItineraryTimingIssue.ENTRY, transfer);
+    }
+
+    private static void requireTransferNeighbours(List<ItineraryTimingEditSummary> day,
+            ItineraryTimingEditSummary departure, long toEntryId) {
+        var next = day.indexOf(departure) + 1;
         if (next == day.size() || day.get(next).entry().getId() != toEntryId) {
             throw new BaseApiException("Transfer endpoints are not consecutive on the same itinerary day",
                     RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRANSFER_NEIGHBOURS_CHANGED,
-                    from.entry().getId(), toEntryId);
+                    departure.entry().getId(), toEntryId);
         }
     }
 
@@ -366,19 +531,20 @@ public class ItineraryEntryEditor {
                           List<ItineraryTransferSummary> transfersToRemove) {
         var itinerary = entries.findTimingEditSummariesByTripId(tripId);
         var entryForMove = findEntry(itinerary, tripId, entryId);
-        validateDayInTrip(entryForMove, date);
+        validateDayInTrip(date, entryForMove.tripStart(), entryForMove.tripEnd());
         var entriesOfDay = entriesOn(itinerary, date);
         var proposedDayOrder = proposeDayOrderForMove(entriesOfDay, entryForMove, beforeEntryId, tripId);
         if (proposedDayOrder.equals(entriesOfDay)) {
             ItineraryTransferRemovalSummary.requireListed(List.of(), transfersToRemove);
             return; // The same position keeps the interval, including free time before and after it.
         }
-        applyMove(itinerary, proposedDayOrder, entryForMove, date, startOffset, transfersToRemove);
+        moveToProposedDay(itinerary, proposedDayOrder, entryForMove, date, startOffset, transfersToRemove);
     }
 
     public void removeGroupedAttraction(long tripId, long hostEntryId, long attractionId) {
         var host = entries.findByIdAndTripId(hostEntryId, tripId)
                 .orElseThrow(() -> entryNotFound(tripId, hostEntryId));
+        requireAttractionEntry(host);
         var member = findGroupedAttraction(tripId, hostEntryId, attractionId).member();
         removeMember(host, member);
     }
@@ -400,7 +566,7 @@ public class ItineraryEntryEditor {
                                      ItineraryEntryRemoval.Cause cause) {
         var entryForRemoval = entries.findRemovalSummaryByTripIdAndEntryId(tripId, itineraryRemoval.entryId())
                 .orElseThrow(() -> boardRemovalChanged(tripId, attractionId));
-        if (entryForRemoval.entry().getAttractionId() == attractionId) {
+        if (Objects.equals(entryForRemoval.entry().getAttractionId(), attractionId)) {
             remove(tripId, entryForRemoval, cause, itineraryRemoval.transfersToRemove(),
                     itineraryRemoval.groupedAttractionIdsToRemove());
             return;
@@ -438,8 +604,8 @@ public class ItineraryEntryEditor {
         entries.delete(entryForRemoval.entry());
     }
 
-    private static void validateDayInTrip(ItineraryTimingEditSummary entry, LocalDate date) {
-        if (date.isBefore(entry.tripStart()) || date.isAfter(entry.tripEnd())) {
+    private static void validateDayInTrip(LocalDate date, LocalDate tripStart, LocalDate tripEnd) {
+        if (date.isBefore(tripStart) || date.isAfter(tripEnd)) {
             throw new BaseApiException("No itinerary day for the destination", ITINERARY_DAY_NOT_IN_TRIP, date);
         }
     }
@@ -456,10 +622,9 @@ public class ItineraryEntryEditor {
         return proposedDayOrder;
     }
 
-    private static void applyMove(List<ItineraryTimingEditSummary> itinerary,
-                                  List<ItineraryTimingEditSummary> proposedDayOrder,
-                                  ItineraryTimingEditSummary entryForMove, LocalDate date, String startOffset,
-                                  List<ItineraryTransferSummary> transfersToRemove) {
+    private static void moveToProposedDay(List<ItineraryTimingEditSummary> itinerary,
+            List<ItineraryTimingEditSummary> proposedDayOrder, ItineraryTimingEditSummary entryForMove,
+            LocalDate date, String startOffset, List<ItineraryTransferSummary> transfersToRemove) {
         // The moved entry leaves its old day, so its saved interval there must not block the move.
         var entriesOfOtherDays = entriesNotOn(itinerary, date).stream()
                 .filter(entry -> !entry.equals(entryForMove)).toList();
@@ -468,43 +633,51 @@ public class ItineraryEntryEditor {
                 startOffset);
         var pushedTimings = validateMoveAndPushFollowingEntries(proposedDayOrder, entryForMove, newTiming, date,
                 entriesOfOtherDays);
-        disconnectTransfersForMove(itinerary, proposedDayOrder, entryForMove, date, transfersToRemove);
+        var proposedDays = proposedDaysForMove(itinerary, proposedDayOrder, entryForMove, date);
+        var disconnected = confirmedTransferRemovals(itinerary, proposedDays, transfersToRemove);
 
-        // Change timings and positions only after every check passes, so a rejected move changes nothing.
+        clearTransfers(itinerary, disconnected);
         entryForMove.entry().moveTo(newTiming, !pushedTimings.isEmpty());
         pushedTimings.forEach(ItineraryEntry::retimeForMove);
         renumberPathPositions(proposedDayOrder);
     }
 
-    private static void disconnectTransfersForMove(List<ItineraryTimingEditSummary> itinerary,
-            List<ItineraryTimingEditSummary> proposedDayOrder, ItineraryTimingEditSummary moved, LocalDate date,
-            List<ItineraryTransferSummary> transfersToRemove) {
+    private static Map<LocalDate, List<ItineraryTimingEditSummary>> proposedDaysForMove(
+            List<ItineraryTimingEditSummary> itinerary, List<ItineraryTimingEditSummary> proposedDestinationDay,
+            ItineraryTimingEditSummary moved, LocalDate destinationDate) {
         var sourceDate = moved.entry().getTiming().date();
-        var changedDays = new HashMap<LocalDate, List<ItineraryTimingEditSummary>>();
-        changedDays.put(date, proposedDayOrder);
-        if (!date.equals(sourceDate)) {
-            changedDays.put(sourceDate, entriesOn(itinerary, sourceDate).stream()
-                    .filter(entry -> !entry.equals(moved)).toList());
+        if (destinationDate.equals(sourceDate)) {
+            return Map.of(destinationDate, proposedDestinationDay);
         }
+        var proposedSourceDay = entriesOn(itinerary, sourceDate).stream().filter(entry -> !entry.equals(moved)).toList();
+        return Map.of(sourceDate, proposedSourceDay, destinationDate, proposedDestinationDay);
+    }
+
+    private static List<ItineraryTransferRemovalSummary> confirmedTransferRemovals(
+            List<ItineraryTimingEditSummary> itinerary, Map<LocalDate, List<ItineraryTimingEditSummary>> changedDays,
+            List<ItineraryTransferSummary> transfersToRemove) {
         var disconnected = disconnectedTransfers(itinerary, changedDays);
         ItineraryTransferRemovalSummary.requireListed(disconnected, transfersToRemove);
-        clearTransfers(itinerary, disconnected);
+        return disconnected;
     }
 
     private static List<ItineraryTransferRemovalSummary> disconnectedTransfers(List<ItineraryTimingEditSummary> itinerary,
             Map<LocalDate, List<ItineraryTimingEditSummary>> changedDays) {
-        var neighbours = new HashMap<Long, Long>();
-        changedDays.values().forEach(path -> connectNeighbours(neighbours, path));
+        var nextEntryById = new HashMap<Long, Long>();
+        changedDays.values().forEach(path -> connectNeighbours(nextEntryById, path));
         var byId = itinerary.stream().collect(Collectors.toMap(entry -> entry.entry().getId(), Function.identity()));
         var disconnected = new ArrayList<ItineraryTransferRemovalSummary>();
         for (var from : itinerary) {
-            var fromDate = from.entry().getTiming().date();
-            var transfer = from.entry().getOutgoingTransfer();
-            if (transfer != null && changedDays.containsKey(fromDate)
-                    && !Objects.equals(neighbours.get(from.entry().getId()), transfer.toEntryId())) {
-                disconnected.add(new ItineraryTransferRemovalSummary(from.entry().getId(), from.name(),
-                        byId.get(transfer.toEntryId()).name(), transfer));
+            var departure = from.entry();
+            if (!changedDays.containsKey(departure.getTiming().date())) {
+                continue;
             }
+            var transfer = departure.getOutgoingTransfer();
+            if (transfer == null || Objects.equals(nextEntryById.get(departure.getId()), transfer.toEntryId())) {
+                continue;
+            }
+            disconnected.add(new ItineraryTransferRemovalSummary(departure.getId(), from.name(),
+                    byId.get(transfer.toEntryId()).name(), transfer));
         }
         return disconnected;
     }
@@ -586,10 +759,17 @@ public class ItineraryEntryEditor {
     private static Map<ItineraryEntry, ItineraryTiming> validateMoveAndPushFollowingEntries(
             List<ItineraryTimingEditSummary> entriesOfDay, ItineraryTimingEditSummary entryForMove,
             ItineraryTiming newTiming, LocalDate date, List<ItineraryTimingEditSummary> entriesOfOtherDays) {
-        validateStartsAfterPreviousEntry(entriesOfDay, entryForMove, newTiming, ItineraryTimingIssue.MOVE_ENTRY);
-        validateNewTiming(entryForMove, newTiming, date, entriesOfOtherDays, ItineraryTimingIssue.MOVE_ENTRY);
-        return pushFollowingEntries(entriesOfDay, entryForMove, newTiming, entriesOfOtherDays,
+        return validateAndPushFollowingEntries(entriesOfDay, entryForMove, newTiming, date, entriesOfOtherDays,
                 ItineraryTimingIssue.MOVE_ENTRY);
+    }
+
+    private static Map<ItineraryEntry, ItineraryTiming> validateAndPushFollowingEntries(
+            List<ItineraryTimingEditSummary> entriesOfDay, ItineraryTimingEditSummary editedEntry,
+            ItineraryTiming newTiming, LocalDate date, List<ItineraryTimingEditSummary> entriesOfOtherDays,
+            ItineraryTimingIssue issue) {
+        validateStartsAfterPreviousEntry(entriesOfDay, editedEntry, newTiming, issue);
+        validateNewTiming(editedEntry, newTiming, date, entriesOfOtherDays, issue);
+        return pushFollowingEntries(entriesOfDay, editedEntry, newTiming, entriesOfOtherDays, issue);
     }
 
     private static void renumberPathPositions(List<ItineraryTimingEditSummary> entriesOfDay) {
@@ -608,8 +788,14 @@ public class ItineraryEntryEditor {
         return new BaseApiException("Entry not found in trip", RESOURCE_NOT_FOUND, entryId, tripId);
     }
 
-    private static void validatePlannedLengthWithinVisitDuration(ItineraryTimingEditSummary entry,
-                                                                 int plannedMinutes) {
+    private static void validatePlannedLengthChange(ItineraryTimingEditSummary entry, int plannedMinutes) {
+        if (entry.entry().getTypedItem() != null) {
+            if (plannedMinutes < 1) {
+                throw new BaseApiException("Typed item length must be positive", ITINERARY_PLANNED_LENGTH_NOT_ALLOWED,
+                        ItineraryTimingIssue.TYPED_ITEM, entry.name());
+            }
+            return;
+        }
         var visitDuration = VisitDuration.parse(entry.visitDuration()).orElseThrow(() ->
                 new BaseApiException("No valid source duration for edited entry", ITINERARY_PLANNED_LENGTH_NOT_ALLOWED,
                         ItineraryTimingIssue.MISSING_VISIT_DURATION, entry.name()));
@@ -639,9 +825,7 @@ public class ItineraryEntryEditor {
         var entriesOfDay = entriesOn(itinerary, date);
         var entriesOfOtherDays = entriesNotOn(itinerary, date);
 
-        validateStartsAfterPreviousEntry(entriesOfDay, editedEntry, newTiming, ItineraryTimingIssue.ENTRY);
-        validateNewTiming(editedEntry, newTiming, date, entriesOfOtherDays, ItineraryTimingIssue.ENTRY);
-        return pushFollowingEntries(entriesOfDay, editedEntry, newTiming, entriesOfOtherDays,
+        return validateAndPushFollowingEntries(entriesOfDay, editedEntry, newTiming, date, entriesOfOtherDays,
                 ItineraryTimingIssue.ENTRY);
     }
 

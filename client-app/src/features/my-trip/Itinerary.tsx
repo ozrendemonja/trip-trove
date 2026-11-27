@@ -47,6 +47,11 @@ import { ItineraryEntryDraft } from "./ItineraryEntryDraft";
 import { DayNoteEditor, ItineraryDayNote } from "./ItineraryDayNote";
 import { ItineraryWarning, warningCountLabel } from "./ItineraryWarning";
 import {
+  EntryGrouping,
+  JoinAttractionDialog,
+  useItineraryGrouping
+} from "./ItineraryGrouping";
+import {
   TransferEditor,
   TransferLine,
   TransfersToRemoveDialog
@@ -123,10 +128,14 @@ function locateAttraction(
 ): { attraction: ItineraryAttraction; date?: string } | undefined {
   if (!itinerary) return;
   for (const day of itinerary.days) {
-    const attraction = day.entries.find(
-      (entry) => entry.attractionId === attractionId
-    );
-    if (attraction) return { attraction, date: day.date };
+    for (const entry of day.entries) {
+      if (entry.attractionId === attractionId)
+        return { attraction: entry, date: day.date };
+      const member = entry.groupedAttractions?.find(
+        (item) => item.attractionId === attractionId
+      );
+      if (member) return { attraction: member, date: day.date };
+    }
   }
   const attraction = itinerary.unscheduledAttractions.find(
     (item) => item.attractionId === attractionId
@@ -155,6 +164,7 @@ interface ItineraryView {
   scheduling: ItineraryScheduling;
   timingEditing: ItineraryTimingEditing;
   dayNotes: ReturnType<typeof useItineraryDayNotes>;
+  onDurationCorrected: (attractionId: number, duration: string) => void;
 }
 
 const dateLabel = new Intl.DateTimeFormat("en-US", {
@@ -268,8 +278,12 @@ export const useItinerary = (
   const scheduledEntries = useMemo(() => {
     const byAttraction = new Map<number, ScheduledEntryTarget>();
     savedDays?.forEach(({ date, entries }, index) => {
-      for (const { attractionId, entryId } of entries) {
-        byAttraction.set(attractionId, { date, entryId, dayNumber: index + 1 });
+      for (const { attractionId, entryId, groupedAttractions } of entries) {
+        const target = { date, entryId, dayNumber: index + 1 };
+        byAttraction.set(attractionId, target);
+        groupedAttractions?.forEach((member) =>
+          byAttraction.set(member.attractionId, target)
+        );
       }
     });
     return byAttraction;
@@ -387,7 +401,8 @@ export const useItinerary = (
     setDragged,
     scheduling,
     timingEditing,
-    dayNotes
+    dayNotes,
+    onDurationCorrected
   };
 };
 
@@ -559,6 +574,11 @@ export const ItineraryContent = ({
     !!pending;
   const [hovered, setHovered] = useState<{ date: string; slot: number }>();
   const [actionStatus, setActionStatus] = useState("");
+  const grouping = useItineraryGrouping(
+    timingEditing,
+    itinerary.onDurationCorrected,
+    setActionStatus
+  );
   const [factsTarget, setFactsTarget] = useState<{
     attractionId: number;
     trigger: HTMLButtonElement;
@@ -623,7 +643,11 @@ export const ItineraryContent = ({
   };
   usePlanningDraft(!!transferEdit, closeTransferEdit);
   const interactionBlocked =
-    writeBlocked || !!moveChoice || !!transferRemoval || !!transferEdit;
+    writeBlocked ||
+    !!moveChoice ||
+    !!transferRemoval ||
+    !!transferEdit ||
+    !!grouping.choice;
 
   const move = (entry: Entry, position: MoveItineraryEntryRequest): void => {
     if (writeBlocked || (moveChoice && position.startOffset === undefined))
@@ -813,6 +837,7 @@ export const ItineraryContent = ({
   return (
     <div className={classes.itinerary}>
       <DayNoteEditor editing={dayNotes} />
+      <JoinAttractionDialog grouping={grouping} />
       {factsAttraction && (
         <AttractionFactsDialog
           key={factsAttraction.attractionId}
@@ -887,10 +912,12 @@ export const ItineraryContent = ({
           (kind === "move" && moveChoice?.entry.entryId === entryId) ||
           (kind === transferRemoval?.action &&
             transferRemoval.entry.entryId === entryId) ||
-          (kind === "transfer" && transferEdit?.from.entryId === entryId)
+          (kind === "transfer" && transferEdit?.from.entryId === entryId) ||
+          (kind === "join" && grouping.choice?.host.entryId === entryId)
         )
           return null;
-        const composition = kind === "move" || kind === "remove";
+        const composition =
+          kind === "move" || kind === "remove" || kind === "join";
         const visible = visibleDays.some((day) =>
           day.entries.some((entry) => entry.entryId === entryId)
         );
@@ -912,7 +939,7 @@ export const ItineraryContent = ({
           </MessageBar>
         );
       })}
-      {pending?.recovery && !transferEdit && (
+      {pending?.recovery && !transferEdit && !grouping.pending && (
         <MessageBar intent="warning">
           <MessageBarBody>
             {pending.recovery === "unconfirmed"
@@ -952,7 +979,8 @@ export const ItineraryContent = ({
             !!dayNotes.draft ||
             !!moveChoice ||
             !!transferRemoval ||
-            !!transferEdit
+            !!transferEdit ||
+            !!grouping.choice
           }
           onPrepare={onPrepare}
           days={days}
@@ -975,7 +1003,13 @@ export const ItineraryContent = ({
             const date = new Date(day.date);
             const label = dateLabel.format(date);
             const warnings = day.entries.reduce(
-              (count, entry) => count + entry.warnings.length,
+              (count, entry) =>
+                count +
+                entry.warnings.length +
+                (entry.groupedAttractions?.reduce(
+                  (sum, member) => sum + member.warnings.length,
+                  0
+                ) ?? 0),
               0
             );
             const hidden = !visibleDays.includes(day);
@@ -1086,6 +1120,17 @@ export const ItineraryContent = ({
                             onGrab={setDragged}
                             onRelease={endDrag}
                             onOpenFacts={openFacts}
+                            grouping={
+                              itinerary.saved && (
+                                <EntryGrouping
+                                  entry={entry}
+                                  itinerary={itinerary.saved}
+                                  blocked={interactionBlocked}
+                                  onChoose={grouping.choose}
+                                  onOpenFacts={openFacts}
+                                />
+                              )
+                            }
                             actions={
                               <ItineraryEntryActions
                                 entry={entry}

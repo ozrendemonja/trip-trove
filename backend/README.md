@@ -98,7 +98,7 @@ not to the last entry of a day. These conditions are derived by the same
 one-SELECT itinerary read. A manual check can accept them without fixing them: warnings
 remain visible, and correcting a condition is a new change to check.
 
-`PUT /trips/{id}/itinerary/entries/{entryId}/fixed-start` takes
+`PUT /trips/{tripId}/itinerary/entries/{entryId}/fixed-start` takes
 `{"fixedStart":true}` to lock or `{"fixedStart":false}` to unlock a start.
 It returns `204` with the itinerary `Location` and does not change the
 interval. A fixed start blocks automatic propagation but can still be
@@ -137,14 +137,14 @@ and returns `204`. After a check, the removal notice includes whether the
 attraction was excluded or removed from the trip. Moving it back from
 Excluded never recreates the entry.
 
-`PUT /trips/{id}/itinerary/entries/{entryId}/position` takes the destination
+`PUT /trips/{tripId}/itinerary/entries/{entryId}/position` takes the destination
 `date` and, optionally, `beforeEntryId`. Omit the latter to move to the end
 of the day. If two occurrences of the saved clock fit that position, no
 change is saved. The `400` response supplies `moveStartChoices.offsets`; retry with the chosen
 `startOffset`. The server preserves identity, planned length and the lock,
 resolves the destination time, and pushes following unlocked entries only as
 needed. Moving to the current position leaves the interval unchanged.
-`DELETE /trips/{id}/itinerary/entries/{entryId}` removes the entry without
+`DELETE /trips/{tripId}/itinerary/entries/{entryId}` removes the entry without
 removing its attraction from the trip or moving any remaining start earlier.
 Both operations are atomic; on success they return `204` with the itinerary
 `Location` for GET. A move's propagated starts are grouped under that move
@@ -152,7 +152,7 @@ in the check summary.
 
 ### Transfers between entries
 
-`PUT /trips/{id}/itinerary/transfers/{fromEntryId}/{toEntryId}` replaces the
+`PUT /trips/{tripId}/itinerary/transfers/{fromEntryId}/{toEntryId}` replaces the
 transfer between ordered neighbours on one day. Send `mode` (`WALKING`,
 `METRO`, `BUS`, `TRAM`, `TRAIN`, `CAR`, `BOAT` or `FLIGHT`), nonnegative whole
 `minutes`, and optionally `note` (up to 512 characters). Transfer distance
@@ -173,6 +173,33 @@ repeat the same action with `transfersToRemove` containing the listed
 `transfer` objects. This removes exactly those transfers with the rest of
 the action; none is reused for a different pair. A pool addition still uses the submitted clock and
 does not retime saved entries.
+
+### Grouped attractions on one entry
+
+`POST /trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions` joins a
+trip attraction (`attractionId`) to the host entry (`hostEntryId`). An eligible
+unscheduled attraction contributes its trip visit duration's upper bound, including an
+explicit zero for a brief stop. Supply `visitDuration` only when correcting an
+unusable source duration; the correction and join save together.
+
+If the attraction already has its own itinerary entry, send that entry's ID
+as `sourceEntryId`. In `transfersToRemoveWithSourceEntry`, confirm only
+the transfers to and from that source entry. Omit
+both fields for an unscheduled attraction. The source entry's separate
+timing and lock are removed, but the attraction contributes its saved planned
+length and keeps its trip note and watched-source baseline. A permanently
+closed standalone entry may move this way and keeps its closure warning.
+An attraction cannot be scheduled twice, and groups cannot be nested.
+
+The host keeps its start and lock. Its total planned length includes all
+contributions; a length or end edit changes only the host portion. Following
+unlocked starts move only if needed. Timing conflicts reject the whole join.
+Success returns `204` with the itinerary `Location`. GET returns members in
+saved order under their host, includes their current facts and contributions,
+and excludes them from the unscheduled attractions. Their changes are
+reviewed under the host; a manual check renews their source baselines.
+Removing or excluding members or their host is unavailable until group
+removal can be previewed and confirmed.
 
 ## Location-grouped Attraction Search
 

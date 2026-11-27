@@ -3,10 +3,12 @@ package com.triptrove.manager.domain.repo;
 import com.triptrove.manager.domain.model.AttractionCategory;
 import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
+import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.GroupedSourceChangeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.SourceBaseline;
 import com.triptrove.manager.domain.model.ItineraryDetails.EntryWarning;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
+import com.triptrove.manager.domain.model.ItineraryGroupedAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.ItineraryTransfer;
 import com.triptrove.manager.domain.model.ItineraryTransferSummary;
@@ -26,6 +28,7 @@ import static com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSu
 public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastCheckedAt,
                                    Long itineraryDayId, LocalDate itineraryDate, String dayNote,
                                    Long attractionId, String attractionName, String cityName, String regionName, String countryName,
+                                   Integer cityId, Long mainAttractionId,
                                    TripAttractionGroup boardColumn, Boolean mustVisit, AttractionCategory category,
                                    String workingHours, String visitDuration, String tripNote, LocalDateTime permanentlyClosedAt,
                                    Long entryId, LocalDate entryDate, Integer entryPosition, Boolean entryFixedStart,
@@ -37,7 +40,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    String removedSubject, LocalDate removedDate,
                                    Boolean removedEntryPushedFollowingStarts, ItineraryEntryRemoval.Cause removalCause,
                                    WatchedSourceSnapshot watchedSourceBaseline, WatchedSourceSnapshot currentWatchedSource,
-                                   String checkContext) {
+                                   Long hostEntryId, Integer memberPosition, Integer contributionMinutes,
+                                   Boolean memberIncludedInLastCheck, Boolean memberJoinedSinceLastCheck,
+                                   WatchedSourceSnapshot memberWatchedSourceBaseline, String checkContext) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -55,20 +60,29 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
 
     UnscheduledAttractionSummary toUnscheduledAttractionSummary(String place) {
         return new UnscheduledAttractionSummary(attractionId, attractionName, place, boardColumn, mustVisit,
-                category, workingHours, visitDuration, tripNote);
+                category, workingHours, visitDuration, tripNote, cityId, mainAttractionId);
     }
 
-    AttractionEntrySummary toEntrySummary(Long nextEntryId) {
+    AttractionEntrySummary toEntrySummary(Long nextEntryId, List<ItineraryAndBoardRow> members) {
         if (entryTransfer != null && !entryTransfer.toEntryId().equals(nextEntryId)) {
             throw new IllegalStateException("Saved transfer does not connect neighbouring entries: " + entryId);
         }
+        var groupedAttractions = members.stream().map(ItineraryAndBoardRow::toGroupedAttractionSummary).toList();
+        var hostMinutes = entryTiming.plannedMinutes()
+                - groupedAttractions.stream().mapToInt(ItineraryGroupedAttractionSummary::contributionMinutes).sum();
         return new AttractionEntrySummary(entryId, attractionId, attractionName, boardColumn, mustVisit,
                 category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote,
                 entryTransfer == null ? null : new ItineraryTransferSummary(entryId, entryTransfer),
-                entryWarnings(nextEntryId != null && entryTransfer == null));
+                warnings(hostMinutes, nextEntryId != null && entryTransfer == null), groupedAttractions,
+                cityId, mainAttractionId);
     }
 
-    private List<EntryWarning> entryWarnings(boolean missingTransfer) {
+    private ItineraryGroupedAttractionSummary toGroupedAttractionSummary() {
+        return new ItineraryGroupedAttractionSummary(attractionId, attractionName, boardColumn, mustVisit, category,
+                contributionMinutes, workingHours, visitDuration, tripNote, warnings(contributionMinutes, false));
+    }
+
+    private List<EntryWarning> warnings(int allocatedMinutes, boolean missingTransfer) {
         var warnings = new ArrayList<EntryWarning>(3);
         if (permanentlyClosedAt != null) {
             warnings.add(EntryWarning.PERMANENTLY_CLOSED);
@@ -76,7 +90,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         var sourceRange = VisitDuration.parse(visitDuration);
         if (sourceRange.isEmpty()) {
             warnings.add(EntryWarning.UNUSABLE_SOURCE_DURATION);
-        } else if (!sourceRange.get().contains(entryTiming.plannedMinutes())) {
+        } else if (!sourceRange.get().contains(allocatedMinutes)) {
             warnings.add(EntryWarning.PLANNED_LENGTH_OUTSIDE_SOURCE_RANGE);
         }
         if (missingTransfer) {
@@ -85,17 +99,25 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         return List.copyOf(warnings);
     }
 
-    ChangeNoticeSummary toChangeNotice(boolean hasBeenChecked) {
+    ChangeNoticeSummary toChangeNotice(boolean hasBeenChecked, List<ItineraryAndBoardRow> members) {
         var sourceChanges = currentWatchedSource.changesFrom(watchedSourceBaseline);
         SourceBaseline sourceBaseline = null;
         if (!sourceChanges.isEmpty()) {
             sourceBaseline = entryIncludedInLastCheck ? SourceBaseline.AT_LAST_CHECK : SourceBaseline.WHEN_SCHEDULED;
         }
+        var memberChanges = members.stream().map(ItineraryAndBoardRow::toGroupedSourceChange)
+                .filter(change -> !change.sourceChanges().isEmpty()).toList();
         return new ChangeNoticeSummary(entryId, attractionName, entryDate,
-                hasBeenChecked ? entryChangeReasons() : List.of(), sourceBaseline, sourceChanges);
+                hasBeenChecked ? entryChangeReasons(members) : List.of(), sourceBaseline, sourceChanges, memberChanges);
     }
 
-    private List<ChangeNoticeSummary.Reason> entryChangeReasons() {
+    private GroupedSourceChangeSummary toGroupedSourceChange() {
+        return new GroupedSourceChangeSummary(attractionId, attractionName,
+                memberIncludedInLastCheck ? SourceBaseline.AT_LAST_CHECK : SourceBaseline.WHEN_SCHEDULED,
+                currentWatchedSource.changesFrom(memberWatchedSourceBaseline));
+    }
+
+    private List<ChangeNoticeSummary.Reason> entryChangeReasons(List<ItineraryAndBoardRow> members) {
         var reasons = new ArrayList<ChangeNoticeSummary.Reason>(7);
         if (!entryIncludedInLastCheck) {
             reasons.add(ATTRACTION_ADDED);
@@ -118,6 +140,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (transferChangedSinceCheck) {
             reasons.add(TRANSFER_CHANGED);
         }
+        if (members.stream().anyMatch(ItineraryAndBoardRow::memberJoinedSinceLastCheck)) {
+            reasons.add(GROUP_CHANGED);
+        }
         return List.copyOf(reasons);
     }
 
@@ -132,6 +157,6 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         if (removedEntryPushedFollowingStarts) {
             reasons.add(FOLLOWING_STARTS_PUSHED);
         }
-        return new ChangeNoticeSummary(null, removedSubject, removedDate, List.copyOf(reasons), null, List.of());
+        return new ChangeNoticeSummary(null, removedSubject, removedDate, List.copyOf(reasons), null, List.of(), List.of());
     }
 }

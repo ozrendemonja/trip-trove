@@ -31,17 +31,49 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
     void markEntriesChecked(Long tripId);
 
     @Modifying
+    @Query(value = """
+            INSERT INTO itinerary_grouped_attraction(trip_id, attraction_id, host_entry_id, member_position,
+                contribution_minutes, included_in_last_check, watched_source_baseline)
+            SELECT :tripId, :attractionId, :hostEntryId, :position, :minutes,
+                COALESCE(source.included_in_last_check, false), source.watched_source_baseline
+            FROM (VALUES (CAST(:sourceEntryId AS BIGINT))) AS requested(entry_id)
+            LEFT JOIN itinerary_entry source ON source.id = requested.entry_id
+                AND source.trip_id = :tripId AND source.attraction_id = :attractionId
+            WHERE requested.entry_id IS NULL OR source.id IS NOT NULL
+            """, nativeQuery = true)
+    int addGroupedAttraction(long tripId, long attractionId, long hostEntryId, int position, int minutes,
+                             Long sourceEntryId);
+
+    @Modifying
+    @Query(value = """
+            UPDATE itinerary_grouped_attraction member
+            SET included_in_last_check = true, joined_since_last_check = false, watched_source_baseline = source.snapshot
+            FROM trip_attraction_watched_source source
+            WHERE member.trip_id = :tripId
+                AND source.trip_id = member.trip_id AND source.attraction_id = member.attraction_id
+                AND (member.joined_since_last_check OR member.watched_source_baseline IS DISTINCT FROM source.snapshot)
+            """, nativeQuery = true)
+    void markGroupedAttractionsChecked(Long tripId);
+
+    @Modifying
     @Query("DELETE FROM ItineraryEntryRemoval removal WHERE removal.tripId = :tripId")
     void clearRemovalNoticesByTripId(Long tripId);
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.ItineraryTimingEditSummary(
-                entry, attraction.name, item.visitTime, trip.from, trip.to, itinerary.timeZone)
+                entry, attraction.name, item.visitTime, trip.from, trip.to, itinerary.timeZone,
+                COALESCE(members.lastPosition, 0), COALESCE(members.totalContribution, 0L))
             FROM ItineraryEntry entry
             JOIN Itinerary itinerary ON itinerary.tripId = entry.tripId
             JOIN Trip trip ON trip.id = entry.tripId
             JOIN TripAttraction item ON item.trip = trip AND item.attraction.id = entry.attractionId
             JOIN item.attraction attraction
+            LEFT JOIN (
+                SELECT member.hostEntryId AS hostId, MAX(member.position) AS lastPosition,
+                    SUM(member.contributionMinutes) AS totalContribution
+                FROM ItineraryGroupedAttraction member WHERE member.tripId = :tripId
+                GROUP BY member.hostEntryId
+            ) members ON members.hostId = entry.id
             WHERE entry.tripId = :tripId
             ORDER BY entry.timing.date, entry.position
             """)
@@ -49,7 +81,8 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.ItineraryRemovalSummary(
-                entry, attraction.name, itinerary.lastCheckedAt, incoming, fromAttraction.name, toAttraction.name)
+                entry, attraction.name, itinerary.lastCheckedAt, incoming, fromAttraction.name, toAttraction.name,
+                EXISTS (SELECT 1 FROM ItineraryGroupedAttraction member WHERE member.hostEntryId = entry.id))
             FROM ItineraryEntry entry
             JOIN Itinerary itinerary ON itinerary.tripId = entry.tripId
             JOIN Attraction attraction ON attraction.id = entry.attractionId

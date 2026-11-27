@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.stream.Collectors;
@@ -98,6 +99,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     @Query("""
             SELECT EXISTS (SELECT 1 FROM ItineraryEntry entry
                 WHERE entry.tripId = :tripId AND entry.attractionId IN :attractionIds)
+                OR EXISTS (SELECT 1 FROM ItineraryGroupedAttraction member
+                    WHERE member.tripId = :tripId AND member.attractionId IN :attractionIds)
             """)
     boolean hasScheduledAttractions(Long tripId, List<Long> attractionIds);
 
@@ -105,15 +108,18 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date, day.note,
-                attraction.id, attraction.name, city.name, region.name, country.name, tripAttraction.attractionGroup,
-                tripAttraction.mustVisit, attraction.category, tripAttraction.workingHours, tripAttraction.visitTime, tripAttraction.note,
+                attraction.id, attraction.name, city.name, region.name, country.name, city.id, main.id,
+                tripAttraction.attractionGroup,
+                tripAttraction.mustVisit, attraction.category,
+                tripAttraction.workingHours, tripAttraction.visitTime, tripAttraction.note,
                 attraction.permanentlyClosedAt, entry.id, entry.timing.date, entry.position, entry.fixedStart,
                 entry.timing, entry.includedInLastCheck, entry.outgoingTransfer, entry.transferChangedSinceCheck,
                 entry.startChangedSinceCheck,
                 entry.plannedLengthChangedSinceCheck, entry.fixedStartChangedSinceCheck, entry.movedSinceCheck,
                 entry.followingStartsPushedSinceCheck,
                 removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
-                entry.watchedSourceBaseline, source.snapshot,
+                entry.watchedSourceBaseline, source.snapshot, member.hostEntryId, member.position,
+                member.contributionMinutes, member.includedInLastCheck, member.joinedSinceLastCheck, member.watchedSourceBaseline,
                 (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt) AS String)
                  FROM Itinerary saved WHERE saved.tripId = :tripId))
             FROM Itinerary itinerary
@@ -130,11 +136,13 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             LEFT JOIN ItineraryEntryRemoval removal ON removal.id = subject.removalId
             LEFT JOIN tripAttraction.attraction attraction
             LEFT JOIN attraction.city city
+            LEFT JOIN attraction.main main
             LEFT JOIN attraction.region region
             LEFT JOIN attraction.country country
             LEFT JOIN ItineraryEntry entry ON entry.tripId = trip.id AND entry.attractionId = attraction.id
+            LEFT JOIN ItineraryGroupedAttraction member ON member.tripId = trip.id AND member.attractionId = attraction.id
             LEFT JOIN TripAttractionWatchedSource source ON source.tripId = :tripId
-                AND source.tripAttractionId = tripAttraction.id AND entry.id IS NOT NULL
+                AND source.tripAttractionId = tripAttraction.id AND (entry.id IS NOT NULL OR member.id IS NOT NULL)
             WHERE itinerary.tripId = :tripId
             ORDER BY day.date, tripAttraction.boardPosition, tripAttraction.id, removal.id
             """)
@@ -153,18 +161,23 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
 
         var daysById = new LinkedHashMap<Long, ItineraryAndBoardRow>();
         itineraryRows.forEach(row -> daysById.putIfAbsent(row.itineraryDayId(), row));
+        var membersByHost = itineraryRows.stream().filter(row -> row.hostEntryId() != null)
+                .sorted(Comparator.comparingInt(ItineraryAndBoardRow::memberPosition))
+                .collect(Collectors.groupingBy(ItineraryAndBoardRow::hostEntryId));
         return Optional.of(new ItineraryDetails(firstRow.tripId(), firstRow.timeZone(), firstRow.lastCheckedAt(),
-                itineraryDaysInDateOrder(itineraryRows, daysById), unscheduledAttractionsInBoardOrder(itineraryRows),
-                changeNotices(itineraryRows, firstRow.lastCheckedAt()), firstRow.checkContext()));
+                itineraryDaysInDateOrder(itineraryRows, daysById, membersByHost), unscheduledAttractionsInBoardOrder(itineraryRows),
+                changeNotices(itineraryRows, firstRow.lastCheckedAt(), membersByHost), firstRow.checkContext()));
     }
 
-    private static List<ChangeNoticeSummary> changeNotices(List<ItineraryAndBoardRow> rows, Instant lastCheckedAt) {
+    private static List<ChangeNoticeSummary> changeNotices(List<ItineraryAndBoardRow> rows, Instant lastCheckedAt,
+            Map<Long, List<ItineraryAndBoardRow>> membersByHost) {
         var hasBeenChecked = lastCheckedAt != null;
         var entries = rows.stream()
                 .filter(row -> row.entryId() != null)
                 .sorted(Comparator.comparing(ItineraryAndBoardRow::entryPosition))
-                .map(row -> row.toChangeNotice(hasBeenChecked))
-                .filter(notice -> !notice.reasons().isEmpty() || !notice.sourceChanges().isEmpty());
+                .map(row -> row.toChangeNotice(hasBeenChecked, membersByHost.getOrDefault(row.entryId(), List.of())))
+                .filter(notice -> !notice.reasons().isEmpty() || !notice.sourceChanges().isEmpty()
+                        || !notice.groupedSourceChanges().isEmpty());
         var removals = rows.stream().filter(row -> hasBeenChecked && row.removedSubject() != null)
                 .map(ItineraryAndBoardRow::toRemovalNotice);
         return Stream.concat(entries, removals)
@@ -173,7 +186,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     }
 
     private static List<ItineraryDetails.Day> itineraryDaysInDateOrder(List<ItineraryAndBoardRow> itineraryRows,
-            SequencedMap<Long, ItineraryAndBoardRow> daysById) {
+            SequencedMap<Long, ItineraryAndBoardRow> daysById, Map<Long, List<ItineraryAndBoardRow>> membersByHost) {
         var entriesByDate = new HashMap<LocalDate, List<ItineraryAndBoardRow>>();
         for (var row : itineraryRows) {
             if (row.entryId() != null) {
@@ -182,14 +195,16 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
         }
         return daysById.sequencedValues().stream()
                 .map(day -> new ItineraryDetails.Day(day.itineraryDayId(), day.itineraryDate(), day.dayNote(),
-                        entriesInPathOrder(entriesByDate.getOrDefault(day.itineraryDate(), List.of()))))
+                        entriesInPathOrder(entriesByDate.getOrDefault(day.itineraryDate(), List.of()), membersByHost)))
                 .toList();
     }
 
-    private static List<AttractionEntrySummary> entriesInPathOrder(List<ItineraryAndBoardRow> rows) {
+    private static List<AttractionEntrySummary> entriesInPathOrder(List<ItineraryAndBoardRow> rows,
+            Map<Long, List<ItineraryAndBoardRow>> membersByHost) {
         var ordered = rows.stream().sorted(Comparator.comparingInt(ItineraryAndBoardRow::entryPosition)).toList();
         return IntStream.range(0, ordered.size())
-                .mapToObj(i -> ordered.get(i).toEntrySummary(i + 1 < ordered.size() ? ordered.get(i + 1).entryId() : null))
+                .mapToObj(i -> ordered.get(i).toEntrySummary(i + 1 < ordered.size() ? ordered.get(i + 1).entryId() : null,
+                        membersByHost.getOrDefault(ordered.get(i).entryId(), List.of())))
                 .toList();
     }
 
@@ -212,7 +227,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             var place = row.boardPlaceName();
             // Scheduled and ineligible attractions still determine their place's position on the board.
             var unscheduledAtPlace = unscheduledByPlace.computeIfAbsent(place, ignored -> new ArrayList<>());
-            if (row.isEligibleForItinerary() && row.entryId() == null) {
+            if (row.isEligibleForItinerary() && row.entryId() == null && row.hostEntryId() == null) {
                 unscheduledAtPlace.add(row.toUnscheduledAttractionSummary(place));
             }
         }

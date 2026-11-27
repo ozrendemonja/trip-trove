@@ -251,6 +251,34 @@ export const useClasses = makeStyles({
   entryCard: {
     minWidth: 0
   },
+  entryGrouping: {
+    gridColumn: 2,
+    paddingInlineStart: tokens.spacingHorizontalM,
+    minWidth: 0
+  },
+  groupedMembers: {
+    display: "grid",
+    gap: tokens.spacingVerticalXS,
+    listStyleType: "none",
+    padding: 0,
+    marginBlock: tokens.spacingVerticalXS,
+    borderInlineStartWidth: "2px",
+    borderInlineStartStyle: "solid",
+    borderInlineStartColor: tokens.colorNeutralStroke2,
+    paddingInlineStart: tokens.spacingHorizontalS
+  },
+  groupingPicker: {
+    display: "grid",
+    gap: tokens.spacingVerticalXS,
+    marginBlock: tokens.spacingVerticalXS
+  },
+  groupingCandidates: {
+    listStyleType: "none",
+    padding: 0,
+    margin: 0,
+    maxHeight: "12rem",
+    overflowY: "auto"
+  },
   entryHeader: {
     display: "flex",
     flexWrap: "wrap",

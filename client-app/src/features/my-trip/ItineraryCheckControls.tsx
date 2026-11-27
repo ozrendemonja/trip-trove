@@ -63,7 +63,8 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   FOLLOWING_STARTS_PUSHED: "Following entries moved later",
   ATTRACTION_EXCLUDED: "Moved to Excluded Attractions on the board",
   REMOVED_FROM_TRIP: "Removed from the trip",
-  TRANSFER_CHANGED: "Transfer changed"
+  TRANSFER_CHANGED: "Transfer changed",
+  GROUP_CHANGED: "Grouped attractions changed"
 };
 const sourceFieldLabels: Record<SourceChange["field"], string> = {
   WORKING_HOURS: "Working hours",
@@ -163,6 +164,7 @@ type DetailTab = "changes" | "warnings";
 
 type WarningRow = {
   entryId: number;
+  attractionId: number;
   date: string;
   subject: string;
   warning: EntryWarning;
@@ -170,17 +172,27 @@ type WarningRow = {
 
 const warningRows = (itinerary?: GetItineraryResponse): WarningRow[] =>
   itinerary?.days.flatMap((day) =>
-    day.entries.flatMap((entry, index) =>
-      entry.warnings.map((warning) => ({
+    day.entries.flatMap((entry, index) => [
+      ...entry.warnings.map((warning) => ({
         entryId: entry.entryId,
+        attractionId: entry.attractionId,
         date: day.date,
         subject:
           warning === "MISSING_TRANSFER" && day.entries[index + 1]
             ? `${entry.name} to ${day.entries[index + 1].name}`
             : entry.name,
         warning
-      }))
-    )
+      })),
+      ...(entry.groupedAttractions?.flatMap((member) =>
+        member.warnings.map((warning) => ({
+          entryId: entry.entryId,
+          attractionId: member.attractionId,
+          date: day.date,
+          subject: member.name,
+          warning
+        }))
+      ) ?? [])
+    ])
   ) ?? [];
 
 function WarningRows({
@@ -196,7 +208,10 @@ function WarningRows({
   return (
     <ul className={classes.notices}>
       {rows.map((row) => (
-        <li className={classes.notice} key={`${row.entryId}:${row.warning}`}>
+        <li
+          className={classes.notice}
+          key={`${row.attractionId}:${row.warning}`}
+        >
           <Text weight="semibold">{row.subject}</Text>
           <Caption1>{formatItineraryDate(row.date)}</Caption1>
           <ItineraryWarning>{entryWarningLabels[row.warning]}</ItineraryWarning>
@@ -210,6 +225,45 @@ function WarningRows({
                 Go to entry
               </Button>
             </DialogTrigger>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SourceChanges({
+  baseline,
+  changes
+}: {
+  baseline: NonNullable<ChangeNotice["sourceBaseline"]>;
+  changes: SourceChange[];
+}): ReactElement {
+  const classes = useStyles();
+  const { factsList } = useItineraryStyles();
+  return (
+    <ul className={classes.sourceChanges}>
+      {changes.map((change) => (
+        <li key={change.field}>
+          <Caption1Strong block>
+            {sourceFieldLabels[change.field]}
+          </Caption1Strong>
+          <dl className={factsList}>
+            <dt>
+              <Caption1Strong>{baselineLabels[baseline]}</Caption1Strong>
+            </dt>
+            <dd>
+              <Caption1>{sourceValue(change.field, change.baseline)}</Caption1>
+            </dd>
+            <dt>
+              <Caption1Strong>Current value</Caption1Strong>
+            </dt>
+            <dd>
+              <Caption1>{sourceValue(change.field, change.current)}</Caption1>
+            </dd>
+          </dl>
+          {change.restored && (
+            <Caption1 block>Changed in between and restored.</Caption1>
           )}
         </li>
       ))}
@@ -241,7 +295,6 @@ export function ItineraryCheckControls({
   onRetry
 }: Props): ReactElement {
   const classes = useStyles();
-  const { factsList } = useItineraryStyles();
   const { triggerAttributes } = useModalAttributes();
   const detailsId = useId("check-availability");
   const changesId = useId("check-changes");
@@ -389,49 +442,22 @@ export function ItineraryCheckControls({
                             </ul>
                           )}
                           {sourceBaseline && notice.sourceChanges && (
-                            <ul className={classes.sourceChanges}>
-                              {notice.sourceChanges.map((change) => (
-                                <li key={change.field}>
-                                  <Caption1Strong block>
-                                    {sourceFieldLabels[change.field]}
-                                  </Caption1Strong>
-                                  <dl className={factsList}>
-                                    <dt>
-                                      <Caption1Strong>
-                                        {baselineLabels[sourceBaseline]}
-                                      </Caption1Strong>
-                                    </dt>
-                                    <dd>
-                                      <Caption1>
-                                        {sourceValue(
-                                          change.field,
-                                          change.baseline
-                                        )}
-                                      </Caption1>
-                                    </dd>
-                                    <dt>
-                                      <Caption1Strong>
-                                        Current value
-                                      </Caption1Strong>
-                                    </dt>
-                                    <dd>
-                                      <Caption1>
-                                        {sourceValue(
-                                          change.field,
-                                          change.current
-                                        )}
-                                      </Caption1>
-                                    </dd>
-                                  </dl>
-                                  {change.restored && (
-                                    <Caption1 block>
-                                      Changed in between and restored.
-                                    </Caption1>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
+                            <SourceChanges
+                              baseline={sourceBaseline}
+                              changes={notice.sourceChanges}
+                            />
                           )}
+                          {notice.groupedSourceChanges?.map((member) => (
+                            <div key={member.attractionId}>
+                              <Caption1Strong block>
+                                {member.subject}
+                              </Caption1Strong>
+                              <SourceChanges
+                                baseline={member.sourceBaseline}
+                                changes={member.sourceChanges}
+                              />
+                            </div>
+                          ))}
                           {hasTarget(notice) && (
                             <DialogTrigger
                               action="close"

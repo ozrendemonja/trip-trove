@@ -48,6 +48,7 @@ export function TimelineEntry({
   editing,
   blocked,
   actions,
+  grouping,
   onGrab,
   onRelease,
   onOpenFacts
@@ -57,6 +58,7 @@ export function TimelineEntry({
   editing: ItineraryTimingEditing;
   blocked: boolean;
   actions?: ReactElement;
+  grouping?: ReactElement;
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
   onOpenFacts: OpenAttractionFacts;
@@ -300,6 +302,7 @@ export function TimelineEntry({
           </div>
         )}
       </Card>
+      {grouping}
       {endFocused && !blocked && (
         <Caption1 className={classes.entryMessage}>{endHint}</Caption1>
       )}

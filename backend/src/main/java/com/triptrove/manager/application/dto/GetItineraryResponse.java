@@ -2,6 +2,7 @@ package com.triptrove.manager.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.triptrove.manager.domain.model.ItineraryDetails;
+import com.triptrove.manager.domain.model.ItineraryGroupedAttractionSummary;
 import com.triptrove.manager.domain.model.WatchedSourceChangeSummary;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -32,11 +33,24 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
             List<ItineraryDetails.ChangeNoticeSummary.Reason> reasons,
             ItineraryDetails.ChangeNoticeSummary.SourceBaseline sourceBaseline,
-            List<SourceChange> sourceChanges) {
+            List<SourceChange> sourceChanges,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY) List<GroupedSourceChange> groupedSourceChanges) {
         private static ChangeNotice from(ItineraryDetails.ChangeNoticeSummary notice) {
             var changes = notice.sourceChanges().stream().map(SourceChange::from).toList();
             return new ChangeNotice(notice.entryId(), notice.subject(), notice.date(), notice.reasons(),
-                    notice.sourceBaseline(), changes.isEmpty() ? null : changes);
+                    notice.sourceBaseline(), changes.isEmpty() ? null : changes,
+                    notice.groupedSourceChanges().stream().map(GroupedSourceChange::from).toList());
+        }
+
+        public record GroupedSourceChange(
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long attractionId,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String subject,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ItineraryDetails.ChangeNoticeSummary.SourceBaseline sourceBaseline,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<SourceChange> sourceChanges) {
+            private static GroupedSourceChange from(ItineraryDetails.ChangeNoticeSummary.GroupedSourceChangeSummary change) {
+                return new GroupedSourceChange(change.attractionId(), change.subject(), change.sourceBaseline(),
+                        change.sourceChanges().stream().map(SourceChange::from).toList());
+            }
         }
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -82,7 +96,33 @@ public record GetItineraryResponse(
             @Schema(description = "Entered transfer to the immediately following entry, if any.")
             ItineraryTransferDTO outgoingTransfer,
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Current conditions that persist until corrected.")
-            List<ItineraryDetails.EntryWarning> warnings) {
+            List<ItineraryDetails.EntryWarning> warnings,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY)
+            @Schema(description = "Grouped attractions in their saved order, sharing this entry's interval.")
+            List<GroupedAttraction> groupedAttractions,
+            Integer cityId,
+            Long mainAttractionId) {
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public record GroupedAttraction(
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) long attractionId,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String name,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) TripAttractionGroupDTO attractionGroup,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean mustVisit,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AttractionCategoryResponse category,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int contributionMinutes,
+                String workingHours,
+                String visitDuration,
+                String tripNote,
+                @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<ItineraryDetails.EntryWarning> warnings) {
+            private static GroupedAttraction from(ItineraryGroupedAttractionSummary attraction) {
+                return new GroupedAttraction(attraction.attractionId(), attraction.name(),
+                        TripAttractionGroupDTO.valueOf(attraction.attractionGroup().name()), attraction.mustVisit(),
+                        AttractionCategoryResponse.from(attraction.category()), attraction.contributionMinutes(),
+                        attraction.workingHours(), attraction.visitDuration(),
+                        attraction.tripNote(), attraction.warnings());
+            }
+        }
+
         private static AttractionEntry from(ItineraryDetails.AttractionEntrySummary entry) {
             return new AttractionEntry(entry.entryId(), entry.attractionId(), entry.name(),
                     TripAttractionGroupDTO.valueOf(entry.attractionGroup().name()), entry.mustVisit(),
@@ -90,7 +130,8 @@ public record GetItineraryResponse(
                     ItineraryTimingResponse.from(entry.timing()), entry.workingHours(), entry.visitDuration(),
                     entry.tripNote(),
                     entry.outgoingTransfer() == null ? null : ItineraryTransferDTO.from(entry.outgoingTransfer()),
-                    entry.warnings());
+                    entry.warnings(), entry.groupedAttractions().stream().map(GroupedAttraction::from).toList(),
+                    entry.cityId(), entry.mainAttractionId());
         }
     }
 
@@ -104,12 +145,14 @@ public record GetItineraryResponse(
             @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AttractionCategoryResponse category,
             String workingHours,
             String visitDuration,
-            String tripNote) {
+            String tripNote,
+            Integer cityId,
+            Long mainAttractionId) {
         private static UnscheduledAttraction from(ItineraryDetails.UnscheduledAttractionSummary attraction) {
             return new UnscheduledAttraction(attraction.attractionId(), attraction.name(), attraction.place(),
                     TripAttractionGroupDTO.valueOf(attraction.attractionGroup().name()), attraction.mustVisit(),
                     AttractionCategoryResponse.from(attraction.category()), attraction.workingHours(),
-                    attraction.visitDuration(), attraction.tripNote());
+                    attraction.visitDuration(), attraction.tripNote(), attraction.cityId(), attraction.mainAttractionId());
         }
     }
 

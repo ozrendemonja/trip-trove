@@ -1,4 +1,5 @@
 import {
+  joinItineraryAttraction,
   moveItineraryEntry,
   removeItineraryEntry,
   removeItineraryTransfer,
@@ -10,6 +11,7 @@ import {
   updateItineraryEntryStart,
   updateItineraryTransfer,
   type ErrorResponse,
+  type JoinItineraryAttractionRequest,
   type MoveItineraryEntryRequest,
   type RemoveItineraryEntryRequest,
   type ScheduleAttractionRequest,
@@ -65,6 +67,7 @@ export type TimingEdit =
 
 export type EntryEdit =
   | TimingEdit
+  | { action: "join"; request: JoinItineraryAttractionRequest }
   | { action: "move"; position: MoveItineraryEntryRequest }
   | { action: "remove"; removal?: RemoveItineraryEntryRequest }
   | {
@@ -78,7 +81,8 @@ export class EntryEditError extends PlanningSaveError {
     message: string,
     unconfirmed: boolean,
     readonly moveOffsets?: string[],
-    readonly transfersToRemove?: ErrorResponse["transfersToRemove"]
+    readonly transfersToRemove?: ErrorResponse["transfersToRemove"],
+    readonly schedulingInputs?: ErrorResponse["schedulingInputs"]
   ) {
     super(message, unconfirmed);
   }
@@ -90,13 +94,19 @@ export async function saveEntryEdit(
   edit: EntryEdit
 ): Promise<void> {
   const options = {
-    path: { id: tripId, entryId },
+    path: { tripId, entryId },
     headers: itineraryHeaders,
     signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
   };
   const result = (() => {
     if ("action" in edit) {
       switch (edit.action) {
+        case "join":
+          return joinItineraryAttraction({
+            ...options,
+            path: { tripId, hostEntryId: entryId },
+            body: edit.request
+          });
         case "move":
           return moveItineraryEntry({ ...options, body: edit.position });
         case "remove":
@@ -105,7 +115,7 @@ export async function saveEntryEdit(
           const transferOptions = {
             ...options,
             path: {
-              id: tripId,
+              tripId,
               fromEntryId: entryId,
               toEntryId: edit.toEntryId
             }
@@ -133,7 +143,8 @@ export async function saveEntryEdit(
       error?.errorMessage ?? "The itinerary entry change couldn't be saved.",
       isUnconfirmedSave(response),
       error?.moveStartChoices?.offsets,
-      error?.transfersToRemove
+      error?.transfersToRemove,
+      error?.schedulingInputs
     );
   }
 }
@@ -143,7 +154,7 @@ export async function saveEntry(
   intent: ScheduleAttractionRequest
 ): Promise<void> {
   const { response, error } = await scheduleAttraction({
-    path: { id: tripId },
+    path: { tripId },
     body: intent,
     headers: itineraryHeaders,
     signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)

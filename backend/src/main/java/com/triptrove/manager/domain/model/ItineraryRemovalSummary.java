@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record ItineraryRemovalSummary(ItineraryEntry entry, String subject, Instant lastCheckedAt,
-                                      ItineraryEntry incomingTransferFromEntry, String incomingTransferFrom, String outgoingTransferTo) {
+                                      ItineraryEntry incomingTransferFromEntry, String incomingTransferFrom,
+                                      String outgoingTransferTo, boolean hasGroupedAttractions) {
     public List<ItineraryTransferRemovalSummary> transferRemovals() {
         var removals = new ArrayList<ItineraryTransferRemovalSummary>(2);
         if (incomingTransferFromEntry != null) {

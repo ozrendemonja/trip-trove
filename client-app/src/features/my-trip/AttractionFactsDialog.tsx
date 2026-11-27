@@ -220,6 +220,17 @@ export function AttractionFactsDialog({
                 ]}
               />
             )}
+            {"contributionMinutes" in attraction && (
+              <FactsSection
+                title="Entry data"
+                facts={[
+                  [
+                    "Grouped duration contribution",
+                    `${attraction.contributionMinutes} min`
+                  ]
+                ]}
+              />
+            )}
             {catalogue.status === "loading" && (
               <Spinner size="tiny" label="Loading catalogue facts" />
             )}

@@ -18,9 +18,16 @@ public class ItineraryEntry {
     @Column(name = "trip_id", nullable = false)
     private Long tripId;
 
-    @Column(name = "attraction_id", nullable = false)
+    @Column(name = "attraction_id")
     @Getter
     private Long attractionId;
+
+    @Embedded
+    @Getter
+    private ItineraryTypedItem typedItem;
+
+    @Column(name = "item_changed_since_check", nullable = false)
+    private boolean itemChangedSinceCheck;
 
     @Column(name = "path_position", nullable = false)
     private int position;
@@ -47,7 +54,7 @@ public class ItineraryEntry {
     private boolean includedInLastCheck;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "watched_source_baseline", updatable = false, nullable = false)
+    @Column(name = "watched_source_baseline", updatable = false)
     private WatchedSourceSnapshot watchedSourceBaseline;
 
     @Column(name = "start_changed_since_check", nullable = false)
@@ -76,6 +83,17 @@ public class ItineraryEntry {
         this.timing = timing;
     }
 
+    public static ItineraryEntry forTypedItem(long tripId, ItineraryTypedItem item, int position,
+                                               ItineraryTiming timing, boolean fixedStart) {
+        if (item == null || timing.plannedMinutes() < 1) {
+            throw new IllegalArgumentException("A typed item requires its own data and a positive planned length");
+        }
+        var entry = new ItineraryEntry(tripId, null, position, timing);
+        entry.typedItem = item;
+        entry.fixedStart = fixedStart;
+        return entry;
+    }
+
     public static ItineraryEntry fromGroup(long tripId, ItineraryGroupedAttraction member, int position,
                                            ItineraryTiming timing) {
         if (timing.plannedMinutes() != member.contributionMinutes()) {
@@ -91,6 +109,17 @@ public class ItineraryEntry {
         if (fixedStart != fixed) {
             fixedStart = fixed;
             fixedStartChangedSinceCheck = true;
+        }
+    }
+
+    public void changeItemDetails(String name, String note) {
+        if (typedItem == null) {
+            throw new IllegalArgumentException("Only a typed entry has its own name and note");
+        }
+        var replacement = new ItineraryTypedItem(typedItem.kind(), name, note);
+        if (!typedItem.equals(replacement)) {
+            typedItem = replacement;
+            itemChangedSinceCheck = true;
         }
     }
 
@@ -125,6 +154,9 @@ public class ItineraryEntry {
     public void changeTiming(ItineraryTiming replacement) {
         if (!timing.date().equals(replacement.date()) || !timing.zone().equals(replacement.zone())) {
             throw new IllegalArgumentException("A timing edit must keep the entry's date and zone");
+        }
+        if (typedItem != null && replacement.plannedMinutes() < 1) {
+            throw new IllegalArgumentException("A typed item must have a positive planned length");
         }
         if (!timing.start().equals(replacement.start())) {
             startChangedSinceCheck = true;

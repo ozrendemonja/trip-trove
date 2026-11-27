@@ -29,13 +29,13 @@ import {
 } from "@fluentui/react-icons";
 import { useRef, useState, type ReactElement } from "react";
 import type {
-  AttractionEntry,
   ItineraryTransferDto,
   ItineraryTransferRemovalResponse,
   UpdateItineraryTransferRequest
 } from "../../clients/manager";
 import { useSaveShortcut } from "../../shared/hooks/UseSaveShortcut";
 import { useClasses } from "./Itinerary.styles";
+import type { ItineraryEntry } from "./itineraryEntries";
 import type { ItineraryTimingEditing } from "./useItineraryTimingEdit";
 
 type Mode = ItineraryTransferDto["mode"];
@@ -60,7 +60,7 @@ const transferLabel = ({ mode, minutes }: ItineraryTransferDto): string =>
   `${modes[mode].label} · ${minutes}m`;
 
 export function transfersForEntryRemoval(
-  entries: AttractionEntry[],
+  entries: ItineraryEntry[],
   index: number
 ): ItineraryTransferRemovalResponse[] {
   const fromAndTo = [
@@ -74,8 +74,8 @@ export function transfersForEntryRemoval(
 }
 
 export function transferBetweenEntries(
-  from?: AttractionEntry,
-  to?: AttractionEntry
+  from?: ItineraryEntry,
+  to?: ItineraryEntry
 ): ItineraryTransferRemovalResponse | undefined {
   const transfer = from?.outgoingTransfer;
   return transfer && to && transfer.toEntryId === to.entryId
@@ -89,8 +89,8 @@ export function TransferLine({
   blocked,
   onEdit
 }: {
-  from: AttractionEntry;
-  to: AttractionEntry;
+  from: ItineraryEntry;
+  to: ItineraryEntry;
   blocked: boolean;
   onEdit: (trigger: HTMLButtonElement) => void;
 }): ReactElement {
@@ -121,8 +121,8 @@ export function TransferEditor({
   onClose,
   onSaved
 }: {
-  from: AttractionEntry;
-  to: AttractionEntry;
+  from: ItineraryEntry;
+  to: ItineraryEntry;
   editing: ItineraryTimingEditing;
   onClose: () => void;
   onSaved: (message: string) => void;

@@ -7,6 +7,7 @@ import type {
 } from "../../clients/manager";
 import { EntrySaveError, saveEntry } from "./infra/ItinerarySchedulingApi";
 import { clockOffset, localClock } from "./itineraryClocks";
+import { isAttractionEntry } from "./itineraryEntries";
 import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 
 type Attraction = GetItineraryResponse["unscheduledAttractions"][number];
@@ -207,7 +208,9 @@ export function useItineraryScheduling({
       const saved = await loadSaved();
       const savedDay = saved?.days.find((day) =>
         day.entries.some(
-          (entry) => entry.attractionId === draft.intent.attractionId
+          (entry) =>
+            isAttractionEntry(entry) &&
+            entry.attractionId === draft.intent.attractionId
         )
       );
       if (!saved) {

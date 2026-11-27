@@ -1,6 +1,8 @@
 package com.triptrove.manager.application.controller;
 
+import com.triptrove.manager.application.dto.AddItineraryItemRequest;
 import com.triptrove.manager.application.dto.ExtractGroupedAttractionRequest;
+import com.triptrove.manager.application.dto.ItineraryItemFields;
 import com.triptrove.manager.application.dto.ItineraryTransferDTO;
 import com.triptrove.manager.application.dto.JoinItineraryAttractionRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
@@ -57,6 +59,26 @@ public class ItineraryEntryController {
     public ResponseEntity<Void> scheduleAttraction(@PathVariable Long tripId,
             @RequestBody @Valid ScheduleAttractionRequest request) {
         scheduling.scheduleAttractionOnDay(tripId, request.date(), request.toSchedulingInput());
+        return itineraryUpdated(tripId);
+    }
+
+    @PostMapping("/items")
+    @Operation(summary = "Add a timed meal or other item to an itinerary day")
+    @EntryUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The insertion position or transfers to remove changed",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> addItineraryItem(@PathVariable Long tripId, @RequestBody @Valid AddItineraryItemRequest request) {
+        entryEditor.addItem(tripId, request.toItemToAdd());
+        return itineraryUpdated(tripId);
+    }
+
+    @PutMapping("/entries/{entryId:\\d+}/item")
+    @Operation(summary = "Edit a timed item's name, planned length, start lock and note without changing its kind")
+    @TimingUpdateResponses
+    public ResponseEntity<Void> updateItineraryItem(@PathVariable Long tripId, @PathVariable Long entryId,
+            @RequestBody @Valid ItineraryItemFields request) {
+        entryEditor.updateItem(tripId, entryId, request.name(), request.plannedMinutes().intValueExact(),
+                request.fixedStart(), request.note());
         return itineraryUpdated(tripId);
     }
 
@@ -188,7 +210,7 @@ public class ItineraryEntryController {
     }
 
     @DeleteMapping("/entries/{entryId:\\d+}")
-    @Operation(summary = "Remove an itinerary entry without removing its attraction from the trip")
+    @Operation(summary = "Remove an itinerary entry, keeping its attraction on the trip if it has one")
     @EntryUpdateResponses
     @ApiResponse(responseCode = "409", description = "The grouped attractions or transfers to remove changed",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))

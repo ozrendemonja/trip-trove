@@ -1,10 +1,17 @@
 import { useRef, useState } from "react";
-import type { GetItineraryResponse } from "../../clients/manager";
+import type {
+  GetItineraryResponse,
+  ItineraryItemFields,
+  TypedItineraryEntryResponse
+} from "../../clients/manager";
 import {
   EntryEditError,
   saveEntryEdit,
+  saveItemAddition,
+  type AddItemEdit,
   type EntryEdit
 } from "./infra/ItinerarySchedulingApi";
+import { isAttractionEntry, type ItineraryEntry } from "./itineraryEntries";
 import type { PlanningWorkspace } from "./useTripPlanningWorkspace";
 import {
   clockEditInput,
@@ -16,10 +23,12 @@ import {
 
 type ReloadOutcome = "unconfirmed" | "refresh";
 
-interface PendingEdit {
+type EditTarget =
+  | { entryId: number; edit: EntryEdit }
+  | { entryId?: undefined; edit: AddItemEdit };
+
+type PendingEdit = EditTarget & {
   tripId: number;
-  entryId: number;
-  edit: EntryEdit;
   onReload?: (
     saved: GetItineraryResponse,
     recovery: ReloadOutcome,
@@ -27,11 +36,11 @@ interface PendingEdit {
   ) => void;
   activity?: "saving" | "loading";
   recovery?: ReloadOutcome;
-}
+};
 
 interface RejectedEdit {
-  entryId: number;
-  edit: EntryEdit;
+  entryId?: number;
+  edit: EditTarget["edit"];
   message: string;
   inspected?: boolean;
 }
@@ -39,9 +48,10 @@ interface RejectedEdit {
 type EditKind =
   | TimingField
   | "fixed-start"
+  | AddItemEdit["action"]
   | Extract<EntryEdit, { action: string }>["action"];
 
-export function editKind(edit: EntryEdit): EditKind {
+export function editKind(edit: EditTarget["edit"]): EditKind {
   if ("action" in edit) return edit.action;
   return clockEditInput(edit)?.field ?? "fixed-start";
 }
@@ -61,9 +71,28 @@ export interface ItineraryTimingEditing {
     edit: EntryEdit,
     onReload?: PendingEdit["onReload"]
   ) => Promise<EntryEditError | undefined>;
+  addItem: (
+    edit: AddItemEdit,
+    onReload: PendingEdit["onReload"]
+  ) => Promise<EntryEditError | undefined>;
   inspect: () => Promise<void>;
-  discardRejection: (entryId: number, kind: EditKind) => void;
+  discardRejection: (entryId: number | undefined, kind: EditKind) => void;
   discardDrafts: () => void;
+}
+
+function itemMatches(
+  entry: ItineraryEntry | undefined,
+  fields: ItineraryItemFields
+): entry is TypedItineraryEntryResponse {
+  return (
+    entry !== undefined &&
+    !isAttractionEntry(entry) &&
+    entry.name === fields.name &&
+    entry.note === fields.note &&
+    entry.fixedStart === (fields.fixedStart ?? false) &&
+    elapsedMinutes(entry.timing.start, entry.timing.end) ===
+      fields.plannedMinutes
+  );
 }
 
 function editIsReflected(
@@ -78,8 +107,27 @@ function editIsReflected(
   const sameClock = (a: string, b: string): boolean =>
     a.padEnd(8, ":00") === b.padEnd(8, ":00");
   if ("action" in edit) {
+    if (edit.action === "add-item") {
+      const { request, previousEntryIds } = edit;
+      const entries =
+        saved.days.find((item) => item.date === request.date)?.entries ?? [];
+      const predecessor = entries.findIndex(
+        ({ entryId }) => entryId === request.afterEntryId
+      );
+      if (request.afterEntryId !== undefined && predecessor < 0) return false;
+      const added = entries[predecessor + 1];
+      return (
+        itemMatches(added, request.item) &&
+        !previousEntryIds.has(added.entryId) &&
+        added.kind === request.kind &&
+        (request.startTime === undefined ||
+          sameClock(localClock(added.timing.start), request.startTime))
+      );
+    }
+    if (edit.action === "edit-item") return itemMatches(entry, edit.request);
+    const attraction = entry && isAttractionEntry(entry) ? entry : undefined;
     if (edit.action === "reorder-group") {
-      const members = entry?.groupedAttractions;
+      const members = attraction?.groupedAttractions;
       const { attractionIds } = edit.request;
       return (
         members?.length === attractionIds.length &&
@@ -90,7 +138,7 @@ function editIsReflected(
     }
     if (edit.action === "join") {
       return (
-        entry?.groupedAttractions?.some(
+        attraction?.groupedAttractions?.some(
           (member) => member.attractionId === edit.request.attractionId
         ) === true
       );
@@ -99,6 +147,7 @@ function editIsReflected(
       return saved.days.some(({ entries }) =>
         entries.some(
           (host) =>
+            isAttractionEntry(host) &&
             host.entryId === edit.destinationEntryId &&
             host.groupedAttractions?.some(
               (member) => member.attractionId === edit.attractionId
@@ -111,7 +160,8 @@ function editIsReflected(
       const entries =
         saved.days.find((item) => item.date === date)?.entries ?? [];
       const index = entries.findIndex(
-        (item) => item.attractionId === edit.attractionId
+        (item) =>
+          isAttractionEntry(item) && item.attractionId === edit.attractionId
       );
       return (
         index >= 0 &&
@@ -125,10 +175,11 @@ function editIsReflected(
       return !saved.days.some(({ entries }) =>
         entries.some(
           (host) =>
-            host.attractionId === edit.attractionId ||
-            host.groupedAttractions?.some(
-              (member) => member.attractionId === edit.attractionId
-            )
+            isAttractionEntry(host) &&
+            (host.attractionId === edit.attractionId ||
+              host.groupedAttractions?.some(
+                (member) => member.attractionId === edit.attractionId
+              ))
         )
       );
     }
@@ -185,7 +236,10 @@ export function useItineraryTimingEdit(
   const pending = state?.tripId === tripId ? state : undefined;
   const inFlight = useRef(false);
 
-  const discardRejection = (entryId: number, kind: EditKind): void => {
+  const discardRejection: ItineraryTimingEditing["discardRejection"] = (
+    entryId,
+    kind
+  ) => {
     setRejections((current) =>
       current.filter(
         (item) => item.entryId !== entryId || editKind(item.edit) !== kind
@@ -228,9 +282,10 @@ export function useItineraryTimingEdit(
       }
       if (edit.onReload) {
         edit.onReload(saved, recovery, applied);
-      } else {
+      } else if (edit.entryId !== undefined) {
         setFeedback({
-          ...edit,
+          tripId: edit.tripId,
+          entryId: edit.entryId,
           text:
             recovery === "unconfirmed"
               ? "Saved entry reloaded. Inspect the entry before editing again."
@@ -242,11 +297,10 @@ export function useItineraryTimingEdit(
     }
   };
 
-  const save: ItineraryTimingEditing["save"] = async (
-    entryId,
-    edit,
-    onReload
-  ) => {
+  const submit = async (
+    proposal: EditTarget,
+    onReload?: PendingEdit["onReload"]
+  ): Promise<EntryEditError | undefined> => {
     if (tripId === undefined || inFlight.current || pending) {
       return new EntryEditError(
         "Wait for the pending itinerary change before editing again.",
@@ -260,16 +314,22 @@ export function useItineraryTimingEdit(
         false
       );
     }
-    const target = { tripId, entryId, edit, onReload };
+    const target = { ...proposal, tripId, onReload };
     inFlight.current = true;
     setState({ ...target, activity: "saving" });
     setFeedback(undefined);
-    discardRejection(entryId, editKind(edit));
-    const clock = clockEditInput(edit);
-    if (clock) setClockInput(entryId, clock.field);
+    discardRejection(proposal.entryId, editKind(proposal.edit));
+    if (proposal.entryId !== undefined) {
+      const clock = clockEditInput(proposal.edit);
+      if (clock) setClockInput(proposal.entryId, clock.field);
+    }
     try {
       try {
-        await saveEntryEdit(tripId, entryId, edit);
+        if (proposal.entryId === undefined) {
+          await saveItemAddition(tripId, proposal.edit.request);
+        } else {
+          await saveEntryEdit(tripId, proposal.entryId, proposal.edit);
+        }
       } catch (error) {
         if (error instanceof EntryEditError && !error.unconfirmed) {
           setState(undefined);
@@ -303,7 +363,8 @@ export function useItineraryTimingEdit(
     hasClockInputs: clockInputs.size > 0,
     getClockInput: (entryId, field) => clockInputs.get(editKey(entryId, field)),
     setClockInput,
-    save,
+    save: (entryId, edit, onReload) => submit({ entryId, edit }, onReload),
+    addItem: (edit, onReload) => submit({ edit }, onReload),
     inspect,
     discardRejection,
     discardDrafts: () => {

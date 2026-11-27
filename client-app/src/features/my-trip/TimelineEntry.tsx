@@ -6,14 +6,19 @@ import {
   mergeClasses,
   type InputProps
 } from "@fluentui/react-components";
-import { LockClosed16Regular, LockOpen16Regular } from "@fluentui/react-icons";
+import {
+  CalendarLtr16Regular,
+  Food16Regular,
+  LockClosed16Regular,
+  LockOpen16Regular
+} from "@fluentui/react-icons";
 import { useEffect, useId, useState, type ReactElement } from "react";
-import type { GetItineraryResponse } from "../../clients/manager";
 import { TripAttractionCardFacts } from "./AttractionFactsDialog";
 import {
-  useItineraryAttractionCard,
+  useItineraryCard,
   type DraggedItineraryItem,
-  type OpenAttractionFacts
+  type OpenAttractionFacts,
+  type OpenTypedItem
 } from "./ItineraryDrag";
 import { useClasses } from "./Itinerary.styles";
 import { entryWarningLabels, ItineraryWarning } from "./ItineraryWarning";
@@ -26,12 +31,12 @@ import {
   parseTimingEdit,
   type TimingField
 } from "./itineraryClocks";
+import { isAttractionEntry, type ItineraryEntry } from "./itineraryEntries";
 import {
   editKind,
   type ItineraryTimingEditing
 } from "./useItineraryTimingEdit";
 
-type Entry = GetItineraryResponse["days"][number]["entries"][number];
 const endDateLabel = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   day: "numeric",
@@ -52,9 +57,10 @@ export function TimelineEntry({
   grouping,
   onGrab,
   onRelease,
-  onOpenFacts
+  onOpenFacts,
+  onOpenItem
 }: {
-  entry: Entry;
+  entry: ItineraryEntry;
   index: number;
   editing: ItineraryTimingEditing;
   blocked: boolean;
@@ -64,6 +70,7 @@ export function TimelineEntry({
   onGrab: (item: DraggedItineraryItem) => void;
   onRelease: () => void;
   onOpenFacts: OpenAttractionFacts;
+  onOpenItem: OpenTypedItem;
 }): ReactElement {
   const classes = useClasses();
   const errorId = useId();
@@ -78,14 +85,21 @@ export function TimelineEntry({
     message: string;
   }>();
   const [lockError, setLockError] = useState<string>();
-  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+  const { interaction, nameButton, dragHandle } = useItineraryCard({
     item: { kind: "entry", entry },
     blocked,
     onGrab,
     onRelease,
-    onOpenFacts
+    onOpenFacts,
+    onOpenItem
   });
-  const { Icon, tone, label } = attractionImportance(entry);
+  const { Icon, tone, label } = isAttractionEntry(entry)
+    ? attractionImportance(entry)
+    : {
+        Icon: entry.kind === "MEAL" ? Food16Regular : CalendarLtr16Regular,
+        tone: "ring" as const,
+        label: entry.kind === "MEAL" ? "Meal item" : "Other item"
+      };
   const { start, end, zone, repeatedStart, repeatedEnd } = entry.timing;
   const minutes = elapsedMinutes(start, end);
   const isBriefStop = minutes === 0;
@@ -187,7 +201,12 @@ export function TimelineEntry({
       if (!draft.changed) return;
       const edit = blocked
         ? "Wait for the current planning change before saving this clock."
-        : parseTimingEdit(field, draft.value, endDate);
+        : parseTimingEdit(
+            field,
+            draft.value,
+            endDate,
+            isAttractionEntry(entry) ? 0 : 1
+          );
       if (typeof edit === "string") {
         setError({ input, field, message: edit });
         return;
@@ -248,7 +267,9 @@ export function TimelineEntry({
           classes.entryCard,
           groupDropActive && classes.activeDropTarget
         )}
-        data-itinerary-group-host={entry.entryId}
+        data-itinerary-group-host={
+          isAttractionEntry(entry) ? entry.entryId : undefined
+        }
         {...interaction}
       >
         <div className={classes.entryHeader}>
@@ -302,11 +323,23 @@ export function TimelineEntry({
             contentAfter={<Caption1>min</Caption1>}
           />
         </label>
-        {(entry.workingHours || entry.visitDuration || entry.tripNote) && (
-          <div className={classes.unscheduledFacts}>
-            <TripAttractionCardFacts attraction={entry} />
-          </div>
-        )}
+        {isAttractionEntry(entry)
+          ? (entry.workingHours || entry.visitDuration || entry.tripNote) && (
+              <div className={classes.unscheduledFacts}>
+                <TripAttractionCardFacts attraction={entry} />
+              </div>
+            )
+          : entry.note && (
+              <div
+                role="note"
+                aria-label="Entry note"
+                className={mergeClasses("sticky-note", classes.note)}
+              >
+                <Caption1 block className={classes.notePreview}>
+                  {entry.note}
+                </Caption1>
+              </div>
+            )}
       </Card>
       {grouping}
       {endFocused && !blocked && (

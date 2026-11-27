@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0023-add-itinerary-typed-items
+      author: trip-trove
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE itinerary_entry
+                ALTER COLUMN attraction_id DROP NOT NULL,
+                ALTER COLUMN watched_source_baseline DROP NOT NULL,
+                ADD COLUMN item_kind VARCHAR(32),
+                ADD COLUMN item_name VARCHAR(255),
+                ADD COLUMN item_note VARCHAR(512),
+                ADD COLUMN item_changed_since_check BOOLEAN NOT NULL DEFAULT FALSE,
+                ADD CONSTRAINT itinerary_entry_attraction_or_item CHECK (
+                  (attraction_id IS NOT NULL AND watched_source_baseline IS NOT NULL
+                    AND item_kind IS NULL AND item_name IS NULL AND item_note IS NULL)
+                  OR
+                  (attraction_id IS NULL AND watched_source_baseline IS NULL
+                    AND item_kind IS NOT NULL AND item_kind IN ('MEAL', 'OTHER')
+                    AND item_name IS NOT NULL AND planned_minutes > 0)
+                );
+              CREATE INDEX itinerary_entry_items_by_trip ON itinerary_entry (trip_id) WHERE item_kind IS NOT NULL;
+              DROP TRIGGER initialize_itinerary_watched_baseline ON itinerary_entry;
+              CREATE TRIGGER initialize_itinerary_watched_baseline BEFORE INSERT ON itinerary_entry
+              FOR EACH ROW WHEN (NEW.attraction_id IS NOT NULL AND NEW.watched_source_baseline IS NULL)
+              EXECUTE FUNCTION initialize_itinerary_watched_baseline();
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION itinerary_check_context(trip_id BIGINT, itinerary_zone TEXT, checked_at TIMESTAMPTZ)
+              RETURNS TEXT LANGUAGE sql STABLE AS $$
+                  SELECT encode(sha256(convert_to((jsonb_build_array(
+                      trip.id, trip.trip_start_date, trip.trip_end_date, itinerary_zone, checked_at AT TIME ZONE 'UTC',
+                      (SELECT jsonb_agg(jsonb_build_array(
+                          entry.id, entry.date, entry.path_position, entry.zone_id, entry.start_time,
+                          entry.second_start_occurrence, entry.planned_minutes, entry.fixed_start,
+                          entry.start_changed_since_check, entry.planned_length_changed_since_check,
+                          entry.fixed_start_changed_since_check, entry.moved_since_check, entry.following_starts_pushed_since_check,
+                          a.watched_source_versions, item.watched_source_versions
+                      ) || CASE WHEN entry.group_changed_since_check THEN '[true]'::jsonb ELSE '[]'::jsonb END
+                        || CASE WHEN entry.item_kind IS NOT NULL
+                          THEN jsonb_build_array(entry.item_kind, entry.item_name, entry.item_note, entry.item_changed_since_check)
+                          ELSE '[]'::jsonb END
+                        || CASE WHEN entry.transfer_to_entry_id IS NOT NULL OR entry.transfer_changed_since_check
+                          THEN jsonb_build_array(entry.transfer_to_entry_id, entry.transfer_mode, entry.transfer_minutes,
+                              entry.transfer_note, entry.transfer_changed_since_check)
+                          ELSE '[]'::jsonb END ORDER BY entry.id)
+                      FROM itinerary_entry entry
+                      LEFT JOIN trip_attraction item ON item.trip_id = entry.trip_id AND item.attraction_id = entry.attraction_id
+                      LEFT JOIN attraction a ON a.id = entry.attraction_id
+                      WHERE entry.trip_id = trip.id),
+                      (SELECT max(removal.id) FROM itinerary_entry_removal removal WHERE removal.trip_id = trip.id)
+                  ) || COALESCE((
+                      SELECT jsonb_build_array(jsonb_agg(jsonb_build_array(
+                          member.host_entry_id, member.attraction_id, member.member_position, member.contribution_minutes,
+                          a.watched_source_versions, item.watched_source_versions
+                      ) ORDER BY member.host_entry_id, member.member_position))
+                      FROM itinerary_grouped_attraction member
+                      JOIN trip_attraction item ON item.trip_id = member.trip_id AND item.attraction_id = member.attraction_id
+                      JOIN attraction a ON a.id = member.attraction_id
+                      WHERE member.trip_id = trip.id
+                      HAVING count(*) > 0
+                  ), '[]'::jsonb))::text, 'UTF8')), 'hex')
+                  FROM trip WHERE trip.id = $1
+              $$;

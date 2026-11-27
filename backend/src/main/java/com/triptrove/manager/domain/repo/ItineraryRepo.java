@@ -4,8 +4,8 @@ import com.triptrove.manager.domain.model.Itinerary;
 import com.triptrove.manager.domain.model.ItineraryDay;
 import com.triptrove.manager.domain.model.ItineraryDaySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails;
-import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
+import com.triptrove.manager.domain.model.ItineraryDetails.EntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntrySummary;
 import com.triptrove.manager.domain.model.ItinerarySchedulingEntrySummary;
@@ -54,7 +54,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
 
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItinerarySummaryRow(
-                trip.from, trip.to, itinerary.timeZone, day.date, entry.id, entry.attractionId, attraction.name,
+                trip.from, trip.to, itinerary.timeZone, day.date, entry.id, entry.attractionId,
+                COALESCE(attraction.name, entry.typedItem.name),
                 entry.position, entry.fixedStart, entry.timing, entry.outgoingTransfer)
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
@@ -75,7 +76,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
         for (var row : rows) {
             if (row.itineraryDate() != null) {
                 var entries = entriesByDate.computeIfAbsent(row.itineraryDate(), ignored -> new ArrayList<>());
-                if (row.attractionId() != null) {
+                if (row.entryId() != null) {
                     entries.add(new ItinerarySchedulingEntrySummary(row.entryId(), row.attractionId(), row.attractionName(),
                             row.position(), row.fixedStart(), row.timing(), row.outgoingTransfer()));
                 }
@@ -104,7 +105,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             """)
     boolean hasScheduledAttractions(Long tripId, List<Long> attractionIds);
 
-    // Attach board cards and removals to the first day only. The uncorrelated subquery computes one check context per trip.
+    // Attach board cards, typed items and removals to the first day only; entries are regrouped by their own dates.
     @Query("""
             SELECT new com.triptrove.manager.domain.repo.ItineraryAndBoardRow(
                 itinerary.tripId, itinerary.timeZone, itinerary.lastCheckedAt, day.id, day.date, day.note,
@@ -120,17 +121,21 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
                 entry.watchedSourceBaseline, source.snapshot, member.hostEntryId, member.position,
                 member.contributionMinutes, member.includedInLastCheck, member.joinedSinceLastCheck, member.watchedSourceBaseline,
+                entry.typedItem, entry.itemChangedSinceCheck,
                 (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt) AS String)
                  FROM Itinerary saved WHERE saved.tripId = :tripId))
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
             LEFT JOIN ItineraryDay day ON day.itinerary = itinerary
             LEFT JOIN (
-                SELECT item.id AS boardId, CAST(NULL AS Long) AS removalId
+                SELECT item.id AS boardId, CAST(NULL AS Long) AS removalId, CAST(NULL AS Long) AS itemEntryId
                 FROM TripAttraction item WHERE item.trip.id = :tripId
                 UNION ALL
-                SELECT CAST(NULL AS Long) AS boardId, removed.id AS removalId
+                SELECT CAST(NULL AS Long) AS boardId, removed.id AS removalId, CAST(NULL AS Long) AS itemEntryId
                 FROM ItineraryEntryRemoval removed WHERE removed.tripId = :tripId
+                UNION ALL
+                SELECT CAST(NULL AS Long) AS boardId, CAST(NULL AS Long) AS removalId, typed.id AS itemEntryId
+                FROM ItineraryEntry typed WHERE typed.tripId = :tripId AND typed.typedItem.kind IS NOT NULL
             ) subject ON day.date = trip.from
             LEFT JOIN TripAttraction tripAttraction ON tripAttraction.id = subject.boardId
             LEFT JOIN ItineraryEntryRemoval removal ON removal.id = subject.removalId
@@ -139,7 +144,8 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
             LEFT JOIN attraction.main main
             LEFT JOIN attraction.region region
             LEFT JOIN attraction.country country
-            LEFT JOIN ItineraryEntry entry ON entry.tripId = trip.id AND entry.attractionId = attraction.id
+            LEFT JOIN ItineraryEntry entry ON entry.tripId = trip.id
+                AND (entry.attractionId = attraction.id OR entry.id = subject.itemEntryId)
             LEFT JOIN ItineraryGroupedAttraction member ON member.tripId = trip.id AND member.attractionId = attraction.id
             LEFT JOIN TripAttractionWatchedSource source ON source.tripId = :tripId
                 AND source.tripAttractionId = tripAttraction.id AND (entry.id IS NOT NULL OR member.id IS NOT NULL)
@@ -199,7 +205,7 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 .toList();
     }
 
-    private static List<AttractionEntrySummary> entriesInPathOrder(List<ItineraryAndBoardRow> rows,
+    private static List<EntrySummary> entriesInPathOrder(List<ItineraryAndBoardRow> rows,
             Map<Long, List<ItineraryAndBoardRow>> membersByHost) {
         var ordered = rows.stream().sorted(Comparator.comparingInt(ItineraryAndBoardRow::entryPosition)).toList();
         return IntStream.range(0, ordered.size())

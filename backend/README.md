@@ -121,6 +121,27 @@ context or create a change notice.
 The itinerary and trip overview (`hasItineraryEntries`, `hasItineraryDayNotes`)
 still use one SELECT each.
 
+`POST /trips/{id}/itinerary/items` adds a `MEAL` or `OTHER` item. Supply its
+`date`, `kind`, and `item` fields (`name`, positive whole `plannedMinutes`,
+optional `fixedStart` and a multiline `note` of at most 512 characters).
+Send `afterEntryId` to start at that day's saved entry's end. On an empty
+day send `startTime` instead, and `timeZone` if the itinerary has none.
+An insertion can push later unlocked entries. If it disconnects an
+entered transfer, confirm the listed transfer(s) by resubmitting with
+`transfersToRemoveAtInsertionPoint`. A meal that does not fit is rejected
+with `maximumPlannedMinutes`; zero means no positive length fits. The
+server never shortens a meal automatically.
+
+`PUT /trips/{id}/itinerary/entries/{entryId}/item` replaces the same item
+fields without changing its kind. Typed items use the ordinary entry
+clock, lock, position, transfer and removal operations. They have no
+attraction ID or source data and cannot host or join a group. Both item
+writes are atomic and return `204` with the itinerary `Location`. The
+one-SELECT GET returns typed items with `kind` and their own `note`, in
+the same day and path order as attraction entries. Adding, editing and
+removing a typed item affects the manual check just like other entry
+changes.
+
 For board removal or a move to Excluded Attractions, preview the scheduled
 entry, its affected dates and its incoming and outgoing transfers using
 `GET /trips/{id}/itinerary`. After the user reviews it, send the `entryId`
@@ -167,12 +188,14 @@ end plus its transfer needs more time. A conflict with a fixed start or
 itinerary bounds rejects the whole edit, not the transfer in isolation.
 There is no 24-hour cap.
 
-An insertion, move or removal that disconnects transfers returns `409`
-with `transfersToRemove` and writes nothing. After the user reviews them,
-repeat the same action with the listed `transfer` objects in its confirmation
-field (`transfersToRemove` unless otherwise noted). This removes exactly those transfers with the rest of
-the action; none is reused for a different pair. A pool addition still uses the submitted clock and
-does not retime saved entries.
+For typed-item insertion and moves, the server validates timing before checking
+transfer confirmations. If an insertion, move or removal has a missing or stale
+confirmation for the transfers it would disconnect, it returns `409` with
+`transfersToRemove` and writes nothing. After the user reviews them, repeat the
+same action with the listed `transfer` objects in its confirmation field
+(`transfersToRemove` unless otherwise noted). This removes exactly those transfers
+with the rest of the action; none is reused for a different pair. A pool addition
+still uses the submitted clock and does not retime saved entries.
 
 ### Grouped attractions on one entry
 

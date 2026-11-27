@@ -1,5 +1,6 @@
 import { useCallback, useContext, useState } from "react";
 import type {
+  AttractionEntry,
   GetItineraryResponse,
   ItineraryTransferDto,
   ItineraryTransferRemovalResponse
@@ -11,6 +12,7 @@ import type {
 import { fetchTripItinerary } from "../../my-trip/infra/TripApi";
 import type { GroupedAttraction } from "../../my-trip/ItineraryDrag";
 import { transfersForEntryRemoval } from "../../my-trip/ItineraryTransfer";
+import { isAttractionEntry } from "../../my-trip/itineraryEntries";
 import {
   TripPlanningWorkspace,
   usePlanningDraft,
@@ -18,13 +20,12 @@ import {
 } from "../../my-trip/useTripPlanningWorkspace";
 
 type Day = GetItineraryResponse["days"][number];
-type Entry = Day["entries"][number];
 
 export interface BoardRemovalSelection {
   attractionIds: number[];
   entry?: {
     dayNumber: number;
-    saved: Entry;
+    saved: AttractionEntry;
     member?: GroupedAttraction;
     endDayNumber: number;
     transfers: ItineraryTransferRemovalResponse[];
@@ -112,11 +113,14 @@ function selectionFor(
   if (proposal.operation === "city") {
     const scheduled = new Set(
       days.flatMap((day) =>
-        day.entries.flatMap((entry) => [
-          entry.attractionId,
-          ...(entry.groupedAttractions?.map((member) => member.attractionId) ??
-            [])
-        ])
+        day.entries
+          .filter(isAttractionEntry)
+          .flatMap((entry) => [
+            entry.attractionId,
+            ...(entry.groupedAttractions?.map(
+              (member) => member.attractionId
+            ) ?? [])
+          ])
       )
     );
     return {
@@ -127,11 +131,14 @@ function selectionFor(
   for (const [index, day] of days.entries()) {
     const position = day.entries.findIndex(
       (entry) =>
-        entry.attractionId === id ||
-        entry.groupedAttractions?.some((member) => member.attractionId === id)
+        isAttractionEntry(entry) &&
+        (entry.attractionId === id ||
+          entry.groupedAttractions?.some(
+            (member) => member.attractionId === id
+          ))
     );
     const saved = day.entries[position];
-    if (saved) {
+    if (saved && isAttractionEntry(saved)) {
       const endDate = saved.timing.end.slice(0, 10);
       const member = saved.groupedAttractions?.find(
         (item) => item.attractionId === id

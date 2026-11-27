@@ -20,13 +20,16 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
                 start_changed_since_check = false, planned_length_changed_since_check = false,
                 fixed_start_changed_since_check = false, moved_since_check = false,
                 following_starts_pushed_since_check = false, transfer_changed_since_check = false,
-                group_changed_since_check = false,
+                group_changed_since_check = false, item_changed_since_check = false,
                 watched_source_baseline = source.snapshot
-            FROM trip_attraction_watched_source source
-            WHERE entry.trip_id = :tripId AND source.trip_id = entry.trip_id AND source.attraction_id = entry.attraction_id
+            FROM (
+                SELECT attraction_id, snapshot FROM trip_attraction_watched_source WHERE trip_id = :tripId
+                UNION ALL SELECT NULL, NULL
+            ) source
+            WHERE entry.trip_id = :tripId AND entry.attraction_id IS NOT DISTINCT FROM source.attraction_id
                 AND (NOT entry.included_in_last_check OR entry.start_changed_since_check OR entry.planned_length_changed_since_check
                     OR entry.fixed_start_changed_since_check OR entry.moved_since_check
-                    OR entry.transfer_changed_since_check OR entry.group_changed_since_check
+                    OR entry.transfer_changed_since_check OR entry.group_changed_since_check OR entry.item_changed_since_check
                     OR entry.watched_source_baseline IS DISTINCT FROM source.snapshot)
             """, nativeQuery = true)
     void markEntriesChecked(Long tripId);
@@ -62,13 +65,13 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.ItineraryTimingEditSummary(
-                entry, attraction.name, item.visitTime, trip.from, trip.to, itinerary.timeZone,
+                entry, COALESCE(attraction.name, entry.typedItem.name), item.visitTime, trip.from, trip.to, itinerary.timeZone,
                 COALESCE(members.lastPosition, 0), COALESCE(members.totalContribution, 0L))
             FROM ItineraryEntry entry
             JOIN Itinerary itinerary ON itinerary.tripId = entry.tripId
             JOIN Trip trip ON trip.id = entry.tripId
-            JOIN TripAttraction item ON item.trip = trip AND item.attraction.id = entry.attractionId
-            JOIN item.attraction attraction
+            LEFT JOIN TripAttraction item ON item.trip = trip AND item.attraction.id = entry.attractionId
+            LEFT JOIN item.attraction attraction
             LEFT JOIN (
                 SELECT member.hostEntryId AS hostId, MAX(member.position) AS lastPosition,
                     SUM(member.contributionMinutes) AS totalContribution
@@ -82,11 +85,12 @@ public interface ItineraryEntryRepo extends JpaRepository<ItineraryEntry, Long> 
 
     @Query("""
             SELECT new com.triptrove.manager.domain.model.ItineraryRemovalSummary(
-                entry, attraction.name, itinerary.lastCheckedAt, incoming, fromAttraction.name, toAttraction.name,
+                entry, COALESCE(attraction.name, entry.typedItem.name), itinerary.lastCheckedAt, incoming,
+                COALESCE(fromAttraction.name, incoming.typedItem.name), COALESCE(toAttraction.name, destination.typedItem.name),
                 EXISTS (SELECT 1 FROM ItineraryGroupedAttraction member WHERE member.hostEntryId = entry.id))
             FROM ItineraryEntry entry
             JOIN Itinerary itinerary ON itinerary.tripId = entry.tripId
-            JOIN Attraction attraction ON attraction.id = entry.attractionId
+            LEFT JOIN Attraction attraction ON attraction.id = entry.attractionId
             LEFT JOIN ItineraryEntry incoming ON incoming.outgoingTransfer.toEntryId = entry.id
             LEFT JOIN Attraction fromAttraction ON fromAttraction.id = incoming.attractionId
             LEFT JOIN ItineraryEntry destination ON destination.id = entry.outgoingTransfer.toEntryId

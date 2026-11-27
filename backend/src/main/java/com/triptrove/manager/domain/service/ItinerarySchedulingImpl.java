@@ -12,18 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
 public class ItinerarySchedulingImpl implements ItineraryScheduling {
-    private static final Set<String> NAMED_ZONES = Set.copyOf(ZoneId.getAvailableZoneIds());
-
     private final ItineraryRepo itineraries;
     private final ItineraryEntryRepo entries;
     private final TripAttractionRepo tripAttractions;
@@ -50,7 +46,7 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         var visitDurationMinutes = tripAttraction.resolveVisitDurationMinutes(attraction.visitDuration());
         validateStartAndTimeZone(attraction.start(), itineraryTimeZone);
 
-        var zone = requireNamedTimeZone(itineraryTimeZone);
+        var zone = ItineraryTiming.requireNamedZone(itineraryTimeZone);
         var proposedInterval = ItineraryTiming.atLocalStart(date, attraction.start(), zone, visitDurationMinutes,
                 attraction.startOffset());
         validateProposedIntervalFitsItinerary(proposedInterval, itinerary);
@@ -88,13 +84,6 @@ public class ItinerarySchedulingImpl implements ItineraryScheduling {
         if (!required.isEmpty()) {
             throw new BaseApiException(ITINERARY_INPUT_REQUIRED, new MissingInputs(List.copyOf(required)));
         }
-    }
-
-    private ZoneId requireNamedTimeZone(String itineraryTimeZone) {
-        if (!NAMED_ZONES.contains(itineraryTimeZone)) {
-            throw new BaseApiException("Not a named time zone", ITINERARY_UNKNOWN_ZONE, itineraryTimeZone);
-        }
-        return ZoneId.of(itineraryTimeZone);
     }
 
     private void validateProposedIntervalFitsItinerary(ItineraryTiming proposedInterval, ItinerarySummary itinerary) {

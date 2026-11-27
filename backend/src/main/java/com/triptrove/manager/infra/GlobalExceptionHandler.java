@@ -6,8 +6,9 @@ import com.triptrove.manager.application.dto.error.ErrorResponse;
 import com.triptrove.manager.domain.model.AttractionToSchedule.MissingInputs;
 import com.triptrove.manager.domain.model.BaseApiException;
 import com.triptrove.manager.domain.model.ItineraryDependency;
-import com.triptrove.manager.domain.model.ItineraryTimingIssue;
+import com.triptrove.manager.domain.model.ItineraryItemFit;
 import com.triptrove.manager.domain.model.ItineraryMoveStartChoices;
+import com.triptrove.manager.domain.model.ItineraryTimingIssue;
 import com.triptrove.manager.domain.model.ItineraryTransferRemovalSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -148,7 +149,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ItineraryMoveStartChoices moveStartChoices = null;
         List<ItineraryTransferRemovalResponse> transfersToRemove = null;
         if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_INPUT_REQUIRED
-                && exception.getContext().getFirst() instanceof MissingInputs inputs) {
+                && exception.getContext().getLast() instanceof MissingInputs inputs) {
             schedulingInputs = inputs;
             log.warn("Scheduling needs more input: {}", inputs);
         } else if (exception.getErrorCode() == BaseApiException.ErrorCode.ITINERARY_MOVE_START_CHOICE_REQUIRED
@@ -165,8 +166,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             log.error("Domain error {} - {}: ", exception.getErrorCode(), userMessage, exception);
         }
 
+        Integer maximumPlannedMinutes = null;
+        if (!exception.getContext().isEmpty()
+                && exception.getContext().getLast() instanceof ItineraryItemFit fit) {
+            maximumPlannedMinutes = fit.maximumPlannedMinutes();
+        }
         return ResponseEntity.status(httpStatus(responseCode)).contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs, moveStartChoices, transfersToRemove));
+                .body(new ErrorResponse(responseCode, userMessage, schedulingInputs, moveStartChoices, transfersToRemove,
+                        maximumPlannedMinutes));
     }
 
     @ExceptionHandler(Exception.class)

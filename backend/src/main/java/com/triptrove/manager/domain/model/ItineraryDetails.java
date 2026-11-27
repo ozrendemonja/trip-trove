@@ -32,7 +32,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
         public enum Reason {
             ATTRACTION_ADDED, START_CHANGED, PLANNED_LENGTH_CHANGED, FIXED_START_CHANGED,
             ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED, ATTRACTION_EXCLUDED, REMOVED_FROM_TRIP, TRANSFER_CHANGED,
-            GROUP_CHANGED
+            GROUP_CHANGED, TYPED_ITEM_ADDED, TYPED_ITEM_CHANGED
         }
 
         public enum SourceBaseline {
@@ -40,7 +40,10 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
         }
     }
 
-    public record Day(Long id, LocalDate date, String note, List<AttractionEntrySummary> entries) {
+    public record Day(Long id, LocalDate date, String note, List<EntrySummary> entries) {
+    }
+
+    public sealed interface EntrySummary permits AttractionEntrySummary, TypedItineraryEntrySummary {
     }
 
     public record AttractionEntrySummary(long entryId, long attractionId, String name, TripAttractionGroup attractionGroup,
@@ -49,7 +52,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
                                          String workingHours, String visitDuration, String tripNote,
                                          ItineraryTransferSummary outgoingTransfer,
                                          List<EntryWarning> warnings, List<ItineraryGroupedAttractionSummary> groupedAttractions,
-                                         Integer cityId, Long mainAttractionId) {
+                                         Integer cityId, Long mainAttractionId) implements EntrySummary {
     }
 
     public record UnscheduledAttractionSummary(Long attractionId, String name, String place,

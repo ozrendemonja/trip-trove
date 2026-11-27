@@ -19,10 +19,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_CLOCK_GAP;
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_INVALID_END_CLOCK;
 import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_START_OFFSET_NOT_AVAILABLE;
+import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITINERARY_UNKNOWN_ZONE;
 
 @Embeddable
 @Getter
@@ -30,6 +32,8 @@ import static com.triptrove.manager.domain.model.BaseApiException.ErrorCode.ITIN
 @EqualsAndHashCode
 @ToString
 public final class ItineraryTiming {
+    private static final Set<String> NAMED_ZONES = Set.copyOf(ZoneId.getAvailableZoneIds());
+
     @Column(name = "zone_id", nullable = false)
     private final String zone;
 
@@ -48,6 +52,13 @@ public final class ItineraryTiming {
 
     public ItineraryTiming(LocalDate date, LocalTime startTime, ZoneId zone, int minutes) {
         this(resolveStart(date, startTime, zone, null), minutes);
+    }
+
+    public static ZoneId requireNamedZone(String name) {
+        if (!NAMED_ZONES.contains(name)) {
+            throw new BaseApiException("Not a named time zone", ITINERARY_UNKNOWN_ZONE, name);
+        }
+        return ZoneId.of(name);
     }
 
     public static ItineraryTiming atLocalStart(LocalDate date, LocalTime time, ZoneId zone, int minutes, String offset) {

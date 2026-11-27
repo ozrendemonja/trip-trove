@@ -10,15 +10,18 @@ import java.util.List;
 
 public record ErrorResponse(ErrorCodeResponse errorCode, String errorMessage,
                             @JsonInclude(JsonInclude.Include.NON_NULL)
-                            @Schema(description = "Inputs needed to schedule an attraction, when applicable.")
+                            @Schema(description = "Inputs needed to schedule an attraction or add an itinerary item, when applicable.")
                             MissingInputs schedulingInputs,
                             @JsonInclude(JsonInclude.Include.NON_NULL)
                             @Schema(description = "UTC offsets that both fit a position when a moved entry's clock repeats.")
                             ItineraryMoveStartChoices moveStartChoices,
                             @JsonInclude(JsonInclude.Include.NON_NULL)
                             @Schema(description = "Current transfers the requested action would disconnect.")
-                            List<ItineraryTransferRemovalResponse> transfersToRemove) {
+                            List<ItineraryTransferRemovalResponse> transfersToRemove,
+                            @JsonInclude(JsonInclude.Include.NON_NULL)
+                            @Schema(description = "Longest shorter meal length at the requested position; zero means no positive length fits.")
+                            Integer maximumPlannedMinutes) {
     public ErrorResponse(ErrorCodeResponse errorCode, String errorMessage) {
-        this(errorCode, errorMessage, null, null, null);
+        this(errorCode, errorMessage, null, null, null, null);
     }
 }

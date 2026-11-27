@@ -31,7 +31,7 @@ import { readableFactValue, TripAttractionNote } from "./AttractionFactsDialog";
 import { useClasses } from "./Itinerary.styles";
 import {
   attractionNameId,
-  useItineraryAttractionCard,
+  useItineraryCard,
   type DraggedItineraryItem,
   type GroupMemberItem,
   type OpenAttractionFacts
@@ -44,6 +44,7 @@ import {
 import { entryWarningLabels, ItineraryWarning } from "./ItineraryWarning";
 import { attractionImportance } from "./UnscheduledAttractions";
 import { elapsedMinutes, localClock } from "./itineraryClocks";
+import { isAttractionEntry } from "./itineraryEntries";
 import { hasVisitDurationFormat } from "./useItineraryScheduling";
 import type { ItineraryTimingEditing } from "./useItineraryTimingEdit";
 import { usePlanningDraft } from "./useTripPlanningWorkspace";
@@ -67,6 +68,7 @@ function candidatesFor(
   itinerary.days.forEach((day, dayIndex) => {
     day.entries.forEach((attraction, index) => {
       if (
+        isAttractionEntry(attraction) &&
         attraction.entryId !== host.entryId &&
         attraction.attractionGroup !== "EXCLUDED" &&
         !attraction.groupedAttractions?.length
@@ -181,6 +183,7 @@ export function useItineraryGrouping(
           if (visitDuration !== undefined) {
             const member = saved.days
               .flatMap((day) => day.entries)
+              .filter(isAttractionEntry)
               .find((entry) => entry.entryId === host.entryId)
               ?.groupedAttractions?.find(
                 (item) => item.attractionId === attractionId
@@ -293,7 +296,7 @@ function GroupMemberRow({
   const menuButton = useRef<HTMLButtonElement>(null);
   const { host, member } = item;
   const { Icon, tone, label } = attractionImportance(member);
-  const { interaction, nameButton, dragHandle } = useItineraryAttractionCard({
+  const { interaction, nameButton, dragHandle } = useItineraryCard({
     item,
     blocked,
     onGrab,

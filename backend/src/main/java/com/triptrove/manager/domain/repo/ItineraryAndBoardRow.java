@@ -5,6 +5,7 @@ import com.triptrove.manager.domain.model.ItineraryDetails.AttractionEntrySummar
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.GroupedSourceChangeSummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.SourceBaseline;
+import com.triptrove.manager.domain.model.ItineraryDetails.EntrySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails.EntryWarning;
 import com.triptrove.manager.domain.model.ItineraryDetails.UnscheduledAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryEntryRemoval;
@@ -12,9 +13,12 @@ import com.triptrove.manager.domain.model.ItineraryGroupedAttractionSummary;
 import com.triptrove.manager.domain.model.ItineraryTiming;
 import com.triptrove.manager.domain.model.ItineraryTransfer;
 import com.triptrove.manager.domain.model.ItineraryTransferSummary;
+import com.triptrove.manager.domain.model.ItineraryTypedItem;
 import com.triptrove.manager.domain.model.TripAttraction;
 import com.triptrove.manager.domain.model.TripAttractionGroup;
+import com.triptrove.manager.domain.model.TypedItineraryEntrySummary;
 import com.triptrove.manager.domain.model.VisitDuration;
+import com.triptrove.manager.domain.model.WatchedSourceChangeSummary;
 import com.triptrove.manager.domain.model.WatchedSourceSnapshot;
 
 import java.time.Instant;
@@ -42,7 +46,8 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    WatchedSourceSnapshot watchedSourceBaseline, WatchedSourceSnapshot currentWatchedSource,
                                    Long hostEntryId, Integer memberPosition, Integer contributionMinutes,
                                    Boolean memberIncludedInLastCheck, Boolean memberJoinedSinceLastCheck,
-                                   WatchedSourceSnapshot memberWatchedSourceBaseline, String checkContext) {
+                                   WatchedSourceSnapshot memberWatchedSourceBaseline, ItineraryTypedItem typedItem,
+                                   Boolean itemChangedSinceCheck, String checkContext) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }
@@ -63,17 +68,22 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                 category, workingHours, visitDuration, tripNote, cityId, mainAttractionId);
     }
 
-    AttractionEntrySummary toEntrySummary(Long nextEntryId, List<ItineraryAndBoardRow> members) {
+    EntrySummary toEntrySummary(Long nextEntryId, List<ItineraryAndBoardRow> members) {
         if (entryTransfer != null && !entryTransfer.toEntryId().equals(nextEntryId)) {
             throw new IllegalStateException("Saved transfer does not connect neighbouring entries: " + entryId);
+        }
+        var transfer = entryTransfer == null ? null : new ItineraryTransferSummary(entryId, entryTransfer);
+        var missingTransfer = nextEntryId != null && entryTransfer == null;
+        if (typedItem != null) {
+            return new TypedItineraryEntrySummary(entryId, typedItem, entryFixedStart, entryTiming, transfer,
+                    missingTransfer ? List.of(EntryWarning.MISSING_TRANSFER) : List.of());
         }
         var groupedAttractions = members.stream().map(ItineraryAndBoardRow::toGroupedAttractionSummary).toList();
         var hostMinutes = entryTiming.plannedMinutes()
                 - groupedAttractions.stream().mapToInt(ItineraryGroupedAttractionSummary::contributionMinutes).sum();
         return new AttractionEntrySummary(entryId, attractionId, attractionName, boardColumn, mustVisit,
                 category, entryPosition, entryFixedStart, entryTiming, workingHours, visitDuration, tripNote,
-                entryTransfer == null ? null : new ItineraryTransferSummary(entryId, entryTransfer),
-                warnings(hostMinutes, nextEntryId != null && entryTransfer == null), groupedAttractions,
+                transfer, warnings(hostMinutes, missingTransfer), groupedAttractions,
                 cityId, mainAttractionId);
     }
 
@@ -100,14 +110,15 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     }
 
     ChangeNoticeSummary toChangeNotice(boolean hasBeenChecked, List<ItineraryAndBoardRow> members) {
-        var sourceChanges = currentWatchedSource.changesFrom(watchedSourceBaseline);
+        var sourceChanges = typedItem == null ? currentWatchedSource.changesFrom(watchedSourceBaseline)
+                : List.<WatchedSourceChangeSummary>of();
         SourceBaseline sourceBaseline = null;
         if (!sourceChanges.isEmpty()) {
             sourceBaseline = entryIncludedInLastCheck ? SourceBaseline.AT_LAST_CHECK : SourceBaseline.WHEN_SCHEDULED;
         }
         var memberChanges = members.stream().map(ItineraryAndBoardRow::toGroupedSourceChange)
                 .filter(change -> !change.sourceChanges().isEmpty()).toList();
-        return new ChangeNoticeSummary(entryId, attractionName, entryDate,
+        return new ChangeNoticeSummary(entryId, typedItem == null ? attractionName : typedItem.name(), entryDate,
                 hasBeenChecked ? entryChangeReasons(members) : List.of(), sourceBaseline, sourceChanges, memberChanges);
     }
 
@@ -120,7 +131,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
     private List<ChangeNoticeSummary.Reason> entryChangeReasons(List<ItineraryAndBoardRow> members) {
         var reasons = new ArrayList<ChangeNoticeSummary.Reason>(7);
         if (!entryIncludedInLastCheck) {
-            reasons.add(ATTRACTION_ADDED);
+            reasons.add(typedItem == null ? ATTRACTION_ADDED : TYPED_ITEM_ADDED);
         }
         if (startChangedSinceCheck) {
             reasons.add(START_CHANGED);
@@ -142,6 +153,9 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
         }
         if (groupChangedSinceCheck || members.stream().anyMatch(ItineraryAndBoardRow::memberJoinedSinceLastCheck)) {
             reasons.add(GROUP_CHANGED);
+        }
+        if (itemChangedSinceCheck) {
+            reasons.add(TYPED_ITEM_CHANGED);
         }
         return List.copyOf(reasons);
     }

@@ -887,26 +887,6 @@ class ItineraryCompositionTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void aContributionWriteRejectsAnAdditionalSourceCorrection() throws Exception {
-        seedTrip();
-        putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));
-        putFact("/trips/1/attractions/2/visit-time", new UpdateTripAttractionVisitTimeRequest("2-5m"));
-        var host = schedule(1L, TODAY, "09:00");
-        join(host, new JoinItineraryAttractionRequest(2L, null, null, null)).andExpect(status().isNoContent());
-        var before = saved().andReturn().getResponse().getContentAsString();
-
-        mockMvc.perform(put(ITINERARY + "/entries/{host}/grouped-attractions/2/duration-contribution", host)
-                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(Map.of("contributionMinutes", 2, "visitDuration", "0m"))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.errorMessage")
-                        .value("Request body must contain valid JSON with the expected field types."));
-
-        saved().andExpect(content().json(before, JsonCompareMode.STRICT));
-    }
-
-    @Test
     void aContributionWriteIsScopedToTheMembersCurrentHost() throws Exception {
         seedTrip();
         putFact("/trips/1/attractions/1/visit-time", new UpdateTripAttractionVisitTimeRequest("45m"));

@@ -1023,6 +1023,65 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
                 """).setParameter("date", date).setParameter("position", position).getSingleResult();
     }
 
+    @ParameterizedTest(name = "Contribution edit with {0} hosts and {0} members on the edited entry")
+    @ValueSource(ints = {3, 30})
+    void editingAMembersContributionUsesTwoSelectsAndTheReloadUsesOne(int hostCount) throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount, hostCount - 1);
+        var host = entryIdAtPosition(hostCount);
+        var member = 2L * hostCount;
+        entityManager.createNativeQuery("""
+                UPDATE trip_attraction SET visit_time = '0-5m'
+                WHERE trip_id = 1 AND attraction_id = :member
+                """).setParameter("member", member).executeUpdate();
+        var request = new UpdateGroupedAttractionContributionRequest(BigDecimal.valueOf(2));
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put(GROUP_MEMBERS + "/{member}/duration-contribution", host, member)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(0);
+        assertUpdateCount(2);
+        assertDeleteCount(0);
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/itinerary").header("x-api-version", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[1].entries.length()").value(hostCount))
+                .andExpect(jsonPath("$.days[1].entries[" + (hostCount - 1) + "].groupedAttractions.length()")
+                        .value(hostCount));
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest(name = "{0} hosts, contribution {1}, HTTP {2}")
+    @CsvSource({"3,5,204", "30,5,204", "3,1,400", "30,1,400"})
+    void anUnchangedOrRejectedContributionUsesTwoSelectsAndNoWrites(int hostCount, int minutes, int expectedStatus)
+            throws Exception {
+        seedItineraryWithGroupedAttractions(hostCount, hostCount - 1);
+        var host = entryIdAtPosition(hostCount);
+        var member = 2L * hostCount;
+        entityManager.createNativeQuery("""
+                UPDATE trip_attraction SET visit_time = '2-5m'
+                WHERE trip_id = 1 AND attraction_id = :member
+                """).setParameter("member", member).executeUpdate();
+        var request = new UpdateGroupedAttractionContributionRequest(BigDecimal.valueOf(minutes));
+        resetSqlStatementCounts();
+
+        mockMvc.perform(put(GROUP_MEMBERS + "/{member}/duration-contribution", host, member)
+                        .header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request)))
+                .andExpect(status().is(expectedStatus));
+        entityManager.flush();
+
+        assertSelectCount(2);
+        assertInsertCount(0);
+        assertUpdateCount(0);
+        assertDeleteCount(0);
+    }
+
     @ParameterizedTest(name = "{0}, {1} hosts and members on the edited entry")
     @MethodSource("groupEditWorkflows")
     void groupEditsKeepExactWriteAndReadSelectBudgets(String operation, int hostCount, int addedEntries,

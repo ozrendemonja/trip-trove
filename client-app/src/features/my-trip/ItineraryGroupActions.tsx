@@ -24,7 +24,7 @@ import {
   TransfersToRemoveList
 } from "./ItineraryTransfer";
 import type { GroupMemberEdit } from "./infra/ItinerarySchedulingApi";
-import { isLocalClock } from "./itineraryClocks";
+import { isLocalClock, readPlannedMinutes } from "./itineraryClocks";
 import { isAttractionEntry } from "./itineraryEntries";
 import {
   editKind,
@@ -40,6 +40,7 @@ export type GroupMemberChoice = {
 } & (
   | { action: "extract-group-member"; date?: string; beforeEntryId?: number }
   | { action: "move-group-member"; destinationEntryId?: number }
+  | { action: "edit-group-member-contribution" }
   | { action: "remove-group-member" }
 );
 
@@ -76,6 +77,7 @@ export function GroupDissolutionDetails({
 }
 
 const verbs = {
+  "edit-group-member-contribution": "Edit contribution for",
   "extract-group-member": "Extract",
   "move-group-member": "Move",
   "remove-group-member": "Remove"
@@ -106,6 +108,8 @@ export function GroupMemberDialog({
   } = choice;
   const { entryId } = host;
   const { attractionId, contributionMinutes, name } = member;
+  const editingContribution = action === "edit-group-member-contribution";
+  const [minutesInput, setMinutesInput] = useState(String(contributionMinutes));
   const extracting = action === "extract-group-member";
   const moving = action === "move-group-member";
   const [date, setDate] = useState(
@@ -161,16 +165,25 @@ export function GroupMemberDialog({
     setReviewedTransfers(undefined);
   };
   const clock = startTime.trim();
-  const valid = extracting
-    ? day &&
-      index !== undefined &&
-      index >= 0 &&
-      (!needsStart || isLocalClock(clock))
-    : !moving || !!destination;
+  const minutes = readPlannedMinutes(minutesInput, 0);
+  const valid = editingContribution
+    ? minutes !== undefined
+    : extracting
+      ? day &&
+        index !== undefined &&
+        index >= 0 &&
+        (!needsStart || isLocalClock(clock))
+      : !moving || !!destination;
   const submit = (): void => {
     if (!valid || blocked || pending) return;
     let edit: GroupMemberEdit;
-    if (extracting) {
+    if (editingContribution && minutes !== undefined) {
+      edit = {
+        action,
+        attractionId,
+        request: { contributionMinutes: minutes }
+      };
+    } else if (extracting) {
       edit = {
         action,
         attractionId,
@@ -212,14 +225,21 @@ export function GroupMemberDialog({
         <DialogBody>
           <DialogTitle>
             {verbs[action]} {name}
-            {extracting ? "" : "?"}
+            {extracting || editingContribution ? "" : "?"}
           </DialogTitle>
           <DialogContent>
-            <p>
-              {host.name}&apos;s planned length will be reduced by{" "}
-              {contributionMinutes} min. {name}&apos;s trip note stays with the
-              attraction.
-            </p>
+            {editingContribution ? (
+              <p>
+                The host keeps its own allocation, start and lock. Correct the
+                source separately in the attraction&apos;s facts.
+              </p>
+            ) : (
+              <p>
+                {host.name}&apos;s planned length will be reduced by{" "}
+                {contributionMinutes} min. {name}&apos;s trip note stays with
+                the attraction.
+              </p>
+            )}
             {extracting && (
               <p>
                 The new entry keeps {contributionMinutes} min and starts
@@ -247,6 +267,29 @@ export function GroupMemberDialog({
                 submit();
               }}
             >
+              {editingContribution && (
+                <Field
+                  label="Contribution (minutes)"
+                  required
+                  hint={`Current visit duration: ${member.visitDuration || "not recorded"}`}
+                  validationState={minutes === undefined ? "error" : undefined}
+                  validationMessage={
+                    minutes === undefined
+                      ? "Enter a non-negative whole contribution in minutes."
+                      : undefined
+                  }
+                >
+                  <Input
+                    inputMode="numeric"
+                    value={minutesInput}
+                    disabled={!!pending}
+                    onChange={(_event, { value }) => {
+                      setMinutesInput(value);
+                      changeProposal();
+                    }}
+                  />
+                </Field>
+              )}
               {extracting && (
                 <>
                   <Field label="Day">
@@ -365,7 +408,11 @@ export function GroupMemberDialog({
                 appearance="primary"
                 disabled={!valid || blocked || !!pending}
               >
-                {pending ? "Saving group..." : `${verbs[action]} attraction`}
+                {pending
+                  ? "Saving group..."
+                  : editingContribution
+                    ? "Save contribution"
+                    : `${verbs[action]} attraction`}
               </Button>
             )}
           </DialogActions>

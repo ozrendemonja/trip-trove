@@ -188,14 +188,12 @@ end plus its transfer needs more time. A conflict with a fixed start or
 itinerary bounds rejects the whole edit, not the transfer in isolation.
 There is no 24-hour cap.
 
-For typed-item insertion and moves, the server validates timing before checking
-transfer confirmations. If an insertion, move or removal has a missing or stale
-confirmation for the transfers it would disconnect, it returns `409` with
-`transfersToRemove` and writes nothing. After the user reviews them, repeat the
-same action with the listed `transfer` objects in its confirmation field
-(`transfersToRemove` unless otherwise noted). This removes exactly those transfers
-with the rest of the action; none is reused for a different pair. A pool addition
-still uses the submitted clock and does not retime saved entries.
+An insertion, move or removal that disconnects transfers returns `409`
+with `transfersToRemove` and writes nothing. After the user reviews them,
+repeat the same action with the listed `transfer` objects in its confirmation
+field (`transfersToRemove` unless otherwise noted). This removes exactly those transfers with the rest of
+the action; none is reused for a different pair. A pool addition still uses the submitted clock and
+does not retime saved entries.
 
 ### Grouped attractions on one entry
 
@@ -226,6 +224,19 @@ Under `/trips/{tripId}/itinerary/entries/{hostEntryId}/grouped-attractions`:
 
 - `PUT /order` replaces the order with `attractionIds`, listing every current
   member exactly once. Reordering does not change any clocks or contributions.
+- `PUT /{attractionId}/duration-contribution` takes
+  `{"contributionMinutes":2}` as an absolute replacement, not an increment.
+  Use nonnegative whole minutes within the member's current valid visit
+  duration; zero is allowed only when its source range includes zero.
+  The host total changes by the new contribution minus the saved contribution,
+  preserving its own allocation, start and lock, the other members and their
+  order. Growth consumes gaps before pushing following unlocked entries,
+  including retained transfers; shortening never pulls them earlier.
+  Conflicts reject the whole edit. The member keeps its identity, trip note
+  and watched-source baseline; neither its source duration nor a pending
+  source-change notice is overwritten or acknowledged. An unchanged value
+  creates no new notice. Success returns `204` with the itinerary `Location`
+  for the existing GET.
 - `POST /{attractionId}/move-to-entry/{destinationEntryId}` moves the member
   to the destination entry without a request body. The member keeps its
   contribution and baseline, and the destination keeps its start. Normal

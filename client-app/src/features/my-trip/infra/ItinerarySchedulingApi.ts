@@ -9,6 +9,7 @@ import {
   removeItineraryTransfer,
   reorderGroupedAttractions,
   scheduleAttraction,
+  updateGroupedAttractionContribution,
   updateItineraryDayNote,
   updateItineraryEntryEnd,
   updateItineraryEntryFixedStart,
@@ -25,6 +26,7 @@ import {
   type RemoveItineraryEntryRequest,
   type ReorderGroupedAttractionsRequest,
   type ScheduleAttractionRequest,
+  type UpdateGroupedAttractionContributionRequest,
   type UpdateItineraryEntryEndRequest,
   type UpdateItineraryEntryFixedStartRequest,
   type UpdateItineraryEntryPlannedLengthRequest,
@@ -76,6 +78,11 @@ export type TimingEdit =
   | UpdateItineraryEntryFixedStartRequest;
 
 export type GroupMemberEdit =
+  | {
+      action: "edit-group-member-contribution";
+      attractionId: number;
+      request: UpdateGroupedAttractionContributionRequest;
+    }
   | {
       action: "extract-group-member";
       attractionId: number;
@@ -175,6 +182,7 @@ export async function saveEntryEdit(
             path: { tripId, hostEntryId: entryId },
             body: edit.request
           });
+        case "edit-group-member-contribution":
         case "extract-group-member":
         case "move-group-member":
         case "remove-group-member": {
@@ -186,6 +194,11 @@ export async function saveEntryEdit(
               attractionId: edit.attractionId
             }
           };
+          if (edit.action === "edit-group-member-contribution")
+            return updateGroupedAttractionContribution({
+              ...memberOptions,
+              body: edit.request
+            });
           if (edit.action === "extract-group-member")
             return extractGroupedAttraction({
               ...memberOptions,

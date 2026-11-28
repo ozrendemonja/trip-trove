@@ -718,11 +718,13 @@ export const ItineraryContent = ({
       target?.attraction.attractionId
     );
     setActionStatus(
-      action === "remove-group-member"
-        ? `${member.name} removed from the group.`
-        : action === "extract-group-member"
-          ? `${member.name} is now a separate entry.`
-          : `${member.name} moved to another entry.`
+      action === "edit-group-member-contribution"
+        ? `${member.name}'s duration contribution updated.`
+        : action === "remove-group-member"
+          ? `${member.name} removed from the group.`
+          : action === "extract-group-member"
+            ? `${member.name} is now a separate entry.`
+            : `${member.name} moved to another entry.`
     );
   };
   const reorderGroup = (

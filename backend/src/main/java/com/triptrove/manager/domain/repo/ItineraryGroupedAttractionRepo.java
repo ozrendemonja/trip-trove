@@ -18,9 +18,11 @@ public interface ItineraryGroupedAttractionRepo extends JpaRepository<ItineraryG
     List<Long> findAttractionIdsByTripIdAndHostEntryId(long tripId, long hostEntryId);
 
     @Query("""
-            SELECT new com.triptrove.manager.domain.model.ItineraryGroupedAttractionEditSummary(member, attraction.name)
+            SELECT new com.triptrove.manager.domain.model.ItineraryGroupedAttractionEditSummary(
+                member, attraction.name, item.visitTime)
             FROM ItineraryGroupedAttraction member
             JOIN Attraction attraction ON attraction.id = member.attractionId
+            JOIN TripAttraction item ON item.trip.id = member.tripId AND item.attraction.id = member.attractionId
             WHERE member.tripId = :tripId AND member.hostEntryId = :hostEntryId AND member.attractionId = :attractionId
             """)
     Optional<ItineraryGroupedAttractionEditSummary> findEditSummaryByTripIdAndHostEntryIdAndAttractionId(

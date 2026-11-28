@@ -21,6 +21,7 @@ import type {
   ItineraryTransferDto,
   MoveItineraryEntryRequest,
   TypedItineraryEntryResponse,
+  UpdateGroupedAttractionContributionRequest,
   UpdateItineraryDayNoteRequest,
   UpdateItineraryTransferRequest,
   UpdateTripAttractionNoteRequest,
@@ -5400,6 +5401,469 @@ function groupedCompositionTimeline(): ItineraryFixture {
   saved.unscheduledAttractions = [];
   return saved;
 }
+
+function groupedContributionTimeline(): ItineraryFixture {
+  const saved = itineraryFixture("2099-06-10", "2099-06-24");
+  saved.timeZone = "Europe/Rome";
+  saved.checkState = "MANUALLY_CHECKED";
+  saved.lastCheckedAt = "2099-06-09T12:00:00Z";
+  saved.days[0].entries = [
+    {
+      entryId: 42,
+      attractionId: 5,
+      name: "Museum",
+      attractionGroup: "PRIMARY",
+      category: "HISTORIC_SITE",
+      mustVisit: false,
+      fixedStart: true,
+      visitDuration: "45m",
+      warnings: [],
+      timing: {
+        start: "2099-06-10T09:00+02:00",
+        end: "2099-06-10T10:05+02:00",
+        zone: "Europe/Rome"
+      },
+      groupedAttractions: [
+        {
+          attractionId: 8,
+          name: "Luna Cafe",
+          attractionGroup: "SECONDARY",
+          category: "EATERY",
+          mustVisit: false,
+          contributionMinutes: 5,
+          visitDuration: "2-5m",
+          tripNote: "Use the side door.",
+          warnings: []
+        },
+        {
+          attractionId: 7,
+          name: "Courtyard",
+          attractionGroup: "PRIMARY",
+          category: "HISTORIC_SITE",
+          mustVisit: false,
+          contributionMinutes: 15,
+          visitDuration: "15m",
+          warnings: []
+        }
+      ]
+    },
+    {
+      entryId: 43,
+      attractionId: 6,
+      name: "Garden",
+      attractionGroup: "SECONDARY",
+      category: "PARK",
+      mustVisit: false,
+      fixedStart: true,
+      visitDuration: "30m",
+      warnings: [],
+      timing: {
+        start: "2099-06-10T11:00+02:00",
+        end: "2099-06-10T11:30+02:00",
+        zone: "Europe/Rome"
+      }
+    }
+  ];
+  return saved;
+}
+
+export const EditsAndCancelsTheSavedContributionFromTheMembersRow: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = groupedContributionTimeline();
+      const [host] = saved.days[0].entries;
+      const [member] = host.groupedAttractions ?? [];
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${entryUrl}/grouped-attractions/:attractionId/duration-contribution`,
+        (_schema, request) => {
+          const edit: UpdateGroupedAttractionContributionRequest = JSON.parse(
+            request.requestBody
+          );
+          compositionWrites(
+            request.params.entryId,
+            request.params.attractionId,
+            edit
+          );
+          member.contributionMinutes = edit.contributionMinutes;
+          host.timing.end = "2099-06-10T10:02+02:00";
+          saved.checkState = "CHANGED_SINCE_LAST_CHECK";
+          saved.changeNotices = [
+            {
+              entryId: 42,
+              subject: "Museum",
+              date: "2099-06-10",
+              reasons: ["PLANNED_LENGTH_CHANGED", "GROUP_CHANGED"]
+            }
+          ];
+          return new MirageResponse(204);
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    const actions = await canvas.findByRole("button", {
+      name: "Actions for Luna Cafe"
+    });
+    actions.focus();
+    await user.keyboard("{Enter}");
+    const editAction = await body.findByRole("menuitem", {
+      name: "Edit contribution..."
+    });
+    await waitFor(() => expect(editAction).toHaveFocus());
+    await user.keyboard("{Enter}");
+    const cancelled = within(
+      await body.findByRole("dialog", {
+        name: "Edit contribution for Luna Cafe"
+      })
+    );
+    const input = cancelled.getByRole("textbox", {
+      name: /^Contribution \(minutes\)/
+    });
+    await expect(input).toHaveValue("5");
+    await waitFor(() =>
+      expect(cancelled.getByText("Current visit duration: 2-5m")).toBeVisible()
+    );
+    await user.clear(input);
+    await user.type(input, "1.5");
+    await expect(
+      cancelled.getByRole("button", { name: "Save contribution" })
+    ).toBeDisabled();
+    await expect(
+      cancelled.getByText("Enter a non-negative whole contribution in minutes.")
+    ).toBeVisible();
+    await user.clear(input);
+    await user.type(input, "2");
+    await user.click(cancelled.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(actions).toHaveFocus());
+    await expect(compositionWrites).not.toHaveBeenCalled();
+
+    const open = async (): Promise<ReturnType<typeof within>> => {
+      await user.click(
+        await canvas.findByRole("button", { name: "Actions for Luna Cafe" })
+      );
+      await user.click(
+        await body.findByRole("menuitem", { name: "Edit contribution..." })
+      );
+      return within(
+        await body.findByRole("dialog", {
+          name: "Edit contribution for Luna Cafe"
+        })
+      );
+    };
+    const confirmed = await open();
+    const minutes = confirmed.getByRole("textbox", {
+      name: /^Contribution \(minutes\)/
+    });
+    await expect(minutes).toHaveValue("5");
+    await user.clear(minutes);
+    await user.type(minutes, "2");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(
+        body.queryByRole("dialog", { name: "Edit contribution for Luna Cafe" })
+      ).not.toBeInTheDocument()
+    );
+    await expect(
+      canvas.getByRole("textbox", { name: "Start clock for Museum" })
+    ).toHaveValue("09:00");
+    await expect(
+      canvas.getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveValue("10:02");
+    await expect(
+      canvas.getByRole("textbox", { name: "Planned length for Museum" })
+    ).toHaveValue("62");
+    const members = within(
+      canvas.getByRole("list", { name: "Grouped attractions on Museum" })
+    );
+    await expect(members.getAllByRole("listitem")[0]).toHaveTextContent(
+      "Luna Cafe"
+    );
+    await expect(members.getAllByRole("listitem")[1]).toHaveTextContent(
+      "Courtyard"
+    );
+    await expect(members.getByText(/Eatery.*2 min/)).toBeVisible();
+    await expect(members.getByText("Use the side door.")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", {
+        name: "Lock start for Museum",
+        pressed: true
+      })
+    ).toBeVisible();
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(compositionWrites).toHaveBeenCalledWith("42", "8", {
+      contributionMinutes: 2
+    });
+    await expect(
+      canvas.getByText("Luna Cafe's duration contribution updated.")
+    ).toBeVisible();
+
+    const reopened = await open();
+    await expect(
+      reopened.getByRole("textbox", { name: /^Contribution \(minutes\)/ })
+    ).toHaveValue("2");
+    await waitFor(() =>
+      expect(reopened.getByText("Current visit duration: 2-5m")).toBeVisible()
+    );
+    await user.click(reopened.getByRole("button", { name: "Cancel" }));
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const KeepsARejectedContributionEditAvailableOnTheMembersRow: Story = {
+  parameters: {
+    savedAttractions: SAVED_ATTRACTIONS,
+    configureTripServer: (server: Server) => {
+      compositionWrites.mockClear();
+      const saved = groupedContributionTimeline();
+      const [host, next] = saved.days[0].entries;
+      const [member] = host.groupedAttractions ?? [];
+      member.contributionMinutes = 2;
+      host.timing.end = "2099-06-10T10:02+02:00";
+      next.timing.start = "2099-06-10T10:04+02:00";
+      next.timing.end = "2099-06-10T10:34+02:00";
+      server.get(itineraryUrl, () => saved, { timing: 0 });
+      server.put(
+        `${entryUrl}/grouped-attractions/:attractionId/duration-contribution`,
+        (_schema, request) => {
+          const edit: UpdateGroupedAttractionContributionRequest = JSON.parse(
+            request.requestBody
+          );
+          compositionWrites(
+            request.params.entryId,
+            request.params.attractionId,
+            edit
+          );
+          return new MirageResponse(
+            400,
+            {},
+            {
+              errorCode: "BAD_REQUEST",
+              errorMessage:
+                "That timing conflicts with the fixed start of Garden. Choose another clock or length."
+            }
+          );
+        },
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = overlay(canvasElement);
+    const user = setupUser();
+    await user.click(await canvas.findByRole("button", { name: "Itinerary" }));
+    await user.click(
+      await canvas.findByRole("button", { name: "Actions for Luna Cafe" })
+    );
+    await user.click(
+      await body.findByRole("menuitem", { name: "Edit contribution..." })
+    );
+    const dialog = within(
+      await body.findByRole("dialog", {
+        name: "Edit contribution for Luna Cafe"
+      })
+    );
+    const input = dialog.getByRole("textbox", {
+      name: /^Contribution \(minutes\)/
+    });
+    await expect(input).toHaveValue("2");
+    await user.clear(input);
+    await user.type(input, "5");
+    await user.click(dialog.getByRole("button", { name: "Save contribution" }));
+
+    await waitFor(() =>
+      expect(
+        dialog.getByText(
+          "That timing conflicts with the fixed start of Garden. Choose another clock or length."
+        )
+      ).toBeVisible()
+    );
+    await expect(input).toHaveValue("5");
+    await expect(
+      dialog.getByRole("button", { name: "Save contribution" })
+    ).toBeEnabled();
+    await expect(canvas.getByLabelText("End clock for Museum")).toHaveValue(
+      "10:02"
+    );
+    await expect(canvas.getByLabelText("Start clock for Garden")).toHaveValue(
+      "10:04"
+    );
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+    await expect(compositionWrites).toHaveBeenCalledWith("42", "8", {
+      contributionMinutes: 5
+    });
+
+    await user.click(dialog.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(
+        body.queryByRole("dialog", { name: "Edit contribution for Luna Cafe" })
+      ).not.toBeInTheDocument()
+    );
+    const members = within(
+      canvas.getByRole("list", { name: "Grouped attractions on Museum" })
+    );
+    await expect(members.getByText(/Eatery.*2 min/)).toBeVisible();
+    await expect(
+      canvas.queryByText("Changed since last check")
+    ).not.toBeInTheDocument();
+    await expect(compositionWrites).toHaveBeenCalledTimes(1);
+  }
+};
+
+export const InspectsAnUnconfirmedZeroContributionBeforeADeliberateRetry: Story =
+  {
+    parameters: {
+      savedAttractions: SAVED_ATTRACTIONS,
+      configureTripServer: (server: Server) => {
+        compositionWrites.mockClear();
+        const saved = groupedContributionTimeline();
+        const [host] = saved.days[0].entries;
+        const [member] = host.groupedAttractions ?? [];
+        member.visitDuration = "0-5m";
+        server.get(itineraryUrl, () => saved, { timing: 0 });
+        server.put(
+          `${entryUrl}/grouped-attractions/:attractionId/duration-contribution`,
+          (_schema, request) => {
+            const edit: UpdateGroupedAttractionContributionRequest = JSON.parse(
+              request.requestBody
+            );
+            compositionWrites(
+              request.params.entryId,
+              request.params.attractionId,
+              edit
+            );
+            return new MirageResponse(
+              500,
+              {},
+              {
+                errorCode: "INTERNAL_SERVER_ERROR",
+                errorMessage: "The reply could not be confirmed."
+              }
+            );
+          },
+          { timing: 0 }
+        );
+      }
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      const body = overlay(canvasElement);
+      const user = setupUser();
+      await user.click(
+        await canvas.findByRole("button", { name: "Itinerary" })
+      );
+      await user.click(
+        await canvas.findByRole("button", { name: "Actions for Luna Cafe" })
+      );
+      await user.click(
+        await body.findByRole("menuitem", { name: "Edit contribution..." })
+      );
+      const dialog = within(
+        await body.findByRole("dialog", {
+          name: "Edit contribution for Luna Cafe"
+        })
+      );
+      const minutes = dialog.getByRole("textbox", {
+        name: /^Contribution \(minutes\)/
+      });
+      await expect(minutes).toHaveValue("5");
+      await user.clear(minutes);
+      await user.type(minutes, "0");
+      await user.click(
+        dialog.getByRole("button", { name: "Save contribution" })
+      );
+      await user.click(
+        await dialog.findByRole("button", { name: "Inspect saved itinerary" })
+      );
+      await waitFor(() =>
+        expect(
+          dialog.getByText(
+            "Compare this entry change with the saved itinerary before trying again."
+          )
+        ).toBeVisible()
+      );
+      await expect(minutes).toHaveValue("0");
+      await expect(canvas.getByLabelText("End clock for Museum")).toHaveValue(
+        "10:05"
+      );
+      await expect(compositionWrites).toHaveBeenCalledTimes(1);
+
+      const applied = groupedContributionTimeline();
+      const [host] = applied.days[0].entries;
+      const [member] = host.groupedAttractions ?? [];
+      member.contributionMinutes = 0;
+      member.visitDuration = "0-5m";
+      host.timing.end = "2099-06-10T10:00+02:00";
+      applied.checkState = "CHANGED_SINCE_LAST_CHECK";
+      applied.changeNotices = [
+        {
+          entryId: 42,
+          subject: "Museum",
+          date: "2099-06-10",
+          reasons: ["PLANNED_LENGTH_CHANGED", "GROUP_CHANGED"]
+        }
+      ];
+      server.put(
+        `${entryUrl}/grouped-attractions/:attractionId/duration-contribution`,
+        (_schema, request) => {
+          const edit: UpdateGroupedAttractionContributionRequest = JSON.parse(
+            request.requestBody
+          );
+          compositionWrites(
+            request.params.entryId,
+            request.params.attractionId,
+            edit
+          );
+          server.get(itineraryUrl, () => applied, { timing: 0 });
+          return new MirageResponse(
+            500,
+            {},
+            {
+              errorCode: "INTERNAL_SERVER_ERROR",
+              errorMessage: "The reply could not be confirmed."
+            }
+          );
+        },
+        { timing: 0 }
+      );
+      await user.click(
+        dialog.getByRole("button", { name: "Save contribution" })
+      );
+      await user.click(
+        await dialog.findByRole("button", { name: "Inspect saved itinerary" })
+      );
+      await waitFor(() =>
+        expect(
+          body.queryByRole("dialog", {
+            name: "Edit contribution for Luna Cafe"
+          })
+        ).not.toBeInTheDocument()
+      );
+      await expect(
+        canvas.getByRole("textbox", { name: "End clock for Museum" })
+      ).toHaveValue("10:00");
+      const members = within(
+        canvas.getByRole("list", { name: "Grouped attractions on Museum" })
+      );
+      await expect(members.getByText(/Eatery.*0 min/)).toBeVisible();
+      await expect(compositionWrites).toHaveBeenCalledTimes(2);
+      await expect(compositionWrites).toHaveBeenNthCalledWith(1, "42", "8", {
+        contributionMinutes: 0
+      });
+      await expect(compositionWrites).toHaveBeenNthCalledWith(2, "42", "8", {
+        contributionMinutes: 0
+      });
+    }
+  };
 
 export const ReordersGroupedAttractionsWithoutChangingTheHostClock: Story = {
   parameters: {

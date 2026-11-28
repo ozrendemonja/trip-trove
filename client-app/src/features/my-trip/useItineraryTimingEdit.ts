@@ -126,6 +126,15 @@ function editIsReflected(
     }
     if (edit.action === "edit-item") return itemMatches(entry, edit.request);
     const attraction = entry && isAttractionEntry(entry) ? entry : undefined;
+    if (edit.action === "edit-group-member-contribution") {
+      return (
+        attraction?.groupedAttractions?.some(
+          (member) =>
+            member.attractionId === edit.attractionId &&
+            member.contributionMinutes === edit.request.contributionMinutes
+        ) === true
+      );
+    }
     if (edit.action === "reorder-group") {
       const members = attraction?.groupedAttractions;
       const { attractionIds } = edit.request;

@@ -51,6 +51,13 @@ public class ItineraryGroupedAttraction {
         return contributionMinutes;
     }
 
+    public void changeContributionMinutes(int minutes) {
+        if (minutes < 0) {
+            throw new IllegalArgumentException("A grouped duration contribution must be non-negative");
+        }
+        contributionMinutes = minutes;
+    }
+
     public void moveToHost(long hostEntryId, int position) {
         this.hostEntryId = hostEntryId;
         this.position = position;

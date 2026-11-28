@@ -9,6 +9,7 @@ import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.RemoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.ReorderGroupedAttractionsRequest;
 import com.triptrove.manager.application.dto.ScheduleAttractionRequest;
+import com.triptrove.manager.application.dto.UpdateGroupedAttractionContributionRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryEndRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryFixedStartRequest;
 import com.triptrove.manager.application.dto.UpdateItineraryEntryPlannedLengthRequest;
@@ -93,6 +94,19 @@ public class ItineraryEntryController {
                 ItineraryTransferDTO.toSummaries(request.transfersToRemoveWithSourceEntry());
         entryEditor.joinAttraction(tripId, hostEntryId, request.attractionId(), request.sourceEntryId(),
                 request.visitDuration(), transfersToRemoveWithSourceEntry);
+        return itineraryUpdated(tripId);
+    }
+
+    @PutMapping("/entries/{hostEntryId:\\d+}/grouped-attractions/{attractionId:\\d+}/duration-contribution")
+    @Operation(summary = "Replace a grouped attraction's saved duration contribution in whole minutes")
+    @TimingUpdateResponses
+    @ApiResponse(responseCode = "409", description = "The attraction is no longer grouped on the requested entry",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> updateGroupedAttractionContribution(@PathVariable Long tripId,
+            @PathVariable Long hostEntryId, @PathVariable Long attractionId,
+            @RequestBody @Valid UpdateGroupedAttractionContributionRequest request) {
+        entryEditor.updateGroupedAttractionContribution(tripId, hostEntryId, attractionId,
+                request.contributionMinutes().intValueExact());
         return itineraryUpdated(tripId);
     }
 

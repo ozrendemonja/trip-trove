@@ -338,6 +338,13 @@ function GroupMemberRow({
           <MenuPopover>
             <MenuList>
               <MenuItem
+                disabled={blocked}
+                aria-haspopup="dialog"
+                onClick={() => choose("edit-group-member-contribution")}
+              >
+                Edit contribution...
+              </MenuItem>
+              <MenuItem
                 disabled={blocked || index === 0}
                 onClick={() => onReorder(host, member.attractionId, index - 1)}
               >

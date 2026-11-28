@@ -8,6 +8,7 @@ import {
   GetRegionResponse,
   GetTripResponse,
   GetVisitHistoryRequest,
+  TripRangeImpactResponse,
   UpdateAttractionCategoryRequest,
   UpdateAttractionDestinationRequest,
   UpdateAttractionDetailRequest,
@@ -744,6 +745,37 @@ export default function makeServer(options?: {
           }
         },
         { timing: 400 }
+      );
+
+      this.get(
+        "/trips/:id/range/impact",
+        (schema, request) => {
+          const id = Number(request.params.id);
+          const trip = schema.db.trips.findBy(
+            (item: GetTripResponse) => item.tripId === id
+          );
+          const currentFromDate: string | undefined = trip?.fromDate;
+          const currentToDate: string | undefined = trip?.toDate;
+          const proposedFromDate = request.queryParams.fromDate;
+          const proposedToDate = request.queryParams.toDate;
+          if (!currentFromDate || !currentToDate) {
+            return new MirageResponse(404);
+          }
+          if (
+            typeof proposedFromDate !== "string" ||
+            typeof proposedToDate !== "string" ||
+            proposedFromDate > proposedToDate
+          ) {
+            return new MirageResponse(400);
+          }
+          return {
+            currentFromDate,
+            currentToDate,
+            shiftBlocked: false,
+            blockers: []
+          } satisfies TripRangeImpactResponse;
+        },
+        { timing: 0 }
       );
 
       this.put(

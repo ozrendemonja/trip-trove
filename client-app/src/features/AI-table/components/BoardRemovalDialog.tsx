@@ -12,7 +12,7 @@ import {
 } from "@fluentui/react-components";
 import type { ReactElement } from "react";
 import { useConfirmDeleteDialogStyles } from "../../../shared/list-element/ui/delete-dialog/DeleteDialog.styles";
-import { formatItineraryDate } from "../../my-trip/Itinerary";
+import { formatItineraryDate } from "../../my-trip/itineraryDateLabel";
 import { GroupDissolutionDetails } from "../../my-trip/ItineraryGroupActions";
 import { TransfersToRemoveList } from "../../my-trip/ItineraryTransfer";
 import { clockOffset, localClock } from "../../my-trip/itineraryClocks";

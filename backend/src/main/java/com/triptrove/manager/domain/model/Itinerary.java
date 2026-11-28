@@ -27,6 +27,9 @@ public class Itinerary {
     @Column(name = "last_checked_at")
     private Instant lastCheckedAt;
 
+    @Column(name = "dates_changed_since_check", nullable = false)
+    private boolean datesChangedSinceCheck;
+
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItineraryDay> days = new ArrayList<>();
 
@@ -45,14 +48,20 @@ public class Itinerary {
         this.timeZone = timeZone;
     }
 
-    public void resizeEmptyDays(LocalDate from, LocalDate to) {
+    public void changeDateRange(LocalDate from, LocalDate to) {
+        resizeEmptyDays(from, to);
+        datesChangedSinceCheck = lastCheckedAt != null;
+    }
+
+    private void resizeEmptyDays(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from)) {
             throw new IllegalArgumentException("Invalid itinerary date range: " + from + " to " + to);
         }
         Predicate<ItineraryDay> outsideRange = day -> day.getDate().isBefore(from) || day.getDate().isAfter(to);
         days.stream().filter(outsideRange).filter(day -> day.getNote() != null).findFirst().ifPresent(day -> {
             throw new BaseApiException("Trip range would remove a day note on " + day.getDate(),
-                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRIP_DATES_WITH_DAY_NOTE);
+                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRIP_DATES_WITH_DAY_NOTE,
+                    day.getDate());
         });
         days.removeIf(outsideRange);
         var existingDates = days.stream().map(ItineraryDay::getDate).collect(Collectors.toSet());

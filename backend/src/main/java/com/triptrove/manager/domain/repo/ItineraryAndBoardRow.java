@@ -47,7 +47,7 @@ public record ItineraryAndBoardRow(Long tripId, String timeZone, Instant lastChe
                                    Long hostEntryId, Integer memberPosition, Integer contributionMinutes,
                                    Boolean memberIncludedInLastCheck, Boolean memberJoinedSinceLastCheck,
                                    WatchedSourceSnapshot memberWatchedSourceBaseline, ItineraryTypedItem typedItem,
-                                   Boolean itemChangedSinceCheck, String checkContext) {
+                                   Boolean itemChangedSinceCheck, boolean datesChangedSinceCheck, String checkContext) {
     boolean hasBoardAttraction() {
         return attractionId != null;
     }

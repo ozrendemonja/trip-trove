@@ -143,11 +143,23 @@ public class TripController {
         tripService.updateTripName(id, tripNameRequest.tripName());
     }
 
+    @GetMapping("/{id:\\d+}/range/impact")
+    @Operation(summary = "Get the impact of proposed dates: the saved range and itinerary blockers, without saving")
+    @ApiResponse(responseCode = "200", description = "Trip range impact",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TripRangeImpactResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Invalid proposed dates",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Itinerary not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    public TripRangeImpactResponse getTripRangeImpact(@PathVariable Long id, @Valid @ParameterObject UpdateTripRangeRequest range) {
+        return TripRangeImpactResponse.from(tripService.getTripRangeImpact(id, range.fromDate(), range.toDate()));
+    }
+
     @PutMapping("/{id:\\d+}/range")
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     @Operation(summary = "Update trip range", responses = {
             @ApiResponse(description = "Trip range is updated", responseCode = "204"),
-            @ApiResponse(description = "The dates would omit a scheduled entry or a day with a note, or the trip name conflicts",
+            @ApiResponse(description = "The dates would omit itinerary content, require shifting a populated itinerary, or conflict with another trip",
                     responseCode = "409",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })

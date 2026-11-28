@@ -1,6 +1,7 @@
 package com.triptrove.manager.domain.repo;
 
 import com.triptrove.manager.domain.model.Itinerary;
+import com.triptrove.manager.domain.model.ItineraryDateContentSummary;
 import com.triptrove.manager.domain.model.ItineraryDay;
 import com.triptrove.manager.domain.model.ItineraryDaySummary;
 import com.triptrove.manager.domain.model.ItineraryDetails;
@@ -32,13 +33,14 @@ import java.util.stream.Stream;
 
 import static com.triptrove.manager.domain.model.TripAttractionGroup.PRIMARY;
 import static com.triptrove.manager.domain.model.TripAttractionGroup.SECONDARY;
+import static com.triptrove.manager.domain.model.ItineraryDetails.ChangeNoticeSummary.Reason.TRIP_DATES_CHANGED;
 
 public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     @Modifying(flushAutomatically = true)
     @Query(value = """
-            UPDATE itinerary SET last_checked_at = :checkedAt
+            UPDATE itinerary SET last_checked_at = :checkedAt, dates_changed_since_check = FALSE
             WHERE trip_id = :tripId
-              AND itinerary_check_context(trip_id, time_zone, last_checked_at) = :checkContext
+              AND itinerary_check_context(trip_id, time_zone, last_checked_at, dates_changed_since_check) = :checkContext
             """, nativeQuery = true)
     int recordCheck(Long tripId, Instant checkedAt, String checkContext);
 
@@ -98,6 +100,19 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
     List<ItineraryEntrySummary> findEntrySummariesByTripId(Long tripId);
 
     @Query("""
+            SELECT new com.triptrove.manager.domain.model.ItineraryDateContentSummary(
+                trip.from, trip.to, day.date, day.note, COALESCE(attraction.name, entry.typedItem.name), entry.timing)
+            FROM Itinerary itinerary
+            JOIN itinerary.trip trip
+            JOIN itinerary.days day
+            LEFT JOIN ItineraryEntry entry ON entry.tripId = itinerary.tripId AND entry.timing.date = day.date
+            LEFT JOIN Attraction attraction ON attraction.id = entry.attractionId
+            WHERE itinerary.tripId = :tripId
+            ORDER BY day.date, entry.position
+            """)
+    List<ItineraryDateContentSummary> findDateContentSummariesByTripId(Long tripId);
+
+    @Query("""
             SELECT EXISTS (SELECT 1 FROM ItineraryEntry entry
                 WHERE entry.tripId = :tripId AND entry.attractionId IN :attractionIds)
                 OR EXISTS (SELECT 1 FROM ItineraryGroupedAttraction member
@@ -121,8 +136,9 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                 removal.subject, removal.date, removal.followingStartsPushed, removal.cause,
                 entry.watchedSourceBaseline, source.snapshot, member.hostEntryId, member.position,
                 member.contributionMinutes, member.includedInLastCheck, member.joinedSinceLastCheck, member.watchedSourceBaseline,
-                entry.typedItem, entry.itemChangedSinceCheck,
-                (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt) AS String)
+                entry.typedItem, entry.itemChangedSinceCheck, itinerary.datesChangedSinceCheck,
+                (SELECT cast(function('itinerary_check_context', saved.tripId, saved.timeZone, saved.lastCheckedAt,
+                    saved.datesChangedSinceCheck) AS String)
                  FROM Itinerary saved WHERE saved.tripId = :tripId))
             FROM Itinerary itinerary
             JOIN itinerary.trip trip
@@ -186,7 +202,12 @@ public interface ItineraryRepo extends JpaRepository<Itinerary, Long> {
                         || !notice.groupedSourceChanges().isEmpty());
         var removals = rows.stream().filter(row -> hasBeenChecked && row.removedSubject() != null)
                 .map(ItineraryAndBoardRow::toRemovalNotice);
-        return Stream.concat(entries, removals)
+        var firstDay = rows.getFirst();
+        var dateChanges = hasBeenChecked && firstDay.datesChangedSinceCheck()
+                ? Stream.of(new ChangeNoticeSummary(null, "Trip dates", firstDay.itineraryDate(),
+                        List.of(TRIP_DATES_CHANGED), null, List.of(), List.of()))
+                : Stream.<ChangeNoticeSummary>empty();
+        return Stream.concat(Stream.concat(entries, removals), dateChanges)
                 .sorted(Comparator.comparing(ChangeNoticeSummary::date))
                 .toList();
     }

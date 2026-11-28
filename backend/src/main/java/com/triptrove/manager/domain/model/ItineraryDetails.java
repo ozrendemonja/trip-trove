@@ -32,7 +32,7 @@ public record ItineraryDetails(Long tripId, String timeZone, Instant lastChecked
         public enum Reason {
             ATTRACTION_ADDED, START_CHANGED, PLANNED_LENGTH_CHANGED, FIXED_START_CHANGED,
             ENTRY_MOVED, ENTRY_REMOVED, FOLLOWING_STARTS_PUSHED, ATTRACTION_EXCLUDED, REMOVED_FROM_TRIP, TRANSFER_CHANGED,
-            GROUP_CHANGED, TYPED_ITEM_ADDED, TYPED_ITEM_CHANGED
+            GROUP_CHANGED, TYPED_ITEM_ADDED, TYPED_ITEM_CHANGED, TRIP_DATES_CHANGED
         }
 
         public enum SourceBaseline {

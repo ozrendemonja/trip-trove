@@ -109,7 +109,21 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
+    public TripRangeImpactSummary getTripRangeImpact(Long id, LocalDate fromTrip, LocalDate toTrip) {
+        return mapTripDays(id, fromTrip, toTrip);
+    }
+
+    private TripRangeImpactSummary mapTripDays(Long id, LocalDate fromTrip, LocalDate toTrip) {
+        var rows = itineraryRepo.findDateContentSummariesByTripId(id);
+        if (rows.isEmpty()) {
+            throw new BaseApiException("Itinerary not found for trip", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id);
+        }
+        return TripRangeImpactSummary.mapDays(rows, fromTrip, toTrip);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip) {
         log.atInfo().log("Updating the trip range");
         var trip = tripRepo.findById(id).orElseThrow(() -> new BaseApiException("Trip not found", BaseApiException.ErrorCode.RESOURCE_NOT_FOUND, id));
@@ -120,14 +134,10 @@ public class TripServiceImpl implements TripService {
             throw new BaseApiException("Trip name already exists in date range", BaseApiException.ErrorCode.NAME_ALREADY_EXISTS, trip.getName(), fromTrip, toTrip);
         }
 
-        if (itineraryRepo.findEntrySummariesByTripId(id).stream()
-                .anyMatch(entry -> !entry.timing().fitsTripDates(fromTrip, toTrip))) {
-            throw new BaseApiException("Proposed trip dates omit part of an entry",
-                    BaseApiException.ErrorCode.RESOURCE_HAS_DEPENDENCIES, ItineraryDependency.TRIP_DATES, id);
-        }
+        mapTripDays(id, fromTrip, toTrip).requireUnblocked();
         var itinerary = itineraryRepo.findWithDaysByTripId(id)
                 .orElseThrow(() -> new IllegalStateException("Missing itinerary for trip " + id));
-        itinerary.resizeEmptyDays(fromTrip, toTrip);
+        itinerary.changeDateRange(fromTrip, toTrip);
         trip.setFrom(fromTrip);
         trip.setTo(toTrip);
         log.atInfo().log("Trip range has been updated");

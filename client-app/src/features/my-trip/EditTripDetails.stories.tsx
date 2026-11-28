@@ -13,6 +13,7 @@ import makeServer from "../../ServerSetup";
 import EditTripDetails from "./EditTripDetails";
 import { Trip } from "./domain/Trip.types";
 import { ComponentProps, useState } from "react";
+import type { TripRangeImpactResponse } from "../../clients/manager";
 
 import { SOLID_STORY_BACKGROUND_STYLES as styleOverrides } from "../../shared/storybook/StoryStyles";
 
@@ -106,7 +107,7 @@ export const LongName: Story = {
   }
 };
 
-export const SavesTripDates: Story = {
+export const ReviewsTripDatesBeforeSaving: Story = {
   render: (args) => <InteractiveEditTripDetails {...args} />,
   args: {
     trip: sampleTrip,
@@ -130,21 +131,208 @@ export const SavesTripDates: Story = {
     const body = within(canvasElement.ownerDocument.body);
     const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
     const modal = within(await body.findByRole("dialog"));
-    fireEvent.change(modal.getByLabelText("Start date"), {
-      target: { value: "2099-07-10" }
+    const start = modal.getByLabelText("Start date");
+    const end = modal.getByLabelText("End date");
+    fireEvent.change(start, { target: { value: "" } });
+    await expect(modal.getByRole("button", { name: "Update" })).toBeDisabled();
+    fireEvent.change(start, {
+      target: { value: "2026-06-08" }
     });
-    fireEvent.change(modal.getByLabelText("End date"), {
-      target: { value: "2099-07-20" }
+    fireEvent.change(end, { target: { value: "" } });
+    await expect(modal.getByRole("button", { name: "Update" })).toBeDisabled();
+    fireEvent.change(end, {
+      target: { value: "2026-06-26" }
     });
-    await user.click(modal.getByRole("button", { name: "Update" }));
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+
+    await expect(await modal.findByText("Map the days")).toBeVisible();
+    await expect(modal.getByText(/Wednesday, Jun 10, 2026/)).toBeVisible();
+    await expect(modal.getByText(/Wednesday, Jun 24, 2026/)).toBeVisible();
+    await expect(
+      modal.getByText(/Monday, Jun 8, 2026 to Tuesday, Jun 9, 2026/)
+    ).toBeVisible();
+    await expect(
+      modal.getByText(/Thursday, Jun 25, 2026 to Friday, Jun 26, 2026/)
+    ).toBeVisible();
+    await expect(modal.getByText(/Bookings won't change/)).toBeVisible();
+    await expect(modal.getByText(/Check the itinerary again/)).toBeVisible();
+    await expect(dateRequests).toEqual([]);
+    await expect(args.onUpdateClick).not.toHaveBeenCalled();
+
+    await user.click(modal.getByRole("button", { name: "Confirm dates" }));
 
     await waitFor(() =>
       expect(body.queryByRole("dialog")).not.toBeInTheDocument()
     );
     await expect(args.onUpdateClick).toHaveBeenCalledTimes(1);
     await expect(dateRequests).toEqual([
-      { fromDate: "2099-07-10", toDate: "2099-07-20" }
+      { fromDate: "2026-06-08", toDate: "2026-06-26" }
     ]);
+  }
+};
+
+export const CancelsWithoutSavingThePreview: Story = {
+  ...ReviewsTripDatesBeforeSaving,
+  play: async ({ canvasElement, args }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const modal = within(await body.findByRole("dialog"));
+    fireEvent.change(modal.getByLabelText("End date"), {
+      target: { value: "2026-06-25" }
+    });
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+    await expect(await modal.findByText("Map the days")).toBeVisible();
+    await user.click(modal.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument()
+    );
+    await expect(args.onUpdateClick).not.toHaveBeenCalled();
+    await expect(dateRequests).toEqual([]);
+  }
+};
+
+export const NamesTheOvernightBlockerAndDoesNotOfferToSave: Story = {
+  ...ReviewsTripDatesBeforeSaving,
+  parameters: {
+    configurePlanningServer: (server: ReturnType<typeof makeServer>) => {
+      server.get(
+        "http://localhost:8080/trips/1/range/impact",
+        (): TripRangeImpactResponse => ({
+          currentFromDate: "2026-06-10",
+          currentToDate: "2026-06-24",
+          shiftBlocked: false,
+          blockers: [
+            {
+              date: "2026-06-24",
+              kind: "OVERNIGHT_ENTRY",
+              content: "Stargazing"
+            }
+          ]
+        }),
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement, args }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const modal = within(await body.findByRole("dialog"));
+    fireEvent.change(modal.getByLabelText("End date"), {
+      target: { value: "2026-06-23" }
+    });
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+
+    await expect(
+      await modal.findByText(
+        /Wednesday, Jun 24, 2026: Overnight entry: Stargazing/
+      )
+    ).toBeVisible();
+    await expect(
+      modal.getByRole("button", { name: "Confirm dates" })
+    ).toBeDisabled();
+    await expect(args.onUpdateClick).not.toHaveBeenCalled();
+  }
+};
+
+export const ExplainsWhyAShiftWithRetainedContentCannotBeSaved: Story = {
+  ...ReviewsTripDatesBeforeSaving,
+  parameters: {
+    configurePlanningServer: (server: ReturnType<typeof makeServer>) => {
+      server.get(
+        "http://localhost:8080/trips/1/range/impact",
+        (): TripRangeImpactResponse => ({
+          currentFromDate: "2026-06-10",
+          currentToDate: "2026-06-24",
+          shiftBlocked: true,
+          blockers: [{ date: "2026-06-12", kind: "ENTRY", content: "Concert" }]
+        }),
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const modal = within(await body.findByRole("dialog"));
+    fireEvent.change(modal.getByLabelText("Start date"), {
+      target: { value: "2026-06-11" }
+    });
+    fireEvent.change(modal.getByLabelText("End date"), {
+      target: { value: "2026-06-25" }
+    });
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+
+    await expect(
+      await modal.findByText(
+        "Shifting dates is only available for an empty itinerary."
+      )
+    ).toBeVisible();
+    await expect(
+      modal.getByText(/Friday, Jun 12, 2026: Entry: Concert/)
+    ).toBeVisible();
+    await expect(
+      modal.getByRole("button", { name: "Confirm dates" })
+    ).toBeDisabled();
+  }
+};
+
+export const InspectsSavedDatesAfterAnUnconfirmedSave: Story = {
+  ...ReviewsTripDatesBeforeSaving,
+  parameters: {
+    configurePlanningServer: (server: ReturnType<typeof makeServer>) => {
+      server.put(
+        "http://localhost:8080/trips/1/range",
+        (_schema, request) => {
+          dateRequests.push(JSON.parse(request.requestBody));
+          return new MirageResponse(504);
+        },
+        { timing: 0 }
+      );
+      server.get(
+        "http://localhost:8080/trips/1",
+        () => ({
+          tripId: 1,
+          tripName: "Italy",
+          fromDate: "2026-06-10",
+          toDate: "2026-06-25"
+        }),
+        { timing: 0 }
+      );
+    }
+  },
+  play: async ({ canvasElement, args }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const user = userEvent.setup({ pointerEventsCheck: 0, delay: null });
+    const modal = within(await body.findByRole("dialog"));
+    fireEvent.change(modal.getByLabelText("End date"), {
+      target: { value: "2026-06-25" }
+    });
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+    await user.click(
+      await modal.findByRole("button", { name: "Confirm dates" })
+    );
+
+    await expect(
+      await modal.findByText(/The date save couldn't be confirmed/)
+    ).toBeVisible();
+    await expect(modal.getByLabelText("End date")).toBeDisabled();
+    await expect(
+      modal.queryByRole("button", { name: "Confirm dates" })
+    ).not.toBeInTheDocument();
+    await user.click(modal.getByRole("button", { name: "Reload saved dates" }));
+
+    await expect(
+      await modal.findByText(/The proposed dates are saved/)
+    ).toBeVisible();
+    await expect(modal.getByText(/Thursday, Jun 25, 2026/)).toBeVisible();
+    await expect(dateRequests).toEqual([
+      { fromDate: "2026-06-10", toDate: "2026-06-25" }
+    ]);
+    await expect(args.onUpdateClick).not.toHaveBeenCalled();
+    await user.click(modal.getByRole("button", { name: "Done" }));
+    await expect(args.onUpdateClick).toHaveBeenCalledTimes(1);
+    await expect(dateRequests).toHaveLength(1);
   }
 };
 
@@ -193,7 +381,10 @@ export const KeepsDetailsAfterFailedDateSaveWithoutResendingTheSavedName: Story 
       fireEvent.change(modal.getByLabelText("End date"), {
         target: { value: "2099-07-20" }
       });
-      await user.click(modal.getByRole("button", { name: "Update" }));
+      await user.click(modal.getByRole("button", { name: "Review dates" }));
+      await user.click(
+        await modal.findByRole("button", { name: "Confirm dates" })
+      );
 
       await modal.findByText(
         "The save couldn't be completed. Your details are still here; review them and try again."
@@ -210,7 +401,10 @@ export const KeepsDetailsAfterFailedDateSaveWithoutResendingTheSavedName: Story 
       fireEvent.change(modal.getByLabelText("End date"), {
         target: { value: "2099-07-21" }
       });
-      await user.click(modal.getByRole("button", { name: "Update" }));
+      await user.click(modal.getByRole("button", { name: "Review dates" }));
+      await user.click(
+        await modal.findByRole("button", { name: "Confirm dates" })
+      );
       await waitFor(() =>
         expect(body.queryByRole("dialog")).not.toBeInTheDocument()
       );

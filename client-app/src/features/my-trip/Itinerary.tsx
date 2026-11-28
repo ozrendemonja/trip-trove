@@ -91,6 +91,7 @@ import {
 } from "./useItineraryTimingEdit";
 import { entryTargetId, TimelineEntry } from "./TimelineEntry";
 import { elapsedMinutes, freeTimeLabel } from "./itineraryClocks";
+import { formatItineraryDate } from "./itineraryDateLabel";
 import { isAttractionEntry } from "./itineraryEntries";
 import { fetchTripItinerary } from "./infra/TripApi";
 import {
@@ -184,13 +185,6 @@ interface ItineraryView {
   onDurationCorrected: (attractionId: number, duration: string) => void;
 }
 
-const dateLabel = new Intl.DateTimeFormat("en-US", {
-  weekday: "long",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  timeZone: "UTC"
-});
 const weekday = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   timeZone: "UTC"
@@ -199,9 +193,6 @@ const month = new Intl.DateTimeFormat("en-US", {
   month: "short",
   timeZone: "UTC"
 });
-export const formatItineraryDate = (date: string): string =>
-  dateLabel.format(new Date(date));
-
 export const useItinerary = (
   tripId: number | undefined,
   open: boolean,
@@ -522,7 +513,7 @@ export const ItineraryDayPager = ({
           <MenuList className={classes.dateList}>
             {days.map((day) => (
               <MenuItem key={day.id} onClick={() => showDate(day.date)}>
-                {dateLabel.format(new Date(day.date))}
+                {formatItineraryDate(day.date)}
               </MenuItem>
             ))}
           </MenuList>
@@ -1170,7 +1161,7 @@ export const ItineraryContent = ({
         >
           {renderedDays.map((day) => {
             const date = new Date(day.date);
-            const label = dateLabel.format(date);
+            const label = formatItineraryDate(day.date);
             const warnings = day.entries.reduce(
               (count, entry) =>
                 count +

@@ -11,6 +11,7 @@ import com.triptrove.manager.application.dto.TripAttractionGroupDTO;
 import com.triptrove.manager.application.dto.TripBoardItemRequest;
 import com.triptrove.manager.application.dto.UpdateAttractionGroupRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionVisitTimeRequest;
+import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -119,21 +120,27 @@ class ItinerarySchedulingTest extends AbstractIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"2027-03-29,2027-03-29", "2027-03-28,2027-03-28"})
-    void shorteningDatesCannotOrphanAnOvernightEntry(String from, String to) throws Exception {
+    @CsvSource({"2027-03-29, ENTRY, 2027-03-28", "2027-03-28, OVERNIGHT_ENTRY, 2027-03-29"})
+    void shorteningDatesCannotOrphanAnOvernightEntry(String keptDate, String kind, String blockedDate) throws Exception {
         seedBoard("2027-03-28", "2027-03-29");
         schedule(new ScheduleAttractionRequest(
                 1L, LocalDate.of(2027, 3, 28), "23:30", "Europe/Belgrade", null))
                 .andExpect(status().isNoContent());
 
+        mockMvc.perform(get("/trips/1/range/impact").header("x-api-version", "1")
+                        .param("fromDate", keptDate).param("toDate", keptDate))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.blockers[0].date").value(blockedDate))
+                .andExpect(jsonPath("$.blockers[0].kind").value(kind))
+                .andExpect(jsonPath("$.blockers[0].content").value("Keyset attraction 1"));
+        var range = new UpdateTripRangeRequest(LocalDate.parse(keptDate), LocalDate.parse(keptDate));
         mockMvc.perform(put("/trips/1/range").header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"fromDate":"%s","toDate":"%s"}
-                                """.formatted(from, to)))
+                        .content(mapper.writeValueAsString(range)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
                 .andExpect(jsonPath("$.errorMessage")
-                        .value("Those dates would leave an itinerary entry outside the trip. Keep its start and end within the trip."));
+                        .value("The itinerary entry \"Keyset attraction 1\" uses " + blockedDate
+                                + ". Keep that date or move or edit the entry first."));
         itinerary().andExpect(jsonPath("$.days[*].date", contains("2027-03-28", "2027-03-29")))
                 .andExpect(jsonPath("$.days[0].entries[0].timing.end").value("2027-03-29T01:00+02:00"));
     }

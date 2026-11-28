@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
 import makeServer from "../../ServerSetup";
 import { GetTripResponse } from "../../clients/manager";
@@ -13,6 +13,7 @@ const TripPlannerPlaceholder = () => {
   return (
     <div className={classes.storyRoutePlaceholder}>
       Trip Planner (navigated)
+      <Link to="/my-trips">Back to trips</Link>
     </div>
   );
 };
@@ -358,7 +359,10 @@ export const ShowsConflictWhenUpdatedTripDateRangeAlreadyExists: Story = {
     const endDateField = modal.getByLabelText("End date");
 
     setDateField(endDateField, "2099-07-10");
-    await user.click(modal.getByRole("button", { name: "Update" }));
+    await user.click(modal.getByRole("button", { name: "Review dates" }));
+    await user.click(
+      await modal.findByRole("button", { name: "Confirm dates" })
+    );
 
     expect(
       await modal.findByText(
@@ -369,7 +373,7 @@ export const ShowsConflictWhenUpdatedTripDateRangeAlreadyExists: Story = {
     expect(nameField).toHaveValue("Italy");
     expect(startDateField).toHaveValue("2099-06-10");
     expect(endDateField).toHaveValue("2099-07-10");
-    expect(modal.getByRole("button", { name: "Update" })).toBeEnabled();
+    expect(modal.getByRole("button", { name: "Review dates" })).toBeEnabled();
     expect(modal.getByRole("button", { name: "Cancel" })).toBeEnabled();
 
     setDateField(endDateField, "2099-07-11");
@@ -382,6 +386,58 @@ export const ShowsConflictWhenUpdatedTripDateRangeAlreadyExists: Story = {
     );
   }
 };
+
+export const ReopenedEditorStillRequiresInspectionAfterAnUnconfirmedSave: Story =
+  {
+    parameters: { trips: TWO_ACTIVE_TRIPS, updateTripStatus: 504 },
+    play: async ({ canvasElement }) => {
+      const user = setupUser();
+      const modal = within(await openEditDialog(canvasElement, user, "Italy"));
+      setDateField(modal.getByLabelText("End date"), "2099-06-25");
+      await user.click(modal.getByRole("button", { name: "Review dates" }));
+      await user.click(
+        await modal.findByRole("button", { name: "Confirm dates" })
+      );
+      await expect(
+        await modal.findByText(/The date save couldn't be confirmed/)
+      ).toBeVisible();
+      const pendingUnload = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(pendingUnload);
+      await expect(pendingUnload.defaultPrevented).toBe(true);
+      await user.click(modal.getByRole("button", { name: "Cancel" }));
+
+      await user.click(await findTripCard(canvasElement, "Italy"));
+      await user.click(
+        await within(canvasElement).findByRole("link", {
+          name: "Back to trips"
+        })
+      );
+      const reopened = within(
+        await openEditDialog(canvasElement, user, "Italy")
+      );
+      await expect(reopened.getByLabelText("End date")).toBeDisabled();
+      await expect(reopened.getByLabelText("End date")).toHaveValue(
+        "2099-06-25"
+      );
+      await user.click(
+        reopened.getByRole("button", { name: "Reload saved dates" })
+      );
+      await expect(
+        await reopened.findByText(/The proposed dates are not saved/)
+      ).toBeVisible();
+      await expect(reopened.getByText(/Wednesday, Jun 24, 2099/)).toBeVisible();
+      await user.click(
+        reopened.getByRole("button", { name: "Continue editing" })
+      );
+
+      await expect(reopened.getByLabelText("End date")).toBeEnabled();
+      await expect(
+        reopened.queryByRole("button", { name: "Confirm dates" })
+      ).not.toBeInTheDocument();
+      await user.click(reopened.getByRole("button", { name: "Review dates" }));
+      await expect(await reopened.findByText("Map the days")).toBeVisible();
+    }
+  };
 
 export const RemovesTripWhenDeleteConfirmed: Story = {
   parameters: { trips: TWO_ACTIVE_TRIPS },

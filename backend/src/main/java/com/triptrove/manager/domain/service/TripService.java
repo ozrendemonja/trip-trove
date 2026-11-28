@@ -18,6 +18,8 @@ public interface TripService {
 
     void updateTripName(Long id, String newName);
 
+    TripRangeImpactSummary getTripRangeImpact(Long id, LocalDate fromTrip, LocalDate toTrip);
+
     void updateTripRange(Long id, LocalDate fromTrip, LocalDate toTrip);
 
     void deleteTrip(Long id);

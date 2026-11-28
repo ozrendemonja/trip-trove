@@ -1,5 +1,5 @@
 import { Trip } from "../domain/Trip.types";
-import { detectTripChanges } from "../EditTripDetails.utils";
+import { detectTripChanges, mapEmptyDates } from "../EditTripDetails.utils";
 
 const baseTripFixture: Trip = {
   id: 1,
@@ -142,4 +142,35 @@ test("Date handles ISO string with time portion by comparing only date part", ()
 
   expect(result.nameChanged).toBe(false);
   expect(result.datesChanged).toBe(false);
+});
+
+test("Empty dates are added at both ends of an extended trip, across a month end", () => {
+  const emptyDates = mapEmptyDates(
+    {
+      currentFromDate: "2026-06-10",
+      currentToDate: "2026-06-30",
+      blockers: []
+    },
+    { fromDate: "2026-06-08", toDate: "2026-07-02" }
+  );
+
+  expect(emptyDates).toEqual({
+    added: ["2026-06-08", "2026-06-09", "2026-07-01", "2026-07-02"],
+    removed: []
+  });
+});
+
+test("Removed empty dates leave out dates with blockers", () => {
+  const emptyDates = mapEmptyDates(
+    {
+      currentFromDate: "2026-06-10",
+      currentToDate: "2026-06-14",
+      blockers: [
+        { date: "2026-06-14", kind: "DAY_NOTE", content: "Return the keys." }
+      ]
+    },
+    { fromDate: "2026-06-11", toDate: "2026-06-13" }
+  );
+
+  expect(emptyDates).toEqual({ added: [], removed: ["2026-06-10"] });
 });

@@ -3143,9 +3143,6 @@ export const AcceptsTwoWarningsOnOneEntryWithoutClearingThem: Story = {
     );
 
     await expect(await canvas.findByText("Manually checked")).toBeVisible();
-    await expect(
-      await canvas.findByRole("textbox", { name: "End clock for Museum" })
-    ).toHaveValue("11:30");
     const remaining = await canvas.findByRole("button", {
       name: "2 warnings remain"
     });
@@ -3156,6 +3153,9 @@ export const AcceptsTwoWarningsOnOneEntryWithoutClearingThem: Story = {
     await expect(checkPosts).toHaveBeenCalledWith({
       checkContext: "displayed-itinerary"
     });
+    await expect(
+      within(museum).getByRole("textbox", { name: "End clock for Museum" })
+    ).toHaveValue("11:30");
     await user.click(remaining);
     await expect(
       await body.findByRole("tab", { name: "Warnings (2)" })
@@ -5849,7 +5849,7 @@ export const InspectsAnUnconfirmedZeroContributionBeforeADeliberateRetry: Story 
         ).not.toBeInTheDocument()
       );
       await expect(
-        await canvas.findByRole("textbox", { name: "End clock for Museum" })
+        canvas.getByRole("textbox", { name: "End clock for Museum" })
       ).toHaveValue("10:00");
       const members = within(
         canvas.getByRole("list", { name: "Grouped attractions on Museum" })

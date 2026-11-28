@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0024-track-itinerary-date-changes
+      author: trip-trove
+      changes:
+        - addColumn:
+            tableName: itinerary
+            columns:
+              - column:
+                  name: dates_changed_since_check
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION itinerary_check_context(trip_id BIGINT, itinerary_zone TEXT, checked_at TIMESTAMPTZ,
+                                                       dates_changed BOOLEAN)
+              RETURNS TEXT LANGUAGE sql STABLE AS $$
+                SELECT CASE WHEN dates_changed
+                    THEN encode(sha256(convert_to(context || ':dates-changed', 'UTF8')), 'hex')
+                    ELSE context END
+                FROM itinerary_check_context(trip_id, itinerary_zone, checked_at) AS context
+              $$;

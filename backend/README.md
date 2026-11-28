@@ -40,6 +40,17 @@ No planning revision or idempotency metadata is required or returned. Normal
 validation and database transactions still apply, including existing
 name/membership conflicts.
 
+For a date edit, `GET /trips/{id}/range/impact?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD`
+returns the saved range and identifies blockers without saving. The client
+derives added and removed empty dates from the saved and proposed ranges.
+`PUT /trips/{id}/range` checks the blockers again in its transaction. Extending
+or shortening preserves the exact dates and timing of retained content, and
+shortening cannot remove a day note or any occupied time. An interval ending
+exactly at the next day's boundary does not occupy that day. Shifts require
+an empty itinerary. Any effective change invalidates a prior manual check;
+submitting unchanged dates does not. After an unconfirmed date save, inspect
+the saved range with `GET /trips/{id}` before requesting the range impact again.
+
 After a timeout or lost response, reload and inspect the saved planning before
 deliberately submitting another write. There is no automatic replay or
 exactly-once retry guarantee.

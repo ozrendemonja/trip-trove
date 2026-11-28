@@ -2,13 +2,14 @@ package com.triptrove.manager.application.dto;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 import java.time.Month;
 
-public record UpdateTripRangeRequest(@NotNull
+public record UpdateTripRangeRequest(@NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                      LocalDate fromDate,
-                                     @NotNull
+                                     @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                                      LocalDate toDate) {
     private static final LocalDate MIN_DATE = LocalDate.of(1960, Month.JANUARY, 1);
 

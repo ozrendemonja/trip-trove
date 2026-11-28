@@ -37,7 +37,8 @@ import {
   readableFactValue,
   recordedFactValue
 } from "./AttractionFactsDialog";
-import { formatItineraryDate, type ItineraryTarget } from "./Itinerary";
+import type { ItineraryTarget } from "./Itinerary";
+import { formatItineraryDate } from "./itineraryDateLabel";
 import { useClasses as useItineraryStyles } from "./Itinerary.styles";
 import {
   entryWarningLabels,
@@ -67,7 +68,8 @@ const reasonLabels: Record<ChangeNotice["reasons"][number], string> = {
   TRANSFER_CHANGED: "Transfer changed",
   GROUP_CHANGED: "Grouped attractions changed",
   TYPED_ITEM_ADDED: "Added to the itinerary",
-  TYPED_ITEM_CHANGED: "Item details changed"
+  TYPED_ITEM_CHANGED: "Item details changed",
+  TRIP_DATES_CHANGED: "Date range changed"
 };
 const sourceFieldLabels: Record<SourceChange["field"], string> = {
   WORKING_HOURS: "Working hours",

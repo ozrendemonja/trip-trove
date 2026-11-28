@@ -1,7 +1,9 @@
 package com.triptrove.manager;
 
 import com.jayway.jsonpath.JsonPath;
+import com.triptrove.manager.application.dto.AddItineraryItemRequest;
 import com.triptrove.manager.application.dto.CheckItineraryRequest;
+import com.triptrove.manager.application.dto.ItineraryItemFields;
 import com.triptrove.manager.application.dto.MoveAttractionOnBoardRequest;
 import com.triptrove.manager.application.dto.MoveItineraryEntryRequest;
 import com.triptrove.manager.application.dto.SaveTripRequest;
@@ -11,10 +13,12 @@ import com.triptrove.manager.application.dto.UpdateItineraryDayNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionMustVisitRequest;
 import com.triptrove.manager.application.dto.UpdateTripAttractionNoteRequest;
 import com.triptrove.manager.application.dto.UpdateTripRangeRequest;
+import com.triptrove.manager.domain.model.ItineraryItemKind;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -24,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Stream;
@@ -398,6 +403,56 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void extendingAConfirmedItineraryAddsEmptyDatesWithoutMovingItsContents() throws Exception {
+        var trip = createTrip("Summer itinerary", "2028-06-10", "2028-06-14");
+        var itinerary = trip + "/itinerary";
+        addOtherItem(itinerary, "Collect the keys", "2028-06-12", "09:15", 45)
+                .andExpect(status().isNoContent());
+        saveNote(itinerary + "/days/2028-06-12/note", new UpdateItineraryDayNoteRequest("Bring the booking reference."))
+                .andExpect(status().isNoContent());
+        var displayed = readItinerary(itinerary).andReturn().getResponse().getContentAsString();
+        submitCheck(itinerary, JsonPath.read(displayed, "$.checkContext")).andExpect(status().isNoContent());
+        entityManager.clear();
+        var checked = readItinerary(itinerary).andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andReturn().getResponse().getContentAsString();
+        int keptDay = JsonPath.read(checked, "$.days[2].id");
+        int keptEntry = JsonPath.read(checked, "$.days[2].entries[0].entryId");
+        String oldContext = JsonPath.read(checked, "$.checkContext");
+
+        saveRange(trip, new UpdateTripRangeRequest(LocalDate.parse("2028-06-10"), LocalDate.parse("2028-06-14")))
+                .andExpect(status().isNoContent());
+        readItinerary(itinerary).andExpect(content().json(checked));
+
+        var range = new UpdateTripRangeRequest(LocalDate.parse("2028-06-08"), LocalDate.parse("2028-06-16"));
+        readRangeImpact(trip, range)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentFromDate").value("2028-06-10"))
+                .andExpect(jsonPath("$.currentToDate").value("2028-06-14"))
+                .andExpect(jsonPath("$.blockers").isEmpty());
+        readItinerary(itinerary).andExpect(content().json(checked));
+
+        saveRange(trip, range).andExpect(status().isNoContent()).andExpect(content().string(""));
+
+        var changed = readItinerary(itinerary)
+                .andExpect(jsonPath("$.days[*].date", contains("2028-06-08", "2028-06-09", "2028-06-10", "2028-06-11",
+                        "2028-06-12", "2028-06-13", "2028-06-14", "2028-06-15", "2028-06-16")))
+                .andExpect(jsonPath("$.days[*].note", contains("Bring the booking reference.")))
+                .andExpect(jsonPath("$.days[*].entries[*].entryId", contains(keptEntry)))
+                .andExpect(jsonPath("$.days[4].id").value(keptDay))
+                .andExpect(jsonPath("$.days[4].entries[0].timing.start").value("2028-06-12T09:15+02:00"))
+                .andExpect(jsonPath("$.days[4].entries[0].timing.end").value("2028-06-12T10:00+02:00"))
+                .andExpect(jsonPath("$.timeZone").value("Europe/Belgrade"))
+                .andExpect(jsonPath("$.checkState").value("CHANGED_SINCE_LAST_CHECK"))
+                .andExpect(jsonPath("$.changeNotices[0].reasons", contains("TRIP_DATES_CHANGED")))
+                .andReturn().getResponse().getContentAsString();
+        submitCheck(itinerary, oldContext).andExpect(status().isConflict());
+        submitCheck(itinerary, JsonPath.read(changed, "$.checkContext")).andExpect(status().isNoContent());
+        readItinerary(itinerary)
+                .andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andExpect(jsonPath("$.changeNotices").isEmpty());
+    }
+
+    @Test
     void changingTheRangeKeepsOnlyTheNewDatesAndPreservesOverlappingDays() throws Exception {
         createTrip("Moving the trip", "2028-04-01", "2028-04-30");
         var trip = createTrip("Moving the trip", "2028-04-04", "2028-04-06");
@@ -414,6 +469,8 @@ class ItineraryTest extends AbstractIntegrationTest {
         mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.days[*].date", contains("2028-04-03", "2028-04-04", "2028-04-05")))
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"))
+                .andExpect(jsonPath("$.timeZone").doesNotExist())
                 .andExpect(jsonPath("$.days[1].id").value(aprilFourthId));
         mockMvc.perform(get(trip).header("x-api-version", "1"))
                 .andExpect(status().isOk())
@@ -422,20 +479,76 @@ class ItineraryTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void droppingADateWouldNotSilentlyDeleteItsDayNote() throws Exception {
-        var trip = createTrip("Date with a reminder", "2028-04-04", "2028-04-06");
-        saveNote(trip + "/itinerary/days/2028-04-06/note", new UpdateItineraryDayNoteRequest("Return the keys."))
+    void shorteningRefusesEveryChangeIfARemovedDateHasANoteOrAnEntry() throws Exception {
+        var trip = createTrip("Dates with content", "2028-06-10", "2028-06-14");
+        var itinerary = trip + "/itinerary";
+        var range = new UpdateTripRangeRequest(LocalDate.parse("2028-06-11"), LocalDate.parse("2028-06-13"));
+        readRangeImpact(trip, range).andExpect(status().isOk())
+                .andExpect(jsonPath("$.blockers").isEmpty());
+
+        saveNote(itinerary + "/days/2028-06-10/note", new UpdateItineraryDayNoteRequest("Return the keys."))
                 .andExpect(status().isNoContent());
-        var range = new UpdateTripRangeRequest(LocalDate.of(2028, 4, 4), LocalDate.of(2028, 4, 5));
-        mockMvc.perform(put(trip + "/range").header("x-api-version", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content(mapper.writeValueAsString(range)))
-                .andExpect(status().isConflict())
+        addOtherItem(itinerary, "Collect luggage", "2028-06-14", "09:15", 10).andExpect(status().isNoContent());
+        var displayed = readItinerary(itinerary).andReturn().getResponse().getContentAsString();
+        submitCheck(itinerary, JsonPath.read(displayed, "$.checkContext")).andExpect(status().isNoContent());
+        var saved = readItinerary(itinerary).andExpect(jsonPath("$.checkState").value("MANUALLY_CHECKED"))
+                .andReturn().getResponse().getContentAsString();
+
+        saveRange(trip, range).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
                 .andExpect(jsonPath("$.errorMessage").value(
-                        "Those dates would remove a day with a note. Keep that date or clear its day note first."));
-        mockMvc.perform(get(trip + "/itinerary").header("x-api-version", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.days[2].note").value("Return the keys."));
+                        "Those dates would remove the day note on 2028-06-10. Keep that date or clear its day note first."));
+        readRangeImpact(trip, range).andExpect(status().isOk())
+                .andExpect(jsonPath("$.blockers[*].date", contains("2028-06-10", "2028-06-14")))
+                .andExpect(jsonPath("$.blockers[*].kind", contains("DAY_NOTE", "ENTRY")))
+                .andExpect(jsonPath("$.blockers[*].content", contains("Return the keys.", "Collect luggage")));
+        readItinerary(itinerary).andExpect(content().json(saved));
+        mockMvc.perform(get(trip).header("x-api-version", "1"))
+                .andExpect(jsonPath("$.fromDate").value("2028-06-10"))
+                .andExpect(jsonPath("$.toDate").value("2028-06-14"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"45, 2028-06-13T23:45+02:00", "60, 2028-06-14T00:00+02:00"})
+    void shorteningAllowsRemovingEmptyDatesEvenIfARetainedEntryEndsExactlyAtMidnight(int minutes, String end)
+            throws Exception {
+        var trip = createTrip("Short summer trip", "2028-06-10", "2028-06-14");
+        var itinerary = trip + "/itinerary";
+        addOtherItem(itinerary, "Stargazing", "2028-06-13", "23:00", minutes).andExpect(status().isNoContent());
+        var displayed = readItinerary(itinerary).andReturn().getResponse().getContentAsString();
+        int keptId = JsonPath.read(displayed, "$.days[3].entries[0].entryId");
+        var range = new UpdateTripRangeRequest(LocalDate.parse("2028-06-11"), LocalDate.parse("2028-06-13"));
+
+        readRangeImpact(trip, range).andExpect(status().isOk())
+                .andExpect(jsonPath("$.blockers").isEmpty());
+        saveRange(trip, range).andExpect(status().isNoContent());
+
+        readItinerary(itinerary)
+                .andExpect(jsonPath("$.days[*].date", contains("2028-06-11", "2028-06-12", "2028-06-13")))
+                .andExpect(jsonPath("$.days[2].entries[0].entryId").value(keptId))
+                .andExpect(jsonPath("$.days[2].entries[0].timing.start").value("2028-06-13T23:00+02:00"))
+                .andExpect(jsonPath("$.days[2].entries[0].timing.end").value(end))
+                .andExpect(jsonPath("$.checkState").value("NOT_YET_CHECKED"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2028-06-11, 2028-06-15", "2028-06-11, 2028-06-16"})
+    void movingEitherKindOfNonContainingRangeRequiresAnEmptyItinerary(String from, String to) throws Exception {
+        var trip = createTrip("Preserve calendar dates", "2028-06-10", "2028-06-14");
+        var itinerary = trip + "/itinerary";
+        addOtherItem(itinerary, "Concert", "2028-06-12", "20:00", 60).andExpect(status().isNoContent());
+        var saved = readItinerary(itinerary).andReturn().getResponse().getContentAsString();
+        var range = new UpdateTripRangeRequest(LocalDate.parse(from), LocalDate.parse(to));
+
+        readRangeImpact(trip, range).andExpect(status().isOk())
+                .andExpect(jsonPath("$.shiftBlocked").value(true))
+                .andExpect(jsonPath("$.blockers[0].date").value("2028-06-12"))
+                .andExpect(jsonPath("$.blockers[0].content").value("Concert"));
+        saveRange(trip, range).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_HAS_DEPENDENCIES"))
+                .andExpect(jsonPath("$.errorMessage").value(
+                        "Those dates are not an extension or a shortening. Shifting requires an empty itinerary; review the content on 2028-06-12."));
+        readItinerary(itinerary).andExpect(content().json(saved));
     }
 
     @Test
@@ -461,6 +574,27 @@ class ItineraryTest extends AbstractIntegrationTest {
                         .content(mapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getHeader(HttpHeaders.LOCATION);
+    }
+
+    private ResultActions addOtherItem(String itinerary, String name, String date, String clock, int minutes) throws Exception {
+        var request = new AddItineraryItemRequest(LocalDate.parse(date), null, clock, "Europe/Belgrade",
+                ItineraryItemKind.OTHER, new ItineraryItemFields(name, BigDecimal.valueOf(minutes), false, null), null);
+        return mockMvc.perform(post(itinerary + "/items").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)));
+    }
+
+    private ResultActions readItinerary(String itinerary) throws Exception {
+        return mockMvc.perform(get(itinerary).header("x-api-version", "1")).andExpect(status().isOk());
+    }
+
+    private ResultActions readRangeImpact(String trip, UpdateTripRangeRequest range) throws Exception {
+        return mockMvc.perform(get(trip + "/range/impact").header("x-api-version", "1")
+                .param("fromDate", range.fromDate().toString()).param("toDate", range.toDate().toString()));
+    }
+
+    private ResultActions saveRange(String trip, UpdateTripRangeRequest range) throws Exception {
+        return mockMvc.perform(put(trip + "/range").header("x-api-version", "1")
+                .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(range)));
     }
 
     private ResultActions schedule(ScheduleAttractionRequest request) throws Exception {

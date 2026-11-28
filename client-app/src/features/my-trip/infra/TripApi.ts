@@ -3,10 +3,13 @@ import {
   detachAttraction,
   getItinerary,
   getTrip,
+  getTripRangeImpact,
   getTrips,
   saveTrip,
   updateTripDetail,
   type GetItineraryResponse,
+  type TripRangeImpactResponse,
+  type UpdateTripRangeRequest,
   GetTripResponse
 } from "../../../clients/manager";
 import { client } from "../../../clients/manager";
@@ -202,10 +205,38 @@ export const deleteTripById = async (id: number): Promise<void> => {
   }
 };
 
+export const loadTripRangeImpact = async (
+  tripId: number,
+  range: UpdateTripRangeRequest
+): Promise<TripRangeImpactResponse> => {
+  const { data, error } = await getTripRangeImpact({
+    path: { id: tripId },
+    query: { fromDate: range.fromDate, toDate: range.toDate },
+    headers: { "x-api-version": "1" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(PLANNING_REQUEST_TIMEOUT_MS)
+  });
+  if (!data) {
+    throw new Error(
+      error?.errorMessage ??
+        "The date preview couldn't be loaded. Check both dates and try again.",
+      { cause: error }
+    );
+  }
+  if (!Array.isArray(data.blockers)) {
+    throw new Error(
+      "The server returned an invalid date preview. Review the dates again."
+    );
+  }
+  return data;
+};
+
 export const fetchTripById = async (
-  id: number
+  id: number,
+  options?: Pick<RequestInit, "cache" | "signal">
 ): Promise<Trip & { hasItineraryContent: boolean }> => {
   const { data, error } = await getTrip({
+    ...options,
     path: { id },
     headers: { "x-api-version": "1" }
   });

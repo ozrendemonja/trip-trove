@@ -10,7 +10,8 @@ import {
 import { Add24Regular, TicketDiagonal24Regular } from "@fluentui/react-icons";
 import { useBooleanState } from "../../shared/hooks/useBooleanState";
 import React, { useEffect, useRef, useState } from "react";
-import { generatePath, useNavigate } from "react-router";
+import { generatePath, useBeforeUnload, useNavigate } from "react-router";
+import type { UpdateTripRangeRequest } from "../../clients/manager";
 import { LoadingSpinner } from "../../shared/loading-spinner/LoadingSpinner";
 import EditProperty from "../../shared/list-element/ui/edit-property/EditProperty";
 import Navigation from "../../shared/navigation/Navigation";
@@ -51,6 +52,19 @@ const TAB_CONFIG: TabConfig[] = [
   }
 ];
 
+const dateWriteKey = (tripId: number): string =>
+  `trip-trove.date-write.${tripId}`;
+
+const readDateWrite = (tripId: number): UpdateTripRangeRequest | undefined => {
+  const stored = window.sessionStorage.getItem(dateWriteKey(tripId));
+  if (stored === null) return undefined;
+  const [fromDate, toDate] = stored.split("/");
+  if (!fromDate || !toDate) {
+    throw new Error("Stored date write is missing its start or end date.");
+  }
+  return { fromDate, toDate };
+};
+
 export const MyTripList: React.FC = () => {
   const classes = useMyTripListClasses();
   const navigate = useNavigate();
@@ -80,6 +94,10 @@ export const MyTripList: React.FC = () => {
   const [reloadData, { toggle: toggleReloadData }] = useBooleanState(false);
   const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
   const [tripToEdit, setTripToEdit] = useState<Trip | null>(null);
+  const [unconfirmedDates, setUnconfirmedDates] = useState(
+    () => new Map<number, UpdateTripRangeRequest>()
+  );
+  const [dateRecoveryError, setDateRecoveryError] = useState<string>();
   const [
     hideDeleteDialog,
     { setTrue: closeDeleteDialog, setFalse: openDeleteDialog }
@@ -89,6 +107,47 @@ export const MyTripList: React.FC = () => {
     setLoading();
     fetchTrips(undefined, "DESC").then(setTrips).finally(setNotLoading);
   }, [reloadData]);
+
+  useBeforeUnload((event) => {
+    if (unconfirmedDates.size > 0) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
+
+  const openTripEditor = (trip: Trip): void => {
+    try {
+      const range = readDateWrite(trip.id);
+      if (range) {
+        setUnconfirmedDates((saved) => new Map(saved).set(trip.id, range));
+      }
+      setDateRecoveryError(undefined);
+      setTripToEdit(trip);
+    } catch (error) {
+      console.error("Could not read the trip's date recovery state", error);
+      setDateRecoveryError(
+        "Date save recovery couldn't be loaded. Reopen this tab before editing the trip."
+      );
+    }
+  };
+
+  const trackDateWrite = (
+    tripId: number,
+    range?: UpdateTripRangeRequest
+  ): void => {
+    const key = dateWriteKey(tripId);
+    if (range) {
+      window.sessionStorage.setItem(key, `${range.fromDate}/${range.toDate}`);
+      setUnconfirmedDates((saved) => new Map(saved).set(tripId, range));
+    } else {
+      window.sessionStorage.removeItem(key);
+      setUnconfirmedDates((saved) => {
+        const next = new Map(saved);
+        next.delete(tripId);
+        return next;
+      });
+    }
+  };
 
   const handleCreateTrip = async (): Promise<boolean> => {
     try {
@@ -110,6 +169,9 @@ export const MyTripList: React.FC = () => {
   const handleDeleteConfirm = async (): Promise<void> => {
     if (!tripToDelete) return;
     await deleteTripById(tripToDelete.id);
+    if (unconfirmedDates.has(tripToDelete.id)) {
+      trackDateWrite(tripToDelete.id);
+    }
     toggleReloadData();
     closeDeleteDialog();
     setTripToDelete(null);
@@ -169,6 +231,11 @@ export const MyTripList: React.FC = () => {
             })}
           </TabList>
 
+          {dateRecoveryError && (
+            <MessageBar intent="error">
+              <MessageBarBody>{dateRecoveryError}</MessageBarBody>
+            </MessageBar>
+          )}
           {visibleTrips.length === 0 ? (
             <Flex className={classes.emptyState} justify="center">
               <TicketDiagonal24Regular className={classes.emptyIcon} />
@@ -200,7 +267,7 @@ export const MyTripList: React.FC = () => {
                     )
                   }
                   onDelete={() => handleDeleteRequest(trip)}
-                  onEdit={() => setTripToEdit(trip)}
+                  onEdit={() => openTripEditor(trip)}
                 />
               ))}
             </Flex>
@@ -263,6 +330,15 @@ export const MyTripList: React.FC = () => {
         <EditTripDetails
           trip={tripToEdit}
           isOpen={true}
+          unconfirmedDates={unconfirmedDates.get(tripToEdit.id)}
+          onDateSaveStateChange={(range) =>
+            trackDateWrite(tripToEdit.id, range)
+          }
+          onSavedDatesInspected={(trip) => {
+            setTrips((current) =>
+              current.map((item) => (item.id === trip.id ? trip : item))
+            );
+          }}
           onDismiss={() => setTripToEdit(null)}
           onUpdateClick={() => {
             setTripToEdit(null);

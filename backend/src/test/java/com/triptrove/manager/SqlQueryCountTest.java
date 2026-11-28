@@ -1314,6 +1314,24 @@ class SqlQueryCountTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 30})
+    void tripRangeImpactUsesOneSelectRegardlessOfEntryCount(int entryCount) throws Exception {
+        seedItineraryWithGroupedAttractions(entryCount);
+        entityManager.createNativeQuery("""
+                UPDATE itinerary_day SET note = 'Pack the tickets'
+                WHERE trip_id = 1 AND date = DATE '2026-09-02'
+                """).executeUpdate();
+        resetSqlStatementCounts();
+
+        mockMvc.perform(get("/trips/1/range/impact").header("x-api-version", "1")
+                        .param("fromDate", "2026-09-03").param("toDate", "2026-09-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.blockers.length()").value(entryCount + 1));
+
+        assertReadOnlySelectCount(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 30})
     void entrySummariesUseOneSelectRegardlessOfEntryCount(int entryCount) {
         seedItineraryWithEntries(entryCount);
         resetSqlStatementCounts();
